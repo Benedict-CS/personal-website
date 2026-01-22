@@ -1,0 +1,77 @@
+services:
+  # PostgreSQL Database
+  postgres:
+    image: postgres:15-alpine
+    container_name: personal-website-postgres
+    restart: unless-stopped
+    environment:
+      - POSTGRES_USER=ben
+      - POSTGRES_PASSWORD=${POSTGRES_PASSWORD}
+      - POSTGRES_DB=blog
+    volumes:
+      - ./postgres-data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ben -d blog"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  # RustFS S3-compatible Object Storage
+  # RustFS is a high-performance, distributed object storage system built in Rust
+  # Documentation: https://rustfs.com
+  rustfs:
+    image: rustfs/rustfs:latest
+    container_name: personal-website-rustfs
+    restart: unless-stopped
+    ports:
+      - "9000:9000"  # S3 API
+      - "9001:9001"  # Console
+    volumes:
+      - ./rustfs-data:/data
+      - ./rustfs-logs:/logs
+    environment:
+      - RUSTFS_ROOT_USER=rustfsadmin
+      - RUSTFS_ROOT_PASSWORD=${RUSTFS_ROOT_PASSWORD}
+    healthcheck:
+      test: ["CMD", "wget", "--no-verbose", "--tries=1", "--spider", "http://localhost:9000/health"]
+      interval: 10s
+      timeout: 5s
+      retries: 3
+      start_period: 30s
+
+  # Next.js Application
+  app:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: personal-website-app
+    restart: unless-stopped
+    depends_on:
+      postgres:
+        condition: service_healthy
+      rustfs:
+        condition: service_healthy
+    ports:
+      - "3000:3000"
+    volumes:
+      # Mount public directory for CV and image uploads (persistent storage)
+      - ./public:/app/public
+    environment:
+      - NODE_ENV=production
+      - DATABASE_URL=postgresql://${POSTGRES_USER:-ben}:${POSTGRES_PASSWORD}@postgres:5432/blog
+      - ADMIN_PASSWORD=${ADMIN_PASSWORD}
+      - NEXTAUTH_SECRET=${NEXTAUTH_SECRET}
+      - NEXTAUTH_URL=${NEXTAUTH_URL:-http://localhost:3000}
+      - NEXT_PUBLIC_SITE_URL=${NEXT_PUBLIC_SITE_URL:-https://benedicttiong.com}
+      # S3/RustFS Configuration
+      - S3_ENDPOINT=http://rustfs:9000
+      - S3_REGION=us-east-1
+      - S3_ACCESS_KEY=${S3_ACCESS_KEY}
+      - S3_SECRET_KEY=${S3_SECRET_KEY}
+      - S3_BUCKET=uploads
+    healthcheck:
+      test: ["CMD", "node", "-e", "require('http').get('http://localhost:3000', (r) => {process.exit(r.statusCode === 200 ? 0 : 1)})"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 40s
