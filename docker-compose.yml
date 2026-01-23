@@ -61,8 +61,8 @@ services:
       - DATABASE_URL=postgresql://${POSTGRES_USER:-ben}:${POSTGRES_PASSWORD}@postgres:5432/blog
       - ADMIN_PASSWORD=${ADMIN_PASSWORD}
       - NEXTAUTH_SECRET=${NEXTAUTH_SECRET}
-      - NEXTAUTH_URL=${NEXTAUTH_URL:-http://localhost:3000}
-      - NEXT_PUBLIC_SITE_URL=${NEXT_PUBLIC_SITE_URL:-https://benedicttiong.com}
+      - NEXTAUTH_URL=${NEXTAUTH_URL:-https://benedict.winlab.tw}
+      - NEXT_PUBLIC_SITE_URL=${NEXT_PUBLIC_SITE_URL:-https://benedict.winlab.tw}
       # S3/RustFS Configuration
       - S3_ENDPOINT=http://rustfs:9000
       - S3_REGION=us-east-1
