@@ -1,0 +1,226 @@
+@import "tailwindcss";
+@import "tw-animate-css";
+
+@theme inline {
+  --color-background: var(--background);
+  --color-foreground: var(--foreground);
+  --font-sans: var(--font-geist-sans);
+  --font-mono: var(--font-geist-mono);
+  --color-sidebar-ring: var(--sidebar-ring);
+  --color-sidebar-border: var(--sidebar-border);
+  --color-sidebar-accent-foreground: var(--sidebar-accent-foreground);
+  --color-sidebar-accent: var(--sidebar-accent);
+  --color-sidebar-primary-foreground: var(--sidebar-primary-foreground);
+  --color-sidebar-primary: var(--sidebar-primary);
+  --color-sidebar-foreground: var(--sidebar-foreground);
+  --color-sidebar: var(--sidebar);
+  --color-chart-5: var(--chart-5);
+  --color-chart-4: var(--chart-4);
+  --color-chart-3: var(--chart-3);
+  --color-chart-2: var(--chart-2);
+  --color-chart-1: var(--chart-1);
+  --color-ring: var(--ring);
+  --color-input: var(--input);
+  --color-border: var(--border);
+  --color-destructive: var(--destructive);
+  --color-accent-foreground: var(--accent-foreground);
+  --color-accent: var(--accent);
+  --color-muted-foreground: var(--muted-foreground);
+  --color-muted: var(--muted);
+  --color-secondary-foreground: var(--secondary-foreground);
+  --color-secondary: var(--secondary);
+  --color-primary-foreground: var(--primary-foreground);
+  --color-primary: var(--primary);
+  --color-popover-foreground: var(--popover-foreground);
+  --color-popover: var(--popover);
+  --color-card-foreground: var(--card-foreground);
+  --color-card: var(--card);
+  --radius-sm: calc(var(--radius) - 4px);
+  --radius-md: calc(var(--radius) - 2px);
+  --radius-lg: var(--radius);
+  --radius-xl: calc(var(--radius) + 4px);
+  --radius-2xl: calc(var(--radius) + 8px);
+  --radius-3xl: calc(var(--radius) + 12px);
+  --radius-4xl: calc(var(--radius) + 16px);
+}
+
+:root {
+  --radius: 0.625rem;
+  --background: oklch(1 0 0);
+  --foreground: oklch(0.129 0.042 264.695);
+  --card: oklch(1 0 0);
+  --card-foreground: oklch(0.129 0.042 264.695);
+  --popover: oklch(1 0 0);
+  --popover-foreground: oklch(0.129 0.042 264.695);
+  --primary: oklch(0.208 0.042 265.755);
+  --primary-foreground: oklch(0.984 0.003 247.858);
+  --secondary: oklch(0.968 0.007 247.896);
+  --secondary-foreground: oklch(0.208 0.042 265.755);
+  --muted: oklch(0.968 0.007 247.896);
+  --muted-foreground: oklch(0.554 0.046 257.417);
+  --accent: oklch(0.968 0.007 247.896);
+  --accent-foreground: oklch(0.208 0.042 265.755);
+  --destructive: oklch(0.577 0.245 27.325);
+  --border: oklch(0.929 0.013 255.508);
+  --input: oklch(0.929 0.013 255.508);
+  --ring: oklch(0.704 0.04 256.788);
+  --chart-1: oklch(0.646 0.222 41.116);
+  --chart-2: oklch(0.6 0.118 184.704);
+  --chart-3: oklch(0.398 0.07 227.392);
+  --chart-4: oklch(0.828 0.189 84.429);
+  --chart-5: oklch(0.769 0.188 70.08);
+  --sidebar: oklch(0.984 0.003 247.858);
+  --sidebar-foreground: oklch(0.129 0.042 264.695);
+  --sidebar-primary: oklch(0.208 0.042 265.755);
+  --sidebar-primary-foreground: oklch(0.984 0.003 247.858);
+  --sidebar-accent: oklch(0.968 0.007 247.896);
+  --sidebar-accent-foreground: oklch(0.208 0.042 265.755);
+  --sidebar-border: oklch(0.929 0.013 255.508);
+  --sidebar-ring: oklch(0.704 0.04 256.788);
+}
+
+
+@layer base {
+  * {
+    @apply border-border outline-ring/50;
+  }
+  body {
+    @apply bg-background text-foreground;
+  }
+}
+
+/* Typography styles for Markdown content */
+.prose {
+  @apply text-slate-700;
+}
+
+.prose h1 {
+  @apply text-3xl font-bold text-slate-900 mt-8 mb-4;
+}
+
+.prose h2 {
+  @apply text-2xl font-bold text-slate-900 mt-6 mb-3;
+}
+
+.prose h3 {
+  @apply text-xl font-semibold text-slate-900 mt-4 mb-2;
+}
+
+.prose p {
+  @apply mb-4 leading-relaxed;
+}
+
+.prose ul,
+.prose ol {
+  @apply mb-4 ml-6;
+}
+
+.prose li {
+  @apply mb-2;
+}
+
+.prose code {
+  @apply bg-slate-100 text-slate-800 px-1.5 py-0.5 rounded text-sm font-mono;
+}
+
+.prose pre {
+  @apply bg-slate-50 text-slate-800 p-4 rounded-lg mb-4 border border-slate-200;
+  overflow-x: auto !important;
+  overflow-y: hidden !important;
+  white-space: pre !important;
+  max-width: 100% !important;
+  min-width: 0 !important;
+  width: 100% !important;
+  box-sizing: border-box !important;
+  display: block !important;
+}
+
+.prose pre code {
+  @apply bg-transparent text-slate-800 p-0;
+  white-space: pre !important;
+  display: block !important;
+  overflow: visible !important;
+  word-break: normal !important;
+  word-wrap: normal !important;
+  width: max-content !important;
+  min-width: 100% !important;
+}
+
+
+.prose blockquote {
+  @apply border-l-4 border-slate-300 pl-4 italic my-4;
+}
+
+.prose a {
+  @apply text-blue-600 hover:text-blue-800 underline;
+}
+
+.prose img {
+  @apply rounded-lg my-4 max-w-full;
+}
+
+.prose strong {
+  @apply font-bold text-slate-900;
+}
+
+.prose em {
+  @apply italic;
+}
+
+/* Markdown table styles */
+.prose table {
+  @apply border-collapse border border-slate-300 w-full my-4;
+}
+
+.prose thead {
+  @apply bg-slate-100;
+}
+
+.prose tbody tr {
+  @apply border-b border-slate-300;
+}
+
+.prose tbody tr:last-child {
+  @apply border-b-0;
+}
+
+.prose th {
+  @apply border border-slate-300 px-4 py-2 text-left font-semibold text-slate-900;
+}
+
+.prose td {
+  @apply border border-slate-300 px-4 py-2 text-slate-700;
+}
+
+/* Override highlight.js - 強制所有 hljs 相關背景透明，只使用 pre 的淺色背景 */
+pre .hljs,
+pre code.hljs,
+.prose pre .hljs,
+.prose pre code.hljs,
+.hljs,
+code.hljs {
+  background: transparent !important;
+  background-color: transparent !important;
+  color: inherit !important;
+  padding: 0 !important;
+}
+
+/* 確保所有子元素和巢狀元素背景透明 */
+pre .hljs *,
+pre code.hljs *,
+.prose pre .hljs *,
+.prose pre code.hljs *,
+.hljs *,
+code.hljs * {
+  background-color: transparent !important;
+  background: transparent !important;
+}
+
+/* 針對 highlight.js 為不同語言添加的 class 也強制透明背景 */
+pre code[class*="language-"],
+.prose pre code[class*="language-"],
+pre .hljs[class*="language-"],
+.prose pre .hljs[class*="language-"] {
+  background: transparent !important;
+  background-color: transparent !important;
+}

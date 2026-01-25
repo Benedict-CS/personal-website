@@ -1,0 +1,49 @@
+name: CI - Build and Test (Optional)
+
+# 這個 CI 是可選的，主要用於檢查代碼是否可以正常建置
+# 如果不需要，可以刪除這個文件
+
+on:
+  pull_request:
+    branches: [main]
+  workflow_dispatch: # 只允許手動觸發，不會自動運行
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: 'npm'
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Generate Prisma Client
+        run: npx prisma generate
+
+      - name: Run linter
+        run: npm run lint
+        continue-on-error: true  # 允許 lint 錯誤，不阻止建置
+
+      - name: Build application
+        run: npm run build
+        env:
+          DATABASE_URL: postgresql://dummy:dummy@localhost:5432/dummy
+          NEXTAUTH_SECRET: dummy-secret
+          NEXTAUTH_URL: http://localhost:3000
+
+      - name: Check build artifacts
+        run: |
+          if [ -d ".next" ]; then
+            echo "✅ Build successful"
+          else
+            echo "❌ Build failed - .next directory not found"
+            exit 1
+          fi

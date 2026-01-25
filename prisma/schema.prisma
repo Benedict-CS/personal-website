@@ -1,0 +1,65 @@
+generator client {
+  provider = "prisma-client-js"
+  binaryTargets = ["debian-openssl-3.0.x"]
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+model Post {
+  id          String        @id @default(uuid())
+  title       String
+  slug        String        @unique
+  content     String
+  description String?       // Short abstract/summary for card display (not shown in article body)
+  published   Boolean       @default(false)
+  pinned      Boolean       @default(false)
+  category    String?       // Category path, e.g. "LeetCode/Array", "System Design"
+  order       Int           @default(0) // Order within category for manual sorting
+  createdAt   DateTime      @default(now())
+  updatedAt   DateTime      @updatedAt
+  tags        Tag[]
+  versions    PostVersion[]
+  
+  @@index([category, order])
+  @@index([category, createdAt])
+}
+
+model Tag {
+  id        String   @id @default(uuid())
+  name      String
+  slug      String   @unique
+  posts     Post[]
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+}
+
+model PostVersion {
+  id        String   @id @default(uuid())
+  postId    String
+  post      Post     @relation(fields: [postId], references: [id], onDelete: Cascade)
+  title     String
+  slug      String
+  content   String
+  published Boolean
+  tags      String   // JSON string of tag names
+  createdAt DateTime @default(now())
+  versionNumber Int   // Version number for this post
+
+  @@index([postId])
+  @@index([postId, createdAt])
+}
+
+model AboutConfig {
+  id          String   @id @default(uuid())
+  profileImage String? // Profile photo URL
+  schoolLogos String   @default("[]") // JSON array: [{school: "NYCU", logo: "url"}, ...]
+  projectImages String @default("[]") // JSON array: [{project: "project-name", image: "url"}, ...]
+  companyLogos String  @default("[]") // JSON array: [{company: "Company Name", logo: "url"}, ...]
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  @@unique([id])
+}
