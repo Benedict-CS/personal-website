@@ -75,7 +75,6 @@ Benedict 的個人網站 (Personal Website)
 若需自訂，在專案根目錄建立 `.env`，可覆寫：
 
 ```env
-# 後台登入密碼（預設 benedict123）
 ADMIN_PASSWORD=你的密碼
 
 # NextAuth 加密金鑰（預設 change-me-in-production，生產請改）
