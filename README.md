@@ -70,31 +70,23 @@ Benedict 的個人網站 (Personal Website)
 
 ## 環境變數 (.env)
 
-在專案根目錄建立 `.env` 或 `.env.local` 檔案，包含以下環境變數：
+**預設即可運行**：`docker-compose.yml` 已內建資料庫、RustFS、後台密碼等預設值，直接 `docker compose up` 即可。
+
+若需自訂，在專案根目錄建立 `.env`，可覆寫：
 
 ```env
-# PostgreSQL 連線字串 (Docker 內使用)
-DATABASE_URL="postgresql://ben:password@postgres:5432/blog"
+# 後台登入密碼（預設 benedict123）
+ADMIN_PASSWORD=你的密碼
 
-# 後台登入密碼
-ADMIN_PASSWORD=benedict123
+# NextAuth 加密金鑰（預設 change-me-in-production，生產請改）
+NEXTAUTH_SECRET=請用 openssl rand -base64 32 生成
 
-# NextAuth 加密金鑰 (請使用隨機字串)
-NEXTAUTH_SECRET=Jasoijdo123120jdoiasjd012j30
-
-# NextAuth URL (生產環境使用 HTTPS)
-NEXTAUTH_URL=https://benedicttiong.com
-
-# 網站公開 URL
-NEXT_PUBLIC_SITE_URL=https://benedicttiong.com
-
-# S3/RustFS 設定
-S3_ENDPOINT=http://rustfs:9000
-S3_REGION=us-east-1
-S3_ACCESS_KEY=rustfsadmin
-S3_SECRET_KEY=rustfsadmin
-S3_BUCKET=uploads
+# 網站 URL（預設 https://benedict.winlab.tw）
+NEXTAUTH_URL=https://你的網域
+NEXT_PUBLIC_SITE_URL=https://你的網域
 ```
+
+資料庫與 S3 帳密已寫在 `docker-compose.yml`，無須在 `.env` 重複設定。
 
 ## 常用指令
 
