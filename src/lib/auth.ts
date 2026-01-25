@@ -40,18 +40,18 @@ export const authOptions: NextAuthOptions = {
   },
   callbacks: {
     async redirect({ url, baseUrl }) {
-      // 確保重定向到正確的域名
-      const siteUrl = process.env.NEXTAUTH_URL || baseUrl;
-      // 如果是相對路徑，使用正確的 base URL
+      // Use baseUrl (actual request origin) so redirect stays on same host.
+      // Fixes: on new VM via IP, sign-in no longer redirects to domain (520).
+      const origin = baseUrl || process.env.NEXTAUTH_URL || "http://localhost:3000";
       if (url.startsWith("/")) {
-        return `${siteUrl}${url}`;
+        return `${origin.replace(/\/$/, "")}${url}`;
       }
-      // 如果 URL 屬於同一個域名，允許重定向
-      if (new URL(url).origin === new URL(siteUrl).origin) {
-        return url;
+      try {
+        if (new URL(url).origin === new URL(origin).origin) return url;
+      } catch {
+        /* ignore */
       }
-      // 否則重定向到 base URL
-      return siteUrl;
+      return origin;
     },
   },
 };

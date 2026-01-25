@@ -19,7 +19,8 @@ sudo cp -r rustfs-data "$NAME/" 2>/dev/null || true
 
 echo "4. 打包..."
 tar -czvf "$NAME.tar.gz" "$NAME"
-rm -rf "$NAME"
+echo "5. 清理臨時目錄..."
+sudo rm -rf "$NAME"
 
 echo "完成: $NAME.tar.gz"
 echo "移機時把此檔 + 專案丟到新 VM，解壓後照步驟做即可。"
