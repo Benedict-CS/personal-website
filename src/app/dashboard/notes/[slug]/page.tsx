@@ -41,43 +41,36 @@ export default async function NoteViewPage({ params }: NotePageProps) {
     notFound();
   }
 
-  // 找同分類的上一篇/下一篇（按創建時間排序）
+  // 找同分類的上一篇/下一篇（按創建時間排序，可連續瀏覽）
   // @ts-ignore - category field will be available after migration
   const category = note.category || null;
   
-  // @ts-ignore - category field will be available after migration
-  const prevNote = await prisma.post.findFirst({
+  // 找同分類的所有筆記（按創建時間排序），用於導航
+  // @ts-ignore
+  const allNotesInCategory = await prisma.post.findMany({
     where: {
       published: false,
       // @ts-ignore
       category: category,
-      createdAt: { lt: note.createdAt },
     },
     orderBy: {
-      createdAt: "desc",
+      createdAt: "asc", // 按時間正序排列
     },
     select: {
+      id: true,
       slug: true,
       title: true,
     },
   });
 
-  // @ts-ignore - category field will be available after migration
-  const nextNote = await prisma.post.findFirst({
-    where: {
-      published: false,
-      // @ts-ignore
-      category: category,
-      createdAt: { gt: note.createdAt },
-    },
-    orderBy: {
-      createdAt: "asc",
-    },
-    select: {
-      slug: true,
-      title: true,
-    },
-  });
+  // 找到當前筆記在列表中的位置
+  const currentIndex = allNotesInCategory.findIndex((n) => n.id === note.id);
+  
+  // 上一篇：當前位置的前一個
+  const prevNote = currentIndex > 0 ? allNotesInCategory[currentIndex - 1] : null;
+  
+  // 下一篇：當前位置的後一個
+  const nextNote = currentIndex < allNotesInCategory.length - 1 ? allNotesInCategory[currentIndex + 1] : null;
 
   const formatDate = (date: Date) => {
     return new Date(date).toLocaleDateString("en-US", {
@@ -140,29 +133,23 @@ export default async function NoteViewPage({ params }: NotePageProps) {
                     <Link href={`/dashboard/notes/${prevNote.slug}`}>
                       <Button variant="outline" className="w-full justify-start gap-2">
                         <ChevronLeft className="h-4 w-4" />
-                        <div className="flex flex-col items-start text-left min-w-0">
-                          <span className="text-xs text-slate-500">上一篇</span>
-                          <span className="text-sm font-medium truncate w-full">{prevNote.title}</span>
-                        </div>
+                        <span className="text-sm font-medium truncate">{prevNote.title}</span>
                       </Button>
                     </Link>
                   ) : (
-                    <div className="h-full" />
+                    <div />
                   )}
                 </div>
                 <div className="flex-1">
                   {nextNote ? (
                     <Link href={`/dashboard/notes/${nextNote.slug}`}>
                       <Button variant="outline" className="w-full justify-end gap-2">
-                        <div className="flex flex-col items-end text-right min-w-0">
-                          <span className="text-xs text-slate-500">下一篇</span>
-                          <span className="text-sm font-medium truncate w-full">{nextNote.title}</span>
-                        </div>
+                        <span className="text-sm font-medium truncate">{nextNote.title}</span>
                         <ChevronRight className="h-4 w-4" />
                       </Button>
                     </Link>
                   ) : (
-                    <div className="h-full" />
+                    <div />
                   )}
                 </div>
               </div>

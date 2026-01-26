@@ -70,22 +70,41 @@ sudo docker compose up -d
 sudo docker compose restart app
 ```
 
-**8. 驗證**
+**8. 新 VM 的 .env（避免登入後 520）**
 
-- 用瀏覽器開 `http://新VM的IP:3000`（或透過 NPM 的網址）
-- 檢查首頁、Blog、About、Dashboard 登入是否正常
-- 登入後應導回**同一網址**（你用來連線的那個），不會再跳到 domain 導致 520
+在新 VM 專案目錄建立或修改 `.env`，讓 **NEXTAUTH_URL、NEXT_PUBLIC_SITE_URL** 等於你**實際用來連線的網址**：
+
+- 若用 IP 測試：`http://新VM的IP:3000`
+- 若已用 domain（NPM）指到新 VM：`https://benedict.winlab.tw`
+
+範例（用 IP 時）：
+
+```env
+NEXTAUTH_URL=http://192.168.1.100:3000
+NEXT_PUBLIC_SITE_URL=http://192.168.1.100:3000
+ADMIN_PASSWORD=你的密碼
+NEXTAUTH_SECRET=你的secret
+```
+
+其餘如 `POSTGRES_*`、`S3_*` 等可照舊 VM，或沿用 docker-compose 預設。修改後執行：
+
+```bash
+sudo docker compose up -d --force-recreate app
+```
+
+**9. 驗證**
+
+- 用瀏覽器開你設的網址（IP 或 domain）
+- 檢查首頁、Blog、About、Dashboard 登入
+- 登入後應導回同一網址，不會再跳到錯誤的 domain 導致 520
 
 ---
 
-## 三、Redirect 修正說明
+## 三、Redirect 與 520 說明
 
-登入後改為依**實際連線的 baseUrl** 做導向，不再強制用 `NEXTAUTH_URL`。
+登入後會導向 **NEXTAUTH_URL**。若新 VM 仍用舊的 `https://benedict.winlab.tw`，但 DNS 還指到別台或連不到，就會 520。
 
-- 用 IP 連（例如 `http://192.168.1.100:3000`）登入 → 導回同 IP
-- 用 domain 連（例如 `https://benedict.winlab.tw`）登入 → 導回同 domain
-
-因此在新 VM 先以 IP 測試、或 DNS 尚未指到新 VM 時，不會再因導向 domain 出現 520。
+**作法**：在新 VM 的 `.env` 把 `NEXTAUTH_URL`、`NEXT_PUBLIC_SITE_URL` 改成你**實際連線的網址**（IP 或 domain），重啟 app 後再登入。
 
 ---
 

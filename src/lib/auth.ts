@@ -40,11 +40,11 @@ export const authOptions: NextAuthOptions = {
   },
   callbacks: {
     async redirect({ url, baseUrl }) {
-      // Use baseUrl (actual request origin) so redirect stays on same host.
-      // Fixes: on new VM via IP, sign-in no longer redirects to domain (520).
-      const origin = baseUrl || process.env.NEXTAUTH_URL || "http://localhost:3000";
+      // Redirect 以 NEXTAUTH_URL 為準。新 VM 測試時 .env 設 NEXTAUTH_URL=http://新VM的IP:3000 即可避免 520。
+      const siteUrl = process.env.NEXTAUTH_URL || baseUrl || "http://localhost:3000";
+      const origin = siteUrl.replace(/\/$/, "");
       if (url.startsWith("/")) {
-        return `${origin.replace(/\/$/, "")}${url}`;
+        return `${origin}${url}`;
       }
       try {
         if (new URL(url).origin === new URL(origin).origin) return url;
