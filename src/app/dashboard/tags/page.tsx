@@ -24,7 +24,7 @@ export default function TagsPage() {
   const [error, setError] = useState<string | null>(null);
 
   const handleCleanup = async () => {
-    if (!confirm("確定要清理所有帶引號的標籤嗎？這個操作會修改資料庫中的標籤名稱。")) {
+    if (!confirm("Are you sure you want to clean up all tags with quotes? This will modify tag names in the database.")) {
       return;
     }
 
@@ -39,14 +39,14 @@ export default function TagsPage() {
 
       if (!response.ok) {
         const errorData = await response.json();
-        throw new Error(errorData.error || "清理失敗");
+        throw new Error(errorData.error || "Cleanup failed");
       }
 
       const data: CleanupResult = await response.json();
       setResult(data);
     } catch (err) {
       console.error("Error cleaning tags:", err);
-      setError(err instanceof Error ? err.message : "清理標籤時發生錯誤");
+      setError(err instanceof Error ? err.message : "Error occurred while cleaning tags");
     } finally {
       setIsCleaning(false);
     }
@@ -56,17 +56,17 @@ export default function TagsPage() {
     <div className="container mx-auto max-w-4xl px-4 py-8">
       <Card>
         <CardHeader>
-          <CardTitle>標籤管理 - 清理引號</CardTitle>
+          <CardTitle>Tag Management - Clean Up Quotes</CardTitle>
         </CardHeader>
         <CardContent className="space-y-6">
           <div className="rounded-lg border border-slate-200 bg-slate-50 p-4">
             <div className="flex items-start gap-3">
               <AlertCircle className="h-5 w-5 text-slate-600 mt-0.5" />
               <div className="flex-1">
-                <h3 className="font-medium text-slate-900 mb-1">清理說明</h3>
+                <h3 className="font-medium text-slate-900 mb-1">Cleanup Instructions</h3>
                 <p className="text-sm text-slate-600">
-                  此功能會自動清理資料庫中所有標籤名稱前後的引號（單引號和雙引號）。
-                  如果清理後的標籤名稱與現有標籤重複，系統會自動合併標籤。
+                  This feature will automatically clean up all quotes (single and double quotes) from tag names in the database.
+                  If the cleaned tag name duplicates an existing tag, the system will automatically merge the tags.
                 </p>
               </div>
             </div>
@@ -80,10 +80,10 @@ export default function TagsPage() {
             {isCleaning ? (
               <>
                 <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                清理中...
+                Cleaning...
               </>
             ) : (
-              "開始清理標籤"
+              "Start Cleaning Tags"
             )}
           </Button>
 
@@ -92,7 +92,7 @@ export default function TagsPage() {
               <div className="flex items-start gap-3">
                 <XCircle className="h-5 w-5 text-red-600 mt-0.5" />
                 <div className="flex-1">
-                  <h3 className="font-medium text-red-900 mb-1">錯誤</h3>
+                  <h3 className="font-medium text-red-900 mb-1">Error</h3>
                   <p className="text-sm text-red-700">{error}</p>
                 </div>
               </div>
@@ -105,7 +105,7 @@ export default function TagsPage() {
                 <CheckCircle2 className="h-5 w-5 text-green-600 mt-0.5" />
                 <div className="flex-1">
                   <h3 className="font-medium text-green-900 mb-2">
-                    清理完成
+                    Cleanup Complete
                   </h3>
                   <p className="text-sm text-green-700 mb-4">
                     {result.message}
@@ -114,7 +114,7 @@ export default function TagsPage() {
                   {result.cleanedTags.length > 0 && (
                     <div className="mt-4">
                       <h4 className="font-medium text-green-900 mb-2 text-sm">
-                        已清理的標籤：
+                        Cleaned Tags:
                       </h4>
                       <div className="space-y-2 max-h-60 overflow-y-auto">
                         {result.cleanedTags.map((tag) => (
@@ -138,7 +138,7 @@ export default function TagsPage() {
                   {result.errors && result.errors.length > 0 && (
                     <div className="mt-4">
                       <h4 className="font-medium text-red-900 mb-2 text-sm">
-                        錯誤的標籤：
+                        Tags with Errors:
                       </h4>
                       <ul className="list-disc list-inside text-sm text-red-700">
                         {result.errors.map((err, idx) => (

@@ -145,7 +145,7 @@ export default function BlogPageClient() {
           <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-400" />
           <Input
             type="text"
-            placeholder="搜尋文章標題、內容、標籤..."
+            placeholder="Search articles by title, content, tags..."
             value={searchQuery}
             onChange={(e) => handleSearch(e.target.value)}
             className="pl-10 pr-10"
@@ -164,19 +164,19 @@ export default function BlogPageClient() {
       {/* 結果統計 */}
       {searchQuery && (
         <div className="mb-4 text-sm text-slate-600">
-          找到 {posts.length} 篇文章
+          Found {posts.length} {posts.length === 1 ? "post" : "posts"}
         </div>
       )}
 
       {/* 文章列表 */}
       {isLoading ? (
         <div className="text-center py-12">
-          <p className="text-slate-500">載入中...</p>
+          <p className="text-slate-500">Loading...</p>
         </div>
       ) : posts.length === 0 ? (
         <div className="rounded-lg border border-slate-200 bg-white p-12 text-center">
           <p className="text-slate-500">
-            {searchQuery ? "找不到符合條件的文章" : "No posts available yet."}
+            {searchQuery ? "No posts found matching your search" : "No posts available yet."}
           </p>
         </div>
       ) : viewMode === "archive" ? (

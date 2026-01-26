@@ -39,7 +39,7 @@ export default function MediaPage() {
       console.error("Error fetching media files:", error);
       setDeleteStatus({
         show: true,
-        message: "載入媒體檔案失敗",
+        message: "Failed to load media files",
         type: "error",
       });
       setTimeout(() => {
@@ -56,7 +56,7 @@ export default function MediaPage() {
 
   // 清理未使用的圖片
   const handleCleanup = async () => {
-    if (!confirm("確定要清理所有未使用的圖片嗎？此操作無法復原。")) {
+    if (!confirm("Are you sure you want to clean up all unused images? This action cannot be undone.")) {
       return;
     }
 
@@ -73,7 +73,7 @@ export default function MediaPage() {
       const data = await response.json();
       setDeleteStatus({
         show: true,
-        message: `成功清除了 ${data.deletedCount} 張未使用的圖片`,
+        message: `Successfully cleaned up ${data.deletedCount} unused image${data.deletedCount !== 1 ? "s" : ""}`,
         type: "success",
       });
 
@@ -88,7 +88,7 @@ export default function MediaPage() {
       console.error("Error cleaning up media files:", error);
       setDeleteStatus({
         show: true,
-        message: "清理失敗",
+        message: "Cleanup failed",
         type: "error",
       });
       setTimeout(() => {

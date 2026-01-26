@@ -20,7 +20,7 @@ export const metadata: Metadata = {
 
 export default function BlogPage() {
   return (
-    <Suspense fallback={<div className="container mx-auto max-w-6xl px-4 py-12"><p>載入中...</p></div>}>
+    <Suspense fallback={<div className="container mx-auto max-w-6xl px-4 py-12"><p>Loading...</p></div>}>
       <BlogPageClient />
     </Suspense>
   );

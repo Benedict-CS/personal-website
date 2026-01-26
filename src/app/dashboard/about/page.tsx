@@ -282,7 +282,7 @@ export default function AboutPage() {
 
   // 清理未使用的圖片
   const handleCleanup = async () => {
-    if (!confirm("確定要清理未使用的圖片嗎？此操作無法復原。")) {
+    if (!confirm("Are you sure you want to clean up unused images? This action cannot be undone.")) {
       return;
     }
 
@@ -302,7 +302,7 @@ export default function AboutPage() {
 
       setUploadStatus({
         type: "success",
-        message: `成功清理 ${data.deletedCount} 個未使用的圖片檔案`,
+        message: `Successfully cleaned up ${data.deletedCount} unused image file${data.deletedCount !== 1 ? "s" : ""}`,
       });
     } catch (error) {
       setUploadStatus({
@@ -329,7 +329,7 @@ export default function AboutPage() {
           className="gap-2"
         >
           <Trash className="h-4 w-4" />
-          {isCleaning ? "清理中..." : "清理未使用的圖片"}
+          {isCleaning ? "Cleaning..." : "Clean Up Unused Images"}
         </Button>
       </div>
 
@@ -472,7 +472,7 @@ export default function AboutPage() {
               className="cursor-pointer"
             />
             <p className="text-xs text-slate-500">
-              💡 提示：上傳同名學校的 logo 會自動覆蓋舊的
+              💡 Tip: Uploading a logo with the same school name will automatically overwrite the old one
             </p>
           </div>
           <div className="grid grid-cols-2 md:grid-cols-3 gap-4">
@@ -541,7 +541,7 @@ export default function AboutPage() {
               className="cursor-pointer"
             />
             <p className="text-xs text-slate-500">
-              💡 提示：上傳同名專案的圖片會自動覆蓋舊的
+              💡 Tip: Uploading an image with the same project name will automatically overwrite the old one
             </p>
           </div>
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
@@ -610,7 +610,7 @@ export default function AboutPage() {
               className="cursor-pointer"
             />
             <p className="text-xs text-slate-500">
-              💡 提示：上傳同名公司的 logo 會自動覆蓋舊的
+              💡 Tip: Uploading a logo with the same company name will automatically overwrite the old one
             </p>
           </div>
           <div className="grid grid-cols-2 md:grid-cols-3 gap-4">

@@ -215,7 +215,7 @@ export default function EditPostPage({
       setVersions(data);
     } catch (error) {
       console.error("Error loading versions:", error);
-      alert("載入版本歷史失敗");
+      alert("Failed to load version history");
     } finally {
       setIsLoadingVersions(false);
     }
@@ -227,7 +227,7 @@ export default function EditPostPage({
   };
 
   const handleRestore = async (versionId: string) => {
-    if (!confirm("確定要恢復到此版本嗎？當前版本會被保存為新版本。")) {
+    if (!confirm("Are you sure you want to restore this version? The current version will be saved as a new version.")) {
       return;
     }
 
@@ -239,7 +239,7 @@ export default function EditPostPage({
 
       if (!response.ok) {
         const error = await response.json();
-        throw new Error(error.error || "恢復失敗");
+        throw new Error(error.error || "Restore failed");
       }
 
       // 重新載入文章資料
@@ -262,9 +262,9 @@ export default function EditPostPage({
       }
 
       setShowVersions(false);
-      alert("已成功恢復到此版本！");
+      alert("Successfully restored to this version!");
     } catch (error) {
-      alert(error instanceof Error ? error.message : "恢復失敗");
+      alert(error instanceof Error ? error.message : "Restore failed");
     } finally {
       setIsRestoring(null);
     }
@@ -293,7 +293,7 @@ export default function EditPostPage({
                 className="flex items-center gap-2"
               >
                 <History className="h-4 w-4" />
-                版本歷史
+                Version History
               </Button>
             </div>
           </CardHeader>
@@ -333,13 +333,13 @@ export default function EditPostPage({
                 </label>
                 <Input
                   id="description"
-                  placeholder="簡短介紹此文章（顯示在卡片列表，不會出現在正文）"
+                  placeholder="Brief description of this article (shown in card list, not in article body)"
                   value={description}
                   onChange={(e) => setDescription(e.target.value)}
                   maxLength={200}
                 />
                 <p className="text-xs text-slate-500">
-                  選填，建議 1-2 句話（最多 200 字元）。顯示在 Blog 列表卡片
+                  Optional, 1-2 sentences recommended (max 200 characters). Shown in Blog list cards
                 </p>
               </div>
 
@@ -370,7 +370,7 @@ export default function EditPostPage({
                   onChange={(e) => setPublishedDate(e.target.value)}
                 />
                 <p className="text-xs text-slate-500">
-                  修改發布日期（顯示在文章列表與詳情頁）
+                  Modify published date (shown in article list and detail page)
                 </p>
               </div>
 
@@ -386,7 +386,7 @@ export default function EditPostPage({
                   onChange={(e) => setCategory(e.target.value)}
                 />
                 <p className="text-xs text-slate-500">
-                  分類路徑，用斜線分隔（例如：LeetCode/Array）。用於筆記分組與導航
+                  Category path separated by slashes (e.g., LeetCode/Array). Used for note grouping and navigation
                 </p>
               </div>
 
@@ -434,7 +434,7 @@ export default function EditPostPage({
                   />
                 </div>
                 <p className="text-xs text-slate-500 mt-2">
-                  使用工具列快速格式化：Bold、Italic、Code、Heading、List 等
+                  Use toolbar for quick formatting: Bold, Italic, Code, Heading, List, etc.
                 </p>
               </div>
 
@@ -497,7 +497,7 @@ export default function EditPostPage({
                 <Card className="w-full max-w-3xl max-h-[80vh] overflow-hidden flex flex-col">
                   <CardHeader>
                     <div className="flex items-center justify-between">
-                      <CardTitle>版本歷史</CardTitle>
+                      <CardTitle>Version History</CardTitle>
                       <Button
                         variant="ghost"
                         size="sm"
@@ -510,11 +510,11 @@ export default function EditPostPage({
                   <CardContent className="flex-1 overflow-y-auto">
                     {isLoadingVersions ? (
                       <div className="text-center py-8 text-slate-500">
-                        載入中...
+                        Loading...
                       </div>
                     ) : versions.length === 0 ? (
                       <div className="text-center py-8 text-slate-500">
-                        尚無版本歷史
+                        No version history available
                       </div>
                     ) : (
                       <div className="space-y-4">
@@ -531,7 +531,7 @@ export default function EditPostPage({
                                     版本 #{version.versionNumber}
                                   </div>
                                   <div className="text-sm text-slate-500">
-                                    {new Date(version.createdAt).toLocaleString("zh-TW")}
+                                    {new Date(version.createdAt).toLocaleString("en-US")}
                                   </div>
                                 </div>
                                 <Button
@@ -544,19 +544,19 @@ export default function EditPostPage({
                                   {isRestoring === version.id ? (
                                     <>
                                       <Loader2 className="h-4 w-4 animate-spin" />
-                                      恢復中...
+                                      Restoring...
                                     </>
                                   ) : (
                                     <>
                                       <RotateCcw className="h-4 w-4" />
-                                      恢復到此版本
+                                      Restore to this version
                                     </>
                                   )}
                                 </Button>
                               </div>
                               <div className="space-y-2 text-sm">
                                 <div>
-                                  <span className="font-medium text-slate-700">標題：</span>
+                                  <span className="font-medium text-slate-700">Title: </span>
                                   <span className="text-slate-900">{version.title}</span>
                                 </div>
                                 <div>
@@ -565,20 +565,20 @@ export default function EditPostPage({
                                 </div>
                                 {versionTags.length > 0 && (
                                   <div>
-                                    <span className="font-medium text-slate-700">標籤：</span>
+                                    <span className="font-medium text-slate-700">Tags: </span>
                                     <span className="text-slate-900">
                                       {versionTags.join(", ")}
                                     </span>
                                   </div>
                                 )}
                                 <div>
-                                  <span className="font-medium text-slate-700">狀態：</span>
+                                  <span className="font-medium text-slate-700">Status: </span>
                                   <span className="text-slate-900">
-                                    {version.published ? "已發布" : "草稿"}
+                                    {version.published ? "Published" : "Draft"}
                                   </span>
                                 </div>
                                 <div>
-                                  <span className="font-medium text-slate-700">內容預覽：</span>
+                                  <span className="font-medium text-slate-700">Content Preview: </span>
                                   <div className="mt-1 p-2 bg-slate-50 rounded text-xs text-slate-600 line-clamp-3">
                                     {version.content.substring(0, 200)}
                                     {version.content.length > 200 ? "..." : ""}

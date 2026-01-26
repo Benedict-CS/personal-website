@@ -160,13 +160,13 @@ export default function NewPostPage() {
                 </label>
                 <Input
                   id="description"
-                  placeholder="簡短介紹此文章（顯示在卡片列表，不會出現在正文）"
+                  placeholder="Brief description of this article (shown in card list, not in article body)"
                   value={description}
                   onChange={(e) => setDescription(e.target.value)}
                   maxLength={200}
                 />
                 <p className="text-xs text-slate-500">
-                  選填，建議 1-2 句話（最多 200 字元）。顯示在 Blog 列表卡片
+                  Optional, 1-2 sentences recommended (max 200 characters). Shown in Blog list cards
                 </p>
               </div>
 
@@ -198,7 +198,7 @@ export default function NewPostPage() {
                   onChange={(e) => setCategory(e.target.value)}
                 />
                 <p className="text-xs text-slate-500">
-                  分類路徑，用斜線分隔（例如：LeetCode/Array）。用於筆記分組與導航
+                  Category path separated by slashes (e.g., LeetCode/Array). Used for note grouping and navigation
                 </p>
               </div>
 
@@ -239,7 +239,7 @@ export default function NewPostPage() {
                   />
                 </div>
                 <p className="text-xs text-slate-500 mt-2">
-                  使用工具列快速格式化：Bold、Italic、Code、Heading、List 等
+                  Use toolbar for quick formatting: Bold, Italic, Code, Heading, List, etc.
                 </p>
               </div>
 

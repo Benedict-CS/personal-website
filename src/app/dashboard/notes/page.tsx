@@ -384,7 +384,7 @@ export default function NotesPage() {
         <div className="flex items-center justify-between">
           <div>
             <h2 className="text-3xl font-bold text-slate-900">My Notes</h2>
-            <p className="text-sm text-slate-600 mt-1">私人筆記（未發布的文章）</p>
+            <p className="text-sm text-slate-600 mt-1">Private notes (unpublished posts)</p>
           </div>
         </div>
         <p className="text-slate-500">Loading...</p>
@@ -397,7 +397,7 @@ export default function NotesPage() {
       <div className="flex items-center justify-between">
         <div>
           <h2 className="text-3xl font-bold text-slate-900">My Notes</h2>
-          <p className="text-sm text-slate-600 mt-1">私人筆記（未發布的文章）</p>
+          <p className="text-sm text-slate-600 mt-1">Private notes (unpublished posts)</p>
         </div>
         <Link href="/dashboard/posts/new">
           <Button>Create New Note</Button>
@@ -409,7 +409,7 @@ export default function NotesPage() {
         <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-400" />
         <Input
           type="text"
-          placeholder="搜尋筆記標題、內容、標籤、分類..."
+          placeholder="Search notes by title, content, tags, category..."
           value={searchQuery}
           onChange={(e) => setSearchQuery(e.target.value)}
           className="pl-10"
@@ -427,19 +427,19 @@ export default function NotesPage() {
       {/* 搜尋結果統計 */}
       {searchQuery && (
         <div className="text-sm text-slate-600">
-          找到 {filteredNotes.length} 篇筆記
+          Found {filteredNotes.length} {filteredNotes.length === 1 ? "note" : "notes"}
         </div>
       )}
 
       {notes.length === 0 ? (
         <div className="rounded-lg border border-slate-200 bg-white p-12 text-center">
           <FileText className="mx-auto h-12 w-12 text-slate-400 mb-4" />
-          <p className="text-slate-500">尚無筆記</p>
-          <p className="text-sm text-slate-400 mt-2">建立新文章並保持 Draft 狀態即為筆記</p>
+          <p className="text-slate-500">No notes yet</p>
+          <p className="text-sm text-slate-400 mt-2">Create a new post and keep it as Draft to use as a note</p>
         </div>
       ) : filteredNotes.length === 0 && searchQuery ? (
         <div className="rounded-lg border border-slate-200 bg-white p-12 text-center">
-          <p className="text-slate-500">找不到符合「{searchQuery}」的筆記</p>
+          <p className="text-slate-500">No notes found matching "{searchQuery}"</p>
         </div>
       ) : (
         <div className="space-y-6">
