@@ -8,7 +8,9 @@ import { Card, CardContent } from "@/components/ui/card";
 import { MarkdownRenderer } from "@/components/markdown-renderer";
 import { TableOfContents } from "@/components/toc";
 import { ShareButtons } from "@/components/share-buttons";
+import { ReadingProgress } from "@/components/reading-progress";
 import { stripMarkdown } from "@/lib/utils";
+import { calculateReadingTime, formatReadingTime } from "@/lib/reading-time";
 import { siteConfig } from "@/config/site";
 
 // Force dynamic rendering to avoid build-time database connection
@@ -125,8 +127,12 @@ export default async function BlogPostPage({
     });
   };
 
+  const readingTime = calculateReadingTime(post.content);
+
   return (
-    <div className="container mx-auto max-w-7xl px-4 py-12">
+    <>
+      <ReadingProgress />
+      <div className="container mx-auto max-w-7xl px-4 py-12">
       <div className="grid grid-cols-1 gap-10 lg:grid-cols-[1fr_250px]">
         {/* 主要內容區 */}
         <div className="min-w-0">
@@ -137,9 +143,11 @@ export default async function BlogPostPage({
                   <h1 className="mb-4 text-4xl font-bold text-slate-900">
                     {post.title}
                   </h1>
-                  <p className="mb-3 text-sm text-slate-500">
-                    Published on {formatDate(post.createdAt)}
-                  </p>
+                  <div className="mb-3 flex items-center gap-4 text-sm text-slate-500">
+                    <span>Published on {formatDate(post.createdAt)}</span>
+                    <span>•</span>
+                    <span>{formatReadingTime(readingTime)}</span>
+                  </div>
                   {post.tags && post.tags.length > 0 && (
                     <div className="mb-4 flex flex-wrap gap-2">
                       {post.tags.map((tag) => (
@@ -219,5 +227,6 @@ export default async function BlogPostPage({
         </aside>
       </div>
     </div>
+    </>
   );
 }

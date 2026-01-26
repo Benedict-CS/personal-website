@@ -5,6 +5,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Pin } from "lucide-react";
 import { stripMarkdown } from "@/lib/utils";
+import { calculateReadingTime, formatReadingTime } from "@/lib/reading-time";
 import { siteConfig } from "@/config/site";
 
 export const dynamic = "force-dynamic";
@@ -99,10 +100,12 @@ export default async function ArchivePage() {
                           )}
                           <span>{post.title}</span>
                         </CardTitle>
-                        <p className="text-sm text-slate-500">
-                          {formatDate(post.createdAt)}
-                        </p>
-                        {post.tags && post.tags.length > 0 && (
+                          <div className="flex items-center gap-2 text-sm text-slate-500">
+                            <span>{formatDate(post.createdAt)}</span>
+                            <span>•</span>
+                            <span>{formatReadingTime(calculateReadingTime(post.content))}</span>
+                          </div>
+                          {post.tags && post.tags.length > 0 && (
                           <div className="flex flex-wrap gap-2">
                             {post.tags.map((tag) => (
                               <Badge

@@ -9,9 +9,17 @@ cd ~/personal-website
 ./backup-data.sh
 ```
 
-會產生 `backup-YYYYMMDD-HHMM.tar.gz`。請妥善保存此檔案。
+**備份流程說明：**
+1. 執行 `pg_dump` 產生 `backup.sql`（資料庫備份）
+2. 複製 `public/about/` 和 `public/cv.pdf`
+3. 複製 `rustfs-data/`（文章圖片）
+4. 打包成 `backup-YYYYMMDD-HHMM.tar.gz`
+5. 清理臨時目錄
 
-若出現 `Permission denied` 在清理暫存目錄時，可忽略；`tar.gz` 已正確產生。
+**輸出檔案：**
+- `backup-YYYYMMDD-HHMM.tar.gz` - 包含所有備份內容的壓縮檔
+
+**注意：** 若出現 `Permission denied` 在清理暫存目錄時，可忽略；`tar.gz` 已正確產生。
 
 ---
 
@@ -44,6 +52,12 @@ cd personal-website
 tar -xzvf ~/backup-20260125-0631.tar.gz
 ```
 
+解壓後會產生 `backup-20260125-0631/` 目錄，裡面包含：
+- `backup.sql` - 資料庫備份（由 `backup-data.sh` 自動產生）
+- `public/about/` - About 頁面圖片
+- `public/cv.pdf` - CV 檔案
+- `rustfs-data/` - RustFS 文章圖片
+
 **4. 還原 public/about、cv.pdf、rustfs-data**
 
 ```bash
@@ -59,6 +73,8 @@ sudo docker compose up -d
 ```
 
 **6. 還原資料庫**
+
+`backup.sql` 檔案已經包含在解壓後的目錄中，直接使用：
 
 ```bash
 ./restore-from-backup.sh backup-20260125-0631/backup.sql

@@ -9,6 +9,7 @@ import { Badge } from "@/components/ui/badge";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { stripMarkdown } from "@/lib/utils";
+import { calculateReadingTime, formatReadingTime } from "@/lib/reading-time";
 
 interface Post {
   id: string;
@@ -255,9 +256,11 @@ export default function BlogPageClient() {
                     )}
                     <span>{post.title}</span>
                   </CardTitle>
-                  <p className="text-sm text-slate-500">
-                    {formatDate(post.createdAt)}
-                  </p>
+                  <div className="flex items-center gap-2 text-sm text-slate-500">
+                    <span>{formatDate(post.createdAt)}</span>
+                    <span>•</span>
+                    <span>{formatReadingTime(calculateReadingTime(post.content))}</span>
+                  </div>
                   {post.tags && post.tags.length > 0 && (
                     <div className="flex flex-wrap gap-2">
                       {post.tags.map((tag) => (
