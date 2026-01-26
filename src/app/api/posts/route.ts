@@ -7,17 +7,53 @@ export async function GET(request: NextRequest) {
   try {
     const searchParams = request.nextUrl.searchParams;
     const published = searchParams.get("published");
+    const search = searchParams.get("search"); // 搜尋關鍵字
+    const tag = searchParams.get("tag"); // 標籤過濾
 
-    const where = published !== null ? { published: published === "true" } : {};
+    // 建立 where 條件
+    const where: any = {};
+    
+    if (published !== null) {
+      where.published = published === "true";
+    }
+
+    // 標籤過濾
+    if (tag) {
+      where.tags = {
+        some: {
+          slug: tag.toLowerCase().trim().replace(/[^\w\s-]/g, "").replace(/[\s_-]+/g, "-"),
+        },
+      };
+    }
+
+    // 搜尋：標題、內容、標籤名稱（case-insensitive）
+    if (search) {
+      const searchTerm = search.trim();
+      const orConditions: any[] = [
+        { title: { contains: searchTerm, mode: "insensitive" } },
+        { content: { contains: searchTerm, mode: "insensitive" } },
+        {
+          tags: {
+            some: {
+              name: { contains: searchTerm, mode: "insensitive" },
+            },
+          },
+        },
+      ];
+      // @ts-ignore - description field
+      orConditions.push({ description: { contains: searchTerm, mode: "insensitive" } });
+      where.OR = orConditions;
+    }
 
     const posts = await prisma.post.findMany({
       where,
       include: {
         tags: true,
       },
-      orderBy: {
-        createdAt: "desc",
-      },
+      orderBy: [
+        { pinned: "desc" },
+        { createdAt: "desc" },
+      ],
     });
 
     return NextResponse.json(posts, { status: 200 });

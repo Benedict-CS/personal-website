@@ -6,7 +6,7 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Input } from "@/components/ui/input";
-import { FileText, Edit, ChevronDown, ChevronRight, Folder, Tag, Check, X } from "lucide-react";
+import { FileText, Edit, ChevronDown, ChevronRight, Folder, Tag, Check, X, Search } from "lucide-react";
 
 interface Note {
   id: string;
@@ -27,10 +27,12 @@ interface CategoryNode {
 
 export default function NotesPage() {
   const [notes, setNotes] = useState<Note[]>([]);
+  const [filteredNotes, setFilteredNotes] = useState<Note[]>([]);
   const [expandedCategories, setExpandedCategories] = useState<Set<string>>(new Set());
   const [isLoading, setIsLoading] = useState(true);
   const [editingNoteId, setEditingNoteId] = useState<string | null>(null);
   const [editingCategory, setEditingCategory] = useState("");
+  const [searchQuery, setSearchQuery] = useState("");
 
   useEffect(() => {
     const fetchNotes = async () => {
@@ -39,6 +41,7 @@ export default function NotesPage() {
         if (response.ok) {
           const data = await response.json();
           setNotes(data);
+          setFilteredNotes(data);
           // 預設展開所有分類路徑
           const allPaths = new Set<string>();
           data.forEach((n: Note) => {
@@ -64,6 +67,24 @@ export default function NotesPage() {
 
     fetchNotes();
   }, []);
+
+  // 搜尋過濾
+  useEffect(() => {
+    if (!searchQuery.trim()) {
+      setFilteredNotes(notes);
+      return;
+    }
+
+    const query = searchQuery.toLowerCase();
+    const filtered = notes.filter((note) => {
+      const titleMatch = note.title.toLowerCase().includes(query);
+      const contentMatch = note.content.toLowerCase().includes(query);
+      const tagMatch = note.tags.some((tag) => tag.name.toLowerCase().includes(query));
+      const categoryMatch = note.category?.toLowerCase().includes(query);
+      return titleMatch || contentMatch || tagMatch || categoryMatch;
+    });
+    setFilteredNotes(filtered);
+  }, [searchQuery, notes]);
 
   const formatDate = (dateString: string) => {
     return new Date(dateString).toLocaleDateString("en-US", {
@@ -141,11 +162,11 @@ export default function NotesPage() {
     }
   };
 
-  // 建立階層式分類結構
+  // 建立階層式分類結構（使用過濾後的筆記）
   const buildCategoryTree = () => {
     const root = new Map<string, CategoryNode>();
 
-    notes.forEach((note) => {
+    filteredNotes.forEach((note) => {
       if (!note.category) {
         // Uncategorized notes
         if (!root.has("Uncategorized")) {
@@ -383,11 +404,42 @@ export default function NotesPage() {
         </Link>
       </div>
 
+      {/* 搜尋框 */}
+      <div className="relative">
+        <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-400" />
+        <Input
+          type="text"
+          placeholder="搜尋筆記標題、內容、標籤、分類..."
+          value={searchQuery}
+          onChange={(e) => setSearchQuery(e.target.value)}
+          className="pl-10"
+        />
+        {searchQuery && (
+          <button
+            onClick={() => setSearchQuery("")}
+            className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600"
+          >
+            <X className="h-4 w-4" />
+          </button>
+        )}
+      </div>
+
+      {/* 搜尋結果統計 */}
+      {searchQuery && (
+        <div className="text-sm text-slate-600">
+          找到 {filteredNotes.length} 篇筆記
+        </div>
+      )}
+
       {notes.length === 0 ? (
         <div className="rounded-lg border border-slate-200 bg-white p-12 text-center">
           <FileText className="mx-auto h-12 w-12 text-slate-400 mb-4" />
           <p className="text-slate-500">尚無筆記</p>
           <p className="text-sm text-slate-400 mt-2">建立新文章並保持 Draft 狀態即為筆記</p>
+        </div>
+      ) : filteredNotes.length === 0 && searchQuery ? (
+        <div className="rounded-lg border border-slate-200 bg-white p-12 text-center">
+          <p className="text-slate-500">找不到符合「{searchQuery}」的筆記</p>
         </div>
       ) : (
         <div className="space-y-6">

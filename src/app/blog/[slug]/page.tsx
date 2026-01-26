@@ -7,6 +7,7 @@ import { Badge } from "@/components/ui/badge";
 import { Card, CardContent } from "@/components/ui/card";
 import { MarkdownRenderer } from "@/components/markdown-renderer";
 import { TableOfContents } from "@/components/toc";
+import { ShareButtons } from "@/components/share-buttons";
 import { stripMarkdown } from "@/lib/utils";
 import { siteConfig } from "@/config/site";
 
@@ -152,6 +153,13 @@ export default async function BlogPostPage({
                       ))}
                     </div>
                   )}
+
+                  {/* 分享按鈕 */}
+                  <ShareButtons
+                    title={post.title}
+                    url={`/blog/${post.slug}`}
+                    description={stripMarkdown(post.content).substring(0, 100)}
+                  />
                 </div>
 
                 <MarkdownRenderer content={post.content} />
