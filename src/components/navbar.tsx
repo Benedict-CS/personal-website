@@ -13,36 +13,37 @@ export function Navbar() {
       <div className="container mx-auto flex h-16 items-center justify-between px-4 sm:px-6 lg:px-8">
         <Link
           href="/"
-          className="text-xl font-bold text-slate-900 hover:text-slate-700 transition-colors"
+          className="text-xl font-bold text-slate-900 hover:text-slate-700 transition-colors whitespace-nowrap"
         >
           Benedict
         </Link>
-        <div className="flex items-center gap-2">
+        <div className="flex items-center gap-1 sm:gap-2 flex-wrap justify-end">
           <Link href="/">
-            <Button variant="ghost" className="text-slate-700 hover:text-slate-900">
+            <Button variant="ghost" size="sm" className="text-slate-700 hover:text-slate-900 text-xs sm:text-sm">
               Home
             </Button>
           </Link>
           <Link href="/blog">
-            <Button variant="ghost" className="text-slate-700 hover:text-slate-900">
+            <Button variant="ghost" size="sm" className="text-slate-700 hover:text-slate-900 text-xs sm:text-sm">
               Blog
             </Button>
           </Link>
           <Link href="/about">
-            <Button variant="ghost" className="text-slate-700 hover:text-slate-900">
+            <Button variant="ghost" size="sm" className="text-slate-700 hover:text-slate-900 text-xs sm:text-sm">
               About
             </Button>
           </Link>
           {isLoggedIn && (
             <>
               <Link href="/dashboard">
-                <Button variant="ghost" className="text-slate-700 hover:text-slate-900">
+                <Button variant="ghost" size="sm" className="text-slate-700 hover:text-slate-900 text-xs sm:text-sm">
                   Dashboard
                 </Button>
               </Link>
               <Button
                 variant="outline"
-                className="text-slate-700"
+                size="sm"
+                className="text-slate-700 text-xs sm:text-sm"
                 onClick={() => signOut({ callbackUrl: "/" })}
               >
                 Sign Out

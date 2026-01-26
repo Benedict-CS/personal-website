@@ -115,13 +115,19 @@ export default async function Home() {
                       {post.tags && post.tags.length > 0 && (
                         <div className="flex flex-wrap gap-2">
                           {post.tags.map((tag) => (
-                            <Badge
+                            <Link
                               key={tag.id}
-                              variant="secondary"
-                              className="text-xs"
+                              href={`/blog/tag/${tag.slug}`}
+                              className="inline-block"
                             >
-                              {tag.name}
-                            </Badge>
+                              <Badge
+                                variant="secondary"
+                                className="text-xs cursor-pointer hover:bg-slate-200 hover:scale-105 transition-all"
+                                title={`View all posts tagged "${tag.name}"`}
+                              >
+                                {tag.name}
+                              </Badge>
+                            </Link>
                           ))}
                         </div>
                       )}

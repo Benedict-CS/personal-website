@@ -20,6 +20,8 @@ export async function GET() {
         title: true,
         slug: true,
         content: true,
+        // @ts-ignore - description field added via migration
+        description: true,
         createdAt: true,
         updatedAt: true,
       },
@@ -30,8 +32,11 @@ export async function GET() {
       return new Date(date).toUTCString();
     };
 
-    // 生成描述（使用摘要或前 200 字）
-    const generateDescription = (content: string): string => {
+    // 生成描述（優先使用 description 欄位，否則使用內容前 200 字）
+    const generateDescription = (content: string, description: string | null): string => {
+      if (description) {
+        return description;
+      }
       const plainText = stripMarkdown(content);
       const maxLength = 200;
       if (plainText.length <= maxLength) {
@@ -44,26 +49,29 @@ export async function GET() {
     const rssItems = posts
       .map((post) => {
         const link = `${baseUrl}/blog/${post.slug}`;
-        const description = generateDescription(post.content);
         const pubDate = formatRSSDate(post.createdAt);
-
+        // @ts-ignore - description field
+        const description = generateDescription(post.content, post.description);
         return `    <item>
       <title><![CDATA[${post.title}]]></title>
       <link>${link}</link>
       <description><![CDATA[${description}]]></description>
       <pubDate>${pubDate}</pubDate>
       <guid isPermaLink="true">${link}</guid>
+      <author>${siteConfig.author.email} (${siteConfig.author.name})</author>
     </item>`;
       })
       .join("\n");
 
     const rssXml = `<?xml version="1.0" encoding="UTF-8"?>
-<rss version="2.0" xmlns:atom="http://www.w3.org/2005/Atom">
+<rss version="2.0" xmlns:atom="http://www.w3.org/2005/Atom" xmlns:content="http://purl.org/rss/1.0/modules/content/">
   <channel>
     <title><![CDATA[${siteConfig.title}]]></title>
     <link>${baseUrl}</link>
     <description><![CDATA[${siteConfig.description}]]></description>
     <language>en-US</language>
+    <managingEditor>${siteConfig.author.email} (${siteConfig.author.name})</managingEditor>
+    <webMaster>${siteConfig.author.email} (${siteConfig.author.name})</webMaster>
     <lastBuildDate>${formatRSSDate(new Date())}</lastBuildDate>
     <atom:link href="${baseUrl}/feed.xml" rel="self" type="application/rss+xml"/>
     ${rssItems}

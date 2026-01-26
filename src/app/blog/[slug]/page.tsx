@@ -143,13 +143,15 @@ export default async function BlogPostPage({
                   {post.tags && post.tags.length > 0 && (
                     <div className="mb-4 flex flex-wrap gap-2">
                       {post.tags.map((tag) => (
-                        <Badge
-                          key={tag.id}
-                          variant="secondary"
-                          className="text-xs"
-                        >
-                          {tag.name}
-                        </Badge>
+                        <Link key={tag.id} href={`/blog/tag/${tag.slug}`}>
+                          <Badge
+                            variant="secondary"
+                            className="text-xs cursor-pointer hover:bg-slate-200 hover:scale-105 transition-all"
+                            title={`View all posts tagged "${tag.name}"`}
+                          >
+                            {tag.name}
+                          </Badge>
+                        </Link>
                       ))}
                     </div>
                   )}
