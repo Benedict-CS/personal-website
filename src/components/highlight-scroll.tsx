@@ -2,6 +2,10 @@
 
 import { useEffect } from "react";
 
+/**
+ * Scrolls to the first occurrence of the highlight term in the content (DOM order).
+ * No preference for code vs prose — matches user expectation: snippet shows nginx.conf → jump to nginx.conf.
+ */
 export function HighlightScroll({
   highlight,
   contentSelector = "[data-post-content]",

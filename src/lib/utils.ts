@@ -14,8 +14,8 @@ export function stripMarkdown(content: string): string {
   // Remove code blocks (```code```)
   text = text.replace(/```[\s\S]*?```/g, "");
 
-  // Remove inline code (`code`)
-  text = text.replace(/`[^`]*`/g, "");
+  // Keep inline code text for search/snippet (replace backticks only)
+  text = text.replace(/`([^`]*)`/g, "$1");
 
   // Remove images ![alt](url)
   text = text.replace(/!\[([^\]]*)\]\([^\)]*\)/g, "");

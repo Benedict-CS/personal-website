@@ -13,13 +13,13 @@ interface SearchPost {
   description: string | null;
   createdAt: string;
   tags: Array<{ name: string }>;
-  snippet: string | null;
+  snippets: string[];
 }
 
 interface SearchPage {
   path: string;
   title: string;
-  snippet: string;
+  snippets: string[];
 }
 
 interface SearchResult {
@@ -175,10 +175,19 @@ export function GlobalSearch() {
                               className="block rounded-md px-2 py-1.5 text-left text-sm text-slate-800 hover:bg-slate-50"
                             >
                               <span className="font-medium">{page.title}</span>
-                              {page.snippet && (
-                                <p className="mt-0.5 line-clamp-2 text-xs text-slate-500">
-                                  {highlightSnippet(page.snippet, pendingQuery.trim())}
-                                </p>
+                              {page.snippets.length > 0 && (
+                                <div className="mt-0.5 space-y-0.5">
+                                  {page.snippets.slice(0, 5).map((snippet, i) => (
+                                    <p key={i} className="line-clamp-2 text-xs text-slate-500">
+                                      {highlightSnippet(snippet, pendingQuery.trim())}
+                                    </p>
+                                  ))}
+                                  {page.snippets.length > 5 && (
+                                    <p className="text-xs text-slate-400">
+                                      +{page.snippets.length - 5} more
+                                    </p>
+                                  )}
+                                </div>
                               )}
                             </Link>
                           </li>
@@ -211,13 +220,19 @@ export function GlobalSearch() {
                                 <span className="ml-1.5 text-xs text-slate-400">
                                   {formatDate(post.createdAt)}
                                 </span>
-                                {(post.snippet || post.description) && (
-                                  <p className="mt-0.5 line-clamp-2 text-xs text-slate-500">
-                                    {highlightSnippet(
-                                      post.snippet || post.description || "",
-                                      pendingQuery.trim()
+                                {post.snippets.length > 0 && (
+                                  <div className="mt-0.5 space-y-0.5">
+                                    {post.snippets.slice(0, 5).map((snippet, i) => (
+                                      <p key={i} className="line-clamp-2 text-xs text-slate-500">
+                                        {highlightSnippet(snippet, pendingQuery.trim())}
+                                      </p>
+                                    ))}
+                                    {post.snippets.length > 5 && (
+                                      <p className="text-xs text-slate-400">
+                                        +{post.snippets.length - 5} more
+                                      </p>
                                     )}
-                                  </p>
+                                  </div>
                                 )}
                               </Link>
                             </li>

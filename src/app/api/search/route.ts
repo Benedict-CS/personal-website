@@ -5,21 +5,52 @@ import { stripMarkdown } from "@/lib/utils";
 import { siteConfig } from "@/config/site";
 
 const SNIPPET_RADIUS = 80;
+const MAX_SNIPPETS_PER_POST = 10;
 
-function extractSnippet(text: string, term: string, maxLen = SNIPPET_RADIUS * 2): string | null {
-  if (!text || !term.trim()) return null;
-  const plain = stripMarkdown(text);
-  const lower = plain.toLowerCase();
-  const t = term.trim().toLowerCase();
-  const idx = lower.indexOf(t);
-  if (idx === -1) return null;
+function extractOneSnippet(
+  plain: string,
+  lower: string,
+  t: string,
+  idx: number,
+  termLen: number,
+  maxLen: number
+): string {
   const start = Math.max(0, idx - SNIPPET_RADIUS);
-  const end = Math.min(plain.length, idx + term.length + SNIPPET_RADIUS);
+  const end = Math.min(plain.length, idx + termLen + SNIPPET_RADIUS);
   let snippet = plain.slice(start, end).trim();
   if (start > 0) snippet = "… " + snippet;
   if (end < plain.length) snippet = snippet + " …";
   if (snippet.length > maxLen) snippet = snippet.slice(0, maxLen - 1) + "…";
   return snippet;
+}
+
+/** Extract all non-overlapping snippets for the given term (for display in search results). */
+function extractSnippets(
+  text: string,
+  term: string,
+  maxCount = MAX_SNIPPETS_PER_POST,
+  maxLen = SNIPPET_RADIUS * 2
+): string[] {
+  if (!text || !term.trim()) return [];
+  const plain = stripMarkdown(text);
+  const lower = plain.toLowerCase();
+  const t = term.trim().toLowerCase();
+  const termLen = term.trim().length;
+  const seen = new Set<string>();
+  const results: string[] = [];
+  let idx = 0;
+  while (results.length < maxCount) {
+    const found = lower.indexOf(t, idx);
+    if (found === -1) break;
+    const snippet = extractOneSnippet(plain, lower, t, found, termLen, maxLen);
+    const key = snippet.slice(0, 60);
+    if (!seen.has(key)) {
+      seen.add(key);
+      results.push(snippet);
+    }
+    idx = found + termLen;
+  }
+  return results;
 }
 
 const STATIC_PAGES: { path: string; title: string; searchableText: string }[] = [
@@ -55,7 +86,6 @@ const STATIC_PAGES: { path: string; title: string; searchableText: string }[] = 
       "Work Experience",
       "Teaching Assistant SDN NFV NYCU",
       "Makalot Software Engineer Intern",
-      "Cloudflare DNS CDN",
       "Contact phone email LinkedIn GitHub CV Download",
     ].join(" "),
   },
@@ -67,7 +97,8 @@ const STATIC_PAGES: { path: string; title: string; searchableText: string }[] = 
   {
     path: "/",
     title: "Home",
-    searchableText: "Home Benedict " + siteConfig.description,
+    searchableText:
+      "Home Benedict Hi Network Administrator Full Stack Developer Open Source Enthusiast Latest Posts Read My Blog Next.js TypeScript Proxmox Linux Networking Docker",
   },
 ];
 
@@ -111,8 +142,10 @@ export async function GET(request: NextRequest) {
       content: string;
       createdAt: Date;
       tags: Array<{ name: string }>;
-      snippet: string | null;
+      snippets: string[];
     }> = [];
+
+    const qLower = q.toLowerCase();
 
     if (mergedIds.length > 0) {
       const orderMap = new Map(mergedIds.map((id, i) => [id, i]));
@@ -121,19 +154,33 @@ export async function GET(request: NextRequest) {
         include: { tags: true },
       });
       list.sort((a, b) => (orderMap.get(a.id) ?? 999) - (orderMap.get(b.id) ?? 999));
-      posts = list.map((p) => ({
-        id: p.id,
-        title: p.title,
-        slug: p.slug,
-        description: p.description,
-        content: p.content,
-        createdAt: p.createdAt,
-        tags: p.tags,
-        snippet:
-          extractSnippet(p.content, q) ||
-          (p.description && p.description.toLowerCase().includes(q.toLowerCase()) ? p.description : null) ||
-          extractSnippet(p.title, q),
-      }));
+      posts = list.map((p) => {
+        const fromContent = extractSnippets(p.content, q);
+        const snippets: string[] = [...fromContent];
+        if (
+          p.description &&
+          p.description.toLowerCase().includes(qLower) &&
+          !snippets.some((s) => s.includes(p.description!.slice(0, 30)))
+        ) {
+          snippets.unshift(p.description);
+        }
+        if (
+          p.title.toLowerCase().includes(qLower) &&
+          !snippets.some((s) => s.toLowerCase().includes(p.title.toLowerCase().slice(0, 20)))
+        ) {
+          snippets.unshift(p.title);
+        }
+        return {
+          id: p.id,
+          title: p.title,
+          slug: p.slug,
+          description: p.description,
+          content: p.content,
+          createdAt: p.createdAt,
+          tags: p.tags,
+          snippets: snippets.slice(0, MAX_SNIPPETS_PER_POST),
+        };
+      });
     } else {
       const fallback = await prisma.post.findMany({
         where: {
@@ -147,19 +194,33 @@ export async function GET(request: NextRequest) {
         },
         include: { tags: true },
       });
-      posts = fallback.map((p) => ({
-        id: p.id,
-        title: p.title,
-        slug: p.slug,
-        description: p.description,
-        content: p.content,
-        createdAt: p.createdAt,
-        tags: p.tags,
-        snippet:
-          extractSnippet(p.content, q) ||
-          (p.description && p.description.toLowerCase().includes(q.toLowerCase()) ? p.description : null) ||
-          extractSnippet(p.title, q),
-      }));
+      posts = fallback.map((p) => {
+        const fromContent = extractSnippets(p.content, q);
+        const snippets: string[] = [...fromContent];
+        if (
+          p.description &&
+          p.description.toLowerCase().includes(qLower) &&
+          !snippets.some((s) => s.includes(p.description!.slice(0, 30)))
+        ) {
+          snippets.unshift(p.description);
+        }
+        if (
+          p.title.toLowerCase().includes(qLower) &&
+          !snippets.some((s) => s.toLowerCase().includes(p.title.toLowerCase().slice(0, 20)))
+        ) {
+          snippets.unshift(p.title);
+        }
+        return {
+          id: p.id,
+          title: p.title,
+          slug: p.slug,
+          description: p.description,
+          content: p.content,
+          createdAt: p.createdAt,
+          tags: p.tags,
+          snippets: snippets.slice(0, MAX_SNIPPETS_PER_POST),
+        };
+      });
     }
 
     const queryLower = q.toLowerCase();
@@ -167,11 +228,14 @@ export async function GET(request: NextRequest) {
     const pages = STATIC_PAGES.filter((p) => {
       const text = p.searchableText.toLowerCase();
       return tokens.every((token) => token.length < 2 || text.includes(token));
-    }).map((p) => ({
-      path: p.path,
-      title: p.title,
-      snippet: extractSnippet(p.searchableText, q) || p.searchableText.slice(0, 120) + "…",
-    }));
+    }).map((p) => {
+      const snippets = extractSnippets(p.searchableText, q, 5);
+      return {
+        path: p.path,
+        title: p.title,
+        snippets: snippets.length > 0 ? snippets : [p.searchableText.slice(0, 120) + "…"],
+      };
+    });
 
     return NextResponse.json({
       posts: posts.map(({ content: _, ...rest }) => rest),
