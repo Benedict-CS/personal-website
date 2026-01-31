@@ -10,6 +10,7 @@ import { Card, CardContent } from "@/components/ui/card";
 import { TableOfContents } from "@/components/toc";
 import { ShareButtons } from "@/components/share-buttons";
 import { ReadingProgress } from "@/components/reading-progress";
+import { PrevNextKeys } from "@/components/prev-next-keys";
 import { MarkdownRenderer } from "@/components/markdown-renderer";
 import { HighlightScroll } from "@/components/highlight-scroll";
 import { stripMarkdown } from "@/lib/utils";
@@ -44,13 +45,16 @@ export async function generateMetadata({
 
   const description = stripMarkdown(post.content).substring(0, 160) + "...";
 
+  const canonicalUrl = `${siteConfig.url}/blog/${slug}`;
+
   return {
     title: post.title,
     description: description,
+    alternates: { canonical: canonicalUrl },
     openGraph: {
       title: post.title,
       description: description,
-      url: `${siteConfig.url}/blog/${slug}`,
+      url: canonicalUrl,
       type: "article",
       publishedTime: post.createdAt.toISOString(),
       images: [siteConfig.ogImage],
@@ -74,6 +78,8 @@ export default async function BlogPostPage({
   const { slug } = await params;
   const resolvedSearch = await searchParams;
   const highlight = typeof resolvedSearch?.highlight === "string" ? resolvedSearch.highlight : undefined;
+  const occurrenceRaw = resolvedSearch?.occurrence;
+  const occurrence = Array.isArray(occurrenceRaw) ? occurrenceRaw[0] : occurrenceRaw;
   
   // Check if user is logged in
   const session = await getServerSession(authOptions);
@@ -140,9 +146,43 @@ export default async function BlogPostPage({
 
   const readingTime = calculateReadingTime(post.content);
 
+  const canonicalUrl = `${siteConfig.url}/blog/${post.slug}`;
+  const jsonLd = {
+    "@context": "https://schema.org",
+    "@type": "Article",
+    headline: post.title,
+    description: stripMarkdown(post.content).substring(0, 160),
+    datePublished: post.createdAt.toISOString(),
+    dateModified: post.updatedAt.toISOString(),
+    author: {
+      "@type": "Person",
+      name: siteConfig.author.name,
+    },
+    publisher: {
+      "@type": "Organization",
+      name: siteConfig.name,
+      logo: {
+        "@type": "ImageObject",
+        url: `${siteConfig.url}${siteConfig.ogImage}`,
+      },
+    },
+    mainEntityOfPage: {
+      "@type": "WebPage",
+      "@id": canonicalUrl,
+    },
+  };
+
   return (
     <>
+      <script
+        type="application/ld+json"
+        dangerouslySetInnerHTML={{ __html: JSON.stringify(jsonLd) }}
+      />
       <ReadingProgress />
+      <PrevNextKeys
+        prevHref={prevPost ? `/blog/${prevPost.slug}` : null}
+        nextHref={nextPost ? `/blog/${nextPost.slug}` : null}
+      />
       <div className="container mx-auto max-w-7xl px-4 py-12">
       <div className="grid grid-cols-1 gap-10 lg:grid-cols-[1fr_250px]">
         {/* 主要內容區 */}
@@ -198,7 +238,7 @@ export default async function BlogPostPage({
                 <div data-post-content>
                   <MarkdownRenderer content={post.content} postId={post.id} editable={!!session} />
                 </div>
-                <HighlightScroll highlight={highlight} contentSelector="[data-post-content]" />
+                <HighlightScroll highlight={highlight} occurrence={occurrence} contentSelector="[data-post-content]" />
 
                 {/* 上一篇/下一篇導覽 */}
                 <div className="border-t border-slate-200 pt-6">

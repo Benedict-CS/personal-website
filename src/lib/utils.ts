@@ -11,8 +11,10 @@ export function cn(...inputs: ClassValue[]) {
 export function stripMarkdown(content: string): string {
   let text = content;
 
-  // Remove code blocks (```code```)
-  text = text.replace(/```[\s\S]*?```/g, "");
+  // Keep code block content so snippet order matches DOM order (for search scroll)
+  text = text.replace(/```[\s\S]*?```/g, (block) =>
+    block.replace(/^```\w*\n?|\n?```$/g, "").trim()
+  );
 
   // Keep inline code text for search/snippet (replace backticks only)
   text = text.replace(/`([^`]*)`/g, "$1");

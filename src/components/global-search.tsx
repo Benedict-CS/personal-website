@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect, useRef, useCallback } from "react";
+import { useState, useEffect, useRef, useCallback, type ReactElement } from "react";
 import Link from "next/link";
 import { Search, X, FileText, Globe } from "lucide-react";
 import { Button } from "@/components/ui/button";
@@ -123,7 +123,7 @@ export function GlobalSearch() {
           <div className="fixed inset-0 z-[99]" onClick={close} aria-hidden />
           <div
             ref={panelRef}
-            className="absolute right-0 top-full z-[100] mt-1 w-[min(90vw,28rem)] overflow-hidden rounded-lg border border-slate-200 bg-white shadow-lg"
+            className="search-panel-in absolute right-0 top-full z-[100] mt-1 w-[min(90vw,28rem)] overflow-hidden rounded-lg border border-slate-200 bg-white shadow-lg"
             onClick={(e) => e.stopPropagation()}
           >
             <div className="flex items-center gap-2 border-b border-slate-100 p-2">
@@ -160,38 +160,30 @@ export function GlobalSearch() {
                       <p className="mb-1.5 flex items-center gap-1.5 text-xs font-medium uppercase text-slate-400">
                         <Globe className="h-3.5 w-3.5" /> Pages
                       </p>
-                      <ul className="space-y-1">
-                        {result.pages.map((page) => {
-                          const pageHref =
-                            page.path +
-                            (pendingQuery.trim()
-                              ? `?highlight=${encodeURIComponent(pendingQuery.trim())}`
-                              : "");
-                          return (
-                          <li key={page.path}>
-                            <Link
-                              href={pageHref}
-                              onClick={close}
-                              className="block rounded-md px-2 py-1.5 text-left text-sm text-slate-800 hover:bg-slate-50"
-                            >
-                              <span className="font-medium">{page.title}</span>
-                              {page.snippets.length > 0 && (
-                                <div className="mt-0.5 space-y-0.5">
-                                  {page.snippets.slice(0, 5).map((snippet, i) => (
-                                    <p key={i} className="line-clamp-2 text-xs text-slate-500">
-                                      {highlightSnippet(snippet, pendingQuery.trim())}
-                                    </p>
-                                  ))}
-                                  {page.snippets.length > 5 && (
-                                    <p className="text-xs text-slate-400">
-                                      +{page.snippets.length - 5} more
-                                    </p>
-                                  )}
-                                </div>
-                              )}
-                            </Link>
-                          </li>
-                          );
+                      <ul className="space-y-0.5">
+                        {result.pages.flatMap((page) => {
+                          const basePath = page.path;
+                          const hasHighlight = !!pendingQuery.trim();
+                          const snippetList = page.snippets.length > 0 ? page.snippets : [page.title];
+                          return snippetList.map((snippet, i) => {
+                            const pageHref = hasHighlight
+                              ? `${basePath}?highlight=${encodeURIComponent(pendingQuery.trim())}&occurrence=${i + 1}`
+                              : basePath;
+                            return (
+                              <li key={`${page.path}-${i}`}>
+                                <Link
+                                  href={pageHref}
+                                  onClick={close}
+                                  className="block rounded-md px-2 py-1.5 text-left text-sm text-slate-800 hover:bg-slate-50"
+                                >
+                                  <span className="text-xs font-medium text-slate-500">{page.title}</span>
+                                  <p className="mt-0.5 line-clamp-2 text-xs text-slate-600">
+                                    {highlightSnippet(snippet, pendingQuery.trim())}
+                                  </p>
+                                </Link>
+                              </li>
+                            );
+                          });
                         })}
                       </ul>
                     </div>
@@ -201,18 +193,18 @@ export function GlobalSearch() {
                       <p className="mb-1.5 flex items-center gap-1.5 text-xs font-medium uppercase text-slate-400">
                         <FileText className="h-3.5 w-3.5" /> Blog
                       </p>
-                      <ul className="space-y-1">
-                        {result.posts.map((post) => {
-                          const href =
-                            pendingQuery.trim()
-                              ? `/blog/${post.slug}?highlight=${encodeURIComponent(pendingQuery.trim())}`
-                              : `/blog/${post.slug}`;
-                          return (
-                            <li key={post.id}>
+                      <ul className="space-y-0.5">
+                        {result.posts.flatMap((post) => {
+                          const baseHref = `/blog/${post.slug}`;
+                          const hasHighlight = !!pendingQuery.trim();
+                          const snippetList = post.snippets.length > 0 ? post.snippets : [];
+                          const items: ReactElement[] = [];
+                          items.push(
+                            <li key={`${post.id}-title`}>
                               <Link
-                                href={href}
+                                href={baseHref}
                                 onClick={close}
-                                className="block rounded-md px-2 py-1.5 text-left text-sm text-slate-800 hover:bg-slate-50"
+                                className="block rounded-md px-2 py-1 text-left text-sm text-slate-800 hover:bg-slate-50"
                               >
                                 <span className="font-medium">
                                   {highlightSnippet(post.title, pendingQuery.trim())}
@@ -220,23 +212,26 @@ export function GlobalSearch() {
                                 <span className="ml-1.5 text-xs text-slate-400">
                                   {formatDate(post.createdAt)}
                                 </span>
-                                {post.snippets.length > 0 && (
-                                  <div className="mt-0.5 space-y-0.5">
-                                    {post.snippets.slice(0, 5).map((snippet, i) => (
-                                      <p key={i} className="line-clamp-2 text-xs text-slate-500">
-                                        {highlightSnippet(snippet, pendingQuery.trim())}
-                                      </p>
-                                    ))}
-                                    {post.snippets.length > 5 && (
-                                      <p className="text-xs text-slate-400">
-                                        +{post.snippets.length - 5} more
-                                      </p>
-                                    )}
-                                  </div>
-                                )}
                               </Link>
                             </li>
                           );
+                          snippetList.forEach((snippet, i) => {
+                            const href = hasHighlight
+                              ? `${baseHref}?highlight=${encodeURIComponent(pendingQuery.trim())}&occurrence=${i + 1}`
+                              : baseHref;
+                            items.push(
+                              <li key={`${post.id}-${i}`}>
+                                <Link
+                                  href={href}
+                                  onClick={close}
+                                  className="block rounded-md px-2 py-1 pl-4 text-left text-xs text-slate-600 hover:bg-slate-50 border-l-2 border-transparent hover:border-slate-300"
+                                >
+                                  {highlightSnippet(snippet, pendingQuery.trim())}
+                                </Link>
+                              </li>
+                            );
+                          });
+                          return items;
                         })}
                       </ul>
                     </div>

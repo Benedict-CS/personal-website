@@ -63,7 +63,7 @@ export async function PATCH(
 
     // Parse request body
     const body = await request.json();
-    const { title, slug, content, description, published, pinned, tags, createdAt, category } = body;
+    const { title, slug, content, description, published, pinned, tags, createdAt, category, autosave } = body;
 
     // Get current post content
     const currentPost = await prisma.post.findUnique({
@@ -94,12 +94,11 @@ export async function PATCH(
       return NextResponse.json(updatedPost, { status: 200 });
     }
 
-    // If only updating content (inline quick edit), update content and save version
-    if (content && !title && !slug) {
-      // Check if content actually changed
-      if (currentPost.content !== content) {
+    // If only updating content (inline quick edit or autosave)
+    if (content !== undefined && !title && !slug) {
+      // Only manual Update creates version history; autosave does not
+      if (currentPost.content !== content && !autosave) {
         try {
-          // Get current max version number
           const maxVersion = await prisma.postVersion.findFirst({
             where: { postId: id },
             orderBy: { versionNumber: "desc" },

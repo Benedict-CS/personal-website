@@ -6,6 +6,9 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { MarkdownRenderer } from "@/components/markdown-renderer";
+import { TableOfContents } from "@/components/toc";
+import { ReadingProgress } from "@/components/reading-progress";
+import { PrevNextKeys } from "@/components/prev-next-keys";
 import { ArrowLeft, ChevronLeft, ChevronRight, Pencil } from "lucide-react";
 import Link from "next/link";
 
@@ -81,53 +84,61 @@ export default async function NoteViewPage({ params }: NotePageProps) {
   };
 
   return (
-    <div className="space-y-6">
-      <div className="flex items-center justify-between">
-        <Link href="/dashboard/notes">
-          <Button variant="ghost" size="sm" className="gap-2">
-            <ArrowLeft className="h-4 w-4" />
-            Back to Notes
-          </Button>
-        </Link>
-        <Link href={`/dashboard/posts/${note.id}`}>
-          <Button variant="outline" size="sm" className="gap-2">
-            <Pencil className="h-4 w-4" />
-            Edit
-          </Button>
-        </Link>
-      </div>
+    <>
+      <ReadingProgress />
+      <PrevNextKeys
+        prevHref={prevNote ? `/dashboard/notes/${prevNote.slug}` : null}
+        nextHref={nextNote ? `/dashboard/notes/${nextNote.slug}` : null}
+      />
+      <div className="space-y-6">
+        <div className="flex items-center justify-between">
+          <Link href="/dashboard/notes">
+            <Button variant="ghost" size="sm" className="gap-2">
+              <ArrowLeft className="h-4 w-4" />
+              Back to Notes
+            </Button>
+          </Link>
+          <Link href={`/dashboard/posts/${note.id}`}>
+            <Button variant="outline" size="sm" className="gap-2">
+              <Pencil className="h-4 w-4" />
+              Edit
+            </Button>
+          </Link>
+        </div>
 
-      <Card>
-        <CardHeader>
-          <div className="space-y-4">
-            <h1 className="text-4xl font-bold text-slate-900">
-              {note.title}
-            </h1>
-            <div className="flex items-center gap-3 text-sm text-slate-600">
-              <Badge variant="secondary">Draft / Note</Badge>
-              <span>Last updated: {formatDate(note.updatedAt)}</span>
-            </div>
-            {note.tags && note.tags.length > 0 && (
-              <div className="flex flex-wrap gap-2">
-                {note.tags.map((tag) => (
-                  <Badge key={tag.id} variant="outline">
-                    {tag.name}
-                  </Badge>
-                ))}
-              </div>
-            )}
-          </div>
-        </CardHeader>
-        <CardContent>
-          <article className="prose prose-slate max-w-none">
-            <MarkdownRenderer content={note.content} postId={note.id} editable={true} />
-          </article>
-        </CardContent>
+        <div className="grid grid-cols-1 gap-10 lg:grid-cols-[1fr_250px]">
+          <div className="min-w-0 space-y-6">
+            <Card>
+              <CardHeader>
+                <div className="space-y-4">
+                  <h1 className="text-4xl font-bold text-slate-900">
+                    {note.title}
+                  </h1>
+                  <div className="flex items-center gap-3 text-sm text-slate-600">
+                    <Badge variant="secondary">Draft / Note</Badge>
+                    <span>Last updated: {formatDate(note.updatedAt)}</span>
+                  </div>
+                  {note.tags && note.tags.length > 0 && (
+                    <div className="flex flex-wrap gap-2">
+                      {note.tags.map((tag) => (
+                        <Badge key={tag.id} variant="outline">
+                          {tag.name}
+                        </Badge>
+                      ))}
+                    </div>
+                  )}
+                </div>
+              </CardHeader>
+              <CardContent>
+                <article className="prose prose-slate max-w-none" data-post-content>
+                  <MarkdownRenderer content={note.content} postId={note.id} editable={true} />
+                </article>
+              </CardContent>
             </Card>
 
-            {/* 上一篇/下一篇導航 */}
+            {/* Prev/Next in category */}
             {(prevNote || nextNote) && (
-              <div className="flex items-center justify-between gap-4 mt-6">
+              <div className="flex items-center justify-between gap-4">
                 <div className="flex-1">
                   {prevNote ? (
                     <Link href={`/dashboard/notes/${prevNote.slug}`}>
@@ -155,5 +166,12 @@ export default async function NoteViewPage({ params }: NotePageProps) {
               </div>
             )}
           </div>
-        );
-      }
+
+          <aside className="lg:sticky lg:top-20 lg:self-start">
+            <TableOfContents content={note.content} />
+          </aside>
+        </div>
+      </div>
+    </>
+  );
+}

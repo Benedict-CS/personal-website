@@ -1,12 +1,11 @@
 "use client";
 
-import { useState, useEffect, useMemo, useRef, useCallback } from "react";
+import { useState, useEffect, useMemo } from "react";
 import Link from "next/link";
 import { useSearchParams, useRouter } from "next/navigation";
-import { Pin, Search, X, List, Calendar, Rss } from "lucide-react";
+import { Pin, List, Calendar, Rss } from "lucide-react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
-import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { stripMarkdown } from "@/lib/utils";
 import { calculateReadingTime, formatReadingTime } from "@/lib/reading-time";
@@ -23,25 +22,40 @@ interface Post {
   tags: Array<{ id: string; name: string; slug: string }>;
 }
 
+interface TagItem {
+  id: string;
+  name: string;
+  slug: string;
+}
+
 export default function BlogPageClient() {
   const searchParams = useSearchParams();
   const router = useRouter();
   const [posts, setPosts] = useState<Post[]>([]);
+  const [tags, setTags] = useState<TagItem[]>([]);
   const [isLoading, setIsLoading] = useState(true);
-  const [inputValue, setInputValue] = useState(searchParams.get("search") || "");
-  const [searchQuery, setSearchQuery] = useState(searchParams.get("search") || "");
-  const debounceRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const [tagsLoading, setTagsLoading] = useState(true);
+  const activeTag = searchParams.get("tag") || null;
   const [viewMode, setViewMode] = useState<"list" | "archive">(
     (searchParams.get("view") as "list" | "archive") || "list"
   );
 
-  const SEARCH_DEBOUNCE_MS = 300;
-
   useEffect(() => {
-    const q = searchParams.get("search") || "";
-    setSearchQuery(q);
-    setInputValue(q);
-  }, [searchParams]);
+    const fetchTags = async () => {
+      try {
+        const res = await fetch("/api/tags");
+        if (res.ok) {
+          const data = await res.json();
+          setTags(data);
+        }
+      } catch (error) {
+        console.error("Failed to fetch tags:", error);
+      } finally {
+        setTagsLoading(false);
+      }
+    };
+    fetchTags();
+  }, []);
 
   useEffect(() => {
     const fetchPosts = async () => {
@@ -49,7 +63,7 @@ export default function BlogPageClient() {
       try {
         const params = new URLSearchParams();
         params.set("published", "true");
-        if (searchQuery) params.set("search", searchQuery);
+        if (activeTag) params.set("tag", activeTag);
 
         const response = await fetch(`/api/posts?${params.toString()}`);
         if (response.ok) {
@@ -64,29 +78,13 @@ export default function BlogPageClient() {
     };
 
     fetchPosts();
-  }, [searchQuery]);
+  }, [activeTag]);
 
-  const handleSearch = useCallback(
-    (value: string) => {
-      setInputValue(value);
-      if (debounceRef.current) clearTimeout(debounceRef.current);
-      debounceRef.current = setTimeout(() => {
-        setSearchQuery(value);
-        const params = new URLSearchParams();
-        if (value) params.set("search", value);
-        router.push(`/blog?${params.toString()}`);
-        debounceRef.current = null;
-      }, SEARCH_DEBOUNCE_MS);
-    },
-    [router]
-  );
-
-  const clearSearch = () => {
-    setInputValue("");
-    setSearchQuery("");
-    if (debounceRef.current) clearTimeout(debounceRef.current);
-    debounceRef.current = null;
-    router.push("/blog");
+  const setTagFilter = (slug: string | null) => {
+    const params = new URLSearchParams();
+    if (slug) params.set("tag", slug);
+    if (viewMode !== "list") params.set("view", viewMode);
+    router.push(params.toString() ? `/blog?${params}` : "/blog");
   };
 
   const formatDate = (date: Date | string) => {
@@ -128,9 +126,9 @@ export default function BlogPageClient() {
   const handleViewModeChange = (mode: "list" | "archive") => {
     setViewMode(mode);
     const params = new URLSearchParams();
-    if (searchQuery) params.set("search", searchQuery);
+    if (activeTag) params.set("tag", activeTag);
     if (mode !== "list") params.set("view", mode);
-    router.push(`/blog?${params.toString()}`);
+    router.push(params.toString() ? `/blog?${params}` : "/blog");
   };
 
   return (
@@ -160,24 +158,30 @@ export default function BlogPageClient() {
         </div>
       </div>
 
-      {/* 搜尋框 */}
+      {/* Tag filter: All + tag buttons */}
       <div className="mb-6">
-        <div className="relative">
-          <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-400" />
-          <Input
-            type="text"
-            placeholder="Search by title, content, description, tags (full-text)..."
-            value={inputValue}
-            onChange={(e) => handleSearch(e.target.value)}
-            className="pl-10 pr-10"
-          />
-          {inputValue && (
-            <button
-              onClick={clearSearch}
-              className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600"
-            >
-              <X className="h-4 w-4" />
-            </button>
+        <p className="text-sm font-medium text-slate-700 mb-2">Filter by tag</p>
+        <div className="flex flex-wrap gap-2">
+          <Button
+            variant={activeTag === null ? "default" : "outline"}
+            size="sm"
+            onClick={() => setTagFilter(null)}
+          >
+            All
+          </Button>
+          {tagsLoading ? (
+            <span className="text-sm text-slate-500">Loading tags…</span>
+          ) : (
+            tags.map((tag) => (
+              <Button
+                key={tag.id}
+                variant={activeTag === tag.slug ? "default" : "outline"}
+                size="sm"
+                onClick={() => setTagFilter(tag.slug)}
+              >
+                {tag.name}
+              </Button>
+            ))
           )}
         </div>
       </div>
@@ -197,16 +201,10 @@ export default function BlogPageClient() {
         <span className="text-slate-500">— Add this URL to Feedly, Inoreader, or any RSS reader to get new posts.</span>
       </div>
 
-      {/* Search result summary */}
-      {searchQuery && (
-        <div className="mb-4 space-y-1 text-sm text-slate-600">
-          <p>
-            Found {posts.length} {posts.length === 1 ? "post" : "posts"}.
-          </p>
-          <p className="text-slate-500">
-            Searched in title, content, description, and tags. Results ordered by relevance.
-          </p>
-        </div>
+      {activeTag && (
+        <p className="mb-4 text-sm text-slate-600">
+          {posts.length} {posts.length === 1 ? "post" : "posts"} with this tag.
+        </p>
       )}
 
       {/* 文章列表 */}
@@ -217,7 +215,7 @@ export default function BlogPageClient() {
       ) : posts.length === 0 ? (
         <div className="rounded-lg border border-slate-200 bg-white p-12 text-center">
           <p className="text-slate-500">
-            {searchQuery ? "No posts found matching your search" : "No posts available yet."}
+            {activeTag ? "No posts with this tag yet." : "No posts available yet."}
           </p>
         </div>
       ) : viewMode === "archive" ? (

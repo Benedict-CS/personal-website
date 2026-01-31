@@ -21,7 +21,7 @@ export function Navbar() {
         <div className="flex items-center gap-1 sm:gap-2 flex-wrap justify-end">
           <GlobalSearch />
           <Link href="/">
-            <Button variant="ghost" size="sm" className="text-slate-700 hover:text-slate-900 text-xs sm:text-sm">
+            <Button variant="ghost" size="sm" className="text-slate-700 hover:text-slate-900 hover:underline text-xs sm:text-sm">
               Home
             </Button>
           </Link>
@@ -31,19 +31,19 @@ export function Navbar() {
             </Button>
           </Link>
           <Link href="/about">
-            <Button variant="ghost" size="sm" className="text-slate-700 hover:text-slate-900 text-xs sm:text-sm">
+            <Button variant="ghost" size="sm" className="text-slate-700 hover:text-slate-900 hover:underline text-xs sm:text-sm">
               About
             </Button>
           </Link>
           <Link href="/contact">
-            <Button variant="ghost" size="sm" className="text-slate-700 hover:text-slate-900 text-xs sm:text-sm">
+            <Button variant="ghost" size="sm" className="text-slate-700 hover:text-slate-900 hover:underline text-xs sm:text-sm">
               Contact
             </Button>
           </Link>
           {isLoggedIn && (
             <>
               <Link href="/dashboard">
-                <Button variant="ghost" size="sm" className="text-slate-700 hover:text-slate-900 text-xs sm:text-sm">
+                <Button variant="ghost" size="sm" className="text-slate-700 hover:text-slate-900 hover:underline text-xs sm:text-sm">
                   Dashboard
                 </Button>
               </Link>

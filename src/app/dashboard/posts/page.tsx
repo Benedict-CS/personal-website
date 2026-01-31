@@ -1,4 +1,5 @@
 import Link from "next/link";
+import { Suspense } from "react";
 import { prisma } from "@/lib/prisma";
 import { Button } from "@/components/ui/button";
 import {
@@ -9,16 +10,27 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table";
+import { PostsFilterTabs } from "./posts-filter";
 
 export const dynamic = "force-dynamic";
 
-export default async function PostsPage() {
+type PostsPageProps = {
+  searchParams: Promise<{ status?: string }>;
+};
+
+export default async function PostsPage({ searchParams }: PostsPageProps) {
+  const { status } = await searchParams;
+  const statusFilter = status === "published" || status === "draft" ? status : null;
+
   const posts = await prisma.post.findMany({
+    where: statusFilter
+      ? { published: statusFilter === "published" }
+      : undefined,
     include: {
       tags: true,
     },
     orderBy: {
-      updatedAt: "desc", // 最近編輯的在最上面
+      updatedAt: "desc",
     },
   });
 
@@ -32,11 +44,16 @@ export default async function PostsPage() {
 
   return (
     <div className="space-y-6">
-      <div className="flex items-center justify-between">
+      <div className="flex flex-wrap items-center justify-between gap-4">
         <h2 className="text-3xl font-bold text-slate-900">All Posts</h2>
-        <Link href="/dashboard/posts/new">
-          <Button>Create New</Button>
-        </Link>
+        <div className="flex items-center gap-4">
+          <Suspense fallback={<div className="h-8 w-24 rounded bg-slate-100" />}>
+            <PostsFilterTabs />
+          </Suspense>
+          <Link href="/dashboard/posts/new">
+            <Button>Create New</Button>
+          </Link>
+        </div>
       </div>
 
       {posts.length === 0 ? (

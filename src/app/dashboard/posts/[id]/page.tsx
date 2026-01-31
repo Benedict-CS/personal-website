@@ -2,7 +2,7 @@
 
 import { useState, useEffect, use, useRef } from "react";
 import { useRouter } from "next/navigation";
-import { Paperclip, History, RotateCcw, Loader2, Pin } from "lucide-react";
+import { Paperclip, History, RotateCcw, Loader2, Pin, ExternalLink, Maximize2, Minimize2 } from "lucide-react";
 import dynamic from "next/dynamic";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -54,7 +54,25 @@ export default function EditPostPage({
   }>>([]);
   const [isLoadingVersions, setIsLoadingVersions] = useState(false);
   const [isRestoring, setIsRestoring] = useState<string | null>(null);
+  const [stayOnPageAfterSave, setStayOnPageAfterSave] = useState(true);
+  const [savedMessage, setSavedMessage] = useState<string | null>(null);
+  const [focusMode, setFocusMode] = useState(false);
+  const [dirty, setDirty] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
+  const formRef = useRef<HTMLFormElement>(null);
+  const initialRef = useRef<{
+    title: string;
+    slug: string;
+    content: string;
+    description: string;
+    tags: string;
+    published: boolean;
+    pinned: boolean;
+    publishedDate: string;
+    category: string;
+  } | null>(null);
+  const lastAutosavedContentRef = useRef<string | null>(null);
+  const autosaveTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   // 載入文章資料
   useEffect(() => {
@@ -73,16 +91,29 @@ export default function EditPostPage({
         setPublished(post.published || false);
         setPinned(post.pinned || false);
         setCategory(post.category || "");
-        // 設定發布日期（格式：YYYY-MM-DD）
         if (post.createdAt) {
           const date = new Date(post.createdAt);
-          setPublishedDate(date.toISOString().split('T')[0]);
+          setPublishedDate(date.toISOString().split("T")[0]);
         }
+        const pd = post.createdAt ? new Date(post.createdAt).toISOString().split("T")[0] : "";
+        initialRef.current = {
+          title: post.title || "",
+          slug: post.slug || "",
+          content: post.content || "",
+          description: post.description || "",
+          tags: post.tags?.map((tag: { name: string }) => tag.name).join(", ") || "",
+          published: post.published || false,
+          pinned: post.pinned || false,
+          publishedDate: pd,
+          category: post.category || "",
+        };
+        lastAutosavedContentRef.current = post.content || "";
       } catch (error) {
         console.error("Error fetching post:", error);
         alert("Failed to load post");
         router.push("/dashboard/posts");
       } finally {
+        setDirty(false);
         setIsLoading(false);
       }
     };
@@ -92,17 +123,97 @@ export default function EditPostPage({
     }
   }, [id, router]);
 
+  // Track dirty state
+  useEffect(() => {
+    if (!initialRef.current) return;
+    const init = initialRef.current;
+    const isDirty =
+      title !== init.title ||
+      slug !== init.slug ||
+      content !== init.content ||
+      description !== init.description ||
+      tags !== init.tags ||
+      published !== init.published ||
+      pinned !== init.pinned ||
+      publishedDate !== init.publishedDate ||
+      category !== init.category;
+    setDirty(isDirty);
+  }, [title, slug, content, description, tags, published, pinned, publishedDate, category]);
+
+  // Unsaved changes: beforeunload
+  useEffect(() => {
+    const onBeforeUnload = (e: BeforeUnloadEvent) => {
+      if (dirty) e.preventDefault();
+    };
+    window.addEventListener("beforeunload", onBeforeUnload);
+    return () => window.removeEventListener("beforeunload", onBeforeUnload);
+  }, [dirty]);
+
+  // Autosave content (debounced 5s) - only when content changed from last saved
+  useEffect(() => {
+    if (content === lastAutosavedContentRef.current || isSubmitting) return;
+    const timer = setTimeout(async () => {
+      try {
+        const res = await fetch(`/api/posts/${id}`, {
+          method: "PATCH",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ content, autosave: true }),
+        });
+        if (res.ok) {
+          lastAutosavedContentRef.current = content;
+          if (initialRef.current) {
+            initialRef.current = { ...initialRef.current, content };
+          }
+          setDirty(
+            title !== initialRef.current?.title ||
+              slug !== initialRef.current?.slug ||
+              description !== initialRef.current?.description ||
+              tags !== initialRef.current?.tags ||
+              published !== initialRef.current?.published ||
+              pinned !== initialRef.current?.pinned ||
+              publishedDate !== initialRef.current?.publishedDate ||
+              category !== initialRef.current?.category
+          );
+          setSavedMessage("Draft saved");
+          setTimeout(() => setSavedMessage(null), 3000);
+        }
+      } catch {
+        // ignore
+      }
+    }, 5000);
+    return () => clearTimeout(timer);
+  }, [content, id, isSubmitting]);
+
+  // Ctrl/Cmd+S to save
+  useEffect(() => {
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if ((e.ctrlKey || e.metaKey) && e.key === "s") {
+        e.preventDefault();
+        if (!isSubmitting && !isDeleting) {
+          formRef.current?.requestSubmit();
+        }
+      }
+    };
+    window.addEventListener("keydown", handleKeyDown);
+    return () => window.removeEventListener("keydown", handleKeyDown);
+  }, [isSubmitting, isDeleting]);
+
+  // Mark form as dirty when user edits (ensures "Unsaved changes" shows)
+  const markDirty = () => {
+    if (!isLoading) setDirty(true);
+  };
+
   // 自動生成 slug
   const handleTitleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    markDirty();
     const newTitle = e.target.value;
     setTitle(newTitle);
-    // 將標題轉換為 URL 友善格式
     const generatedSlug = newTitle
       .toLowerCase()
       .trim()
-      .replace(/[^\w\s-]/g, "") // 移除特殊字元
-      .replace(/[\s_-]+/g, "-") // 將空格和底線轉換為連字號
-      .replace(/^-+|-+$/g, ""); // 移除開頭和結尾的連字號
+      .replace(/[^\w\s-]/g, "")
+      .replace(/[\s_-]+/g, "-")
+      .replace(/^-+|-+$/g, "");
     setSlug(generatedSlug);
   };
 
@@ -170,8 +281,27 @@ export default function EditPostPage({
         throw new Error(error.error || "Failed to update post");
       }
 
-      // 成功後跳轉回文章列表頁
-      router.push("/dashboard/posts");
+      lastAutosavedContentRef.current = content;
+      if (initialRef.current) {
+        initialRef.current = {
+          title,
+          slug,
+          content,
+          description,
+          tags,
+          published,
+          pinned,
+          publishedDate,
+          category,
+        };
+      }
+      setDirty(false);
+      setSavedMessage("Saved");
+      setTimeout(() => setSavedMessage(null), 2500);
+
+      if (!stayOnPageAfterSave) {
+        router.push("/dashboard/posts");
+      }
     } catch (error) {
       alert(error instanceof Error ? error.message : "Failed to update post");
     } finally {
@@ -254,14 +384,27 @@ export default function EditPostPage({
         setPublished(post.published || false);
         setPinned(post.pinned || false);
         setCategory(post.category || "");
-        // 恢復版本時同步發布日期
         if (post.createdAt) {
           const date = new Date(post.createdAt);
-          setPublishedDate(date.toISOString().split('T')[0]);
+          setPublishedDate(date.toISOString().split("T")[0]);
         }
+        if (initialRef.current) {
+          initialRef.current = {
+            title: post.title || "",
+            slug: post.slug || "",
+            content: post.content || "",
+            description: post.description || "",
+            tags: post.tags?.map((t: { name: string }) => t.name).join(", ") || "",
+            published: post.published || false,
+            pinned: post.pinned || false,
+            publishedDate: post.createdAt ? new Date(post.createdAt).toISOString().split("T")[0] : "",
+            category: post.category || "",
+          };
+        }
+        lastAutosavedContentRef.current = post.content || "";
       }
-
       setShowVersions(false);
+      setDirty(false);
       alert("Successfully restored to this version!");
     } catch (error) {
       alert(error instanceof Error ? error.message : "Restore failed");
@@ -279,26 +422,60 @@ export default function EditPostPage({
   }
 
   return (
-    <div className="flex min-h-screen items-center justify-center bg-slate-50 py-8">
-      <div className="w-full max-w-2xl">
+    <div className="min-h-screen bg-slate-50 py-8">
+      <div
+        className="w-full mx-auto edit-page-max"
+        style={{
+          maxWidth: "min(80rem, calc(100vw - var(--dashboard-sidebar-width, 16rem) - 4rem))",
+        }}
+      >
         <Card>
           <CardHeader>
-            <div className="flex items-center justify-between">
+                <div className="flex flex-wrap items-center justify-between gap-2">
               <CardTitle>Edit Post</CardTitle>
-              <Button
-                type="button"
-                variant="outline"
-                size="sm"
-                onClick={handleShowVersions}
-                className="flex items-center gap-2"
-              >
-                <History className="h-4 w-4" />
-                Version History
-              </Button>
+              <div className="flex items-center gap-2">
+                <Button
+                  type="button"
+                  variant="outline"
+                  size="sm"
+                  onClick={() => setFocusMode((v) => !v)}
+                  className="flex items-center gap-2"
+                  title={focusMode ? "Exit focus mode" : "Focus mode (title + content only)"}
+                >
+                  {focusMode ? <Minimize2 className="h-4 w-4" /> : <Maximize2 className="h-4 w-4" />}
+                  {focusMode ? "Exit focus" : "Focus"}
+                </Button>
+                <Button
+                  type="button"
+                  variant="outline"
+                  size="sm"
+                  onClick={() => {
+                    const base = typeof window !== "undefined" ? window.location.origin : "";
+                    const path = published ? `/blog/${slug}` : `/dashboard/notes/${slug}`;
+                    window.open(`${base}${path}`, "_blank", "noopener");
+                  }}
+                  disabled={!slug}
+                  className="flex items-center gap-2"
+                  title={published ? "Preview as blog post" : "Preview as note"}
+                >
+                  <ExternalLink className="h-4 w-4" />
+                  Preview
+                </Button>
+                <Button
+                  type="button"
+                  variant="outline"
+                  size="sm"
+                  onClick={handleShowVersions}
+                  className="flex items-center gap-2"
+                >
+                  <History className="h-4 w-4" />
+                  Version History
+                </Button>
+              </div>
             </div>
           </CardHeader>
           <CardContent>
-            <form onSubmit={handleSubmit} className="space-y-6">
+            <form ref={formRef} onSubmit={handleSubmit} className="space-y-6">
               <div className="space-y-2">
                 <label htmlFor="title" className="text-sm font-medium text-slate-700">
                   Title
@@ -322,73 +499,77 @@ export default function EditPostPage({
                   type="text"
                   placeholder="post-url-slug"
                   value={slug}
-                  onChange={(e) => setSlug(e.target.value)}
+                  onChange={(e) => { markDirty(); setSlug(e.target.value); }}
                   required
                 />
               </div>
 
-              <div className="space-y-2">
-                <label htmlFor="description" className="text-sm font-medium text-slate-700">
-                  Description / Abstract
-                </label>
-                <Input
-                  id="description"
-                  placeholder="Brief description of this article (shown in card list, not in article body)"
-                  value={description}
-                  onChange={(e) => setDescription(e.target.value)}
-                  maxLength={200}
-                />
-                <p className="text-xs text-slate-500">
-                  Optional, 1-2 sentences recommended (max 200 characters). Shown in Blog list cards
-                </p>
-              </div>
+              {!focusMode && (
+                <>
+                  <div className="space-y-2">
+                    <label htmlFor="description" className="text-sm font-medium text-slate-700">
+                      Description / Abstract
+                    </label>
+                    <Input
+                      id="description"
+                      placeholder="Brief description of this article (shown in card list, not in article body)"
+                      value={description}
+                      onChange={(e) => { markDirty(); setDescription(e.target.value); }}
+                      maxLength={200}
+                    />
+                    <p className="text-xs text-slate-500">
+                      Optional, 1-2 sentences recommended (max 200 characters). Shown in Blog list cards
+                    </p>
+                  </div>
 
-              <div className="space-y-2">
-                <label htmlFor="tags" className="text-sm font-medium text-slate-700">
-                  Tags
-                </label>
-                <Input
-                  id="tags"
-                  type="text"
-                  placeholder="Linux, Server, Proxmox (comma separated)"
-                  value={tags}
-                  onChange={(e) => setTags(e.target.value)}
-                />
-                <p className="text-xs text-slate-500">
-                  Separate multiple tags with commas
-                </p>
-              </div>
+                  <div className="space-y-2">
+                    <label htmlFor="tags" className="text-sm font-medium text-slate-700">
+                      Tags
+                    </label>
+                    <Input
+                      id="tags"
+                      type="text"
+                      placeholder="Linux, Server, Proxmox (comma separated)"
+                      value={tags}
+                      onChange={(e) => { markDirty(); setTags(e.target.value); }}
+                    />
+                    <p className="text-xs text-slate-500">
+                      Separate multiple tags with commas
+                    </p>
+                  </div>
 
-              <div className="space-y-2">
-                <label htmlFor="publishedDate" className="text-sm font-medium text-slate-700">
-                  Published Date
-                </label>
-                <Input
-                  id="publishedDate"
-                  type="date"
-                  value={publishedDate}
-                  onChange={(e) => setPublishedDate(e.target.value)}
-                />
-                <p className="text-xs text-slate-500">
-                  Modify published date (shown in article list and detail page)
-                </p>
-              </div>
+                  <div className="space-y-2">
+                    <label htmlFor="publishedDate" className="text-sm font-medium text-slate-700">
+                      Published Date
+                    </label>
+                    <Input
+                      id="publishedDate"
+                      type="date"
+                      value={publishedDate}
+                      onChange={(e) => { markDirty(); setPublishedDate(e.target.value); }}
+                    />
+                    <p className="text-xs text-slate-500">
+                      Modify published date (shown in article list and detail page)
+                    </p>
+                  </div>
 
-              <div className="space-y-2">
-                <label htmlFor="category" className="text-sm font-medium text-slate-700">
-                  Category (Optional)
-                </label>
-                <Input
-                  id="category"
-                  type="text"
-                  placeholder="e.g., LeetCode/Array, System Design, Algorithms/DP"
-                  value={category}
-                  onChange={(e) => setCategory(e.target.value)}
-                />
-                <p className="text-xs text-slate-500">
-                  Category path separated by slashes (e.g., LeetCode/Array). Used for note grouping and navigation
-                </p>
-              </div>
+                  <div className="space-y-2">
+                    <label htmlFor="category" className="text-sm font-medium text-slate-700">
+                      Category (Optional)
+                    </label>
+                    <Input
+                      id="category"
+                      type="text"
+                      placeholder="e.g., LeetCode/Array, System Design, Algorithms/DP"
+                      value={category}
+                      onChange={(e) => { markDirty(); setCategory(e.target.value); }}
+                    />
+                    <p className="text-xs text-slate-500">
+                      Category path separated by slashes (e.g., LeetCode/Array). Used for note grouping and navigation
+                    </p>
+                  </div>
+                </>
+              )}
 
               <div className="space-y-2">
                 <div className="flex items-center justify-between mb-2">
@@ -417,9 +598,9 @@ export default function EditPostPage({
                 <div data-color-mode="light">
                   <MDEditor
                     value={content}
-                    onChange={(val) => setContent(val || "")}
+                    onChange={(val) => { markDirty(); setContent(val || ""); }}
                     preview="live"
-                    height={600}
+                    height={720}
                     textareaProps={{
                       placeholder: "Enter post content in Markdown format...",
                       required: true,
@@ -438,48 +619,77 @@ export default function EditPostPage({
                 </p>
               </div>
 
-              <div className="flex flex-wrap items-center gap-6">
-                <div className="flex items-center space-x-2">
-                  <input
-                    type="checkbox"
-                    id="published"
-                    checked={published}
-                    onChange={(e) => setPublished(e.target.checked)}
-                    className="h-4 w-4 rounded border-slate-300 text-slate-600 focus:ring-slate-500 border-slate-600 bg-slate-700"
-                  />
-                  <label htmlFor="published" className="text-sm font-medium text-slate-700">
-                    Publish immediately
-                  </label>
+              {!focusMode && (
+                <div className="flex flex-wrap items-center gap-6">
+                  <div className="flex items-center space-x-2">
+                    <input
+                      type="checkbox"
+                      id="published"
+                      checked={published}
+                      onChange={(e) => { markDirty(); setPublished(e.target.checked); }}
+                      className="h-4 w-4 rounded border-slate-300 text-slate-600 focus:ring-slate-500 border-slate-600 bg-slate-700"
+                    />
+                    <label htmlFor="published" className="text-sm font-medium text-slate-700">
+                      Publish immediately
+                    </label>
+                  </div>
+                  <div className="flex items-center space-x-2">
+                    <input
+                      type="checkbox"
+                      id="pinned"
+                      checked={pinned}
+                      onChange={(e) => { markDirty(); setPinned(e.target.checked); }}
+                      className="h-4 w-4 rounded border-slate-300 text-slate-600 focus:ring-slate-500 border-slate-600 bg-slate-700"
+                    />
+                    <label htmlFor="pinned" className="text-sm font-medium text-slate-700 flex items-center gap-1.5">
+                      <Pin className="h-4 w-4" />
+                      Pin to top
+                    </label>
+                  </div>
+                  <div className="flex items-center space-x-2">
+                    <input
+                      type="checkbox"
+                      id="stayOnPage"
+                      checked={stayOnPageAfterSave}
+                      onChange={(e) => setStayOnPageAfterSave(e.target.checked)}
+                      className="h-4 w-4 rounded border-slate-300 text-slate-600 focus:ring-slate-500"
+                    />
+                    <label htmlFor="stayOnPage" className="text-sm font-medium text-slate-700">
+                      Stay on page after save
+                    </label>
+                  </div>
                 </div>
-                <div className="flex items-center space-x-2">
-                  <input
-                    type="checkbox"
-                    id="pinned"
-                    checked={pinned}
-                    onChange={(e) => setPinned(e.target.checked)}
-                    className="h-4 w-4 rounded border-slate-300 text-slate-600 focus:ring-slate-500 border-slate-600 bg-slate-700"
-                  />
-                  <label htmlFor="pinned" className="text-sm font-medium text-slate-700 flex items-center gap-1.5">
-                    <Pin className="h-4 w-4" />
-                    Pin to top
-                  </label>
-                </div>
-              </div>
+              )}
 
-              <div className="flex items-center justify-between">
-                <Button
-                  type="button"
-                  variant="destructive"
-                  onClick={handleDelete}
-                  disabled={isDeleting || isSubmitting}
-                >
-                  {isDeleting ? "Deleting..." : "Delete"}
-                </Button>
-                <div className="flex gap-2">
+              {/* Sticky bar at bottom: status + actions (always visible when editing) */}
+              <div className="sticky bottom-0 -mx-6 -mb-6 mt-6 flex items-center justify-between gap-4 border-t border-slate-200 bg-slate-50 px-6 py-4 shadow-[0_-4px_6px_-1px_rgba(0,0,0,0.05)]">
+                <div className="text-sm font-medium">
+                  {savedMessage && (
+                    <span className="text-green-700">{savedMessage}</span>
+                  )}
+                  {dirty && !savedMessage && (
+                    <span className="text-amber-700">You have unsaved changes — save or cancel to leave.</span>
+                  )}
+                  {!dirty && !savedMessage && (
+                    <span className="text-slate-500">All changes saved</span>
+                  )}
+                </div>
+                <div className="flex shrink-0 gap-2">
+                  <Button
+                    type="button"
+                    variant="destructive"
+                    onClick={handleDelete}
+                    disabled={isDeleting || isSubmitting}
+                  >
+                    {isDeleting ? "Deleting..." : "Delete"}
+                  </Button>
                   <Button
                     type="button"
                     variant="outline"
-                    onClick={() => router.push("/dashboard/posts")}
+                    onClick={() => {
+                      if (dirty && !confirm("You have unsaved changes. Leave anyway?")) return;
+                      router.push("/dashboard/posts");
+                    }}
                     disabled={isSubmitting || isDeleting}
                   >
                     Cancel

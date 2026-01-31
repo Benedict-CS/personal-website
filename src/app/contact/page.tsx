@@ -152,11 +152,16 @@ export default function ContactPage() {
                     disabled={status === "sending"}
                   />
                 </div>
-                {status === "success" && (
-                  <p className="text-sm text-green-600">Message sent. I&apos;ll get back to you soon.</p>
-                )}
-                {status === "error" && (
-                  <p className="text-sm text-red-600">{errorMessage}</p>
+                {(status === "success" || status === "error") && (
+                  <p
+                    role="status"
+                    aria-live="polite"
+                    className={`text-sm ${status === "success" ? "text-green-600" : "text-red-600"}`}
+                  >
+                    {status === "success"
+                      ? "Message sent. I'll get back to you soon."
+                      : errorMessage}
+                  </p>
                 )}
                 <Button type="submit" disabled={status === "sending"}>
                   {status === "sending" ? "Sending..." : "Send"}

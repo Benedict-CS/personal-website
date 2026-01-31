@@ -24,7 +24,10 @@ function extractOneSnippet(
   return snippet;
 }
 
-/** Extract all non-overlapping snippets for the given term (for display in search results). */
+/**
+ * Extract all snippets for the given term in document order.
+ * No dedupe — so occurrence index matches DOM order and every click scrolls to the right place.
+ */
 function extractSnippets(
   text: string,
   term: string,
@@ -36,18 +39,12 @@ function extractSnippets(
   const lower = plain.toLowerCase();
   const t = term.trim().toLowerCase();
   const termLen = term.trim().length;
-  const seen = new Set<string>();
   const results: string[] = [];
   let idx = 0;
   while (results.length < maxCount) {
     const found = lower.indexOf(t, idx);
     if (found === -1) break;
-    const snippet = extractOneSnippet(plain, lower, t, found, termLen, maxLen);
-    const key = snippet.slice(0, 60);
-    if (!seen.has(key)) {
-      seen.add(key);
-      results.push(snippet);
-    }
+    results.push(extractOneSnippet(plain, lower, t, found, termLen, maxLen));
     idx = found + termLen;
   }
   return results;
@@ -60,7 +57,6 @@ const STATIC_PAGES: { path: string; title: string; searchableText: string }[] = 
     searchableText: [
       "About",
       siteConfig.name,
-      siteConfig.description,
       "Education",
       "M.S. in Computer Science",
       "NYCU",

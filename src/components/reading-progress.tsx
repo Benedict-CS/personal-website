@@ -36,7 +36,7 @@ export function ReadingProgress() {
   }, []);
 
   return (
-    <div className="fixed top-0 left-0 right-0 h-1 bg-slate-200 z-50">
+    <div className="fixed top-0 left-0 right-0 h-1 bg-slate-200 z-50 print:hidden">
       <div
         className="h-full bg-slate-600 transition-all duration-150 ease-out"
         style={{ width: `${progress}%` }}
