@@ -1,15 +1,18 @@
 import type { Metadata } from "next";
 import Link from "next/link";
 import { notFound } from "next/navigation";
+import { getServerSession } from "next-auth";
 import { prisma } from "@/lib/prisma";
+import { authOptions } from "@/lib/auth";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Card, CardContent } from "@/components/ui/card";
-import { MarkdownRenderer } from "@/components/markdown-renderer";
 import { TableOfContents } from "@/components/toc";
 import { ShareButtons } from "@/components/share-buttons";
 import { ReadingProgress } from "@/components/reading-progress";
+import { MarkdownRenderer } from "@/components/markdown-renderer";
 import { stripMarkdown } from "@/lib/utils";
+import { Pencil } from "lucide-react";
 import { calculateReadingTime, formatReadingTime } from "@/lib/reading-time";
 import { siteConfig } from "@/config/site";
 
@@ -66,6 +69,9 @@ export default async function BlogPostPage({
   params: Promise<{ slug: string }>;
 }) {
   const { slug } = await params;
+  
+  // Check if user is logged in
+  const session = await getServerSession(authOptions);
 
   const post = await prisma.post.findFirst({
     where: {
@@ -164,15 +170,27 @@ export default async function BlogPostPage({
                     </div>
                   )}
 
-                  {/* 分享按鈕 */}
+                  {/* Share buttons */}
                   <ShareButtons
                     title={post.title}
                     url={`/blog/${post.slug}`}
                     description={stripMarkdown(post.content).substring(0, 100)}
                   />
+
+                  {/* Edit button for logged in users */}
+                  {session && (
+                    <div className="pt-2">
+                      <Link href={`/dashboard/posts/${post.id}`}>
+                        <Button variant="outline" size="sm" className="gap-2">
+                          <Pencil className="h-4 w-4" />
+                          Edit
+                        </Button>
+                      </Link>
+                    </div>
+                  )}
                 </div>
 
-                <MarkdownRenderer content={post.content} />
+                <MarkdownRenderer content={post.content} postId={post.id} editable={!!session} />
 
                 {/* 上一篇/下一篇導覽 */}
                 <div className="border-t border-slate-200 pt-6">

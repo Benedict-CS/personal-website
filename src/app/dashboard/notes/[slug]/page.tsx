@@ -6,7 +6,7 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { MarkdownRenderer } from "@/components/markdown-renderer";
-import { ArrowLeft, Edit, ChevronLeft, ChevronRight } from "lucide-react";
+import { ArrowLeft, ChevronLeft, ChevronRight, Pencil } from "lucide-react";
 import Link from "next/link";
 
 export const dynamic = "force-dynamic";
@@ -90,8 +90,8 @@ export default async function NoteViewPage({ params }: NotePageProps) {
           </Button>
         </Link>
         <Link href={`/dashboard/posts/${note.id}`}>
-          <Button size="sm" className="gap-2">
-            <Edit className="h-4 w-4" />
+          <Button variant="outline" size="sm" className="gap-2">
+            <Pencil className="h-4 w-4" />
             Edit
           </Button>
         </Link>
@@ -122,7 +122,7 @@ export default async function NoteViewPage({ params }: NotePageProps) {
           <article className="prose prose-slate max-w-none">
             <MarkdownRenderer content={note.content} postId={note.id} editable={true} />
           </article>
-              </CardContent>
+        </CardContent>
             </Card>
 
             {/* 上一篇/下一篇導航 */}
