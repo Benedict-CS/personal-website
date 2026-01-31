@@ -4,6 +4,8 @@ services:
     image: postgres:15-alpine
     container_name: personal-website-postgres
     restart: unless-stopped
+    ports:
+      - "5432:5432"  # Expose so host can run: npx prisma migrate deploy (with DATABASE_URL in .env)
     environment:
       - POSTGRES_USER=ben
       - POSTGRES_PASSWORD=password
@@ -69,6 +71,10 @@ services:
       - S3_ACCESS_KEY=${S3_ACCESS_KEY:-rustfsadmin}
       - S3_SECRET_KEY=${S3_SECRET_KEY:-rustfsadmin}
       - S3_BUCKET=uploads
+      # Contact form (Resend)
+      - RESEND_API_KEY=${RESEND_API_KEY}
+      - RESEND_FROM_EMAIL=${RESEND_FROM_EMAIL:-onboarding@resend.dev}
+      - CONTACT_EMAIL=${CONTACT_EMAIL}
     healthcheck:
       test: ["CMD", "node", "-e", "require('http').get('http://localhost:3000', (r) => {process.exit(r.statusCode === 200 ? 0 : 1)})"]
       interval: 30s

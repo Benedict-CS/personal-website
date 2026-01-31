@@ -6,6 +6,8 @@ import { Badge } from "@/components/ui/badge";
 import { Mail, Linkedin, Github, GraduationCap, Briefcase, Award, Trophy, Download, Code, Network } from "lucide-react";
 import { siteConfig } from "@/config/site";
 import { prisma } from "@/lib/prisma";
+import { AboutHighlightScroll } from "@/components/about-highlight-scroll";
+import { Suspense } from "react";
 
 // 啟用動態渲染並設置重新驗證時間（30秒）
 export const revalidate = 30;
@@ -221,7 +223,10 @@ export default async function AboutPage() {
 
   return (
     <div className="container mx-auto max-w-4xl px-4 py-12">
-      <div className="space-y-8">
+      <Suspense fallback={null}>
+        <AboutHighlightScroll />
+      </Suspense>
+      <div className="space-y-8" data-about-content>
         {/* Profile Header */}
         <Card className="shadow-lg">
           <CardContent className="pt-8 pb-8">

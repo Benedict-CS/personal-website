@@ -11,6 +11,7 @@ import { TableOfContents } from "@/components/toc";
 import { ShareButtons } from "@/components/share-buttons";
 import { ReadingProgress } from "@/components/reading-progress";
 import { MarkdownRenderer } from "@/components/markdown-renderer";
+import { HighlightScroll } from "@/components/highlight-scroll";
 import { stripMarkdown } from "@/lib/utils";
 import { Pencil } from "lucide-react";
 import { calculateReadingTime, formatReadingTime } from "@/lib/reading-time";
@@ -65,10 +66,14 @@ export async function generateMetadata({
 
 export default async function BlogPostPage({
   params,
+  searchParams,
 }: {
   params: Promise<{ slug: string }>;
+  searchParams: Promise<{ [key: string]: string | string[] | undefined }>;
 }) {
   const { slug } = await params;
+  const resolvedSearch = await searchParams;
+  const highlight = typeof resolvedSearch?.highlight === "string" ? resolvedSearch.highlight : undefined;
   
   // Check if user is logged in
   const session = await getServerSession(authOptions);
@@ -190,7 +195,10 @@ export default async function BlogPostPage({
                   )}
                 </div>
 
-                <MarkdownRenderer content={post.content} postId={post.id} editable={!!session} />
+                <div data-post-content>
+                  <MarkdownRenderer content={post.content} postId={post.id} editable={!!session} />
+                </div>
+                <HighlightScroll highlight={highlight} contentSelector="[data-post-content]" />
 
                 {/* 上一篇/下一篇導覽 */}
                 <div className="border-t border-slate-200 pt-6">

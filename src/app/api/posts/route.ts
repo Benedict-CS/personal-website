@@ -2,22 +2,19 @@ import { NextRequest, NextResponse } from "next/server";
 import { getServerSession } from "next-auth";
 import { authOptions } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
+import { Prisma } from "@prisma/client";
 
 export async function GET(request: NextRequest) {
   try {
     const searchParams = request.nextUrl.searchParams;
     const published = searchParams.get("published");
-    const search = searchParams.get("search"); // 搜尋關鍵字
-    const tag = searchParams.get("tag"); // 標籤過濾
+    const search = searchParams.get("search");
+    const tag = searchParams.get("tag");
 
-    // 建立 where 條件
-    const where: any = {};
-    
+    const where: Record<string, unknown> = {};
     if (published !== null) {
       where.published = published === "true";
     }
-
-    // 標籤過濾
     if (tag) {
       where.tags = {
         some: {
@@ -26,36 +23,75 @@ export async function GET(request: NextRequest) {
       };
     }
 
-    // 搜尋：標題、內容、標籤名稱（case-insensitive）
-    if (search) {
-      const searchTerm = search.trim();
-      const orConditions: any[] = [
-        { title: { contains: searchTerm, mode: "insensitive" } },
-        { content: { contains: searchTerm, mode: "insensitive" } },
-        {
-          tags: {
-            some: {
-              name: { contains: searchTerm, mode: "insensitive" },
-            },
-          },
+    // Full-text search: use PostgreSQL FTS + tag match, then merge by relevance
+    if (search && search.trim()) {
+      const searchTerm = search.trim().replace(/'/g, " ").trim();
+      const publishedOnly = published === "true";
+
+      let ftsIds: string[] = [];
+      try {
+        const q =
+          publishedOnly
+            ? Prisma.sql`SELECT id FROM "Post" WHERE published = true AND search_vector @@ plainto_tsquery('english', ${searchTerm}) ORDER BY ts_rank(search_vector, plainto_tsquery('english', ${searchTerm})) DESC`
+            : Prisma.sql`SELECT id FROM "Post" WHERE search_vector @@ plainto_tsquery('english', ${searchTerm}) ORDER BY ts_rank(search_vector, plainto_tsquery('english', ${searchTerm})) DESC`;
+        const rows = await prisma.$queryRaw<{ id: string }[]>(q);
+        ftsIds = rows.map((r) => r.id);
+      } catch {
+        // search_vector column may not exist yet; fallback to Prisma contains below
+      }
+
+      const tagMatchPosts = await prisma.post.findMany({
+        where: {
+          ...(publishedOnly ? { published: true } : {}),
+          ...where,
+          tags: { some: { name: { contains: search.trim(), mode: "insensitive" } } },
         },
-      ];
-      // @ts-ignore - description field
-      orConditions.push({ description: { contains: searchTerm, mode: "insensitive" } });
-      where.OR = orConditions;
+        select: { id: true },
+      });
+      const tagMatchIds = tagMatchPosts.map((p) => p.id);
+
+      const mergedIds = [...new Set([...ftsIds, ...tagMatchIds])];
+      if (mergedIds.length === 0 && ftsIds.length === 0 && tagMatchIds.length === 0) {
+        const fallbackWhere = {
+          ...where,
+          ...(publishedOnly ? { published: true } : {}),
+          OR: [
+            { title: { contains: search.trim(), mode: "insensitive" as const } },
+            { content: { contains: search.trim(), mode: "insensitive" as const } },
+            { description: { contains: search.trim(), mode: "insensitive" as const } },
+            { tags: { some: { name: { contains: search.trim(), mode: "insensitive" as const } } } },
+          ],
+        };
+        const posts = await prisma.post.findMany({
+          where: fallbackWhere,
+          include: { tags: true },
+          orderBy: [{ pinned: "desc" }, { createdAt: "desc" }],
+        });
+        return NextResponse.json(posts, { status: 200 });
+      }
+
+      const orderMap = new Map(mergedIds.map((id, i) => [id, i]));
+      const postWhere: { id: { in: string[] }; tags?: { some: { slug: string } } } = {
+        id: { in: mergedIds },
+      };
+      if (tag) {
+        postWhere.tags = {
+          some: { slug: tag.toLowerCase().trim().replace(/[^\w\s-]/g, "").replace(/[\s_-]+/g, "-") },
+        };
+      }
+      const posts = await prisma.post.findMany({
+        where: postWhere,
+        include: { tags: true },
+      });
+      posts.sort((a, b) => (orderMap.get(a.id) ?? 999) - (orderMap.get(b.id) ?? 999));
+      return NextResponse.json(posts, { status: 200 });
     }
 
     const posts = await prisma.post.findMany({
       where,
-      include: {
-        tags: true,
-      },
-      orderBy: [
-        { pinned: "desc" },
-        { createdAt: "desc" },
-      ],
+      include: { tags: true },
+      orderBy: [{ pinned: "desc" }, { createdAt: "desc" }],
     });
-
     return NextResponse.json(posts, { status: 200 });
   } catch (error) {
     console.error("Error fetching posts:", error);

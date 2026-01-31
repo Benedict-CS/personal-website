@@ -1,9 +1,9 @@
 "use client";
 
-import { useState, useEffect, useMemo } from "react";
+import { useState, useEffect, useMemo, useRef, useCallback } from "react";
 import Link from "next/link";
 import { useSearchParams, useRouter } from "next/navigation";
-import { Pin, Search, X, List, Calendar } from "lucide-react";
+import { Pin, Search, X, List, Calendar, Rss } from "lucide-react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Input } from "@/components/ui/input";
@@ -28,10 +28,20 @@ export default function BlogPageClient() {
   const router = useRouter();
   const [posts, setPosts] = useState<Post[]>([]);
   const [isLoading, setIsLoading] = useState(true);
+  const [inputValue, setInputValue] = useState(searchParams.get("search") || "");
   const [searchQuery, setSearchQuery] = useState(searchParams.get("search") || "");
+  const debounceRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const [viewMode, setViewMode] = useState<"list" | "archive">(
     (searchParams.get("view") as "list" | "archive") || "list"
   );
+
+  const SEARCH_DEBOUNCE_MS = 300;
+
+  useEffect(() => {
+    const q = searchParams.get("search") || "";
+    setSearchQuery(q);
+    setInputValue(q);
+  }, [searchParams]);
 
   useEffect(() => {
     const fetchPosts = async () => {
@@ -56,15 +66,26 @@ export default function BlogPageClient() {
     fetchPosts();
   }, [searchQuery]);
 
-  const handleSearch = (value: string) => {
-    setSearchQuery(value);
-    const params = new URLSearchParams();
-    if (value) params.set("search", value);
-    router.push(`/blog?${params.toString()}`);
-  };
+  const handleSearch = useCallback(
+    (value: string) => {
+      setInputValue(value);
+      if (debounceRef.current) clearTimeout(debounceRef.current);
+      debounceRef.current = setTimeout(() => {
+        setSearchQuery(value);
+        const params = new URLSearchParams();
+        if (value) params.set("search", value);
+        router.push(`/blog?${params.toString()}`);
+        debounceRef.current = null;
+      }, SEARCH_DEBOUNCE_MS);
+    },
+    [router]
+  );
 
   const clearSearch = () => {
+    setInputValue("");
     setSearchQuery("");
+    if (debounceRef.current) clearTimeout(debounceRef.current);
+    debounceRef.current = null;
     router.push("/blog");
   };
 
@@ -145,12 +166,12 @@ export default function BlogPageClient() {
           <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-400" />
           <Input
             type="text"
-            placeholder="Search articles by title, content, tags..."
-            value={searchQuery}
+            placeholder="Search by title, content, description, tags (full-text)..."
+            value={inputValue}
             onChange={(e) => handleSearch(e.target.value)}
             className="pl-10 pr-10"
           />
-          {searchQuery && (
+          {inputValue && (
             <button
               onClick={clearSearch}
               className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600"
@@ -161,10 +182,30 @@ export default function BlogPageClient() {
         </div>
       </div>
 
-      {/* 結果統計 */}
+      {/* Subscribe via RSS */}
+      <div className="mb-6 flex items-center gap-2 text-sm text-slate-600">
+        <Rss className="h-4 w-4 flex-shrink-0" />
+        <span>Subscribe via RSS:</span>
+        <Link
+          href="/feed.xml"
+          target="_blank"
+          rel="noopener noreferrer"
+          className="font-medium text-slate-800 underline hover:text-slate-900"
+        >
+          feed.xml
+        </Link>
+        <span className="text-slate-500">— Add this URL to Feedly, Inoreader, or any RSS reader to get new posts.</span>
+      </div>
+
+      {/* Search result summary */}
       {searchQuery && (
-        <div className="mb-4 text-sm text-slate-600">
-          Found {posts.length} {posts.length === 1 ? "post" : "posts"}
+        <div className="mb-4 space-y-1 text-sm text-slate-600">
+          <p>
+            Found {posts.length} {posts.length === 1 ? "post" : "posts"}.
+          </p>
+          <p className="text-slate-500">
+            Searched in title, content, description, and tags. Results ordered by relevance.
+          </p>
         </div>
       )}
 

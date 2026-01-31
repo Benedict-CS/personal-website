@@ -84,6 +84,11 @@ export default async function Home() {
                 View Projects
               </Button>
             </Link>
+            <Link href="/contact">
+              <Button size="lg" variant="outline" className="w-full sm:w-auto">
+                Get in Touch
+              </Button>
+            </Link>
           </div>
         </div>
       </section>
