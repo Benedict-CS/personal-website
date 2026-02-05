@@ -65,7 +65,7 @@ export default async function Home() {
   return (
     <div className="min-h-screen bg-gradient-to-br from-slate-50 via-white to-slate-100">
       {/* Hero Section */}
-      <section className="container mx-auto px-4 py-20 md:py-32">
+      <section className="container mx-auto max-w-6xl px-4 py-20 md:py-32">
         <div className="mx-auto max-w-4xl text-center">
           <h1 className="mb-6 text-5xl font-bold tracking-tight text-slate-900 md:text-6xl lg:text-7xl">
             Hi, I&apos;m Benedict.
@@ -94,8 +94,8 @@ export default async function Home() {
       </section>
 
       {/* Latest Posts Section */}
-      <section className="container mx-auto px-4 py-16">
-        <div className="mx-auto max-w-6xl">
+      <section className="container mx-auto max-w-6xl px-4 py-16">
+        <div className="w-full">
           <h2 className="mb-8 text-3xl font-bold text-slate-900">
             Latest Articles
           </h2>
@@ -155,7 +155,7 @@ export default async function Home() {
       </section>
 
       {/* Skills Section */}
-      <section className="container mx-auto px-4 py-16">
+      <section className="container mx-auto max-w-6xl px-4 py-16">
         <div className="mx-auto max-w-4xl">
           <h2 className="mb-8 text-center text-3xl font-bold text-slate-900">
             Technical Skills
