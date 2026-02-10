@@ -169,7 +169,7 @@ sleep 30
 sudo docker compose exec app npx prisma migrate status
 
 # 7. 若未初始化或需套用新遷移，在 app 容器內執行（勿在 host 直接 npx prisma migrate）
-./migrate.sh
+./scripts/migrate.sh
 # 或：sudo docker compose exec app npx prisma migrate deploy
 
 # 8. 驗證資料
@@ -269,7 +269,7 @@ personal-website/
 - ✅ 單一服務架構，簡單易用
 - ✅ 強大的 Console 管理界面
 - 📖 詳細設定請參考 [RustFS 官網](https://rustfs.com) | [GitHub](https://github.com/rustfs/rustfs)
-- 📖 遷移過程請參考 [blog.md](../blog.md)
+- 📖 遷移過程請參考 [blog.md](blog.md)
 
 ## 重要注意事項
 

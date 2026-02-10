@@ -1,17 +1,17 @@
 # Personal website: daily at 0:00 (midnight)
 # 1. Install cron if missing: sudo apt update && sudo apt install -y cron && sudo systemctl enable cron && sudo systemctl start cron
-# 2. Install this crontab (no editor needed): cd "$PROJECT_DIR" && crontab crontab.example
+# 2. Install this crontab (no editor needed): cd "$PROJECT_DIR" && crontab scripts/crontab.example
 #    Or edit manually: crontab -e (requires an editor; if missing: sudo apt install -y nano)
 # 3. Ensure logs dir exists: mkdir -p "$PROJECT_DIR/logs"
-# Manual run (all jobs): ./run-cron-jobs.sh   or   ./run-cron-jobs.sh --no-clean  (skip clean build)
+# Manual run (all jobs): ./scripts/run-cron-jobs.sh   or   ./scripts/run-cron-jobs.sh --no-clean  (skip clean build)
 
 PROJECT_DIR=/home/ben/personal-website
 
 # Backup DB + files, keep latest 3 backups
-0 0 * * * cd "$PROJECT_DIR" && ./backup-data.sh >> "$PROJECT_DIR/logs/backup.log" 2>&1
+0 0 * * * cd "$PROJECT_DIR" && ./scripts/backup-data.sh >> "$PROJECT_DIR/logs/backup.log" 2>&1
 
 # Optional: auto-commit (date as message) and push
 0 0 * * * cd "$PROJECT_DIR" && git add -A && (git diff --staged --quiet || git commit -m "$(date +%Y-%m-%d)") && git push >> "$PROJECT_DIR/logs/git-push.log" 2>&1
 
 # Clean build (optional: heavy, run weekly if needed)
-0 0 * * 0 cd "$PROJECT_DIR" && ./clean-build.sh >> "$PROJECT_DIR/logs/clean-build.log" 2>&1
+0 0 * * 0 cd "$PROJECT_DIR" && ./scripts/clean-build.sh >> "$PROJECT_DIR/logs/clean-build.log" 2>&1

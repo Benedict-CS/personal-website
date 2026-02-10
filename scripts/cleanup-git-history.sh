@@ -3,6 +3,8 @@
 # 使用前請先備份！
 
 set -e
+ROOT="$(cd "$(dirname "$0")/.." && pwd)"
+cd "$ROOT"
 
 echo "⚠️  警告：此腳本會重寫 Git 歷史！"
 echo "📋 請確認："

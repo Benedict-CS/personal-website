@@ -11,7 +11,7 @@
 創建 `AboutConfig` 表：
 
 ```bash
-./create-about-config-table.sh
+./scripts/create-about-config-table.sh
 ```
 
 或手動執行：
@@ -23,7 +23,7 @@ sudo docker compose exec -T postgres psql -U ben -d blog < prisma/migrations/202
 ### 2. 重新建置應用
 
 ```bash
-./quick-build.sh
+./scripts/quick-build.sh
 ```
 
 ### 3. 檢查

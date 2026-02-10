@@ -1,6 +1,10 @@
 #!/bin/bash
 # 手動添加 companyLogos 欄位的腳本
 
+set -e
+ROOT="$(cd "$(dirname "$0")/.." && pwd)"
+cd "$ROOT"
+
 echo "📋 添加 companyLogos 欄位到 AboutConfig 表..."
 
 sudo docker compose exec -T postgres psql -U ben -d blog <<EOF

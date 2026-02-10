@@ -4,6 +4,8 @@
 # Uses cache for faster builds
 
 set -e
+ROOT="$(cd "$(dirname "$0")/.." && pwd)"
+cd "$ROOT"
 
 echo "⚡ 快速建置（使用快取）..."
 

@@ -124,11 +124,10 @@ personal-website/
 ├── prisma/                # Prisma 設定與遷移
 ├── public/                # 靜態檔案（CV 等）
 ├── docs/                  # 文件
+├── scripts/               # 部署、備份、建置腳本
 ├── docker-compose.yml     # Docker Compose 設定
 ├── Dockerfile             # Docker 建置檔案
-├── quick-build.sh         # 快速建置腳本
-├── clean-build.sh         # 乾淨建置腳本
-└── init-database.sql      # 手動初始化資料庫 SQL（備用方案）
+└── ...
 ```
 
 **資料目錄**（執行後產生）：
@@ -156,7 +155,7 @@ personal-website/
 
 ```bash
 # 執行遷移（推薦：使用腳本）
-./migrate.sh
+./scripts/migrate.sh
 
 # 或手動在容器內執行
 sudo docker compose up -d
@@ -186,7 +185,7 @@ cd personal-website
 sudo docker compose up -d --build
 
 # 3. 初始化資料庫（須在 app 容器內執行）
-./migrate.sh
+./scripts/migrate.sh
 # 或：sudo docker compose exec app npx prisma migrate deploy
 
 # 4. 訪問網站
@@ -195,24 +194,24 @@ sudo docker compose up -d --build
 
 ### 建置與部署腳本
 
-- **手動部署**（拉碼、建置、遷移、重啟）：`./manual-deploy.sh`
-- **僅執行遷移**：`./migrate.sh`（會先確保服務已啟動）
-- **快速建置**（小修改）：`./quick-build.sh`
-- **乾淨建置**（重大變更）：`./clean-build.sh`
+- **手動部署**（拉碼、建置、遷移、重啟）：`./scripts/manual-deploy.sh`
+- **僅執行遷移**：`./scripts/migrate.sh`（會先確保服務已啟動）
+- **快速建置**（小修改）：`./scripts/quick-build.sh`
+- **乾淨建置**（重大變更）：`./scripts/clean-build.sh`
 
-詳細說明請參考 [BUILD_GUIDE.md](BUILD_GUIDE.md)
+詳細說明請參考 [docs/BUILD_GUIDE.md](docs/BUILD_GUIDE.md)
 
 ### 故障排除
 
 - **網站出現 500 / "Application error: a server-side exception"**  
   多半是資料庫尚未執行最新遷移（例如新增 `pinned` 等欄位）。請在專案目錄執行：
   ```bash
-  ./migrate.sh
+  ./scripts/migrate.sh
   ```
   或 `sudo docker compose exec app npx prisma migrate deploy`，再重新整理頁面。
 
 - **`npx prisma migrate deploy` 報錯 "Environment variable not found: DATABASE_URL"**  
-  請勿在 host 直接執行。改在 app 容器內執行：`./migrate.sh` 或 `sudo docker compose exec app npx prisma migrate deploy`。
+  請勿在 host 直接執行。改在 app 容器內執行：`./scripts/migrate.sh` 或 `sudo docker compose exec app npx prisma migrate deploy`。
 
 ## 文件
 
@@ -220,4 +219,6 @@ sudo docker compose up -d --build
 - **[DEPLOYMENT.md](docs/DEPLOYMENT.md)** - Nginx Proxy Manager 設定與 SSL
 - **[DATA_MANAGEMENT.md](docs/DATA_MANAGEMENT.md)** - 資料備份、搬家指南
 - **[DEV_NOTES.md](docs/DEV_NOTES.md)** - 開發筆記與技術決策
-- **[BUILD_GUIDE.md](BUILD_GUIDE.md)** - 建置方式選擇與故障排除
+- **[BUILD_GUIDE.md](docs/BUILD_GUIDE.md)** - 建置方式選擇與故障排除
+
+**Cron 排程**：腳本已移至 `scripts/`。若伺服器已安裝過 crontab，更新程式後請重新安裝：`crontab scripts/crontab.example`。

@@ -4,6 +4,8 @@
 # 設置目錄權限並啟動服務
 
 set -e
+ROOT="$(cd "$(dirname "$0")/.." && pwd)"
+cd "$ROOT"
 
 echo "🚀 初始化 RustFS..."
 echo ""

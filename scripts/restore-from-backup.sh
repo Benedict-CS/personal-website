@@ -3,7 +3,8 @@
 # 檔案（public/about/*、cv.pdf、RustFS 圖片）沒被刪，還原 DB 後就會再顯示
 
 set -e
-cd "$(dirname "$0")"
+ROOT="$(cd "$(dirname "$0")/.." && pwd)"
+cd "$ROOT"
 
 BACKUP="${1:-backup.sql}"
 if [ ! -f "$BACKUP" ]; then

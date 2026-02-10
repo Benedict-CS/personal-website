@@ -4,6 +4,8 @@
 # 完整乾淨建置（清除所有快取）
 
 set -e
+ROOT="$(cd "$(dirname "$0")/.." && pwd)"
+cd "$ROOT"
 
 echo "🧹 開始乾淨建置..."
 
@@ -26,7 +28,7 @@ sudo docker compose build --no-cache app
 # 5. 初始化 RustFS（如果需要）
 if [ ! -d "./rustfs-data" ]; then
     echo "🔧 初始化 RustFS..."
-    ./init-rustfs.sh
+    ./scripts/init-rustfs.sh
 fi
 
 # 6. 啟動所有服務

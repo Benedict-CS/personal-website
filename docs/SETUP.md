@@ -59,7 +59,7 @@ sudo docker compose ps
 
 ```bash
 # 執行 RustFS 初始化腳本
-./init-rustfs.sh
+./scripts/init-rustfs.sh
 
 # 腳本會自動：
 # - 創建數據和日誌目錄
@@ -124,13 +124,13 @@ sudo docker compose logs app --tail 50
 ### 快速建置（小修改）
 
 ```bash
-./quick-build.sh
+./scripts/quick-build.sh
 ```
 
 ### 乾淨建置（重大變更）
 
 ```bash
-./clean-build.sh
+./scripts/clean-build.sh
 ```
 
 ### 查看日誌

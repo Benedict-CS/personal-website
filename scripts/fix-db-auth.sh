@@ -2,7 +2,8 @@
 # Fix DB auth: 徹底清除 postgres 資料、重建、跑 migrate、重啟 app
 
 set -e
-cd "$(dirname "$0")"
+ROOT="$(cd "$(dirname "$0")/.." && pwd)"
+cd "$ROOT"
 
 echo "1. 停止所有服務..."
 sudo docker compose down

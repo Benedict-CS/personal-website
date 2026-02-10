@@ -8,10 +8,12 @@ import type { Prisma } from "@prisma/client";
  * POST /api/analytics/clear
  * Clear PageView history. Auth required.
  *
- * Body (JSON):
- * - before: "YYYY-MM-DD" — delete all records before this date (keep recent)
- * - after: "YYYY-MM-DD"  — delete all records after this date (keep old)
- * - confirmAll: true      — required to delete ALL records (no date filter)
+ * Body (JSON), one of:
+ * - ip: "x.x.x.x"         — delete all records for this IP
+ * - before: "YYYY-MM-DD" — delete all records before this date
+ * - after: "YYYY-MM-DD"  — delete all records after this date
+ * - onDate: "YYYY-MM-DD" — delete all records on this calendar day
+ * - confirmAll: true      — delete ALL records (no filter)
  *
  * Returns { deleted: number }
  */
@@ -23,19 +25,28 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   }
 
-  let body: { before?: string; after?: string; confirmAll?: boolean };
+  let body: { ip?: string; before?: string; after?: string; onDate?: string; confirmAll?: boolean };
   try {
     body = await request.json();
   } catch {
     return NextResponse.json(
-      { error: "Invalid JSON body. Use before, after (YYYY-MM-DD), or confirmAll: true" },
+      { error: "Invalid JSON body. Use ip, before, after, onDate (YYYY-MM-DD), or confirmAll: true" },
       { status: 400 }
     );
   }
 
   const where: Prisma.PageViewWhereInput = {};
 
-  if (body.before) {
+  if (body.ip != null && body.ip.trim() !== "") {
+    where.ip = body.ip.trim();
+  } else if (body.onDate) {
+    const start = new Date(body.onDate + "T00:00:00");
+    const end = new Date(body.onDate + "T23:59:59.999");
+    if (isNaN(start.getTime())) {
+      return NextResponse.json({ error: "Invalid onDate (use YYYY-MM-DD)" }, { status: 400 });
+    }
+    where.createdAt = { gte: start, lte: end };
+  } else if (body.before) {
     const beforeDate = new Date(body.before + "T00:00:00");
     if (isNaN(beforeDate.getTime())) {
       return NextResponse.json({ error: "Invalid before date (use YYYY-MM-DD)" }, { status: 400 });
@@ -53,7 +64,7 @@ export async function POST(request: NextRequest) {
     return NextResponse.json(
       {
         error:
-          "Provide one of: before (YYYY-MM-DD) to delete older records, after (YYYY-MM-DD), or confirmAll: true to delete all.",
+          "Provide one of: ip, before (YYYY-MM-DD), after (YYYY-MM-DD), onDate (YYYY-MM-DD), or confirmAll: true.",
       },
       { status: 400 }
     );

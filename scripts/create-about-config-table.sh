@@ -1,6 +1,10 @@
 #!/bin/bash
 # 手動創建 AboutConfig 表的腳本
 
+set -e
+ROOT="$(cd "$(dirname "$0")/.." && pwd)"
+cd "$ROOT"
+
 echo "📋 創建 AboutConfig 表..."
 
 sudo docker compose exec -T postgres psql -U ben -d blog <<EOF

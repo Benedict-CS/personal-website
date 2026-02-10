@@ -3,6 +3,8 @@
 # 清理不需要的 Docker images（MinIO, SeaweedFS, Garage）
 
 set -e
+ROOT="$(cd "$(dirname "$0")/.." && pwd)"
+cd "$ROOT"
 
 echo "🧹 清理不需要的 Docker images..."
 echo ""

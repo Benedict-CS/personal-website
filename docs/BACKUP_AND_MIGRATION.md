@@ -2,22 +2,22 @@
 
 ## 一、備份（在目前 VM 執行）
 
-備份內容：**資料庫**（posts、notes、about config）、**public/about** 圖片、**cv.pdf**、**RustFS** 文章圖片。
+備份內容：**資料庫**（posts、notes、about config、**analytics / PageView**）、**public/about** 圖片、**cv.pdf**、**RustFS** 文章圖片。備份檔會放在 **`backups/`** 目錄。
 
 ```bash
 cd ~/personal-website
-./backup-data.sh
+./scripts/backup-data.sh
 ```
 
 **備份流程說明：**
-1. 執行 `pg_dump` 產生 `backup.sql`（資料庫備份）
+1. 執行 `pg_dump` 產生 `backup.sql`（完整資料庫，含 analytics）
 2. 複製 `public/about/` 和 `public/cv.pdf`
 3. 複製 `rustfs-data/`（文章圖片）
-4. 打包成 `backup-YYYYMMDD-HHMM.tar.gz`
-5. 清理臨時目錄
+4. 打包成 `backups/backup-YYYYMMDD-HHMM.tar.gz`
+5. 清理臨時目錄；只保留最新 3 份，更舊的自動刪除
 
 **輸出檔案：**
-- `backup-YYYYMMDD-HHMM.tar.gz` - 包含所有備份內容的壓縮檔
+- `backups/backup-YYYYMMDD-HHMM.tar.gz` - 包含所有備份內容的壓縮檔
 
 **注意：** 若出現 `Permission denied` 在清理暫存目錄時，可忽略；`tar.gz` 已正確產生。
 
@@ -28,15 +28,15 @@ cd ~/personal-website
 ### 事前準備
 
 - 新 VM 已安裝 Docker、Docker Compose
-- 可將 `backup-*.tar.gz` 傳到新 VM（scp、隨身碟等）
+- 可將 `backups/backup-*.tar.gz` 傳到新 VM（scp、隨身碟等）
 
 ### 步驟
 
 **1. 複製備份檔到新 VM**
 
-例如用 scp：
+例如用 scp（備份檔在專案內 `backups/` 目錄）：
 ```bash
-scp backup-20260125-0631.tar.gz user@new-vm-ip:~/
+scp backups/backup-20260125-0631.tar.gz user@new-vm-ip:~/
 ```
 
 **2. 在新 VM 上 clone 專案**
@@ -53,7 +53,7 @@ tar -xzvf ~/backup-20260125-0631.tar.gz
 ```
 
 解壓後會產生 `backup-20260125-0631/` 目錄，裡面包含：
-- `backup.sql` - 資料庫備份（由 `backup-data.sh` 自動產生）
+- `backup.sql` - 資料庫備份（含文章、About、Analytics 等，由 `scripts/backup-data.sh` 產生）
 - `public/about/` - About 頁面圖片
 - `public/cv.pdf` - CV 檔案
 - `rustfs-data/` - RustFS 文章圖片
@@ -77,7 +77,7 @@ sudo docker compose up -d
 `backup.sql` 檔案已經包含在解壓後的目錄中，直接使用：
 
 ```bash
-./restore-from-backup.sh backup-20260125-0631/backup.sql
+./scripts/restore-from-backup.sh backup-20260125-0631/backup.sql
 ```
 
 **7. 重啟 app**
@@ -130,7 +130,7 @@ sudo docker compose up -d --force-recreate app
 
 ```bash
 cd ~/personal-website
-./backup-data.sh
+./scripts/backup-data.sh
 ```
 
-再將 `backup-*.tar.gz` 複製到別台機器或雲端保存。
+再將 `backups/backup-*.tar.gz` 複製到別台機器或雲端保存。

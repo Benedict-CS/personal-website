@@ -12,7 +12,7 @@
 
 **執行方式**：
 ```bash
-./quick-build.sh
+./scripts/quick-build.sh
 ```
 
 **優點**：
@@ -36,7 +36,7 @@
 
 **執行方式**：
 ```bash
-./clean-build.sh
+./scripts/clean-build.sh
 ```
 
 **優點**：
@@ -53,8 +53,8 @@
 ### Q: 修改後看不到變化？
 
 **A**: 可能是快取問題，嘗試：
-1. 先執行快速建置：`./quick-build.sh`
-2. 如果還是不行，執行乾淨建置：`./clean-build.sh`
+1. 先執行快速建置：`./scripts/quick-build.sh`
+2. 如果還是不行，執行乾淨建置：`./scripts/clean-build.sh`
 3. 清除瀏覽器快取（Ctrl+Shift+R 或 Cmd+Shift+R）
 
 ### Q: CV 上傳失敗，顯示權限錯誤？
@@ -62,14 +62,14 @@
 **A**: 
 1. 檢查 `./public` 目錄權限：`ls -la ./public`
 2. 確保目錄可寫入：`chmod 777 ./public`
-3. 重新建置：`./quick-build.sh`
+3. 重新建置：`./scripts/quick-build.sh`
 4. 檢查容器日誌：`sudo docker compose logs app | grep -i cv`
 
 ### Q: 登入頁面還是 dark mode？
 
 **A**: 
 1. 確認已修改 `src/app/auth/signin/page.tsx` 和 `src/app/auth/layout.tsx`
-2. 執行快速建置：`./quick-build.sh`
+2. 執行快速建置：`./scripts/quick-build.sh`
 3. 清除瀏覽器快取
 
 ### Q: 資料庫連線錯誤？
@@ -85,13 +85,10 @@
 
 ```bash
 # 快速建置（小修改）
-./quick-build.sh
+./scripts/quick-build.sh
 
 # 乾淨建置（重大變更）
-./clean-build.sh
-
-# 修正權限
-./fix-permissions.sh
+./scripts/clean-build.sh
 
 # 查看日誌
 sudo docker compose logs -f app

@@ -3,6 +3,8 @@
 # DATABASE_URL is provided by docker-compose; do NOT run "npx prisma migrate" on the host.
 
 set -e
+ROOT="$(cd "$(dirname "$0")/.." && pwd)"
+cd "$ROOT"
 
 if [ ! -f "docker-compose.yml" ]; then
     echo "❌ Error: Not in project root (docker-compose.yml not found)"

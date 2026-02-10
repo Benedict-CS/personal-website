@@ -43,6 +43,8 @@ export default function AnalyticsPage() {
 
   const [error, setError] = useState<string | null>(null);
   const [clearBefore, setClearBefore] = useState("");
+  const [clearOnDate, setClearOnDate] = useState("");
+  const [clearByIP, setClearByIP] = useState("");
   const [clearAllConfirm, setClearAllConfirm] = useState(false);
   const [clearLoading, setClearLoading] = useState(false);
   const [clearMessage, setClearMessage] = useState<string | null>(null);
@@ -101,6 +103,69 @@ export default function AnalyticsPage() {
     }
   };
 
+  const handleClearByIP = async (ipToDelete: string) => {
+    const ip = (ipToDelete || clearByIP).trim();
+    if (!ip) return;
+    if (!confirm(`確定要刪除此 IP 的所有記錄？\n\nDelete all records for IP ${ip}? This cannot be undone.`)) {
+      return;
+    }
+    setClearLoading(true);
+    setClearMessage(null);
+    try {
+      const res = await fetch("/api/analytics/clear", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ ip }),
+      });
+      const data = await res.json().catch(() => ({}));
+      if (!res.ok) {
+        setClearMessage(data.error || `Error ${res.status}`);
+        toast(data.error || `Error ${res.status}`, "error");
+        return;
+      }
+      setClearMessage(`Deleted ${data.deleted ?? 0} record(s) for IP ${ip}.`);
+      setClearByIP("");
+      setRefreshKey((k) => k + 1);
+      toast(`Deleted ${data.deleted ?? 0} record(s) for IP.`, "success");
+    } catch (e) {
+      setClearMessage((e as Error)?.message || "Request failed");
+      toast((e as Error)?.message || "Request failed", "error");
+    } finally {
+      setClearLoading(false);
+    }
+  };
+
+  const handleClearOnDate = async () => {
+    if (!clearOnDate.trim()) return;
+    if (!confirm(`確定要刪除 ${clearOnDate} 當天的所有記錄？此操作無法復原。\n\nDelete all records on ${clearOnDate}? This cannot be undone.`)) {
+      return;
+    }
+    setClearLoading(true);
+    setClearMessage(null);
+    try {
+      const res = await fetch("/api/analytics/clear", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ onDate: clearOnDate.trim() }),
+      });
+      const data = await res.json().catch(() => ({}));
+      if (!res.ok) {
+        setClearMessage(data.error || `Error ${res.status}`);
+        toast(data.error || `Error ${res.status}`, "error");
+        return;
+      }
+      setClearMessage(`Deleted ${data.deleted ?? 0} record(s) on ${clearOnDate}.`);
+      setClearOnDate("");
+      setRefreshKey((k) => k + 1);
+      toast(`Deleted ${data.deleted ?? 0} record(s).`, "success");
+    } catch (e) {
+      setClearMessage((e as Error)?.message || "Request failed");
+      toast((e as Error)?.message || "Request failed", "error");
+    } finally {
+      setClearLoading(false);
+    }
+  };
+
   const handleClearAll = async () => {
     if (!clearAllConfirm) return;
     if (!confirm("確定要刪除所有 Analytics 記錄？此操作無法復原。\n\nAre you sure you want to delete all analytics records? This cannot be undone.")) {
@@ -133,7 +198,7 @@ export default function AnalyticsPage() {
   };
 
   const formatDate = (s: string) =>
-    new Date(s).toLocaleString(undefined, {
+    new Date(s).toLocaleString("en-GB", {
       dateStyle: "short",
       timeStyle: "short",
     });
@@ -324,7 +389,8 @@ export default function AnalyticsPage() {
                     <thead>
                       <tr className="border-b text-left">
                         <th className="py-2 pr-4">IP</th>
-                        <th className="py-2">Views</th>
+                        <th className="py-2 pr-4">Views</th>
+                        <th className="py-2 w-16"> </th>
                       </tr>
                     </thead>
                     <tbody>
@@ -340,7 +406,20 @@ export default function AnalyticsPage() {
                               {p.ip}
                             </button>
                           </td>
-                          <td className="py-2">{p.count}</td>
+                          <td className="py-2 pr-4">{p.count}</td>
+                          <td className="py-2">
+                            <Button
+                              type="button"
+                              variant="ghost"
+                              size="sm"
+                              className="text-red-600 hover:text-red-700 h-7 px-2 text-xs"
+                              onClick={() => handleClearByIP(p.ip)}
+                              disabled={clearLoading}
+                              title="Delete all records for this IP"
+                            >
+                              Delete
+                            </Button>
+                          </td>
                         </tr>
                       ))}
                     </tbody>
@@ -400,11 +479,50 @@ export default function AnalyticsPage() {
             </CardHeader>
             <CardContent className="space-y-4">
               <p className="text-sm text-slate-600">
-                Remove old analytics records to keep the database small. Requires login.
+                Remove analytics records. Analytics data is included in daily DB backup (backup.sql). Requires login.
               </p>
-              <div className="flex flex-wrap gap-3 items-end">
+              <div className="flex flex-wrap gap-4 items-end">
                 <div>
-                  <label className="block text-sm font-medium text-slate-700 mb-1">Delete records before (YYYY-MM-DD)</label>
+                  <label className="block text-sm font-medium text-slate-700 mb-1">By IP</label>
+                  <div className="flex gap-2">
+                    <input
+                      type="text"
+                      placeholder="e.g. 140.113.128.3"
+                      value={clearByIP}
+                      onChange={(e) => setClearByIP(e.target.value)}
+                      className="rounded border border-slate-300 px-3 py-2 text-sm font-mono w-36"
+                    />
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      onClick={() => handleClearByIP(clearByIP)}
+                      disabled={clearLoading || !clearByIP.trim()}
+                    >
+                      {clearLoading ? "..." : "Delete IP"}
+                    </Button>
+                  </div>
+                </div>
+                <div>
+                  <label className="block text-sm font-medium text-slate-700 mb-1">On date (YYYY-MM-DD)</label>
+                  <div className="flex gap-2">
+                    <input
+                      type="date"
+                      value={clearOnDate}
+                      onChange={(e) => setClearOnDate(e.target.value)}
+                      className="rounded border border-slate-300 px-3 py-2 text-sm"
+                    />
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      onClick={handleClearOnDate}
+                      disabled={clearLoading || !clearOnDate.trim()}
+                    >
+                      {clearLoading ? "..." : "Delete day"}
+                    </Button>
+                  </div>
+                </div>
+                <div>
+                  <label className="block text-sm font-medium text-slate-700 mb-1">Before date (older than)</label>
                   <div className="flex gap-2">
                     <input
                       type="date"

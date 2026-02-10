@@ -2,6 +2,8 @@
 # 手動部署腳本（不使用 CI/CD）
 
 set -e
+ROOT="$(cd "$(dirname "$0")/.." && pwd)"
+cd "$ROOT"
 
 echo "🚀 手動部署腳本"
 echo "================"

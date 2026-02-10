@@ -247,4 +247,4 @@ listS3Objects().then(files => console.log('Files:', files.length));
 
 你的專案架構設計良好，使用標準 S3 API，所以遷移非常簡單，只需要更新 Docker 配置即可。
 
-詳細遷移過程和經驗總結請參考 [blog.md](../blog.md)
+詳細遷移過程和經驗總結請參考 [blog.md](blog.md)

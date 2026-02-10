@@ -1,6 +1,10 @@
 #!/bin/bash
 # 手動創建 PostVersion 表的腳本
 
+set -e
+ROOT="$(cd "$(dirname "$0")/.." && pwd)"
+cd "$ROOT"
+
 echo "正在創建 PostVersion 表..."
 
 # 讀取 migration SQL 文件並執行
