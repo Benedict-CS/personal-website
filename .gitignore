@@ -57,6 +57,24 @@ rustfs-logs/
 public/uploads/
 public/images/
 
+# cron / script logs (do not commit)
+logs/
+
 # keep public directory but ignore runtime files
 !public/.gitkeep
 public/cv.pdf
+
+# Stray build/cache artifacts (0-byte junk, do not commit)
+/\[builder
+/\[deps
+/\[internal\]
+/\[runner
+/=
+/CACHED
+/exporting
+/naming
+/reading
+/resolve
+/resolving
+/transferring
+/unpacking
