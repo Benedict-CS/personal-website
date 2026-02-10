@@ -42,6 +42,14 @@ interface CompanyLogo {
   logo: string;
 }
 
+export interface AboutBlockEntry {
+  title: string;
+  logoUrl?: string | null;
+  organization: string;
+  dateRange: string;
+  content: string;
+}
+
 async function getAboutConfig() {
   try {
     let config = await prisma.aboutConfig.findFirst();
@@ -50,16 +58,22 @@ async function getAboutConfig() {
         profileImage: null,
         introText: null,
         aboutMainContent: null,
+        educationBlocks: [] as AboutBlockEntry[],
+        experienceBlocks: [] as AboutBlockEntry[],
+        projectBlocks: [] as AboutBlockEntry[],
         schoolLogos: [] as SchoolLogo[],
         projectImages: [] as ProjectImage[],
         companyLogos: [] as CompanyLogo[],
       };
     }
-    const c = config as { introText?: string | null; aboutMainContent?: string | null };
+    const c = config as { introText?: string | null; aboutMainContent?: string | null; educationBlocks?: string; experienceBlocks?: string; projectBlocks?: string };
     return {
       profileImage: config.profileImage,
       introText: c.introText ?? null,
       aboutMainContent: c.aboutMainContent ?? null,
+      educationBlocks: (c.educationBlocks ? JSON.parse(c.educationBlocks) : []) as AboutBlockEntry[],
+      experienceBlocks: (c.experienceBlocks ? JSON.parse(c.experienceBlocks) : []) as AboutBlockEntry[],
+      projectBlocks: (c.projectBlocks ? JSON.parse(c.projectBlocks) : []) as AboutBlockEntry[],
       schoolLogos: config.schoolLogos ? (JSON.parse(config.schoolLogos) as SchoolLogo[]) : [],
       projectImages: config.projectImages ? (JSON.parse(config.projectImages) as ProjectImage[]) : [],
       companyLogos: config.companyLogos ? (JSON.parse(config.companyLogos) as CompanyLogo[]) : [],
@@ -70,6 +84,9 @@ async function getAboutConfig() {
       profileImage: null,
       introText: null,
       aboutMainContent: null,
+      educationBlocks: [] as AboutBlockEntry[],
+      experienceBlocks: [] as AboutBlockEntry[],
+      projectBlocks: [] as AboutBlockEntry[],
       schoolLogos: [] as SchoolLogo[],
       projectImages: [] as ProjectImage[],
       companyLogos: [] as CompanyLogo[],
@@ -146,7 +163,8 @@ function getCompanyLogo(companyLogos: CompanyLogo[], companyName: string): strin
 
 export default async function AboutPage() {
   const config = await getAboutConfig();
-  const { profileImage, introText, aboutMainContent, schoolLogos, projectImages, companyLogos } = config;
+  const { profileImage, introText, aboutMainContent, educationBlocks, experienceBlocks, projectBlocks, schoolLogos, projectImages, companyLogos } = config;
+  const useStructuredBlocks = educationBlocks.length > 0 || experienceBlocks.length > 0 || projectBlocks.length > 0;
 
   // 調試：輸出配置信息（僅在開發環境）
   if (process.env.NODE_ENV === "development") {
@@ -292,8 +310,146 @@ export default async function AboutPage() {
           </CardContent>
         </Card>
 
-        {/* Main content from dashboard (Markdown) - when set, replaces default Education/Projects/Experience */}
-        {aboutMainContent && aboutMainContent.trim() && (
+        {/* Structured blocks from dashboard (Education, Experience, Projects) - template: title, logo, org, date, content */}
+        {useStructuredBlocks && (
+          <>
+            {educationBlocks.length > 0 && (
+              <Card className="shadow-lg">
+                <CardHeader>
+                  <CardTitle className="flex items-center gap-2 text-slate-900">
+                    <GraduationCap className="h-5 w-5" />
+                    Education
+                  </CardTitle>
+                </CardHeader>
+                <CardContent>
+                  <div className="space-y-6">
+                    {educationBlocks.map((entry, i) => (
+                      <div key={i} className="border-l-4 border-blue-500 pl-4 relative">
+                        <div className="flex items-start gap-4">
+                          {entry.logoUrl && (
+                            <div className="relative h-16 w-16 flex-shrink-0 mt-1">
+                              {/* eslint-disable-next-line @next/next/no-img-element */}
+                              <img src={entry.logoUrl} alt="" className="w-full h-full object-contain" />
+                            </div>
+                          )}
+                          <div className="flex-1 min-w-0">
+                            <div className="flex flex-wrap items-start justify-between gap-4 mb-2">
+                              <h3 className="font-semibold text-slate-900 text-lg flex-1">{entry.title}</h3>
+                              {entry.dateRange && (
+                                <Badge variant="secondary" className="flex-shrink-0 whitespace-nowrap">
+                                  {entry.dateRange}
+                                </Badge>
+                              )}
+                            </div>
+                            {entry.organization && (
+                              <p className="text-sm text-slate-600 font-medium mb-2">{entry.organization}</p>
+                            )}
+                            {entry.content && (
+                              <div className="prose prose-slate prose-sm max-w-none">
+                                <MarkdownRenderer content={entry.content} />
+                              </div>
+                            )}
+                          </div>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                </CardContent>
+              </Card>
+            )}
+            {experienceBlocks.length > 0 && (
+              <Card className="shadow-lg">
+                <CardHeader>
+                  <CardTitle className="flex items-center gap-2 text-slate-900">
+                    <Briefcase className="h-5 w-5" />
+                    Experience
+                  </CardTitle>
+                </CardHeader>
+                <CardContent>
+                  <div className="space-y-6">
+                    {experienceBlocks.map((entry, i) => (
+                      <div key={i} className="border-l-4 border-green-500 pl-4 relative">
+                        <div className="flex items-start gap-4">
+                          {entry.logoUrl && (
+                            <div className="relative h-16 w-16 flex-shrink-0 mt-1">
+                              {/* eslint-disable-next-line @next/next/no-img-element */}
+                              <img src={entry.logoUrl} alt="" className="w-full h-full object-contain" />
+                            </div>
+                          )}
+                          <div className="flex-1 min-w-0">
+                            <div className="flex flex-wrap items-start justify-between gap-4 mb-2">
+                              <h3 className="font-semibold text-slate-900 text-lg flex-1">{entry.title}</h3>
+                              {entry.dateRange && (
+                                <Badge variant="secondary" className="flex-shrink-0 whitespace-nowrap">
+                                  {entry.dateRange}
+                                </Badge>
+                              )}
+                            </div>
+                            {entry.organization && (
+                              <p className="text-sm text-slate-600 font-medium mb-2">{entry.organization}</p>
+                            )}
+                            {entry.content && (
+                              <div className="prose prose-slate prose-sm max-w-none">
+                                <MarkdownRenderer content={entry.content} />
+                              </div>
+                            )}
+                          </div>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                </CardContent>
+              </Card>
+            )}
+            {projectBlocks.length > 0 && (
+              <Card className="shadow-lg">
+                <CardHeader>
+                  <CardTitle className="flex items-center gap-2 text-slate-900">
+                    <Code className="h-5 w-5" />
+                    Projects
+                  </CardTitle>
+                </CardHeader>
+                <CardContent>
+                  <div className="space-y-6">
+                    {projectBlocks.map((entry, i) => (
+                      <div key={i} className="border-l-4 border-purple-500 pl-4 relative">
+                        <div className="flex flex-col md:flex-row gap-4">
+                          {entry.logoUrl && (
+                            <div className="relative w-full md:w-64 h-48 flex-shrink-0 rounded-lg overflow-hidden shadow-md">
+                              {/* eslint-disable-next-line @next/next/no-img-element */}
+                              <img src={entry.logoUrl} alt="" className="w-full h-full object-cover" />
+                            </div>
+                          )}
+                          <div className="flex-1 min-w-0">
+                            <div className="flex flex-wrap items-start justify-between gap-4 mb-2">
+                              <h3 className="font-semibold text-slate-900 text-lg flex-1">{entry.title}</h3>
+                              {entry.dateRange && (
+                                <Badge variant="secondary" className="flex-shrink-0 whitespace-nowrap">
+                                  {entry.dateRange}
+                                </Badge>
+                              )}
+                            </div>
+                            {entry.organization && (
+                              <p className="text-sm text-slate-600 font-medium mb-2">{entry.organization}</p>
+                            )}
+                            {entry.content && (
+                              <div className="prose prose-slate prose-sm max-w-none">
+                                <MarkdownRenderer content={entry.content} />
+                              </div>
+                            )}
+                          </div>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                </CardContent>
+              </Card>
+            )}
+          </>
+        )}
+
+        {/* Legacy: one markdown block when no structured blocks */}
+        {!useStructuredBlocks && aboutMainContent && aboutMainContent.trim() && (
           <Card className="shadow-lg">
             <CardContent className="pt-6 pb-6 prose prose-slate max-w-none">
               <MarkdownRenderer content={aboutMainContent} />
@@ -301,8 +457,8 @@ export default async function AboutPage() {
           </Card>
         )}
 
-        {/* Education - only when main content is not set */}
-        {(!aboutMainContent || !aboutMainContent.trim()) && (
+        {/* Hardcoded Education/Projects/Experience - only when no structured blocks and no main content */}
+        {!useStructuredBlocks && (!aboutMainContent || !aboutMainContent.trim()) && (
         <>
         <Card className="shadow-lg">
           <CardHeader>

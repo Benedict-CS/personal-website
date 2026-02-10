@@ -23,10 +23,29 @@ interface CompanyLogo {
   logo: string;
 }
 
+export interface AboutBlockEntry {
+  title: string;
+  logoUrl?: string | null;
+  organization: string;
+  dateRange: string;
+  content: string;
+}
+
+const emptyBlockEntry = (): AboutBlockEntry => ({
+  title: "",
+  logoUrl: "",
+  organization: "",
+  dateRange: "",
+  content: "",
+});
+
 export default function AboutPage() {
   const [profileImage, setProfileImage] = useState<string | null>(null);
   const [introText, setIntroText] = useState("");
   const [aboutMainContent, setAboutMainContent] = useState("");
+  const [educationBlocks, setEducationBlocks] = useState<AboutBlockEntry[]>([]);
+  const [experienceBlocks, setExperienceBlocks] = useState<AboutBlockEntry[]>([]);
+  const [projectBlocks, setProjectBlocks] = useState<AboutBlockEntry[]>([]);
   const [schoolLogos, setSchoolLogos] = useState<SchoolLogo[]>([]);
   const [projectImages, setProjectImages] = useState<ProjectImage[]>([]);
   const [companyLogos, setCompanyLogos] = useState<CompanyLogo[]>([]);
@@ -51,6 +70,9 @@ export default function AboutPage() {
           setProfileImage(config.profileImage ?? null);
           setIntroText(typeof config.introText === "string" ? config.introText : "");
           setAboutMainContent(typeof config.aboutMainContent === "string" ? config.aboutMainContent : "");
+          setEducationBlocks(Array.isArray(config.educationBlocks) ? config.educationBlocks : []);
+          setExperienceBlocks(Array.isArray(config.experienceBlocks) ? config.experienceBlocks : []);
+          setProjectBlocks(Array.isArray(config.projectBlocks) ? config.projectBlocks : []);
           setSchoolLogos(Array.isArray(config.schoolLogos) ? config.schoolLogos : []);
           setProjectImages(Array.isArray(config.projectImages) ? config.projectImages : []);
           setCompanyLogos(Array.isArray(config.companyLogos) ? config.companyLogos : []);
@@ -169,6 +191,9 @@ export default function AboutPage() {
     profileImage?: string | null;
     introText?: string | null;
     aboutMainContent?: string | null;
+    educationBlocks?: AboutBlockEntry[];
+    experienceBlocks?: AboutBlockEntry[];
+    projectBlocks?: AboutBlockEntry[];
     schoolLogos?: SchoolLogo[];
     projectImages?: ProjectImage[];
     companyLogos?: CompanyLogo[];
@@ -198,6 +223,9 @@ export default function AboutPage() {
       if (updated.aboutMainContent !== undefined) {
         setAboutMainContent(updated.aboutMainContent ?? "");
       }
+      if (updated.educationBlocks) setEducationBlocks(updated.educationBlocks);
+      if (updated.experienceBlocks) setExperienceBlocks(updated.experienceBlocks);
+      if (updated.projectBlocks) setProjectBlocks(updated.projectBlocks);
       if (updated.schoolLogos) {
         setSchoolLogos(updated.schoolLogos);
       }
@@ -465,25 +493,110 @@ export default function AboutPage() {
             </CardContent>
           </Card>
 
-          {/* Block 3: Main content (Education, Experience, Projects) */}
-          <Card className="border-l-4 border-l-amber-500">
+          {/* Block 3a: Education — template: title, logo, school, date, content */}
+          <Card className="border-l-4 border-l-blue-500">
             <CardHeader>
               <div className="flex items-center gap-2">
-                <span className="rounded bg-slate-200 text-slate-700 text-xs font-medium px-2 py-0.5">Block 3</span>
-                <CardTitle className="text-xl">Education, Experience, Projects</CardTitle>
+                <span className="rounded bg-slate-200 text-slate-700 text-xs font-medium px-2 py-0.5">Block 3a</span>
+                <CardTitle className="text-xl">Education</CardTitle>
               </div>
-              <BlockHint>Use Markdown (e.g. ## Education, ## Experience). If empty, the site shows the default layout.</BlockHint>
+              <BlockHint>Each entry: Title (e.g. M.S. in Computer Science), Logo URL, School, Date range, Content (Markdown for bullets).</BlockHint>
             </CardHeader>
-            <CardContent className="space-y-3">
-              <Textarea
-                value={aboutMainContent}
-                onChange={(e) => setAboutMainContent(e.target.value)}
-                placeholder="## Education\n## Experience\n## Projects\n..."
-                rows={14}
-                className="resize-y font-mono text-sm"
-              />
-              <Button onClick={saveMainContent} disabled={savingIntro}>
-                {savingIntro ? "Saving..." : "Save main content"}
+            <CardContent className="space-y-6">
+              {educationBlocks.map((entry, index) => (
+                <div key={index} className="border rounded-lg p-4 space-y-3 bg-slate-50/50">
+                  <div className="flex justify-between items-center">
+                    <span className="text-sm font-medium text-slate-600">Entry {index + 1}</span>
+                    <Button variant="ghost" size="sm" onClick={() => { const u = educationBlocks.filter((_, i) => i !== index); setEducationBlocks(u); }} className="text-red-600">
+                      <Trash2 className="h-4 w-4 mr-1" /> Remove
+                    </Button>
+                  </div>
+                  <div className="grid gap-2 sm:grid-cols-2">
+                    <Input placeholder="Title (e.g. M.S. in Computer Science)" value={entry.title} onChange={(e) => { const u = [...educationBlocks]; u[index] = { ...u[index], title: e.target.value }; setEducationBlocks(u); }} />
+                    <Input placeholder="Date range (e.g. Sep 2023 - Jan 2026)" value={entry.dateRange} onChange={(e) => { const u = [...educationBlocks]; u[index] = { ...u[index], dateRange: e.target.value }; setEducationBlocks(u); }} />
+                  </div>
+                  <Input placeholder="School / Organization" value={entry.organization} onChange={(e) => { const u = [...educationBlocks]; u[index] = { ...u[index], organization: e.target.value }; setEducationBlocks(u); }} />
+                  <Input placeholder="Logo image URL (optional)" value={entry.logoUrl ?? ""} onChange={(e) => { const u = [...educationBlocks]; u[index] = { ...u[index], logoUrl: e.target.value || null }; setEducationBlocks(u); }} />
+                  <Textarea placeholder="Content (Markdown OK, e.g. **Thesis:** ..." value={entry.content} onChange={(e) => { const u = [...educationBlocks]; u[index] = { ...u[index], content: e.target.value }; setEducationBlocks(u); }} rows={4} className="resize-y text-sm" />
+                </div>
+              ))}
+              <Button variant="outline" onClick={() => setEducationBlocks([...educationBlocks, emptyBlockEntry()])}>
+                + Add Education entry
+              </Button>
+              <Button onClick={async () => { setSavingIntro(true); try { await updateConfig({ educationBlocks }); setUploadStatus({ type: "success", message: "Education saved." }); } catch { setUploadStatus({ type: "error", message: "Failed to save." }); } finally { setSavingIntro(false); }} } disabled={savingIntro}>
+                {savingIntro ? "Saving..." : "Save Education"}
+              </Button>
+            </CardContent>
+          </Card>
+
+          {/* Block 3b: Experience */}
+          <Card className="border-l-4 border-l-green-500">
+            <CardHeader>
+              <div className="flex items-center gap-2">
+                <span className="rounded bg-slate-200 text-slate-700 text-xs font-medium px-2 py-0.5">Block 3b</span>
+                <CardTitle className="text-xl">Experience</CardTitle>
+              </div>
+              <BlockHint>Each entry: Title, Logo URL, Company, Date range, Content (Markdown).</BlockHint>
+            </CardHeader>
+            <CardContent className="space-y-6">
+              {experienceBlocks.map((entry, index) => (
+                <div key={index} className="border rounded-lg p-4 space-y-3 bg-slate-50/50">
+                  <div className="flex justify-between items-center">
+                    <span className="text-sm font-medium text-slate-600">Entry {index + 1}</span>
+                    <Button variant="ghost" size="sm" onClick={() => { const u = experienceBlocks.filter((_, i) => i !== index); setExperienceBlocks(u); }} className="text-red-600">
+                      <Trash2 className="h-4 w-4 mr-1" /> Remove
+                    </Button>
+                  </div>
+                  <div className="grid gap-2 sm:grid-cols-2">
+                    <Input placeholder="Title (e.g. Research Assistant)" value={entry.title} onChange={(e) => { const u = [...experienceBlocks]; u[index] = { ...u[index], title: e.target.value }; setExperienceBlocks(u); }} />
+                    <Input placeholder="Date range" value={entry.dateRange} onChange={(e) => { const u = [...experienceBlocks]; u[index] = { ...u[index], dateRange: e.target.value }; setExperienceBlocks(u); }} />
+                  </div>
+                  <Input placeholder="Company / Organization" value={entry.organization} onChange={(e) => { const u = [...experienceBlocks]; u[index] = { ...u[index], organization: e.target.value }; setExperienceBlocks(u); }} />
+                  <Input placeholder="Logo image URL (optional)" value={entry.logoUrl ?? ""} onChange={(e) => { const u = [...experienceBlocks]; u[index] = { ...u[index], logoUrl: e.target.value || null }; setExperienceBlocks(u); }} />
+                  <Textarea placeholder="Content (Markdown)" value={entry.content} onChange={(e) => { const u = [...experienceBlocks]; u[index] = { ...u[index], content: e.target.value }; setExperienceBlocks(u); }} rows={4} className="resize-y text-sm" />
+                </div>
+              ))}
+              <Button variant="outline" onClick={() => setExperienceBlocks([...experienceBlocks, emptyBlockEntry()])}>
+                + Add Experience entry
+              </Button>
+              <Button onClick={async () => { setSavingIntro(true); try { await updateConfig({ experienceBlocks }); setUploadStatus({ type: "success", message: "Experience saved." }); } catch { setUploadStatus({ type: "error", message: "Failed to save." }); } finally { setSavingIntro(false); }} } disabled={savingIntro}>
+                {savingIntro ? "Saving..." : "Save Experience"}
+              </Button>
+            </CardContent>
+          </Card>
+
+          {/* Block 3c: Projects */}
+          <Card className="border-l-4 border-l-purple-500">
+            <CardHeader>
+              <div className="flex items-center gap-2">
+                <span className="rounded bg-slate-200 text-slate-700 text-xs font-medium px-2 py-0.5">Block 3c</span>
+                <CardTitle className="text-xl">Projects</CardTitle>
+              </div>
+              <BlockHint>Each entry: Title, Image URL, Organization, Date range, Content (Markdown).</BlockHint>
+            </CardHeader>
+            <CardContent className="space-y-6">
+              {projectBlocks.map((entry, index) => (
+                <div key={index} className="border rounded-lg p-4 space-y-3 bg-slate-50/50">
+                  <div className="flex justify-between items-center">
+                    <span className="text-sm font-medium text-slate-600">Entry {index + 1}</span>
+                    <Button variant="ghost" size="sm" onClick={() => { const u = projectBlocks.filter((_, i) => i !== index); setProjectBlocks(u); }} className="text-red-600">
+                      <Trash2 className="h-4 w-4 mr-1" /> Remove
+                    </Button>
+                  </div>
+                  <div className="grid gap-2 sm:grid-cols-2">
+                    <Input placeholder="Project title" value={entry.title} onChange={(e) => { const u = [...projectBlocks]; u[index] = { ...u[index], title: e.target.value }; setProjectBlocks(u); }} />
+                    <Input placeholder="Date range" value={entry.dateRange} onChange={(e) => { const u = [...projectBlocks]; u[index] = { ...u[index], dateRange: e.target.value }; setProjectBlocks(u); }} />
+                  </div>
+                  <Input placeholder="Organization (optional)" value={entry.organization} onChange={(e) => { const u = [...projectBlocks]; u[index] = { ...u[index], organization: e.target.value }; setProjectBlocks(u); }} />
+                  <Input placeholder="Image URL (optional)" value={entry.logoUrl ?? ""} onChange={(e) => { const u = [...projectBlocks]; u[index] = { ...u[index], logoUrl: e.target.value || null }; setProjectBlocks(u); }} />
+                  <Textarea placeholder="Content (Markdown)" value={entry.content} onChange={(e) => { const u = [...projectBlocks]; u[index] = { ...u[index], content: e.target.value }; setProjectBlocks(u); }} rows={4} className="resize-y text-sm" />
+                </div>
+              ))}
+              <Button variant="outline" onClick={() => setProjectBlocks([...projectBlocks, emptyBlockEntry()])}>
+                + Add Project entry
+              </Button>
+              <Button onClick={async () => { setSavingIntro(true); try { await updateConfig({ projectBlocks }); setUploadStatus({ type: "success", message: "Projects saved." }); } catch { setUploadStatus({ type: "error", message: "Failed to save." }); } finally { setSavingIntro(false); }} } disabled={savingIntro}>
+                {savingIntro ? "Saving..." : "Save Projects"}
               </Button>
             </CardContent>
           </Card>
