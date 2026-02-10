@@ -7,6 +7,7 @@ import { Input } from "@/components/ui/input";
 import { Upload, CheckCircle2, XCircle, Trash2, Download, FileText, Trash, ExternalLink, Info } from "lucide-react";
 import Link from "next/link";
 import { Textarea } from "@/components/ui/textarea";
+import { useToast } from "@/contexts/toast-context";
 
 interface SchoolLogo {
   school: string;
@@ -40,6 +41,7 @@ const emptyBlockEntry = (): AboutBlockEntry => ({
 });
 
 export default function AboutPage() {
+  const { toast } = useToast();
   const [profileImage, setProfileImage] = useState<string | null>(null);
   const [introText, setIntroText] = useState("");
   const [aboutMainContent, setAboutMainContent] = useState("");
@@ -172,6 +174,7 @@ export default function AboutPage() {
           type: "success",
           message: "File uploaded and saved successfully! The about page will update on next refresh.",
         });
+        toast("File uploaded and saved.", "success");
       } catch (configError) {
         // 上傳成功但配置更新失敗
         throw new Error(`Upload succeeded but failed to save config: ${configError instanceof Error ? configError.message : "Unknown error"}`);
@@ -346,11 +349,13 @@ export default function AboutPage() {
         type: "success",
         message: `Successfully cleaned up ${data.deletedCount} unused image file${data.deletedCount !== 1 ? "s" : ""}`,
       });
+      toast(`Cleaned up ${data.deletedCount} unused image(s).`, "success");
     } catch (error) {
       setUploadStatus({
         type: "error",
         message: error instanceof Error ? error.message : "Failed to cleanup",
       });
+      toast(error instanceof Error ? error.message : "Failed to cleanup", "error");
     } finally {
       setIsCleaning(false);
     }
@@ -361,8 +366,10 @@ export default function AboutPage() {
     try {
       await updateConfig({ introText: introText || null });
       setUploadStatus({ type: "success", message: "Intro text saved." });
+      toast("Intro text saved.", "success");
     } catch {
       setUploadStatus({ type: "error", message: "Failed to save intro." });
+      toast("Failed to save intro.", "error");
     } finally {
       setSavingIntro(false);
     }
@@ -373,8 +380,10 @@ export default function AboutPage() {
     try {
       await updateConfig({ aboutMainContent: aboutMainContent || null });
       setUploadStatus({ type: "success", message: "Main content saved." });
+      toast("Main content saved.", "success");
     } catch {
       setUploadStatus({ type: "error", message: "Failed to save." });
+      toast("Failed to save.", "error");
     } finally {
       setSavingIntro(false);
     }
@@ -523,7 +532,7 @@ export default function AboutPage() {
               <Button variant="outline" onClick={() => setEducationBlocks([...educationBlocks, emptyBlockEntry()])}>
                 + Add Education entry
               </Button>
-              <Button onClick={async () => { setSavingIntro(true); try { await updateConfig({ educationBlocks }); setUploadStatus({ type: "success", message: "Education saved." }); } catch { setUploadStatus({ type: "error", message: "Failed to save." }); } finally { setSavingIntro(false); }} } disabled={savingIntro}>
+              <Button onClick={async () => { setSavingIntro(true); try { await updateConfig({ educationBlocks }); setUploadStatus({ type: "success", message: "Education saved." }); toast("Education saved.", "success"); } catch { setUploadStatus({ type: "error", message: "Failed to save." }); toast("Failed to save.", "error"); } finally { setSavingIntro(false); }} } disabled={savingIntro}>
                 {savingIntro ? "Saving..." : "Save Education"}
               </Button>
             </CardContent>
@@ -559,7 +568,7 @@ export default function AboutPage() {
               <Button variant="outline" onClick={() => setExperienceBlocks([...experienceBlocks, emptyBlockEntry()])}>
                 + Add Experience entry
               </Button>
-              <Button onClick={async () => { setSavingIntro(true); try { await updateConfig({ experienceBlocks }); setUploadStatus({ type: "success", message: "Experience saved." }); } catch { setUploadStatus({ type: "error", message: "Failed to save." }); } finally { setSavingIntro(false); }} } disabled={savingIntro}>
+              <Button onClick={async () => { setSavingIntro(true); try { await updateConfig({ experienceBlocks }); setUploadStatus({ type: "success", message: "Experience saved." }); toast("Experience saved.", "success"); } catch { setUploadStatus({ type: "error", message: "Failed to save." }); toast("Failed to save.", "error"); } finally { setSavingIntro(false); }} } disabled={savingIntro}>
                 {savingIntro ? "Saving..." : "Save Experience"}
               </Button>
             </CardContent>
@@ -595,7 +604,7 @@ export default function AboutPage() {
               <Button variant="outline" onClick={() => setProjectBlocks([...projectBlocks, emptyBlockEntry()])}>
                 + Add Project entry
               </Button>
-              <Button onClick={async () => { setSavingIntro(true); try { await updateConfig({ projectBlocks }); setUploadStatus({ type: "success", message: "Projects saved." }); } catch { setUploadStatus({ type: "error", message: "Failed to save." }); } finally { setSavingIntro(false); }} } disabled={savingIntro}>
+              <Button onClick={async () => { setSavingIntro(true); try { await updateConfig({ projectBlocks }); setUploadStatus({ type: "success", message: "Projects saved." }); toast("Projects saved.", "success"); } catch { setUploadStatus({ type: "error", message: "Failed to save." }); toast("Failed to save.", "error"); } finally { setSavingIntro(false); }} } disabled={savingIntro}>
                 {savingIntro ? "Saving..." : "Save Projects"}
               </Button>
             </CardContent>

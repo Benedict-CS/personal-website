@@ -118,9 +118,8 @@ export default function NewPostPage() {
   };
 
   return (
-    <div className="flex min-h-screen items-center justify-center bg-slate-50 py-8">
-      <div className="w-full max-w-2xl">
-        <Card>
+    <div className="w-full max-w-[min(100%,1400px)] py-8">
+      <Card>
           <CardHeader>
             <CardTitle>Create New Post</CardTitle>
           </CardHeader>
@@ -271,7 +270,6 @@ export default function NewPostPage() {
             </form>
           </CardContent>
         </Card>
-      </div>
     </div>
   );
 }

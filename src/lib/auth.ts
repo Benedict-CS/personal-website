@@ -51,6 +51,12 @@ export const authOptions: NextAuthOptions = {
     maxAge: 60 * 60, // 1 hour
   },
   callbacks: {
+    async jwt({ token, user }) {
+      if (user) {
+        token.exp = Math.floor(Date.now() / 1000) + 60 * 60;
+      }
+      return token;
+    },
     async session({ session, token }) {
       if (session.user && typeof token.exp === "number") {
         (session as { expiresAt?: number }).expiresAt = token.exp;

@@ -3,6 +3,7 @@
 import { useState, useEffect } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
+import { useToast } from "@/contexts/toast-context";
 
 type Stats = {
   total: number;
@@ -32,6 +33,7 @@ function daysAgo(n: number) {
 }
 
 export default function AnalyticsPage() {
+  const { toast } = useToast();
   const [stats, setStats] = useState<Stats | null>(null);
   const [loading, setLoading] = useState(true);
   const [from, setFrom] = useState("2026-01-01");
@@ -71,6 +73,9 @@ export default function AnalyticsPage() {
 
   const handleClearBefore = async () => {
     if (!clearBefore.trim()) return;
+    if (!confirm(`確定要刪除 ${clearBefore} 之前的所有記錄？此操作無法復原。\n\nDelete all records before ${clearBefore}? This cannot be undone.`)) {
+      return;
+    }
     setClearLoading(true);
     setClearMessage(null);
     try {
@@ -87,8 +92,10 @@ export default function AnalyticsPage() {
       setClearMessage(`Deleted ${data.deleted ?? 0} record(s) before ${clearBefore}.`);
       setClearBefore("");
       setRefreshKey((k) => k + 1);
+      toast(`Deleted ${data.deleted ?? 0} record(s).`, "success");
     } catch (e) {
       setClearMessage((e as Error)?.message || "Request failed");
+      toast((e as Error)?.message || "Request failed", "error");
     } finally {
       setClearLoading(false);
     }
@@ -96,6 +103,9 @@ export default function AnalyticsPage() {
 
   const handleClearAll = async () => {
     if (!clearAllConfirm) return;
+    if (!confirm("確定要刪除所有 Analytics 記錄？此操作無法復原。\n\nAre you sure you want to delete all analytics records? This cannot be undone.")) {
+      return;
+    }
     setClearLoading(true);
     setClearMessage(null);
     try {
@@ -107,13 +117,16 @@ export default function AnalyticsPage() {
       const data = await res.json().catch(() => ({}));
       if (!res.ok) {
         setClearMessage(data.error || `Error ${res.status}`);
+        toast(data.error || `Error ${res.status}`, "error");
         return;
       }
       setClearMessage(`Deleted all: ${data.deleted ?? 0} record(s).`);
       setClearAllConfirm(false);
       setRefreshKey((k) => k + 1);
+      toast(`Deleted all: ${data.deleted ?? 0} record(s).`, "success");
     } catch (e) {
       setClearMessage((e as Error)?.message || "Request failed");
+      toast((e as Error)?.message || "Request failed", "error");
     } finally {
       setClearLoading(false);
     }
