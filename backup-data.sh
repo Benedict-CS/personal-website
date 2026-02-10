@@ -22,5 +22,8 @@ tar -czvf "$NAME.tar.gz" "$NAME"
 echo "5. 清理臨時目錄..."
 sudo rm -rf "$NAME"
 
+echo "6. 只保留最新 3 份備份，刪除更舊的..."
+ls -t backup-*.tar.gz 2>/dev/null | tail -n +4 | xargs -r rm -f
+
 echo "完成: $NAME.tar.gz"
 echo "移機時把此檔 + 專案丟到新 VM，解壓後照步驟做即可。"

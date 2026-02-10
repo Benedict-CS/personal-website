@@ -13,6 +13,7 @@ export async function GET() {
       config = await prisma.aboutConfig.create({
         data: {
           profileImage: null,
+          introText: null,
           schoolLogos: "[]",
           projectImages: "[]",
           companyLogos: "[]",
@@ -20,9 +21,14 @@ export async function GET() {
       });
     }
 
-    // 解析 JSON 字符串並返回
+    const c = config as { introText?: string | null; aboutMainContent?: string | null; educationBlocks?: string; experienceBlocks?: string; projectBlocks?: string };
     return NextResponse.json({
-      ...config,
+      profileImage: config.profileImage ?? null,
+      introText: c.introText ?? null,
+      aboutMainContent: c.aboutMainContent ?? null,
+      educationBlocks: c.educationBlocks ? JSON.parse(c.educationBlocks) : [],
+      experienceBlocks: c.experienceBlocks ? JSON.parse(c.experienceBlocks) : [],
+      projectBlocks: c.projectBlocks ? JSON.parse(c.projectBlocks) : [],
       schoolLogos: config.schoolLogos ? JSON.parse(config.schoolLogos) : [],
       projectImages: config.projectImages ? JSON.parse(config.projectImages) : [],
       companyLogos: config.companyLogos ? JSON.parse(config.companyLogos) : [],
@@ -33,8 +39,14 @@ export async function GET() {
     if (error instanceof Error && error.message.includes("does not exist")) {
       return NextResponse.json({
         profileImage: null,
+        introText: null,
+        aboutMainContent: null,
+        educationBlocks: [],
+        experienceBlocks: [],
+        projectBlocks: [],
         schoolLogos: [],
         projectImages: [],
+        companyLogos: [],
       }, { status: 200 });
     }
     return NextResponse.json(
@@ -60,15 +72,20 @@ export async function POST(request: NextRequest) {
     }
 
     const body = await request.json();
-    const { profileImage, schoolLogos, projectImages, companyLogos } = body;
+    const { profileImage, introText, aboutMainContent, educationBlocks, experienceBlocks, projectBlocks, schoolLogos, projectImages, companyLogos } = body;
 
-    // 獲取或創建配置
     let config = await prisma.aboutConfig.findFirst();
+    const cfg = config as { educationBlocks?: string; experienceBlocks?: string; projectBlocks?: string; introText?: string | null; aboutMainContent?: string | null };
 
     if (!config) {
       config = await prisma.aboutConfig.create({
         data: {
           profileImage: profileImage || null,
+          introText: introText ?? null,
+          aboutMainContent: aboutMainContent ?? null,
+          educationBlocks: educationBlocks ? JSON.stringify(educationBlocks) : "[]",
+          experienceBlocks: experienceBlocks ? JSON.stringify(experienceBlocks) : "[]",
+          projectBlocks: projectBlocks ? JSON.stringify(projectBlocks) : "[]",
           schoolLogos: schoolLogos ? JSON.stringify(schoolLogos) : "[]",
           projectImages: projectImages ? JSON.stringify(projectImages) : "[]",
           companyLogos: companyLogos ? JSON.stringify(companyLogos) : "[]",
@@ -79,6 +96,11 @@ export async function POST(request: NextRequest) {
         where: { id: config.id },
         data: {
           profileImage: profileImage !== undefined ? profileImage : config.profileImage,
+          introText: introText !== undefined ? introText : config.introText,
+          aboutMainContent: aboutMainContent !== undefined ? aboutMainContent : cfg.aboutMainContent,
+          educationBlocks: educationBlocks !== undefined ? JSON.stringify(educationBlocks) : (cfg.educationBlocks ?? "[]"),
+          experienceBlocks: experienceBlocks !== undefined ? JSON.stringify(experienceBlocks) : (cfg.experienceBlocks ?? "[]"),
+          projectBlocks: projectBlocks !== undefined ? JSON.stringify(projectBlocks) : (cfg.projectBlocks ?? "[]"),
           schoolLogos: schoolLogos !== undefined ? JSON.stringify(schoolLogos) : config.schoolLogos,
           projectImages: projectImages !== undefined ? JSON.stringify(projectImages) : config.projectImages,
           companyLogos: companyLogos !== undefined ? JSON.stringify(companyLogos) : (config.companyLogos || "[]"),
@@ -86,9 +108,14 @@ export async function POST(request: NextRequest) {
       });
     }
 
-    // 返回解析後的 JSON
+    const out = config as { introText?: string | null; aboutMainContent?: string | null; educationBlocks?: string; experienceBlocks?: string; projectBlocks?: string };
     return NextResponse.json({
-      ...config,
+      profileImage: config.profileImage ?? null,
+      introText: out.introText ?? null,
+      aboutMainContent: out.aboutMainContent ?? null,
+      educationBlocks: out.educationBlocks ? JSON.parse(out.educationBlocks) : [],
+      experienceBlocks: out.experienceBlocks ? JSON.parse(out.experienceBlocks) : [],
+      projectBlocks: out.projectBlocks ? JSON.parse(out.projectBlocks) : [],
       schoolLogos: config.schoolLogos ? JSON.parse(config.schoolLogos) : [],
       projectImages: config.projectImages ? JSON.parse(config.projectImages) : [],
       companyLogos: config.companyLogos ? JSON.parse(config.companyLogos) : [],

@@ -1,0 +1,4 @@
+-- AlterTable
+ALTER TABLE "AboutConfig" ADD COLUMN IF NOT EXISTS "educationBlocks" TEXT NOT NULL DEFAULT '[]';
+ALTER TABLE "AboutConfig" ADD COLUMN IF NOT EXISTS "experienceBlocks" TEXT NOT NULL DEFAULT '[]';
+ALTER TABLE "AboutConfig" ADD COLUMN IF NOT EXISTS "projectBlocks" TEXT NOT NULL DEFAULT '[]';

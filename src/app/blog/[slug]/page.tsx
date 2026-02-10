@@ -183,7 +183,7 @@ export default async function BlogPostPage({
         prevHref={prevPost ? `/blog/${prevPost.slug}` : null}
         nextHref={nextPost ? `/blog/${nextPost.slug}` : null}
       />
-      <div className="container mx-auto max-w-7xl px-4 py-12">
+      <div className="container mx-auto max-w-[90rem] px-4 py-12">
       <div className="grid grid-cols-1 gap-10 lg:grid-cols-[1fr_250px]">
         {/* 主要內容區 */}
         <div className="min-w-0">

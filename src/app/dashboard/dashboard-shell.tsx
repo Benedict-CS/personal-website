@@ -70,7 +70,7 @@ export function DashboardShell({ children }: { children: React.ReactNode }) {
         className={`${mainMargin} flex-1 min-h-0 bg-slate-50 transition-[margin] duration-200 ease-out`}
         style={{ ["--dashboard-sidebar-width" as string]: collapsed ? "4rem" : "16rem" }}
       >
-        <div className="p-8">
+        <div className="p-4 sm:p-6 lg:p-8 dashboard-content-in min-w-0">
           {children}
         </div>
       </main>

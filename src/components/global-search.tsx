@@ -114,8 +114,7 @@ export function GlobalSearch() {
         onClick={() => setOpen(!open)}
         aria-label="Search site"
       >
-        <Search className="h-4 w-4 sm:mr-1" />
-        <span className="hidden sm:inline">Search</span>
+        <Search className="h-4 w-4" />
       </Button>
 
       {open && (

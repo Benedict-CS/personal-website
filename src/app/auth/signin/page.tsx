@@ -1,6 +1,7 @@
 "use client";
 
 import { useState } from "react";
+import { useRouter } from "next/navigation";
 import { signIn } from "next-auth/react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -12,20 +13,36 @@ import {
 } from "@/components/ui/card";
 
 export default function SignInPage() {
+  const router = useRouter();
   const [password, setPassword] = useState("");
   const [isLoading, setIsLoading] = useState(false);
+  const [error, setError] = useState<string | null>(null);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+    setError(null);
     setIsLoading(true);
 
     try {
-      await signIn("credentials", {
-        password: password,
+      const result = await signIn("credentials", {
+        password,
         callbackUrl: "/dashboard",
+        redirect: false,
       });
-    } catch (error) {
-      console.error("Sign in error:", error);
+      if (result?.ok && result?.url) {
+        router.push(result.url);
+        return;
+      }
+      const err = result?.error;
+      if (err?.startsWith?.("TooManyAttempts")) {
+        const minutes = err.includes(":") ? err.split(":")[1] : "1";
+        setError(`Too many failed attempts. Please try again in ${minutes} minute(s).`);
+      } else {
+        setError("Wrong password. Please try again.");
+      }
+    } catch (err) {
+      console.error("Sign in error:", err);
+      setError("Something went wrong. Please try again.");
     } finally {
       setIsLoading(false);
     }
@@ -33,18 +50,26 @@ export default function SignInPage() {
 
   return (
     <div className="flex h-screen items-center justify-center bg-slate-50">
-      <Card className="w-full max-w-md">
+      <Card className="w-full max-w-md animate-in fade-in duration-300">
         <CardHeader>
           <CardTitle className="text-slate-900">Admin Login</CardTitle>
         </CardHeader>
         <CardContent>
           <form onSubmit={handleSubmit} className="space-y-4">
+            {error && (
+              <p className="rounded-md bg-red-50 px-3 py-2 text-sm font-medium text-red-800" role="alert">
+                {error}
+              </p>
+            )}
             <div className="space-y-2">
               <Input
                 type="password"
                 placeholder="Enter password"
                 value={password}
-                onChange={(e) => setPassword(e.target.value)}
+                onChange={(e) => {
+                  setError(null);
+                  setPassword(e.target.value);
+                }}
                 required
               />
             </div>

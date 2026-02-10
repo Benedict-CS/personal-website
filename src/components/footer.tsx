@@ -12,7 +12,7 @@ export function Footer() {
           <div className="flex items-center gap-6 text-slate-600">
             <Link
               href={`mailto:${siteConfig.links.email}`}
-              className="hover:text-slate-900 transition-colors"
+              className="hover:text-slate-900 transition-colors duration-200"
               title="Email"
             >
               <Mail className="h-5 w-5" />
@@ -21,7 +21,7 @@ export function Footer() {
               href={siteConfig.links.linkedin}
               target="_blank"
               rel="noopener noreferrer"
-              className="hover:text-slate-900 transition-colors"
+              className="hover:text-slate-900 transition-colors duration-200"
               title="LinkedIn"
             >
               <Linkedin className="h-5 w-5" />
@@ -30,7 +30,7 @@ export function Footer() {
               href={siteConfig.links.github}
               target="_blank"
               rel="noopener noreferrer"
-              className="hover:text-slate-900 transition-colors"
+              className="hover:text-slate-900 transition-colors duration-200"
               title="GitHub"
             >
               <Github className="h-5 w-5" />
@@ -39,7 +39,7 @@ export function Footer() {
               href="/feed.xml"
               target="_blank"
               rel="noopener noreferrer"
-              className="flex items-center gap-1.5 hover:text-slate-900 transition-colors"
+              className="flex items-center gap-1.5 hover:text-slate-900 transition-colors duration-200"
               title="Subscribe via RSS"
             >
               <Rss className="h-5 w-5" />

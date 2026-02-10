@@ -4,8 +4,9 @@ import { useState, useEffect } from "react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
-import { Upload, CheckCircle2, XCircle, Trash2, Plus, Download, FileText, Trash } from "lucide-react";
+import { Upload, CheckCircle2, XCircle, Trash2, Download, FileText, Trash, ExternalLink, Info } from "lucide-react";
 import Link from "next/link";
+import { Textarea } from "@/components/ui/textarea";
 
 interface SchoolLogo {
   school: string;
@@ -24,6 +25,8 @@ interface CompanyLogo {
 
 export default function AboutPage() {
   const [profileImage, setProfileImage] = useState<string | null>(null);
+  const [introText, setIntroText] = useState("");
+  const [aboutMainContent, setAboutMainContent] = useState("");
   const [schoolLogos, setSchoolLogos] = useState<SchoolLogo[]>([]);
   const [projectImages, setProjectImages] = useState<ProjectImage[]>([]);
   const [companyLogos, setCompanyLogos] = useState<CompanyLogo[]>([]);
@@ -32,6 +35,7 @@ export default function AboutPage() {
   const [cvFile, setCvFile] = useState<File | null>(null);
   const [cvExists, setCvExists] = useState(false);
   const [isCleaning, setIsCleaning] = useState(false);
+  const [savingIntro, setSavingIntro] = useState(false);
   const [uploadStatus, setUploadStatus] = useState<{
     type: "success" | "error" | null;
     message: string;
@@ -44,10 +48,12 @@ export default function AboutPage() {
         const response = await fetch("/api/about/config");
         if (response.ok) {
           const config = await response.json();
-          setProfileImage(config.profileImage);
-          setSchoolLogos(config.schoolLogos || []);
-          setProjectImages(config.projectImages || []);
-          setCompanyLogos(config.companyLogos || []);
+          setProfileImage(config.profileImage ?? null);
+          setIntroText(typeof config.introText === "string" ? config.introText : "");
+          setAboutMainContent(typeof config.aboutMainContent === "string" ? config.aboutMainContent : "");
+          setSchoolLogos(Array.isArray(config.schoolLogos) ? config.schoolLogos : []);
+          setProjectImages(Array.isArray(config.projectImages) ? config.projectImages : []);
+          setCompanyLogos(Array.isArray(config.companyLogos) ? config.companyLogos : []);
         }
       } catch (error) {
         console.error("Error loading config:", error);
@@ -161,6 +167,8 @@ export default function AboutPage() {
   // 更新配置
   const updateConfig = async (updates: {
     profileImage?: string | null;
+    introText?: string | null;
+    aboutMainContent?: string | null;
     schoolLogos?: SchoolLogo[];
     projectImages?: ProjectImage[];
     companyLogos?: CompanyLogo[];
@@ -183,6 +191,12 @@ export default function AboutPage() {
       // 確保本地狀態與服務器同步
       if (updated.profileImage !== undefined) {
         setProfileImage(updated.profileImage);
+      }
+      if (updated.introText !== undefined) {
+        setIntroText(updated.introText ?? "");
+      }
+      if (updated.aboutMainContent !== undefined) {
+        setAboutMainContent(updated.aboutMainContent ?? "");
       }
       if (updated.schoolLogos) {
         setSchoolLogos(updated.schoolLogos);
@@ -314,333 +328,66 @@ export default function AboutPage() {
     }
   };
 
-  if (isLoading) {
-    return <div>Loading...</div>;
-  }
+  const saveIntro = async () => {
+    setSavingIntro(true);
+    try {
+      await updateConfig({ introText: introText || null });
+      setUploadStatus({ type: "success", message: "Intro text saved." });
+    } catch {
+      setUploadStatus({ type: "error", message: "Failed to save intro." });
+    } finally {
+      setSavingIntro(false);
+    }
+  };
+
+  const saveMainContent = async () => {
+    setSavingIntro(true);
+    try {
+      await updateConfig({ aboutMainContent: aboutMainContent || null });
+      setUploadStatus({ type: "success", message: "Main content saved." });
+    } catch {
+      setUploadStatus({ type: "error", message: "Failed to save." });
+    } finally {
+      setSavingIntro(false);
+    }
+  };
+
+  const BlockHint = ({ children }: { children: React.ReactNode }) => (
+    <p className="text-sm text-slate-500 flex items-center gap-1.5 mt-1">
+      <Info className="h-4 w-4 shrink-0" />
+      {children}
+    </p>
+  );
 
   return (
     <div className="space-y-6">
-      <div className="flex items-center justify-between">
-        <h2 className="text-3xl font-bold text-slate-900">Manage About Page</h2>
-        <Button
-          variant="outline"
-          onClick={handleCleanup}
-          disabled={isCleaning}
-          className="gap-2"
-        >
-          <Trash className="h-4 w-4" />
-          {isCleaning ? "Cleaning..." : "Clean Up Unused Images"}
-        </Button>
+      <div className="flex flex-wrap items-center justify-between gap-3">
+        <h2 className="text-3xl font-bold text-slate-900">Edit About Page</h2>
+        <div className="flex items-center gap-2">
+          <Link href="/about" target="_blank" prefetch={false}>
+            <Button variant="outline" className="gap-2">
+              <ExternalLink className="h-4 w-4" />
+              View on site
+            </Button>
+          </Link>
+          {!isLoading && (
+            <Button
+              variant="outline"
+              onClick={handleCleanup}
+              disabled={isCleaning}
+              className="gap-2"
+            >
+              <Trash className="h-4 w-4" />
+              {isCleaning ? "Cleaning..." : "Clean up images"}
+            </Button>
+          )}
+        </div>
       </div>
 
-      {/* CV Upload */}
-      <Card>
-        <CardHeader>
-          <CardTitle>CV (Resume)</CardTitle>
-        </CardHeader>
-        <CardContent className="space-y-4">
-          <div className="space-y-2">
-            <label className="text-sm font-medium text-slate-700">
-              Select PDF File
-            </label>
-            <Input
-              id="cv-file"
-              type="file"
-              accept=".pdf,application/pdf"
-              onChange={(e) => {
-                const file = e.target.files?.[0];
-                if (file) {
-                  if (file.type !== "application/pdf") {
-                    setUploadStatus({
-                      type: "error",
-                      message: "Please select a PDF file",
-                    });
-                    return;
-                  }
-                  setCvFile(file);
-                  setUploadStatus({ type: null, message: "" });
-                }
-              }}
-              className="cursor-pointer"
-            />
-            {cvFile && (
-              <p className="text-sm text-slate-600">
-                Selected: {cvFile.name} ({(cvFile.size / 1024).toFixed(2)} KB)
-              </p>
-            )}
-          </div>
+      <p className="text-slate-600 text-sm">
+        Blocks below match the order on the public About page. Edit each block and save.
+      </p>
 
-          <Button
-            type="button"
-            onClick={handleCVUpload}
-            disabled={!cvFile || isUploading}
-            className="w-full sm:w-auto"
-          >
-            <Upload className="mr-2 h-4 w-4" />
-            {isUploading ? "Uploading..." : "Upload CV"}
-          </Button>
-
-          {cvExists && (
-            <div className="flex gap-3 pt-2">
-              <Link href="/cv.pdf" target="_blank">
-                <Button variant="outline" className="gap-2">
-                  <FileText className="h-4 w-4" />
-                  Preview CV
-                </Button>
-              </Link>
-              <Link href="/cv.pdf" download="Benedict_Tiong_CV.pdf">
-                <Button variant="outline" className="gap-2">
-                  <Download className="h-4 w-4" />
-                  Download CV
-                </Button>
-              </Link>
-            </div>
-          )}
-        </CardContent>
-      </Card>
-
-      {/* Profile Image */}
-      <Card>
-        <CardHeader>
-          <CardTitle>Profile Photo</CardTitle>
-        </CardHeader>
-        <CardContent className="space-y-4">
-          {profileImage && (
-            <div className="relative w-32 h-32 rounded-full overflow-hidden border-2 border-slate-300">
-              {/* eslint-disable-next-line @next/next/no-img-element */}
-              <img
-                src={profileImage}
-                alt="Profile"
-                className="w-full h-full object-cover"
-              />
-            </div>
-          )}
-          <Input
-            type="file"
-            accept="image/*"
-            onChange={async (e) => {
-              const file = e.target.files?.[0];
-              if (file) {
-                await handleUpload("profile", file);
-              }
-              // 重置 file input
-              if (e.target) {
-                (e.target as HTMLInputElement).value = "";
-              }
-            }}
-            className="cursor-pointer"
-          />
-        </CardContent>
-      </Card>
-
-      {/* School Logos */}
-      <Card>
-        <CardHeader>
-          <CardTitle>School Logos</CardTitle>
-        </CardHeader>
-        <CardContent className="space-y-4">
-          <div className="space-y-2">
-            <Input
-              type="text"
-              placeholder="School name (e.g., NYCU)"
-              id="school-name"
-              className="max-w-xs"
-            />
-            <Input
-              type="file"
-              accept="image/*"
-              onChange={async (e) => {
-                const file = e.target.files?.[0];
-                const schoolNameInput = document.getElementById("school-name") as HTMLInputElement;
-                const schoolName = schoolNameInput?.value?.trim();
-                if (file && schoolName) {
-                  await handleUpload("school", file, schoolName);
-                  if (schoolNameInput) {
-                    schoolNameInput.value = "";
-                  }
-                } else if (file && !schoolName) {
-                  setUploadStatus({
-                    type: "error",
-                    message: "Please enter a school name first",
-                  });
-                }
-                // 重置 file input
-                if (e.target) {
-                  (e.target as HTMLInputElement).value = "";
-                }
-              }}
-              className="cursor-pointer"
-            />
-            <p className="text-xs text-slate-500">
-              💡 Tip: Uploading a logo with the same school name will automatically overwrite the old one
-            </p>
-          </div>
-          <div className="grid grid-cols-2 md:grid-cols-3 gap-4">
-            {schoolLogos.map((logo, index) => (
-              <div key={index} className="relative border rounded-lg p-4">
-                <div className="relative w-full h-24 mb-2">
-                  {/* eslint-disable-next-line @next/next/no-img-element */}
-                  <img
-                    src={logo.logo}
-                    alt={logo.school}
-                    className="w-full h-full object-contain"
-                  />
-                </div>
-                <p className="text-sm font-medium text-center mb-2">{logo.school}</p>
-                <Button
-                  variant="destructive"
-                  size="sm"
-                  onClick={() => handleDeleteSchoolLogo(index)}
-                  className="w-full"
-                >
-                  <Trash2 className="h-4 w-4 mr-1" />
-                  Delete
-                </Button>
-              </div>
-            ))}
-          </div>
-        </CardContent>
-      </Card>
-
-      {/* Project Images */}
-      <Card>
-        <CardHeader>
-          <CardTitle>Project Images</CardTitle>
-        </CardHeader>
-        <CardContent className="space-y-4">
-          <div className="space-y-2">
-            <Input
-              type="text"
-              placeholder="Project name (e.g., CI/CD Framework)"
-              id="project-name"
-              className="max-w-xs"
-            />
-            <Input
-              type="file"
-              accept="image/*"
-              onChange={async (e) => {
-                const file = e.target.files?.[0];
-                const projectNameInput = document.getElementById("project-name") as HTMLInputElement;
-                const projectName = projectNameInput?.value?.trim();
-                if (file && projectName) {
-                  await handleUpload("project", file, projectName);
-                  if (projectNameInput) {
-                    projectNameInput.value = "";
-                  }
-                } else if (file && !projectName) {
-                  setUploadStatus({
-                    type: "error",
-                    message: "Please enter a project name first",
-                  });
-                }
-                // 重置 file input
-                if (e.target) {
-                  (e.target as HTMLInputElement).value = "";
-                }
-              }}
-              className="cursor-pointer"
-            />
-            <p className="text-xs text-slate-500">
-              💡 Tip: Uploading an image with the same project name will automatically overwrite the old one
-            </p>
-          </div>
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-            {projectImages.map((project, index) => (
-              <div key={index} className="relative border rounded-lg p-4">
-                <div className="relative w-full h-48 mb-2">
-                  {/* eslint-disable-next-line @next/next/no-img-element */}
-                  <img
-                    src={project.image}
-                    alt={project.project}
-                    className="w-full h-full object-cover rounded"
-                  />
-                </div>
-                <p className="text-sm font-medium mb-2">{project.project}</p>
-                <Button
-                  variant="destructive"
-                  size="sm"
-                  onClick={() => handleDeleteProjectImage(index)}
-                  className="w-full"
-                >
-                  <Trash2 className="h-4 w-4 mr-1" />
-                  Delete
-                </Button>
-              </div>
-            ))}
-          </div>
-        </CardContent>
-      </Card>
-
-      {/* Company Logos */}
-      <Card>
-        <CardHeader>
-          <CardTitle>Company Logos</CardTitle>
-        </CardHeader>
-        <CardContent className="space-y-4">
-          <div className="space-y-2">
-            <Input
-              type="text"
-              placeholder="Company name (e.g., NYCU, Makalot, MUST, NTUT)"
-              id="company-name"
-              className="max-w-xs"
-            />
-            <Input
-              type="file"
-              accept="image/*"
-              onChange={async (e) => {
-                const file = e.target.files?.[0];
-                const companyNameInput = document.getElementById("company-name") as HTMLInputElement;
-                const companyName = companyNameInput?.value?.trim();
-                if (file && companyName) {
-                  await handleUpload("company", file, companyName);
-                  if (companyNameInput) {
-                    companyNameInput.value = "";
-                  }
-                } else if (file && !companyName) {
-                  setUploadStatus({
-                    type: "error",
-                    message: "Please enter a company name first",
-                  });
-                }
-                // 重置 file input
-                if (e.target) {
-                  (e.target as HTMLInputElement).value = "";
-                }
-              }}
-              className="cursor-pointer"
-            />
-            <p className="text-xs text-slate-500">
-              💡 Tip: Uploading a logo with the same company name will automatically overwrite the old one
-            </p>
-          </div>
-          <div className="grid grid-cols-2 md:grid-cols-3 gap-4">
-            {companyLogos.map((logo, index) => (
-              <div key={index} className="relative border rounded-lg p-4">
-                <div className="relative w-full h-24 mb-2">
-                  {/* eslint-disable-next-line @next/next/no-img-element */}
-                  <img
-                    src={logo.logo}
-                    alt={logo.company}
-                    className="w-full h-full object-contain"
-                  />
-                </div>
-                <p className="text-sm font-medium text-center mb-2">{logo.company}</p>
-                <Button
-                  variant="destructive"
-                  size="sm"
-                  onClick={() => handleDeleteCompanyLogo(index)}
-                  className="w-full"
-                >
-                  <Trash2 className="h-4 w-4 mr-1" />
-                  Delete
-                </Button>
-              </div>
-            ))}
-          </div>
-        </CardContent>
-      </Card>
-
-      {/* Status Message */}
       {uploadStatus.type && (
         <div
           className={`flex items-center gap-2 p-3 rounded-lg ${
@@ -650,11 +397,312 @@ export default function AboutPage() {
           }`}
         >
           {uploadStatus.type === "success" ? (
-            <CheckCircle2 className="h-5 w-5" />
+            <CheckCircle2 className="h-5 w-5 shrink-0" />
           ) : (
-            <XCircle className="h-5 w-5" />
+            <XCircle className="h-5 w-5 shrink-0" />
           )}
           <span className="text-sm font-medium">{uploadStatus.message}</span>
+        </div>
+      )}
+
+      {isLoading ? (
+        <p className="text-slate-500">Loading...</p>
+      ) : (
+        <div className="space-y-8">
+          {/* Block 1: Intro — same as site top */}
+          <Card className="border-l-4 border-l-blue-500">
+            <CardHeader>
+              <div className="flex items-center gap-2">
+                <span className="rounded bg-slate-200 text-slate-700 text-xs font-medium px-2 py-0.5">Block 1</span>
+                <CardTitle className="text-xl">Intro</CardTitle>
+              </div>
+              <BlockHint>First thing visitors see. Leave empty to hide this block on the site.</BlockHint>
+            </CardHeader>
+            <CardContent className="space-y-3">
+              <Textarea
+                value={introText}
+                onChange={(e) => setIntroText(e.target.value)}
+                placeholder="Short intro or bio..."
+                rows={4}
+                className="resize-y"
+              />
+              <Button onClick={saveIntro} disabled={savingIntro}>
+                {savingIntro ? "Saving..." : "Save Intro"}
+              </Button>
+            </CardContent>
+          </Card>
+
+          {/* Block 2: Profile photo — same as site profile card */}
+          <Card className="border-l-4 border-l-emerald-500">
+            <CardHeader>
+              <div className="flex items-center gap-2">
+                <span className="rounded bg-slate-200 text-slate-700 text-xs font-medium px-2 py-0.5">Block 2</span>
+                <CardTitle className="text-xl">Profile photo</CardTitle>
+              </div>
+              <BlockHint>Shown in the profile card next to your name on the About page.</BlockHint>
+            </CardHeader>
+            <CardContent className="space-y-4">
+              {profileImage && (
+                <div className="relative w-32 h-32 rounded-full overflow-hidden border-2 border-slate-300 ring-2 ring-slate-100">
+                  {/* eslint-disable-next-line @next/next/no-img-element */}
+                  <img
+                    src={profileImage}
+                    alt="Profile"
+                    className="w-full h-full object-cover"
+                  />
+                </div>
+              )}
+              <Input
+                type="file"
+                accept="image/*"
+                onChange={async (e) => {
+                  const file = e.target.files?.[0];
+                  if (file) await handleUpload("profile", file);
+                  if (e.target) (e.target as HTMLInputElement).value = "";
+                }}
+                className="cursor-pointer max-w-xs"
+              />
+            </CardContent>
+          </Card>
+
+          {/* Block 3: Main content (Education, Experience, Projects) */}
+          <Card className="border-l-4 border-l-amber-500">
+            <CardHeader>
+              <div className="flex items-center gap-2">
+                <span className="rounded bg-slate-200 text-slate-700 text-xs font-medium px-2 py-0.5">Block 3</span>
+                <CardTitle className="text-xl">Education, Experience, Projects</CardTitle>
+              </div>
+              <BlockHint>Use Markdown (e.g. ## Education, ## Experience). If empty, the site shows the default layout.</BlockHint>
+            </CardHeader>
+            <CardContent className="space-y-3">
+              <Textarea
+                value={aboutMainContent}
+                onChange={(e) => setAboutMainContent(e.target.value)}
+                placeholder="## Education\n## Experience\n## Projects\n..."
+                rows={14}
+                className="resize-y font-mono text-sm"
+              />
+              <Button onClick={saveMainContent} disabled={savingIntro}>
+                {savingIntro ? "Saving..." : "Save main content"}
+              </Button>
+            </CardContent>
+          </Card>
+
+          {/* Block 4: CV download */}
+          <Card className="border-l-4 border-l-violet-500">
+            <CardHeader>
+              <div className="flex items-center gap-2">
+                <span className="rounded bg-slate-200 text-slate-700 text-xs font-medium px-2 py-0.5">Block 4</span>
+                <CardTitle className="text-xl">Download CV (PDF)</CardTitle>
+              </div>
+              <BlockHint>PDF file for the &quot;Download CV&quot; button on the About page.</BlockHint>
+            </CardHeader>
+            <CardContent className="space-y-4">
+              <div className="space-y-2">
+                <Input
+                  id="cv-file"
+                  type="file"
+                  accept=".pdf,application/pdf"
+                  onChange={(e) => {
+                    const file = e.target.files?.[0];
+                    if (file) {
+                      if (file.type !== "application/pdf") {
+                        setUploadStatus({ type: "error", message: "Please select a PDF file" });
+                        return;
+                      }
+                      setCvFile(file);
+                      setUploadStatus({ type: null, message: "" });
+                    }
+                  }}
+                  className="cursor-pointer max-w-xs"
+                />
+                {cvFile && (
+                  <p className="text-sm text-slate-600">Selected: {cvFile.name} ({(cvFile.size / 1024).toFixed(2)} KB)</p>
+                )}
+              </div>
+              <Button
+                type="button"
+                onClick={handleCVUpload}
+                disabled={!cvFile || isUploading}
+                className="gap-2"
+              >
+                <Upload className="h-4 w-4" />
+                {isUploading ? "Uploading..." : "Upload CV"}
+              </Button>
+              {cvExists && (
+                <div className="flex flex-wrap gap-2 pt-2 border-t border-slate-200">
+                  <Link href="/api/cv/download" target="_blank" prefetch={false}>
+                    <Button variant="outline" size="sm" className="gap-2">
+                      <FileText className="h-4 w-4" />
+                      Preview
+                    </Button>
+                  </Link>
+                  <Link href="/api/cv/download" download="Benedict_Tiong_CV.pdf" prefetch={false}>
+                    <Button variant="outline" size="sm" className="gap-2">
+                      <Download className="h-4 w-4" />
+                      Download
+                    </Button>
+                  </Link>
+                </div>
+              )}
+            </CardContent>
+          </Card>
+
+          {/* Block 5: School logos (Education section on site) */}
+          <Card className="border-l-4 border-l-sky-500">
+            <CardHeader>
+              <div className="flex items-center gap-2">
+                <span className="rounded bg-slate-200 text-slate-700 text-xs font-medium px-2 py-0.5">Block 5</span>
+                <CardTitle className="text-xl">School logos</CardTitle>
+              </div>
+              <BlockHint>Logos shown next to schools in the Education section (e.g. NYCU, NTUT). Same name = overwrite.</BlockHint>
+            </CardHeader>
+            <CardContent className="space-y-4">
+              <div className="flex flex-wrap items-end gap-2">
+                <Input
+                  type="text"
+                  placeholder="School name (e.g. NYCU)"
+                  id="school-name"
+                  className="max-w-[200px]"
+                />
+                <Input
+                  type="file"
+                  accept="image/*"
+                  onChange={async (e) => {
+                    const file = e.target.files?.[0];
+                    const name = (document.getElementById("school-name") as HTMLInputElement)?.value?.trim();
+                    if (file && name) {
+                      await handleUpload("school", file, name);
+                      (document.getElementById("school-name") as HTMLInputElement).value = "";
+                    } else if (file) {
+                      setUploadStatus({ type: "error", message: "Enter school name first" });
+                    }
+                    if (e.target) (e.target as HTMLInputElement).value = "";
+                  }}
+                  className="cursor-pointer max-w-xs"
+                />
+              </div>
+              <div className="grid grid-cols-2 md:grid-cols-3 gap-4">
+                {schoolLogos.map((logo, index) => (
+                  <div key={index} className="border rounded-lg p-4">
+                    <div className="relative w-full h-24 mb-2">
+                      {/* eslint-disable-next-line @next/next/no-img-element */}
+                      <img src={logo.logo} alt={logo.school} className="w-full h-full object-contain" />
+                    </div>
+                    <p className="text-sm font-medium text-center mb-2">{logo.school}</p>
+                    <Button variant="destructive" size="sm" onClick={() => handleDeleteSchoolLogo(index)} className="w-full">
+                      <Trash2 className="h-4 w-4 mr-1" />
+                      Delete
+                    </Button>
+                  </div>
+                ))}
+              </div>
+            </CardContent>
+          </Card>
+
+          {/* Block 6: Project images (Projects section on site) */}
+          <Card className="border-l-4 border-l-purple-500">
+            <CardHeader>
+              <div className="flex items-center gap-2">
+                <span className="rounded bg-slate-200 text-slate-700 text-xs font-medium px-2 py-0.5">Block 6</span>
+                <CardTitle className="text-xl">Project images</CardTitle>
+              </div>
+              <BlockHint>Images for the Projects section. Same project name = overwrite.</BlockHint>
+            </CardHeader>
+            <CardContent className="space-y-4">
+              <div className="flex flex-wrap items-end gap-2">
+                <Input
+                  type="text"
+                  placeholder="Project name (e.g. CI/CD Framework)"
+                  id="project-name"
+                  className="max-w-[200px]"
+                />
+                <Input
+                  type="file"
+                  accept="image/*"
+                  onChange={async (e) => {
+                    const file = e.target.files?.[0];
+                    const name = (document.getElementById("project-name") as HTMLInputElement)?.value?.trim();
+                    if (file && name) {
+                      await handleUpload("project", file, name);
+                      (document.getElementById("project-name") as HTMLInputElement).value = "";
+                    } else if (file) {
+                      setUploadStatus({ type: "error", message: "Enter project name first" });
+                    }
+                    if (e.target) (e.target as HTMLInputElement).value = "";
+                  }}
+                  className="cursor-pointer max-w-xs"
+                />
+              </div>
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                {projectImages.map((project, index) => (
+                  <div key={index} className="border rounded-lg p-4">
+                    <div className="relative w-full h-48 mb-2">
+                      {/* eslint-disable-next-line @next/next/no-img-element */}
+                      <img src={project.image} alt={project.project} className="w-full h-full object-cover rounded" />
+                    </div>
+                    <p className="text-sm font-medium mb-2">{project.project}</p>
+                    <Button variant="destructive" size="sm" onClick={() => handleDeleteProjectImage(index)} className="w-full">
+                      <Trash2 className="h-4 w-4 mr-1" />
+                      Delete
+                    </Button>
+                  </div>
+                ))}
+              </div>
+            </CardContent>
+          </Card>
+
+          {/* Block 7: Company logos (Experience section on site) */}
+          <Card className="border-l-4 border-l-rose-500">
+            <CardHeader>
+              <div className="flex items-center gap-2">
+                <span className="rounded bg-slate-200 text-slate-700 text-xs font-medium px-2 py-0.5">Block 7</span>
+                <CardTitle className="text-xl">Company logos</CardTitle>
+              </div>
+              <BlockHint>Logos for the Experience section (e.g. NYCU, Makalot). Same name = overwrite.</BlockHint>
+            </CardHeader>
+            <CardContent className="space-y-4">
+              <div className="flex flex-wrap items-end gap-2">
+                <Input
+                  type="text"
+                  placeholder="Company name (e.g. NYCU, Makalot)"
+                  id="company-name"
+                  className="max-w-[200px]"
+                />
+                <Input
+                  type="file"
+                  accept="image/*"
+                  onChange={async (e) => {
+                    const file = e.target.files?.[0];
+                    const name = (document.getElementById("company-name") as HTMLInputElement)?.value?.trim();
+                    if (file && name) {
+                      await handleUpload("company", file, name);
+                      (document.getElementById("company-name") as HTMLInputElement).value = "";
+                    } else if (file) {
+                      setUploadStatus({ type: "error", message: "Enter company name first" });
+                    }
+                    if (e.target) (e.target as HTMLInputElement).value = "";
+                  }}
+                  className="cursor-pointer max-w-xs"
+                />
+              </div>
+              <div className="grid grid-cols-2 md:grid-cols-3 gap-4">
+                {companyLogos.map((logo, index) => (
+                  <div key={index} className="border rounded-lg p-4">
+                    <div className="relative w-full h-24 mb-2">
+                      {/* eslint-disable-next-line @next/next/no-img-element */}
+                      <img src={logo.logo} alt={logo.company} className="w-full h-full object-contain" />
+                    </div>
+                    <p className="text-sm font-medium text-center mb-2">{logo.company}</p>
+                    <Button variant="destructive" size="sm" onClick={() => handleDeleteCompanyLogo(index)} className="w-full">
+                      <Trash2 className="h-4 w-4 mr-1" />
+                      Delete
+                    </Button>
+                  </div>
+                ))}
+              </div>
+            </CardContent>
+          </Card>
         </div>
       )}
     </div>

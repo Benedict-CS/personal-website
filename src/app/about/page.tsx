@@ -7,6 +7,7 @@ import { Mail, Linkedin, Github, GraduationCap, Briefcase, Award, Trophy, Downlo
 import { siteConfig } from "@/config/site";
 import { prisma } from "@/lib/prisma";
 import { AboutHighlightScroll } from "@/components/about-highlight-scroll";
+import { MarkdownRenderer } from "@/components/markdown-renderer";
 import { Suspense } from "react";
 
 // 啟用動態渲染並設置重新驗證時間（30秒）
@@ -47,13 +48,18 @@ async function getAboutConfig() {
     if (!config) {
       return {
         profileImage: null,
+        introText: null,
+        aboutMainContent: null,
         schoolLogos: [] as SchoolLogo[],
         projectImages: [] as ProjectImage[],
         companyLogos: [] as CompanyLogo[],
       };
     }
+    const c = config as { introText?: string | null; aboutMainContent?: string | null };
     return {
       profileImage: config.profileImage,
+      introText: c.introText ?? null,
+      aboutMainContent: c.aboutMainContent ?? null,
       schoolLogos: config.schoolLogos ? (JSON.parse(config.schoolLogos) as SchoolLogo[]) : [],
       projectImages: config.projectImages ? (JSON.parse(config.projectImages) as ProjectImage[]) : [],
       companyLogos: config.companyLogos ? (JSON.parse(config.companyLogos) as CompanyLogo[]) : [],
@@ -62,6 +68,8 @@ async function getAboutConfig() {
     console.error("Error loading about config:", error);
     return {
       profileImage: null,
+      introText: null,
+      aboutMainContent: null,
       schoolLogos: [] as SchoolLogo[],
       projectImages: [] as ProjectImage[],
       companyLogos: [] as CompanyLogo[],
@@ -138,7 +146,7 @@ function getCompanyLogo(companyLogos: CompanyLogo[], companyName: string): strin
 
 export default async function AboutPage() {
   const config = await getAboutConfig();
-  const { profileImage, schoolLogos, projectImages, companyLogos } = config;
+  const { profileImage, introText, aboutMainContent, schoolLogos, projectImages, companyLogos } = config;
 
   // 調試：輸出配置信息（僅在開發環境）
   if (process.env.NODE_ENV === "development") {
@@ -227,6 +235,13 @@ export default async function AboutPage() {
         <AboutHighlightScroll />
       </Suspense>
       <div className="space-y-8" data-about-content>
+        {introText && introText.trim() && (
+          <Card className="shadow-lg">
+            <CardContent className="pt-6 pb-6">
+              <p className="text-slate-700 whitespace-pre-wrap leading-relaxed">{introText}</p>
+            </CardContent>
+          </Card>
+        )}
         {/* Profile Header */}
         <Card className="shadow-lg">
           <CardContent className="pt-8 pb-8">
@@ -266,7 +281,7 @@ export default async function AboutPage() {
                 </Link>
               </div>
               <div className="flex justify-center gap-3">
-                <Link href="/cv.pdf" download="Benedict_Tiong_CV.pdf">
+                <Link href="/api/cv/download" download="Benedict_Tiong_CV.pdf" prefetch={false}>
                   <Button variant="default" className="gap-2 shadow-md">
                     <Download className="h-4 w-4" />
                     Download CV (PDF)
@@ -277,7 +292,18 @@ export default async function AboutPage() {
           </CardContent>
         </Card>
 
-        {/* Education */}
+        {/* Main content from dashboard (Markdown) - when set, replaces default Education/Projects/Experience */}
+        {aboutMainContent && aboutMainContent.trim() && (
+          <Card className="shadow-lg">
+            <CardContent className="pt-6 pb-6 prose prose-slate max-w-none">
+              <MarkdownRenderer content={aboutMainContent} />
+            </CardContent>
+          </Card>
+        )}
+
+        {/* Education - only when main content is not set */}
+        {(!aboutMainContent || !aboutMainContent.trim()) && (
+        <>
         <Card className="shadow-lg">
           <CardHeader>
             <CardTitle className="flex items-center gap-2 text-slate-900">
@@ -726,6 +752,8 @@ export default async function AboutPage() {
             </div>
           </CardContent>
         </Card>
+        </>
+        )}
       </div>
     </div>
   );

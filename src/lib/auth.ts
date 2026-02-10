@@ -1,5 +1,14 @@
 import CredentialsProvider from "next-auth/providers/credentials";
 import type { NextAuthOptions } from "next-auth";
+import {
+  getClientIP,
+  assertNotLocked,
+  recordFailedAttempt,
+  clearAttempts,
+} from "@/lib/login-rate-limit";
+import { isPrivateUrl } from "@/lib/is-private-url";
+
+type ReqLike = { headers?: Headers | Record<string, string | string[] | undefined> };
 
 export const authOptions: NextAuthOptions = {
   providers: [
@@ -11,14 +20,16 @@ export const authOptions: NextAuthOptions = {
           type: "password",
         },
       },
-      async authorize(credentials) {
+      async authorize(credentials, req: ReqLike) {
         if (!credentials?.password) {
           return null;
         }
 
-        // 檢查密碼是否與環境變數中的 ADMIN_PASSWORD 相符
+        const ip = getClientIP(req?.headers);
+        assertNotLocked(ip);
+
         if (credentials.password === process.env.ADMIN_PASSWORD) {
-          // 密碼正確，回傳使用者物件
+          clearAttempts(ip);
           return {
             id: "1",
             name: "Benedict",
@@ -26,7 +37,7 @@ export const authOptions: NextAuthOptions = {
           };
         }
 
-        // 密碼錯誤
+        recordFailedAttempt(ip);
         return null;
       },
     }),
@@ -37,11 +48,21 @@ export const authOptions: NextAuthOptions = {
   },
   session: {
     strategy: "jwt",
+    maxAge: 60 * 60, // 1 hour
   },
   callbacks: {
+    async session({ session, token }) {
+      if (session.user && typeof token.exp === "number") {
+        (session as { expiresAt?: number }).expiresAt = token.exp;
+      }
+      return session;
+    },
     async redirect({ url, baseUrl }) {
-      // Redirect 以 NEXTAUTH_URL 為準。新 VM 測試時 .env 設 NEXTAUTH_URL=http://新VM的IP:3000 即可避免 520。
-      const siteUrl = process.env.NEXTAUTH_URL || baseUrl || "http://localhost:3000";
+      // Use NEXTAUTH_URL unless it is a private/local URL (causes browser "local network" prompt).
+      let siteUrl = process.env.NEXTAUTH_URL || baseUrl || "http://localhost:3000";
+      if (isPrivateUrl(siteUrl)) {
+        siteUrl = baseUrl;
+      }
       const origin = siteUrl.replace(/\/$/, "");
       if (url.startsWith("/")) {
         return `${origin}${url}`;

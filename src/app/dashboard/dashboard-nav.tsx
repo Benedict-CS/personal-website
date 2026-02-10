@@ -2,12 +2,13 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { FileText, Image as ImageIcon, Tags, User, StickyNote } from "lucide-react";
+import { FileText, Image as ImageIcon, Tags, StickyNote, Layout, BarChart3 } from "lucide-react";
 
 const navItems = [
+  { href: "/dashboard/analytics", label: "Analytics", icon: BarChart3 },
   { href: "/dashboard/posts", label: "Posts", icon: FileText },
   { href: "/dashboard/notes", label: "Notes", icon: StickyNote },
-  { href: "/dashboard/about", label: "About & CV", icon: User },
+  { href: "/dashboard/content", label: "Content", icon: Layout },
   { href: "/dashboard/media", label: "Media", icon: ImageIcon },
   { href: "/dashboard/tags", label: "Tags", icon: Tags },
 ] as const;

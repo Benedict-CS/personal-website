@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
@@ -9,9 +9,27 @@ import { Mail, Linkedin, Github } from "lucide-react";
 import Link from "next/link";
 import { siteConfig } from "@/config/site";
 
+const defaultIntro = "I'm open to new opportunities, collaborations, or a chat about tech.";
+const defaultFormNote = "Use the form below, or email me directly at";
+const formNoteSuffix = "Messages from the form go to the same address.";
+
 export default function ContactPage() {
   const [status, setStatus] = useState<"idle" | "sending" | "success" | "error">("idle");
   const [errorMessage, setErrorMessage] = useState("");
+  const [intro, setIntro] = useState(defaultIntro);
+  const [formNote, setFormNote] = useState(defaultFormNote);
+
+  useEffect(() => {
+    fetch("/api/site-content?page=contact")
+      .then((r) => r.json())
+      .then((data) => {
+        if (data && typeof data === "object") {
+          if (data.intro?.trim()) setIntro(data.intro);
+          if (data.formNote?.trim()) setFormNote(data.formNote);
+        }
+      })
+      .catch(() => {});
+  }, []);
 
   async function handleSubmit(e: React.FormEvent<HTMLFormElement>) {
     e.preventDefault();
@@ -52,14 +70,14 @@ export default function ContactPage() {
         <div className="mx-auto max-w-2xl">
           <h1 className="mb-4 text-4xl font-bold text-slate-900">Contact</h1>
           <p className="mb-2 text-slate-600">
-            I&apos;m open to new opportunities, collaborations, or a chat about tech.
+            {intro}
           </p>
           <p className="mb-10 text-sm text-slate-500">
-            Use the form below, or email me directly at{" "}
+            {formNote}{" "}
             <a href={`mailto:${siteConfig.links.email}`} className="text-slate-700 underline hover:text-slate-900">
               {siteConfig.links.email}
             </a>
-            . Messages from the form go to the same address.
+            . {formNoteSuffix}
           </p>
 
           <div className="mb-10 flex flex-wrap gap-3">

@@ -4,6 +4,7 @@ import "./globals.css";
 import { Navbar } from "@/components/navbar";
 import { Footer } from "@/components/footer";
 import { Providers } from "@/components/providers";
+import { AnalyticsBeacon } from "@/components/analytics-beacon";
 import { siteConfig } from "@/config/site";
 
 const geistSans = Geist({
@@ -74,6 +75,10 @@ export const metadata: Metadata = {
   },
 };
 
+export const viewport = {
+  themeColor: "#f8fafc",
+};
+
 export default function RootLayout({
   children,
 }: Readonly<{
@@ -85,6 +90,7 @@ export default function RootLayout({
         className={`${geistSans.variable} ${geistMono.variable} antialiased flex min-h-screen flex-col`}
       >
         <Providers>
+          <AnalyticsBeacon />
           <a
             href="#main-content"
             className="skip-link"

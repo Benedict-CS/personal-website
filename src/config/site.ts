@@ -1,9 +1,16 @@
+import { isPrivateUrl } from "@/lib/is-private-url";
+
+const defaultSiteUrl = "https://benedict.winlab.tw";
+const envSiteUrl = process.env.NEXT_PUBLIC_SITE_URL;
+// Avoid private/local URLs so the browser does not ask for "local network" permission.
+const siteUrl = envSiteUrl && !isPrivateUrl(envSiteUrl) ? envSiteUrl : defaultSiteUrl;
+
 export const siteConfig = {
   name: "Benedict Tiong",
   title: "Benedict Tiong - Network Administrator & Full Stack Developer",
   description:
     "Network Administrator | Full Stack Developer | Open Source Enthusiast. Master's student in Computer Science at NYCU, specializing in Cloud Native Technologies, CI/CD, and Network Infrastructure.",
-  url: process.env.NEXT_PUBLIC_SITE_URL || "https://benedict.winlab.tw",
+  url: siteUrl,
   ogImage: "/images/og.png",
   links: {
     github: "https://github.com/Benedict-CS",

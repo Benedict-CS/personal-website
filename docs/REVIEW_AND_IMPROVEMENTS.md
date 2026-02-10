@@ -8,7 +8,7 @@
 
 ### 1.1 Fixed in this pass
 
-- **docker-compose.yml**: Removed hardcoded secrets. All of the following now use environment variables (no defaults for secrets):
+- **docker-compose.yml**: Removed hardcoded secrets. All of the following now use environmen                                           t variables (no defaults for secrets):
   - `POSTGRES_PASSWORD` (was `password`)
   - `RUSTFS_ROOT_PASSWORD` (was `rustfsadmin`)
   - `DATABASE_URL` (was `ben:password@postgres:5432/blog`)

@@ -22,20 +22,47 @@ export const metadata: Metadata = {
   },
 };
 
+type HomeContent = {
+  heroTitle?: string;
+  heroSubtitle?: string;
+  skills?: string[];
+  ctaPrimaryText?: string;
+  ctaPrimaryHref?: string;
+  ctaSecondaryText?: string;
+  ctaSecondaryHref?: string;
+  ctaContactText?: string;
+  ctaContactHref?: string;
+};
+
+const defaultHomeContent: HomeContent = {
+  heroTitle: "Hi, I'm Benedict.",
+  heroSubtitle: "Network Administrator | Full Stack Developer | Open Source Enthusiast",
+  skills: ["Next.js", "TypeScript", "Proxmox", "Linux", "Networking", "Docker"],
+  ctaPrimaryText: "Read My Blog",
+  ctaPrimaryHref: "/blog",
+  ctaSecondaryText: "View Projects",
+  ctaSecondaryHref: "/about",
+  ctaContactText: "Get in Touch",
+  ctaContactHref: "/contact",
+};
+
 export default async function Home() {
-  const latestPosts = await prisma.post.findMany({
-    where: {
-      published: true,
-    },
-    include: {
-      tags: true,
-    },
-    orderBy: [
-      { pinned: "desc" },
-      { createdAt: "desc" },
-    ],
-    take: 3,
-  });
+  const [latestPosts, homeRow] = await Promise.all([
+    prisma.post.findMany({
+      where: { published: true },
+      include: { tags: true },
+      orderBy: [{ pinned: "desc" }, { createdAt: "desc" }],
+      take: 3,
+    }),
+    prisma.sitePageContent.findUnique({ where: { page: "home" } }),
+  ]);
+
+  const homeContent: HomeContent = homeRow?.content
+    ? { ...defaultHomeContent, ...(homeRow.content as object) }
+    : defaultHomeContent;
+  const skills = Array.isArray(homeContent.skills) && homeContent.skills.length > 0
+    ? homeContent.skills
+    : defaultHomeContent.skills!;
 
   const formatDate = (date: Date) => {
     return new Date(date).toLocaleDateString("en-US", {
@@ -53,40 +80,31 @@ export default async function Home() {
     return plainText.substring(0, maxLength).trim() + "...";
   };
 
-  const skills = [
-    "Next.js",
-    "TypeScript",
-    "Proxmox",
-    "Linux",
-    "Networking",
-    "Docker",
-  ];
-
   return (
     <div className="min-h-screen bg-gradient-to-br from-slate-50 via-white to-slate-100">
       {/* Hero Section */}
       <section className="container mx-auto max-w-6xl px-4 py-20 md:py-32">
         <div className="mx-auto max-w-4xl text-center">
           <h1 className="mb-6 text-5xl font-bold tracking-tight text-slate-900 md:text-6xl lg:text-7xl">
-            Hi, I&apos;m Benedict.
+            {homeContent.heroTitle ?? defaultHomeContent.heroTitle}
           </h1>
           <p className="mb-8 text-xl text-slate-600 md:text-2xl">
-            Network Administrator | Full Stack Developer | Open Source Enthusiast
+            {homeContent.heroSubtitle ?? defaultHomeContent.heroSubtitle}
           </p>
           <div className="flex flex-col items-center justify-center gap-4 sm:flex-row">
-            <Link href="/blog">
-              <Button size="lg" className="w-full sm:w-auto">
-                Read My Blog
+            <Link href={homeContent.ctaPrimaryHref ?? "/blog"}>
+              <Button size="lg" className="w-full sm:w-auto btn-interactive">
+                {homeContent.ctaPrimaryText ?? defaultHomeContent.ctaPrimaryText}
               </Button>
             </Link>
-            <Link href="/about">
-              <Button size="lg" variant="outline" className="w-full sm:w-auto">
-                View Projects
+            <Link href={homeContent.ctaSecondaryHref ?? "/about"}>
+              <Button size="lg" variant="outline" className="w-full sm:w-auto btn-interactive">
+                {homeContent.ctaSecondaryText ?? defaultHomeContent.ctaSecondaryText}
               </Button>
             </Link>
-            <Link href="/contact">
-              <Button size="lg" variant="outline" className="w-full sm:w-auto">
-                Get in Touch
+            <Link href={homeContent.ctaContactHref ?? "/contact"}>
+              <Button size="lg" variant="outline" className="w-full sm:w-auto btn-interactive">
+                {homeContent.ctaContactText ?? defaultHomeContent.ctaContactText}
               </Button>
             </Link>
           </div>
@@ -107,7 +125,7 @@ export default async function Home() {
             <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-3">
               {latestPosts.map((post) => (
                 <Link key={post.id} href={`/blog/${post.slug}`}>
-                  <Card className="h-full transition-all hover:shadow-lg hover:scale-105">
+                  <Card className="h-full card-interactive hover:scale-[1.02]">
                     <CardHeader className="gap-3">
                       <CardTitle className="line-clamp-2 text-slate-900 leading-relaxed flex items-start gap-1.5">
                         {post.pinned && (

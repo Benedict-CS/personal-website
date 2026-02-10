@@ -61,8 +61,8 @@ export default async function PostsPage({ searchParams }: PostsPageProps) {
           <p className="text-slate-500">No posts found</p>
         </div>
       ) : (
-        <div className="rounded-lg border border-slate-200 bg-white">
-          <Table>
+        <div className="rounded-lg border border-slate-200 bg-white overflow-x-auto">
+          <Table className="min-w-[600px]">
             <TableHeader>
               <TableRow>
                 <TableHead>Title</TableHead>

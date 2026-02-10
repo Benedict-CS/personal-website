@@ -53,13 +53,42 @@ model PostVersion {
 }
 
 model AboutConfig {
-  id          String   @id @default(uuid())
-  profileImage String? // Profile photo URL
-  schoolLogos String   @default("[]") // JSON array: [{school: "NYCU", logo: "url"}, ...]
-  projectImages String @default("[]") // JSON array: [{project: "project-name", image: "url"}, ...]
-  companyLogos String  @default("[]") // JSON array: [{company: "Company Name", logo: "url"}, ...]
-  createdAt   DateTime @default(now())
-  updatedAt   DateTime @updatedAt
+  id            String   @id @default(uuid())
+  profileImage  String?  // Profile photo URL
+  introText        String?  // Optional intro/bio at top of About page
+  aboutMainContent  String?  // Legacy: one markdown; use educationBlocks/experienceBlocks/projectBlocks instead
+  educationBlocks   String   @default("[]") // [{title, logoUrl?, organization, dateRange, content}]
+  experienceBlocks  String   @default("[]")
+  projectBlocks     String   @default("[]")
+  schoolLogos       String   @default("[]") // JSON array: [{school: "NYCU", logo: "url"}, ...]
+  projectImages String   @default("[]") // JSON array: [{project: "project-name", image: "url"}, ...]
+  companyLogos  String   @default("[]") // JSON array: [{company: "Company Name", logo: "url"}, ...]
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
 
   @@unique([id])
+}
+
+// Editable content for Home and Contact (and optional About intro is in AboutConfig)
+model SitePageContent {
+  id        String   @id @default(uuid())
+  page      String   @unique // "home" | "contact"
+  content   Json     // page-specific fields
+  updatedAt DateTime @updatedAt
+}
+
+// Analytics: page views for dashboard stats (exclude own IP via ANALYTICS_EXCLUDED_IPS)
+model PageView {
+  id             String   @id @default(uuid())
+  path           String
+  ip             String
+  country        String?  // ISO country code from GeoIP
+  city           String?  // City from GeoIP (when available)
+  durationSeconds Int?    // time on page (set when user leaves)
+  createdAt      DateTime @default(now())
+
+  @@index([path])
+  @@index([createdAt])
+  @@index([ip])
+  @@index([country])
 }

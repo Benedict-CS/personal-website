@@ -1,0 +1,13 @@
+# Personal website: daily at 0:00
+# Run: crontab -e and paste the lines below (adjust PROJECT_DIR to your repo path).
+
+PROJECT_DIR=/home/ben/personal-website
+
+# Backup DB + files, keep latest 3 backups
+0 0 * * * cd "$PROJECT_DIR" && ./backup-data.sh >> "$PROJECT_DIR/logs/backup.log" 2>&1
+
+# Optional: auto-commit (date as message) and push
+# 0 0 * * * cd "$PROJECT_DIR" && git add -A && (git diff --staged --quiet || git commit -m "$(date +%Y-%m-%d)") && git push >> "$PROJECT_DIR/logs/git-push.log" 2>&1
+
+# Clean build (optional: heavy, run weekly if needed)
+# 0 0 * * 0 cd "$PROJECT_DIR" && ./clean-build.sh >> "$PROJECT_DIR/logs/clean-build.log" 2>&1

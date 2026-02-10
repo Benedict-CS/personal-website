@@ -165,13 +165,13 @@ export default function CVPage() {
               A CV is currently available. You can preview or download it below.
             </p>
             <div className="flex gap-3">
-              <Link href="/cv.pdf" target="_blank">
+              <Link href="/api/cv/download" target="_blank" prefetch={false}>
                 <Button variant="outline" className="gap-2">
                   <FileText className="h-4 w-4" />
                   Preview CV
                 </Button>
               </Link>
-              <Link href="/cv.pdf" download="Benedict_Tiong_CV.pdf">
+              <Link href="/api/cv/download" download="Benedict_Tiong_CV.pdf" prefetch={false}>
                 <Button variant="outline" className="gap-2">
                   <Download className="h-4 w-4" />
                   Download CV

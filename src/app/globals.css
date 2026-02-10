@@ -137,6 +137,38 @@
   to { opacity: 1; }
 }
 
+/* Reusable transitions for cards and buttons */
+.card-interactive {
+  @apply transition-all duration-200 ease-out;
+}
+.card-interactive:hover {
+  @apply shadow-md;
+}
+.btn-interactive {
+  @apply transition-[transform,opacity,color] duration-150 ease-out;
+}
+.btn-interactive:hover {
+  @apply opacity-90;
+}
+.btn-interactive:active {
+  @apply scale-[0.98];
+}
+.dashboard-content-in {
+  animation: dashboardContentIn 0.25s ease-out;
+}
+@keyframes dashboardContentIn {
+  from { opacity: 0; transform: translateY(4px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+/* Consistent section spacing for public pages */
+.section-spacing {
+  @apply py-16 md:py-24;
+}
+.container-narrow {
+  @apply container mx-auto max-w-6xl px-4 sm:px-6 lg:px-8;
+}
+
 /* Search panel slide/fade in */
 .search-panel-in {
   animation: searchPanelIn 0.2s ease-out;

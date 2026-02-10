@@ -2,7 +2,7 @@ import { redirect } from "next/navigation";
 
 export const dynamic = "force-dynamic";
 
-// Redirect dashboard root to posts page
+// Redirect dashboard root to analytics
 export default function DashboardPage() {
-  redirect("/dashboard/posts");
+  redirect("/dashboard/analytics");
 }
