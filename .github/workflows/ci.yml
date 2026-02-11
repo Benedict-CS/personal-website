@@ -5,7 +5,7 @@ name: CI - Build and Test (Optional)
 
 on:
   pull_request:
-    branches: [main]
+    branches: [test]
   workflow_dispatch: # 只允許手動觸發，不會自動運行
 
 jobs:

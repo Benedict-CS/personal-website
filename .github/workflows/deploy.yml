@@ -6,7 +6,7 @@ name: CD - Deploy to server
 
 on:
   push:
-    branches: [main]
+    branches: [test]
   workflow_dispatch:
 
 jobs:
@@ -47,6 +47,7 @@ jobs:
           host: ${{ secrets.DEPLOY_HOST }}
           username: ${{ secrets.DEPLOY_USER }}
           key: ${{ secrets.SSH_PRIVATE_KEY }}
+          command_timeout: 20m
           script: |
             set -e
             DEPLOY_PATH="${{ secrets.DEPLOY_PATH }}"
