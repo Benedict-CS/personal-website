@@ -1,6 +1,7 @@
 "use client";
 
 import { useState } from "react";
+import Link from "next/link";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Loader2, CheckCircle2, XCircle, AlertCircle } from "lucide-react";
@@ -53,7 +54,13 @@ export default function TagsPage() {
   };
 
   return (
-    <div className="container mx-auto max-w-4xl px-4 py-8">
+    <div className="container mx-auto max-w-4xl px-4 py-8 space-y-6">
+      <p className="text-sm text-slate-600">
+        Tags are created when you add them to posts.{" "}
+        <Link href="/dashboard/posts" className="font-medium text-slate-900 hover:underline">
+          Go to Posts
+        </Link>
+      </p>
       <Card>
         <CardHeader>
           <CardTitle>Tag Management - Clean Up Quotes</CardTitle>

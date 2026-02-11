@@ -9,20 +9,21 @@ datasource db {
 }
 
 model Post {
-  id          String        @id @default(uuid())
-  title       String
-  slug        String        @unique
-  content     String
-  description String?       // Short abstract/summary for card display (not shown in article body)
-  published   Boolean       @default(false)
-  pinned      Boolean       @default(false)
-  category    String?       // Category path, e.g. "LeetCode/Array", "System Design"
-  order       Int           @default(0) // Order within category for manual sorting
-  createdAt   DateTime      @default(now())
-  updatedAt   DateTime      @updatedAt
-  tags        Tag[]
-  versions    PostVersion[]
-  
+  id           String        @id @default(uuid())
+  title        String
+  slug         String        @unique
+  content      String
+  description  String?       // Short abstract/summary for card display (not shown in article body)
+  published    Boolean       @default(false)
+  pinned       Boolean       @default(false)
+  category     String?       // Category path, e.g. "LeetCode/Array", "System Design"
+  order        Int           @default(0) // Order within category for manual sorting
+  previewToken String?       @unique // Secret token for read-only draft preview link
+  createdAt    DateTime      @default(now())
+  updatedAt    DateTime      @updatedAt
+  tags         Tag[]
+  versions     PostVersion[]
+
   @@index([category, order])
   @@index([category, createdAt])
 }

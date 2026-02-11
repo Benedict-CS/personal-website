@@ -1,5 +1,7 @@
 # 部署指南 (Deployment Guide)
 
+**自動部署（CI/CD）**：push 到 `main` 可自動部署到伺服器，設定方式見 [docs/CI_CD.md](CI_CD.md)。
+
 ## 架構概覽
 
 ```

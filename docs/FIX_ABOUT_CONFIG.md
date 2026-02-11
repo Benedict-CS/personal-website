@@ -28,7 +28,7 @@ sudo docker compose exec -T postgres psql -U ben -d blog < prisma/migrations/202
 
 ### 3. 檢查
 
-1. 訪問 `/dashboard/about` 應該可以正常載入
+1. 訪問 `/dashboard/content/about` 應該可以正常載入
 2. 上傳圖片應該可以正常工作
 3. 訪問 `/about` 應該可以正常顯示圖片
 

@@ -2,51 +2,75 @@ import Link from "next/link";
 import { Suspense } from "react";
 import { prisma } from "@/lib/prisma";
 import { Button } from "@/components/ui/button";
-import {
-  Table,
-  TableBody,
-  TableCell,
-  TableHead,
-  TableHeader,
-  TableRow,
-} from "@/components/ui/table";
 import { PostsFilterTabs } from "./posts-filter";
+import { PostsSearch } from "./posts-search";
+import { PostsTableClient } from "./posts-table-client";
 
 export const dynamic = "force-dynamic";
 
+export const metadata = { title: "Posts" };
+
 type PostsPageProps = {
-  searchParams: Promise<{ status?: string }>;
+  searchParams: Promise<{ status?: string; sort?: string; order?: string; q?: string }>;
 };
 
+const SORT_KEYS = ["updatedAt", "createdAt", "title"] as const;
+const ORDER_KEYS = ["asc", "desc"] as const;
+
 export default async function PostsPage({ searchParams }: PostsPageProps) {
-  const { status } = await searchParams;
+  const { status, sort: sortParam, order: orderParam, q } = await searchParams;
   const statusFilter = status === "published" || status === "draft" ? status : null;
+  const search = typeof q === "string" ? q.trim() : "";
+  const sort = SORT_KEYS.includes(sortParam as (typeof SORT_KEYS)[number])
+    ? (sortParam as (typeof SORT_KEYS)[number])
+    : "updatedAt";
+  const order = ORDER_KEYS.includes(orderParam as (typeof ORDER_KEYS)[number])
+    ? (orderParam as (typeof ORDER_KEYS)[number])
+    : "desc";
+
+  const orderBy =
+    sort === "createdAt"
+      ? { createdAt: order }
+      : sort === "title"
+        ? { title: order }
+        : { updatedAt: order };
+
+  const where = {
+    ...(statusFilter ? { published: statusFilter === "published" } : {}),
+    ...(search
+      ? {
+          OR: [
+            { title: { contains: search, mode: "insensitive" as const } },
+            { slug: { contains: search, mode: "insensitive" as const } },
+          ],
+        }
+      : {}),
+  };
 
   const posts = await prisma.post.findMany({
-    where: statusFilter
-      ? { published: statusFilter === "published" }
-      : undefined,
-    include: {
-      tags: true,
-    },
-    orderBy: {
-      updatedAt: "desc",
-    },
+    where,
+    include: { tags: true },
+    orderBy,
   });
 
-  const formatDate = (date: Date) => {
-    return new Date(date).toLocaleDateString("en-US", {
-      year: "numeric",
-      month: "short",
-      day: "numeric",
-    });
-  };
+  const serialized = posts.map((p) => ({
+    id: p.id,
+    title: p.title,
+    slug: p.slug,
+    published: p.published,
+    createdAt: p.createdAt.toISOString(),
+    updatedAt: p.updatedAt.toISOString(),
+    tags: p.tags.map((t) => ({ name: t.name, slug: t.slug })),
+  }));
 
   return (
     <div className="space-y-6">
       <div className="flex flex-wrap items-center justify-between gap-4">
         <h2 className="text-3xl font-bold text-slate-900">All Posts</h2>
         <div className="flex items-center gap-4">
+          <Suspense fallback={<div className="h-9 w-56 rounded bg-slate-100" />}>
+            <PostsSearch defaultValue={search} />
+          </Suspense>
           <Suspense fallback={<div className="h-8 w-24 rounded bg-slate-100" />}>
             <PostsFilterTabs />
           </Suspense>
@@ -58,51 +82,23 @@ export default async function PostsPage({ searchParams }: PostsPageProps) {
 
       {posts.length === 0 ? (
         <div className="rounded-lg border border-slate-200 bg-white p-12 text-center">
-          <p className="text-slate-500">No posts found</p>
+          {search ? (
+            <>
+              <p className="mb-2 text-slate-600">No posts match your search.</p>
+              <p className="mb-6 text-sm text-slate-500">Try a different title or slug, or clear the search.</p>
+            </>
+          ) : (
+            <>
+              <p className="mb-2 text-slate-600">No posts yet.</p>
+              <p className="mb-6 text-sm text-slate-500">Create your first post to get started.</p>
+              <Link href="/dashboard/posts/new">
+                <Button>Create New Post</Button>
+              </Link>
+            </>
+          )}
         </div>
       ) : (
-        <div className="rounded-lg border border-slate-200 bg-white overflow-x-auto">
-          <Table className="min-w-[600px]">
-            <TableHeader>
-              <TableRow>
-                <TableHead>Title</TableHead>
-                <TableHead>Published Status</TableHead>
-                <TableHead>Published Date</TableHead>
-                <TableHead>Last Edited</TableHead>
-                <TableHead className="text-right">Actions</TableHead>
-              </TableRow>
-            </TableHeader>
-            <TableBody>
-              {posts.map((post) => (
-                <TableRow key={post.id}>
-                  <TableCell className="font-medium">{post.title}</TableCell>
-                  <TableCell>
-                    {post.published ? (
-                      <span className="inline-flex items-center rounded-full bg-green-100 px-2.5 py-0.5 text-xs font-medium text-green-800">
-                        Published
-                      </span>
-                    ) : (
-                      <span className="inline-flex items-center rounded-full bg-slate-100 px-2.5 py-0.5 text-xs font-medium text-slate-800">
-                        Draft
-                      </span>
-                    )}
-                  </TableCell>
-                  <TableCell>{formatDate(post.createdAt)}</TableCell>
-                  <TableCell className="text-xs text-slate-500">
-                    {formatDate(post.updatedAt)}
-                  </TableCell>
-                  <TableCell className="text-right">
-                    <Link href={`/dashboard/posts/${post.id}`}>
-                      <Button variant="ghost" size="sm">
-                        Edit
-                      </Button>
-                    </Link>
-                  </TableCell>
-                </TableRow>
-              ))}
-            </TableBody>
-          </Table>
-        </div>
+        <PostsTableClient posts={serialized} sort={sort} order={order} />
       )}
     </div>
   );

@@ -1,8 +1,11 @@
 "use client";
 
 import { useState, useEffect } from "react";
+import Link from "next/link";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
+import { Input } from "@/components/ui/input";
+import { ConfirmDialog } from "@/components/ui/confirm-dialog";
 import { Trash2, Image as ImageIcon, Loader2 } from "lucide-react";
 import Image from "next/image";
 
@@ -17,8 +20,10 @@ interface MediaFile {
 
 export default function MediaPage() {
   const [files, setFiles] = useState<MediaFile[]>([]);
+  const [search, setSearch] = useState("");
   const [isLoading, setIsLoading] = useState(true);
   const [isCleaning, setIsCleaning] = useState(false);
+  const [showCleanupConfirm, setShowCleanupConfirm] = useState(false);
   const [deleteStatus, setDeleteStatus] = useState<{
     show: boolean;
     message: string;
@@ -54,12 +59,8 @@ export default function MediaPage() {
     fetchMediaFiles();
   }, []);
 
-  // 清理未使用的圖片
   const handleCleanup = async () => {
-    if (!confirm("Are you sure you want to clean up all unused images? This action cannot be undone.")) {
-      return;
-    }
-
+    setShowCleanupConfirm(false);
     try {
       setIsCleaning(true);
       const response = await fetch("/api/media/cleanup", {
@@ -108,39 +109,57 @@ export default function MediaPage() {
     return Math.round(bytes / Math.pow(k, i) * 100) / 100 + " " + sizes[i];
   };
 
-  // 格式化日期
-  const formatDate = (dateString: string) => {
-    return new Date(dateString).toLocaleDateString("zh-TW", {
-      year: "numeric",
-      month: "short",
-      day: "numeric",
-      hour: "2-digit",
-      minute: "2-digit",
+  const formatDate = (dateString: string) =>
+    new Date(dateString).toLocaleString("en-GB", {
+      dateStyle: "short",
+      timeStyle: "short",
     });
-  };
+
+  const filteredFiles = search.trim()
+    ? files.filter((f) => f.name.toLowerCase().includes(search.trim().toLowerCase()))
+    : files;
 
   return (
     <div className="space-y-6">
-      <div className="flex items-center justify-between">
-        <h2 className="text-3xl font-bold text-slate-900">Media Management</h2>
-        <Button
-          onClick={handleCleanup}
-          disabled={isCleaning}
-          variant="destructive"
-          className="gap-2"
-        >
-          {isCleaning ? (
-            <>
-              <Loader2 className="h-4 w-4 animate-spin" />
-              Cleaning...
-            </>
-          ) : (
-            <>
-              <Trash2 className="h-4 w-4" />
-              Clean Unused Images
-            </>
-          )}
-        </Button>
+      <ConfirmDialog
+        open={showCleanupConfirm}
+        onClose={() => setShowCleanupConfirm(false)}
+        title="Clean unused images"
+        description="Remove all images that are not referenced in any post or content. This cannot be undone."
+        confirmLabel="Clean up"
+        variant="danger"
+        loading={isCleaning}
+        onConfirm={handleCleanup}
+      />
+      <div className="flex flex-wrap items-center justify-between gap-4">
+        <h2 className="text-3xl font-bold text-slate-900">Media</h2>
+        <div className="flex items-center gap-2">
+          <Input
+            type="text"
+            placeholder="Search by filename..."
+            value={search}
+            onChange={(e) => setSearch(e.target.value)}
+            className="max-w-[200px]"
+          />
+          <Button
+            onClick={() => setShowCleanupConfirm(true)}
+            disabled={isCleaning}
+            variant="destructive"
+            className="gap-2"
+          >
+            {isCleaning ? (
+              <>
+                <Loader2 className="h-4 w-4 animate-spin" />
+                Cleaning...
+              </>
+            ) : (
+              <>
+                <Trash2 className="h-4 w-4" />
+                Clean Unused Images
+              </>
+            )}
+          </Button>
+        </div>
       </div>
 
       {/* Toast 提示 */}
@@ -157,19 +176,42 @@ export default function MediaPage() {
       )}
 
       {isLoading ? (
-        <div className="flex items-center justify-center py-12">
-          <Loader2 className="h-8 w-8 animate-spin text-slate-400" />
+        <div className="grid grid-cols-2 gap-4 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 animate-pulse">
+          {[1, 2, 3, 4, 5, 6].map((i) => (
+            <Card key={i} className="overflow-hidden">
+              <div className="aspect-square w-full bg-slate-200" />
+              <CardContent className="p-3">
+                <div className="h-4 w-3/4 rounded bg-slate-200" />
+                <div className="mt-2 h-3 w-16 rounded bg-slate-100" />
+                <div className="mt-2 h-3 w-24 rounded bg-slate-100" />
+              </CardContent>
+            </Card>
+          ))}
         </div>
       ) : files.length === 0 ? (
         <Card>
           <CardContent className="py-12 text-center">
             <ImageIcon className="mx-auto h-12 w-12 text-slate-400" />
-            <p className="mt-4 text-slate-500">No media files found</p>
+            <p className="mt-4 font-medium text-slate-700">No media files yet</p>
+            <p className="mt-2 text-sm text-slate-500 max-w-md mx-auto">
+              Upload images when editing a post (Upload Image or Insert from Media), or add images to your content—they will appear here.
+            </p>
+            <Link href="/dashboard/posts/new" className="mt-6 inline-block">
+              <Button>Create New Post</Button>
+            </Link>
           </CardContent>
         </Card>
       ) : (
-        <div className="grid grid-cols-2 gap-4 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5">
-          {files.map((file) => (
+        <>
+          {search.trim() && (
+            <p className="text-sm text-slate-600">
+              {filteredFiles.length === 0
+                ? "No files match your search."
+                : `Showing ${filteredFiles.length} of ${files.length} files.`}
+            </p>
+          )}
+          <div className="grid grid-cols-2 gap-4 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5">
+          {filteredFiles.map((file) => (
             <Card key={file.name} className="overflow-hidden">
               <div className="relative aspect-square w-full bg-slate-100">
                 <Image
@@ -193,7 +235,8 @@ export default function MediaPage() {
               </CardContent>
             </Card>
           ))}
-        </div>
+          </div>
+        </>
       )}
     </div>
   );

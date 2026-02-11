@@ -76,7 +76,16 @@ export function Navbar() {
                   </a>
                 </>
               )}
-              <Button variant="outline" size="sm" className="text-slate-700 text-xs sm:text-sm btn-interactive" onClick={() => signOut({ callbackUrl: "/" })}>
+              <Button
+                variant="outline"
+                size="sm"
+                className="text-slate-700 text-xs sm:text-sm btn-interactive"
+                onClick={() => {
+                  signOut({ redirect: false }).then(() => {
+                    window.location.href = "/";
+                  });
+                }}
+              >
                 Sign Out
               </Button>
             </>
@@ -108,7 +117,17 @@ export function Navbar() {
                     </Button>
                   </a>
                 )}
-                <Button variant="outline" size="sm" className="w-full justify-center" onClick={() => { setMobileOpen(false); signOut({ callbackUrl: "/" }); }}>
+                <Button
+                variant="outline"
+                size="sm"
+                className="w-full justify-center"
+                onClick={() => {
+                  setMobileOpen(false);
+                  signOut({ redirect: false }).then(() => {
+                    window.location.href = "/";
+                  });
+                }}
+              >
                   Sign Out
                 </Button>
               </>

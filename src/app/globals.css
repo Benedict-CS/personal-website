@@ -254,6 +254,14 @@
   @apply rounded-lg my-4 max-w-full;
 }
 
+/* Tighten gap when a paragraph immediately follows an image (caption) */
+.prose .image-block:has(+ p) {
+  margin-bottom: 0.25rem;
+}
+.prose .image-block + p {
+  margin-top: 0;
+}
+
 .prose strong {
   @apply font-bold text-slate-900;
 }

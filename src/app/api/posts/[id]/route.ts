@@ -219,8 +219,8 @@ export async function PATCH(
       currentPost.published !== (published ?? false) ||
       currentTagsJson !== newTagsJson;
 
-    // If there are changes, save current version first (if version table exists)
-    if (hasChanges) {
+    // If there are changes, save current version first (unless autosave - no version for autosave)
+    if (hasChanges && !autosave) {
       try {
         // Get current max version number
         const maxVersion = await prisma.postVersion.findFirst({

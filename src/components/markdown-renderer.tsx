@@ -3,6 +3,7 @@
 import React, { useState, useEffect } from "react";
 import ReactMarkdown from "react-markdown";
 import rehypeHighlight from "rehype-highlight";
+import rehypeRaw from "rehype-raw";
 import rehypeSlug from "rehype-slug";
 import rehypeKatex from "rehype-katex";
 import remarkGfm from "remark-gfm";
@@ -10,7 +11,35 @@ import remarkMath from "remark-math";
 import { Copy, Check } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import type { Components } from "react-markdown";
+import { cn } from "@/lib/utils";
 import "highlight.js/styles/atom-one-light.css";
+
+function ImageWithPlaceholder({
+  src,
+  alt,
+  className,
+  ...props
+}: React.ComponentProps<"img">) {
+  const [loaded, setLoaded] = useState(false);
+  return (
+    <span className="relative block min-h-[120px]">
+      {!loaded && (
+        <span
+          className="absolute inset-0 block animate-pulse rounded bg-slate-200 min-h-[120px]"
+          aria-hidden
+        />
+      )}
+      {/* eslint-disable-next-line @next/next/no-img-element */}
+      <img
+        src={src}
+        alt={alt ?? ""}
+        className={cn(className, "relative transition-opacity duration-200", !loaded && "opacity-0")}
+        onLoad={() => setLoaded(true)}
+        {...props}
+      />
+    </span>
+  );
+}
 import "katex/dist/katex.min.css";
 
 interface MarkdownRendererProps {
@@ -23,6 +52,7 @@ export function MarkdownRenderer({ content, postId, editable = false }: Markdown
   const [copiedCode, setCopiedCode] = useState<string | null>(null);
   const [checkboxStates, setCheckboxStates] = useState<Record<number, boolean>>({});
   const [currentContent, setCurrentContent] = useState(content);
+  const [lightboxSrc, setLightboxSrc] = useState<string | null>(null);
   const checkboxCounterRef = React.useRef(0);
 
   // 當 content 變化時重置
@@ -93,6 +123,39 @@ export function MarkdownRenderer({ content, postId, editable = false }: Markdown
       pre .hljs * {
         background-color: transparent !important;
         background: transparent !important;
+      }
+    `;
+  }, []);
+
+  // Lightbox: close on Esc
+  useEffect(() => {
+    const onKeyDown = (e: KeyboardEvent) => {
+      if (e.key === "Escape") setLightboxSrc(null);
+    };
+    if (lightboxSrc) {
+      document.addEventListener("keydown", onKeyDown);
+      document.body.style.overflow = "hidden";
+    }
+    return () => {
+      document.removeEventListener("keydown", onKeyDown);
+      document.body.style.overflow = "";
+    };
+  }, [lightboxSrc]);
+
+  // Orphan <li> (e.g. inside <span>) get bullet so published view matches edit preview
+  useEffect(() => {
+    const styleId = "markdown-renderer-orphan-li";
+    let styleEl = document.getElementById(styleId) as HTMLStyleElement;
+    if (!styleEl) {
+      styleEl = document.createElement("style");
+      styleEl.id = styleId;
+      document.head.appendChild(styleEl);
+    }
+    styleEl.textContent = `
+      .markdown-renderer li:not(ul > li):not(ol > li) {
+        list-style-type: disc;
+        display: list-item;
+        margin-left: 1.5em;
       }
     `;
   }, []);
@@ -276,6 +339,29 @@ export function MarkdownRenderer({ content, postId, editable = false }: Markdown
         </code>
       );
     },
+    img: ({ src, alt, ...props }) => {
+      const srcStr = typeof src === "string" ? src : null;
+      if (!srcStr) return null;
+      const fullSrc = srcStr.startsWith("http") || srcStr.startsWith("/") ? srcStr : `/${srcStr}`;
+      return (
+        <span className="image-block block my-2">
+          <button
+            type="button"
+            onClick={() => setLightboxSrc(fullSrc)}
+            className="inline-block max-w-full cursor-zoom-in focus:outline-none focus:ring-2 focus:ring-slate-400 focus:ring-offset-2 rounded overflow-hidden"
+            title="Click to enlarge"
+          >
+            <ImageWithPlaceholder
+              src={fullSrc}
+              alt={alt ?? ""}
+              className="max-w-full h-auto block"
+              loading="lazy"
+              {...props}
+            />
+          </button>
+        </span>
+      );
+    },
     table: ({ children, ...props }) => {
       return (
         <div className="overflow-x-auto my-4">
@@ -437,14 +523,44 @@ export function MarkdownRenderer({ content, postId, editable = false }: Markdown
   };
 
   return (
-    <div className="prose prose-lg max-w-none overflow-hidden">
-      <ReactMarkdown
-        remarkPlugins={[remarkGfm, remarkMath]}
-        rehypePlugins={[rehypeSlug, rehypeKatex, rehypeHighlight]}
-        components={components}
-      >
-        {content}
-      </ReactMarkdown>
-    </div>
+    <>
+      <div className="prose prose-lg max-w-none overflow-hidden markdown-renderer">
+        <ReactMarkdown
+          remarkPlugins={[remarkGfm, remarkMath]}
+          rehypePlugins={[rehypeRaw, rehypeSlug, rehypeKatex, rehypeHighlight]}
+          components={components}
+        >
+          {content}
+        </ReactMarkdown>
+      </div>
+      {lightboxSrc && (
+        <div
+          className="fixed inset-0 z-[100] flex items-center justify-center bg-black/80 p-4"
+          role="dialog"
+          aria-modal="true"
+          aria-label="Image preview"
+          onClick={() => setLightboxSrc(null)}
+        >
+          <button
+            type="button"
+            className="absolute top-4 right-4 rounded-full bg-white/90 p-2 text-slate-800 hover:bg-white focus:outline-none focus:ring-2 focus:ring-white"
+            onClick={() => setLightboxSrc(null)}
+            aria-label="Close"
+          >
+            <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+              <line x1="18" y1="6" x2="6" y2="18" />
+              <line x1="6" y1="6" x2="18" y2="18" />
+            </svg>
+          </button>
+          {/* eslint-disable-next-line @next/next/no-img-element */}
+          <img
+            src={lightboxSrc}
+            alt="Enlarged preview"
+            className="max-w-full max-h-[90vh] w-auto h-auto object-contain rounded shadow-2xl"
+            onClick={(e) => e.stopPropagation()}
+          />
+        </div>
+      )}
+    </>
   );
 }

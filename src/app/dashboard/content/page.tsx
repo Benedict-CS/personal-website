@@ -7,7 +7,7 @@ import { Home, FileText, Mail } from "lucide-react";
 const items = [
   { href: "/dashboard/content/home", label: "Home", icon: Home, description: "Hero title, subtitle, skills, CTA buttons" },
   { href: "/dashboard/content/contact", label: "Contact", icon: Mail, description: "Intro text and form description" },
-  { href: "/dashboard/about", label: "About & CV", icon: FileText, description: "Profile image, intro text, logos, CV" },
+  { href: "/dashboard/content/about", label: "About & CV", icon: FileText, description: "Profile image, intro text, logos, CV" },
 ];
 
 export default function ContentIndexPage() {

@@ -3,6 +3,7 @@
 import { useState, useEffect } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
+import { ConfirmDialog } from "@/components/ui/confirm-dialog";
 import { useToast } from "@/contexts/toast-context";
 
 type Stats = {
@@ -48,6 +49,8 @@ export default function AnalyticsPage() {
   const [clearAllConfirm, setClearAllConfirm] = useState(false);
   const [clearLoading, setClearLoading] = useState(false);
   const [clearMessage, setClearMessage] = useState<string | null>(null);
+  type ClearConfirmType = "before" | "onDate" | "byIP" | "all";
+  const [clearConfirm, setClearConfirm] = useState<{ type: ClearConfirmType; value?: string } | null>(null);
 
   useEffect(() => {
     const params = new URLSearchParams();
@@ -75,23 +78,24 @@ export default function AnalyticsPage() {
 
   const handleClearBefore = async () => {
     if (!clearBefore.trim()) return;
-    if (!confirm(`確定要刪除 ${clearBefore} 之前的所有記錄？此操作無法復原。\n\nDelete all records before ${clearBefore}? This cannot be undone.`)) {
-      return;
-    }
+    setClearConfirm({ type: "before", value: clearBefore.trim() });
+  };
+
+  const doClearBefore = async (date: string) => {
     setClearLoading(true);
     setClearMessage(null);
     try {
       const res = await fetch("/api/analytics/clear", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ before: clearBefore.trim() }),
+        body: JSON.stringify({ before: date }),
       });
       const data = await res.json().catch(() => ({}));
       if (!res.ok) {
         setClearMessage(data.error || `Error ${res.status}`);
         return;
       }
-      setClearMessage(`Deleted ${data.deleted ?? 0} record(s) before ${clearBefore}.`);
+      setClearMessage(`Deleted ${data.deleted ?? 0} record(s) before ${date}.`);
       setClearBefore("");
       setRefreshKey((k) => k + 1);
       toast(`Deleted ${data.deleted ?? 0} record(s).`, "success");
@@ -106,9 +110,10 @@ export default function AnalyticsPage() {
   const handleClearByIP = async (ipToDelete: string) => {
     const ip = (ipToDelete || clearByIP).trim();
     if (!ip) return;
-    if (!confirm(`確定要刪除此 IP 的所有記錄？\n\nDelete all records for IP ${ip}? This cannot be undone.`)) {
-      return;
-    }
+    setClearConfirm({ type: "byIP", value: ip });
+  };
+
+  const doClearByIP = async (ip: string) => {
     setClearLoading(true);
     setClearMessage(null);
     try {
@@ -135,18 +140,19 @@ export default function AnalyticsPage() {
     }
   };
 
-  const handleClearOnDate = async () => {
+  const handleClearOnDate = () => {
     if (!clearOnDate.trim()) return;
-    if (!confirm(`確定要刪除 ${clearOnDate} 當天的所有記錄？此操作無法復原。\n\nDelete all records on ${clearOnDate}? This cannot be undone.`)) {
-      return;
-    }
+    setClearConfirm({ type: "onDate", value: clearOnDate.trim() });
+  };
+
+  const doClearOnDate = async (date: string) => {
     setClearLoading(true);
     setClearMessage(null);
     try {
       const res = await fetch("/api/analytics/clear", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ onDate: clearOnDate.trim() }),
+        body: JSON.stringify({ onDate: date }),
       });
       const data = await res.json().catch(() => ({}));
       if (!res.ok) {
@@ -154,7 +160,7 @@ export default function AnalyticsPage() {
         toast(data.error || `Error ${res.status}`, "error");
         return;
       }
-      setClearMessage(`Deleted ${data.deleted ?? 0} record(s) on ${clearOnDate}.`);
+      setClearMessage(`Deleted ${data.deleted ?? 0} record(s) on ${date}.`);
       setClearOnDate("");
       setRefreshKey((k) => k + 1);
       toast(`Deleted ${data.deleted ?? 0} record(s).`, "success");
@@ -166,11 +172,12 @@ export default function AnalyticsPage() {
     }
   };
 
-  const handleClearAll = async () => {
+  const handleClearAll = () => {
     if (!clearAllConfirm) return;
-    if (!confirm("確定要刪除所有 Analytics 記錄？此操作無法復原。\n\nAre you sure you want to delete all analytics records? This cannot be undone.")) {
-      return;
-    }
+    setClearConfirm({ type: "all" });
+  };
+
+  const doClearAll = async () => {
     setClearLoading(true);
     setClearMessage(null);
     try {
@@ -203,8 +210,38 @@ export default function AnalyticsPage() {
       timeStyle: "short",
     });
 
+  const clearConfirmTitle =
+    clearConfirm?.type === "before"
+      ? `Delete all records before ${clearConfirm.value}?`
+      : clearConfirm?.type === "onDate"
+        ? `Delete all records on ${clearConfirm.value}?`
+        : clearConfirm?.type === "byIP"
+          ? `Delete all records for IP ${clearConfirm.value}?`
+          : clearConfirm?.type === "all"
+            ? "Delete all analytics records?"
+            : "";
+  const clearConfirmDesc = clearConfirm ? "This cannot be undone." : "";
+
   return (
     <div className="space-y-6">
+      <ConfirmDialog
+        open={clearConfirm !== null}
+        onClose={() => setClearConfirm(null)}
+        title={clearConfirmTitle}
+        description={clearConfirmDesc}
+        confirmLabel="Delete"
+        variant="danger"
+        loading={clearLoading}
+        onConfirm={() => {
+          const c = clearConfirm;
+          setClearConfirm(null);
+          if (!c) return;
+          if (c.type === "before" && c.value) void doClearBefore(c.value);
+          else if (c.type === "byIP" && c.value) void doClearByIP(c.value);
+          else if (c.type === "onDate" && c.value) void doClearOnDate(c.value);
+          else if (c.type === "all") void doClearAll();
+        }}
+      />
       <h2 className="text-3xl font-bold text-slate-900">Analytics</h2>
 
       <div className="space-y-3">

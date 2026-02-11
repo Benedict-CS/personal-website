@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { uploadToS3 } from "@/lib/s3";
+import { processImage } from "@/lib/image-process";
 
 export async function POST(request: NextRequest) {
   try {
@@ -13,7 +14,7 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    // 檢查檔案類型
+    // Check file type
     const allowedTypes = ["image/jpeg", "image/jpg", "image/png", "image/gif", "image/webp"];
     if (!allowedTypes.includes(file.type)) {
       return NextResponse.json(
@@ -22,17 +23,20 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    // 產生唯一檔名
     const timestamp = Date.now();
-    const originalName = file.name.replace(/[^a-zA-Z0-9.-]/g, "_"); // 清理檔名
+    const originalName = file.name.replace(/[^a-zA-Z0-9.-]/g, "_");
     const fileName = `${timestamp}-${originalName}`;
 
-    // 將檔案轉換為 Buffer
     const bytes = await file.arrayBuffer();
     const buffer = Buffer.from(bytes);
 
-    // 上傳到 RustFS (S3-compatible)
-    const url = await uploadToS3(fileName, buffer, file.type);
+    const { buffer: finalBuffer, contentType, fileName: finalFileName } = await processImage(
+      buffer,
+      file.type,
+      fileName
+    );
+
+    const url = await uploadToS3(finalFileName, finalBuffer, contentType);
 
     return NextResponse.json({ url }, { status: 200 });
   } catch (error) {

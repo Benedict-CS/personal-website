@@ -1,7 +1,10 @@
 "use client";
 
 import { useState, useEffect } from "react";
+import { BreadcrumbProvider } from "@/contexts/breadcrumb-context";
+import { LeaveGuardProvider } from "@/contexts/leave-guard-context";
 import { DashboardNav } from "./dashboard-nav";
+import { DashboardBreadcrumbs } from "./dashboard-breadcrumbs";
 import { PanelLeftClose, PanelLeftOpen } from "lucide-react";
 import { Button } from "@/components/ui/button";
 
@@ -41,6 +44,8 @@ export function DashboardShell({ children }: { children: React.ReactNode }) {
   const mainMargin = collapsed ? "ml-16" : "ml-64";
 
   return (
+    <LeaveGuardProvider>
+    <BreadcrumbProvider>
     <div className="flex flex-1 min-h-0">
       <aside
         className={`fixed left-0 top-16 h-[calc(100vh-4rem)] border-r border-slate-200 bg-slate-50 z-10 transition-[width] duration-200 ease-out ${sidebarWidth} flex flex-col`}
@@ -71,9 +76,12 @@ export function DashboardShell({ children }: { children: React.ReactNode }) {
         style={{ ["--dashboard-sidebar-width" as string]: collapsed ? "4rem" : "16rem" }}
       >
         <div className="p-4 sm:p-6 lg:p-8 dashboard-content-in min-w-0">
+          <DashboardBreadcrumbs />
           {children}
         </div>
       </main>
     </div>
+    </BreadcrumbProvider>
+    </LeaveGuardProvider>
   );
 }

@@ -122,10 +122,10 @@ export function GlobalSearch() {
           <div className="fixed inset-0 z-[99]" onClick={close} aria-hidden />
           <div
             ref={panelRef}
-            className="search-panel-in absolute right-0 top-full z-[100] mt-1 w-[min(90vw,28rem)] overflow-hidden rounded-lg border border-slate-200 bg-white shadow-lg"
+            className="search-panel-in fixed left-4 right-4 top-14 z-[100] overflow-hidden rounded-lg border border-slate-200 bg-white shadow-lg sm:absolute sm:left-auto sm:right-0 sm:top-full sm:mt-1 sm:w-[min(90vw,28rem)]"
             onClick={(e) => e.stopPropagation()}
           >
-            <div className="flex items-center gap-2 border-b border-slate-100 p-2">
+            <div className="flex min-w-0 items-center gap-2 border-b border-slate-100 p-2">
               <Search className="h-4 w-4 text-slate-400 shrink-0" />
               <Input
                 ref={inputRef}
@@ -133,7 +133,7 @@ export function GlobalSearch() {
                 placeholder="Search blog & site (e.g. NYCU, proxy)..."
                 value={query}
                 onChange={(e) => handleInputChange(e.target.value)}
-                className="flex-1 border-0 bg-transparent shadow-none focus-visible:ring-0 text-sm"
+                className="min-w-0 flex-1 border-0 bg-transparent shadow-none focus-visible:ring-0 text-sm"
                 autoComplete="off"
               />
               <Button variant="ghost" size="sm" className="shrink-0 h-8 w-8 p-0" onClick={close} aria-label="Close">

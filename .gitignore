@@ -23,6 +23,9 @@
 # misc
 .DS_Store
 *.pem
+# deploy key for CI/CD (do not commit)
+deploy_key
+deploy_key.pub
 
 # debug
 npm-debug.log*

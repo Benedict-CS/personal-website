@@ -2,7 +2,7 @@
 
 import { useState, useEffect, use, useRef } from "react";
 import { useRouter } from "next/navigation";
-import { Paperclip, History, RotateCcw, Loader2, Pin, ExternalLink, Maximize2, Minimize2 } from "lucide-react";
+import { Paperclip, History, RotateCcw, Loader2, Pin, ExternalLink, Maximize2, Minimize2, ImagePlus, Link2, Copy, Trash2 } from "lucide-react";
 import dynamic from "next/dynamic";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -12,7 +12,11 @@ import {
   CardHeader,
   CardTitle,
 } from "@/components/ui/card";
+import { ConfirmDialog } from "@/components/ui/confirm-dialog";
+import { InsertMediaModal } from "@/components/insert-media-modal";
 import { MarkdownRenderer } from "@/components/markdown-renderer";
+import { useBreadcrumb } from "@/contexts/breadcrumb-context";
+import { useLeaveGuard } from "@/contexts/leave-guard-context";
 
 // Dynamic import MDEditor to avoid SSR issues
 const MDEditor = dynamic(
@@ -27,6 +31,9 @@ export default function EditPostPage({
 }) {
   const router = useRouter();
   const { id } = use(params);
+  const { setOverride: setBreadcrumbOverride } = useBreadcrumb();
+  const { setDirty: setLeaveGuardDirty, registerHandler: registerLeaveHandler } = useLeaveGuard();
+  const [pendingLeaveUrl, setPendingLeaveUrl] = useState<string | null>(null);
 
   const [title, setTitle] = useState("");
   const [slug, setSlug] = useState("");
@@ -58,7 +65,17 @@ export default function EditPostPage({
   const [savedMessage, setSavedMessage] = useState<string | null>(null);
   const [focusMode, setFocusMode] = useState(false);
   const [dirty, setDirty] = useState(false);
+  const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
+  const [showLeaveConfirm, setShowLeaveConfirm] = useState(false);
+  const [restoreConfirmId, setRestoreConfirmId] = useState<string | null>(null);
+  const [showInsertMedia, setShowInsertMedia] = useState(false);
+  const [dragOver, setDragOver] = useState(false);
+  const [previewToken, setPreviewToken] = useState<string | null>(null);
+  const [isGeneratingPreview, setIsGeneratingPreview] = useState(false);
+  const [isRevokingPreview, setIsRevokingPreview] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
+  const editorRef = useRef<{ textarea?: HTMLTextAreaElement } | null>(null);
+  const cursorPosRef = useRef<{ start: number; end: number } | null>(null);
   const formRef = useRef<HTMLFormElement>(null);
   const initialRef = useRef<{
     title: string;
@@ -72,6 +89,7 @@ export default function EditPostPage({
     category: string;
   } | null>(null);
   const lastAutosavedContentRef = useRef<string | null>(null);
+  const lastAutosavedMetaRef = useRef<{ title: string; slug: string; description: string; tags: string } | null>(null);
   const autosaveTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   // 載入文章資料
@@ -83,7 +101,8 @@ export default function EditPostPage({
           throw new Error("Failed to fetch post");
         }
         const post = await response.json();
-        setTitle(post.title || "");
+        const postTitle = post.title || "";
+        setTitle(postTitle);
         setSlug(post.slug || "");
         setContent(post.content || "");
         setDescription(post.description || "");
@@ -95,6 +114,13 @@ export default function EditPostPage({
           const date = new Date(post.createdAt);
           setPublishedDate(date.toISOString().split("T")[0]);
         }
+        setBreadcrumbOverride({ label: postTitle });
+        lastAutosavedMetaRef.current = {
+          title: post.title || "",
+          slug: post.slug || "",
+          description: post.description || "",
+          tags: post.tags?.map((t: { name: string }) => t.name).join(", ") || "",
+        };
         const pd = post.createdAt ? new Date(post.createdAt).toISOString().split("T")[0] : "";
         initialRef.current = {
           title: post.title || "",
@@ -108,6 +134,7 @@ export default function EditPostPage({
           category: post.category || "",
         };
         lastAutosavedContentRef.current = post.content || "";
+        setPreviewToken(post.previewToken || null);
       } catch (error) {
         console.error("Error fetching post:", error);
         alert("Failed to load post");
@@ -122,6 +149,22 @@ export default function EditPostPage({
       fetchPost();
     }
   }, [id, router]);
+
+  useEffect(() => {
+    return () => setBreadcrumbOverride(null);
+  }, [setBreadcrumbOverride]);
+
+  useEffect(() => {
+    setLeaveGuardDirty(dirty);
+  }, [dirty, setLeaveGuardDirty]);
+
+  useEffect(() => {
+    registerLeaveHandler((url) => {
+      setPendingLeaveUrl(url);
+      setShowLeaveConfirm(true);
+    });
+    return () => registerLeaveHandler(null);
+  }, [registerLeaveHandler]);
 
   // Track dirty state
   useEffect(() => {
@@ -149,27 +192,53 @@ export default function EditPostPage({
     return () => window.removeEventListener("beforeunload", onBeforeUnload);
   }, [dirty]);
 
-  // Autosave content (debounced 5s) - only when content changed from last saved
+  // Esc to close version history modal
   useEffect(() => {
-    if (content === lastAutosavedContentRef.current || isSubmitting) return;
+    const onKeyDown = (e: KeyboardEvent) => {
+      if (e.key === "Escape") setShowVersions(false);
+    };
+    if (showVersions) {
+      window.addEventListener("keydown", onKeyDown);
+      return () => window.removeEventListener("keydown", onKeyDown);
+    }
+  }, [showVersions]);
+
+  // Autosave content + title/slug/description/tags (debounced 5s)
+  useEffect(() => {
+    const contentChanged = content !== lastAutosavedContentRef.current;
+    const meta = { title, slug, description, tags };
+    const metaChanged = !lastAutosavedMetaRef.current ||
+      lastAutosavedMetaRef.current.title !== title ||
+      lastAutosavedMetaRef.current.slug !== slug ||
+      lastAutosavedMetaRef.current.description !== description ||
+      lastAutosavedMetaRef.current.tags !== tags;
+    if ((!contentChanged && !metaChanged) || isSubmitting) return;
     const timer = setTimeout(async () => {
       try {
         const res = await fetch(`/api/posts/${id}`, {
           method: "PATCH",
           headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ content, autosave: true }),
+          body: JSON.stringify({
+            title,
+            slug,
+            content,
+            description,
+            tags,
+            published,
+            pinned,
+            createdAt: publishedDate ? new Date(publishedDate).toISOString() : undefined,
+            category: category || null,
+            autosave: true,
+          }),
         });
         if (res.ok) {
           lastAutosavedContentRef.current = content;
+          lastAutosavedMetaRef.current = { title, slug, description, tags };
           if (initialRef.current) {
-            initialRef.current = { ...initialRef.current, content };
+            initialRef.current = { ...initialRef.current, content, title, slug, description, tags };
           }
           setDirty(
-            title !== initialRef.current?.title ||
-              slug !== initialRef.current?.slug ||
-              description !== initialRef.current?.description ||
-              tags !== initialRef.current?.tags ||
-              published !== initialRef.current?.published ||
+            published !== initialRef.current?.published ||
               pinned !== initialRef.current?.pinned ||
               publishedDate !== initialRef.current?.publishedDate ||
               category !== initialRef.current?.category
@@ -182,7 +251,7 @@ export default function EditPostPage({
       }
     }, 5000);
     return () => clearTimeout(timer);
-  }, [content, id, isSubmitting]);
+  }, [content, title, slug, description, tags, published, pinned, publishedDate, category, id, isSubmitting]);
 
   // Ctrl/Cmd+S to save
   useEffect(() => {
@@ -217,40 +286,106 @@ export default function EditPostPage({
     setSlug(generatedSlug);
   };
 
-  const handleImageUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
-    const file = e.target.files?.[0];
-    if (!file) return;
+  const ALLOWED_IMAGE_TYPES = ["image/jpeg", "image/jpg", "image/png", "image/gif", "image/webp"];
 
-    setIsUploading(true);
+  const insertImageBlock = (block: string) => {
+    markDirty();
+    const pos = cursorPosRef.current;
+    if (pos != null && pos.start >= 0 && pos.end >= 0) {
+      setContent((prev) => prev.slice(0, pos.start) + block + prev.slice(pos.end));
+      cursorPosRef.current = null;
+    } else {
+      setContent((prev) => prev + (prev ? "\n\n" : "") + block + "\n\n");
+    }
+  };
 
-    try {
-      const formData = new FormData();
-      formData.append("file", file);
-
-      const response = await fetch("/api/upload", {
-        method: "POST",
-        body: formData,
-      });
-
-      if (!response.ok) {
-        const error = await response.json();
-        throw new Error(error.error || "Failed to upload image");
+  useEffect(() => {
+    let cancelled = false;
+    let timeoutId: ReturnType<typeof setTimeout>;
+    let removeBlur: (() => void) | null = null;
+    const tryAttach = () => {
+      if (cancelled) return;
+      const ta = editorRef.current?.textarea;
+      if (!ta) {
+        timeoutId = setTimeout(tryAttach, 100);
+        return;
       }
+      const onBlur = () => {
+        cursorPosRef.current = { start: ta.selectionStart, end: ta.selectionEnd };
+      };
+      ta.addEventListener("blur", onBlur);
+      removeBlur = () => ta.removeEventListener("blur", onBlur);
+    };
+    tryAttach();
+    return () => {
+      cancelled = true;
+      clearTimeout(timeoutId);
+      removeBlur?.();
+    };
+  }, []);
 
-      const data = await response.json();
-      const imageMarkdown = `![Image](${data.url})`;
+  const uploadOne = async (file: File): Promise<string> => {
+    const formData = new FormData();
+    formData.append("file", file);
+    const res = await fetch("/api/upload", { method: "POST", body: formData });
+    if (!res.ok) {
+      const err = await res.json().catch(() => ({}));
+      throw new Error(err.error || "Upload failed");
+    }
+    const data = await res.json();
+    return data.url;
+  };
 
-      // 直接附加到內容末尾（MDEditor 會處理游標）
-      setContent((prev) => prev + "\n\n" + imageMarkdown + "\n\n");
-    } catch (error) {
-      alert(error instanceof Error ? error.message : "Failed to upload image");
+  const handleImageUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const files = Array.from(e.target.files ?? []);
+    if (files.length === 0) return;
+    const images = files.filter((f) => ALLOWED_IMAGE_TYPES.includes(f.type));
+    if (images.length === 0) {
+      alert("Please select image files (JPEG, PNG, GIF, WebP).");
+      if (fileInputRef.current) fileInputRef.current.value = "";
+      return;
+    }
+    setIsUploading(true);
+    try {
+      const urls = await Promise.all(images.map((f) => uploadOne(f)));
+      const block = urls.map((url) => `![Image](${url})`).join("\n\n");
+      insertImageBlock(block);
+    } catch (err) {
+      alert(err instanceof Error ? err.message : "Upload failed");
     } finally {
       setIsUploading(false);
-      // 重置 file input
-      if (fileInputRef.current) {
-        fileInputRef.current.value = "";
-      }
+      if (fileInputRef.current) fileInputRef.current.value = "";
     }
+  };
+
+  const handleDrop = (e: React.DragEvent) => {
+    e.preventDefault();
+    e.stopPropagation();
+    setDragOver(false);
+    const files = Array.from(e.dataTransfer.files).filter((f) =>
+      ALLOWED_IMAGE_TYPES.includes(f.type)
+    );
+    if (files.length === 0) return;
+    setIsUploading(true);
+    Promise.all(files.map((f) => uploadOne(f)))
+      .then((urls) => {
+        const block = urls.map((url) => `![Image](${url})`).join("\n\n");
+        insertImageBlock(block);
+      })
+      .catch((err) => alert(err instanceof Error ? err.message : "Upload failed"))
+      .finally(() => setIsUploading(false));
+  };
+
+  const handleDragOver = (e: React.DragEvent) => {
+    e.preventDefault();
+    e.stopPropagation();
+    if (e.dataTransfer.types.includes("Files")) setDragOver(true);
+  };
+
+  const handleDragLeave = (e: React.DragEvent) => {
+    e.preventDefault();
+    e.stopPropagation();
+    setDragOver(false);
   };
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -310,23 +445,16 @@ export default function EditPostPage({
   };
 
   const handleDelete = async () => {
-    if (!confirm("Are you sure you want to delete this post? This action cannot be undone.")) {
-      return;
-    }
-
     setIsDeleting(true);
-
     try {
       const response = await fetch(`/api/posts/${id}`, {
         method: "DELETE",
       });
-
       if (!response.ok) {
         const error = await response.json();
         throw new Error(error.error || "Failed to delete post");
       }
-
-      // 成功後跳轉回文章列表頁
+      setShowDeleteConfirm(false);
       router.push("/dashboard/posts");
     } catch (error) {
       alert(error instanceof Error ? error.message : "Failed to delete post");
@@ -357,10 +485,7 @@ export default function EditPostPage({
   };
 
   const handleRestore = async (versionId: string) => {
-    if (!confirm("Are you sure you want to restore this version? The current version will be saved as a new version.")) {
-      return;
-    }
-
+    setRestoreConfirmId(null);
     setIsRestoring(versionId);
     try {
       const response = await fetch(`/api/posts/${id}/versions/${versionId}/restore`, {
@@ -402,6 +527,14 @@ export default function EditPostPage({
           };
         }
         lastAutosavedContentRef.current = post.content || "";
+        setPreviewToken(post.previewToken || null);
+        setBreadcrumbOverride({ label: post.title || "" });
+        lastAutosavedMetaRef.current = {
+          title: post.title || "",
+          slug: post.slug || "",
+          description: post.description || "",
+          tags: post.tags?.map((t: { name: string }) => t.name).join(", ") || "",
+        };
       }
       setShowVersions(false);
       setDirty(false);
@@ -410,6 +543,50 @@ export default function EditPostPage({
       alert(error instanceof Error ? error.message : "Restore failed");
     } finally {
       setIsRestoring(null);
+    }
+  };
+
+  const handleGeneratePreviewLink = async () => {
+    setIsGeneratingPreview(true);
+    try {
+      const res = await fetch(`/api/posts/${id}/preview-token`, { method: "POST" });
+      if (!res.ok) throw new Error("Failed to generate link");
+      const data = await res.json();
+      setPreviewToken(data.token);
+      await navigator.clipboard.writeText(data.previewUrl);
+      setSavedMessage("Preview link copied to clipboard");
+      setTimeout(() => setSavedMessage(null), 2500);
+    } catch {
+      alert("Failed to generate preview link");
+    } finally {
+      setIsGeneratingPreview(false);
+    }
+  };
+
+  const handleCopyPreviewLink = async () => {
+    if (!previewToken) return;
+    const url = `${window.location.origin}/blog/preview?token=${previewToken}`;
+    try {
+      await navigator.clipboard.writeText(url);
+      setSavedMessage("Preview link copied to clipboard");
+      setTimeout(() => setSavedMessage(null), 2500);
+    } catch {
+      alert("Failed to copy");
+    }
+  };
+
+  const handleRevokePreviewLink = async () => {
+    setIsRevokingPreview(true);
+    try {
+      const res = await fetch(`/api/posts/${id}/preview-token`, { method: "DELETE" });
+      if (!res.ok) throw new Error("Failed to revoke");
+      setPreviewToken(null);
+      setSavedMessage("Preview link revoked");
+      setTimeout(() => setSavedMessage(null), 2500);
+    } catch {
+      alert("Failed to revoke preview link");
+    } finally {
+      setIsRevokingPreview(false);
     }
   };
 
@@ -471,6 +648,46 @@ export default function EditPostPage({
                   <History className="h-4 w-4" />
                   Version History
                 </Button>
+                {previewToken ? (
+                  <>
+                    <Button
+                      type="button"
+                      variant="outline"
+                      size="sm"
+                      onClick={handleCopyPreviewLink}
+                      className="flex items-center gap-2"
+                      title="Copy read-only preview link"
+                    >
+                      <Copy className="h-4 w-4" />
+                      Copy preview link
+                    </Button>
+                    <Button
+                      type="button"
+                      variant="outline"
+                      size="sm"
+                      onClick={handleRevokePreviewLink}
+                      disabled={isRevokingPreview}
+                      className="flex items-center gap-2"
+                      title="Revoke link so it stops working"
+                    >
+                      {isRevokingPreview ? <Loader2 className="h-4 w-4 animate-spin" /> : <Trash2 className="h-4 w-4" />}
+                      Revoke link
+                    </Button>
+                  </>
+                ) : (
+                  <Button
+                    type="button"
+                    variant="outline"
+                    size="sm"
+                    onClick={handleGeneratePreviewLink}
+                    disabled={isGeneratingPreview}
+                    className="flex items-center gap-2"
+                    title="Generate a shareable read-only link for this draft"
+                  >
+                    {isGeneratingPreview ? <Loader2 className="h-4 w-4 animate-spin" /> : <Link2 className="h-4 w-4" />}
+                    {isGeneratingPreview ? "Generating..." : "Share draft link"}
+                  </Button>
+                )}
               </div>
             </div>
           </CardHeader>
@@ -571,32 +788,61 @@ export default function EditPostPage({
                 </>
               )}
 
-              <div className="space-y-2">
-                <div className="flex items-center justify-between mb-2">
+              <div
+                className={`space-y-2 rounded-lg border-2 border-dashed transition-colors ${
+                  dragOver ? "border-slate-400 bg-slate-50" : "border-transparent"
+                }`}
+                onDrop={handleDrop}
+                onDragOver={handleDragOver}
+                onDragLeave={handleDragLeave}
+              >
+                <div className="sticky top-0 z-10 flex items-center justify-between rounded-t-lg border-b border-slate-200 bg-slate-50/95 px-1 py-2 backdrop-blur supports-[backdrop-filter]:bg-slate-50/80">
                   <label htmlFor="content" className="text-sm font-medium text-slate-700">
                     Content
                   </label>
-                  <Button
-                    type="button"
-                    variant="outline"
-                    size="sm"
-                    onClick={() => fileInputRef.current?.click()}
-                    disabled={isUploading || isSubmitting || isDeleting}
-                    className="flex items-center gap-2"
-                  >
-                    <Paperclip className="h-4 w-4" />
-                    {isUploading ? "Uploading..." : "Upload Image"}
-                  </Button>
-                  <input
-                    ref={fileInputRef}
-                    type="file"
-                    accept="image/*"
-                    onChange={handleImageUpload}
-                    className="hidden"
-                  />
+                  <div className="flex items-center gap-2">
+                    <Button
+                      type="button"
+                      variant="outline"
+                      size="sm"
+                      onClick={() => fileInputRef.current?.click()}
+                      disabled={isUploading || isSubmitting || isDeleting}
+                      className="flex items-center gap-2"
+                    >
+                      <Paperclip className="h-4 w-4" />
+                      {isUploading ? "Uploading..." : "Upload images"}
+                    </Button>
+                    <Button
+                      type="button"
+                      variant="outline"
+                      size="sm"
+                      onClick={() => setShowInsertMedia(true)}
+                      disabled={isSubmitting || isDeleting}
+                      className="flex items-center gap-2"
+                    >
+                      <ImagePlus className="h-4 w-4" />
+                      Insert from Media
+                    </Button>
+                  </div>
                 </div>
+                <input
+                  ref={fileInputRef}
+                  type="file"
+                  accept="image/*"
+                  multiple
+                  onChange={handleImageUpload}
+                  className="hidden"
+                />
+                <InsertMediaModal
+                  open={showInsertMedia}
+                  onClose={() => setShowInsertMedia(false)}
+                  onSelect={(url) => {
+                    insertImageBlock("![Image](" + url + ")");
+                  }}
+                />
                 <div data-color-mode="light">
                   <MDEditor
+                    ref={editorRef}
                     value={content}
                     onChange={(val) => { markDirty(); setContent(val || ""); }}
                     preview="live"
@@ -614,8 +860,32 @@ export default function EditPostPage({
                     }}
                   />
                 </div>
+                <div className="flex items-center justify-end gap-2 border-t border-slate-100 pt-2">
+                  <Button
+                    type="button"
+                    variant="outline"
+                    size="sm"
+                    onClick={() => fileInputRef.current?.click()}
+                    disabled={isUploading || isSubmitting || isDeleting}
+                    className="gap-2"
+                  >
+                    <Paperclip className="h-4 w-4" />
+                    {isUploading ? "Uploading..." : "Upload images"}
+                  </Button>
+                  <Button
+                    type="button"
+                    variant="outline"
+                    size="sm"
+                    onClick={() => setShowInsertMedia(true)}
+                    disabled={isSubmitting || isDeleting}
+                    className="gap-2"
+                  >
+                    <ImagePlus className="h-4 w-4" />
+                    Insert from Media
+                  </Button>
+                </div>
                 <p className="text-xs text-slate-500 mt-2">
-                  Use toolbar for quick formatting: Bold, Italic, Code, Heading, List, etc.
+                  Use toolbar for quick formatting. You can select multiple images to upload, or drag and drop images here. Images insert at cursor when the editor had focus before clicking upload.
                 </p>
               </div>
 
@@ -678,7 +948,7 @@ export default function EditPostPage({
                   <Button
                     type="button"
                     variant="destructive"
-                    onClick={handleDelete}
+                    onClick={() => setShowDeleteConfirm(true)}
                     disabled={isDeleting || isSubmitting}
                   >
                     {isDeleting ? "Deleting..." : "Delete"}
@@ -687,8 +957,10 @@ export default function EditPostPage({
                     type="button"
                     variant="outline"
                     onClick={() => {
-                      if (dirty && !confirm("You have unsaved changes. Leave anyway?")) return;
-                      router.push("/dashboard/posts");
+                      if (dirty) {
+                        setPendingLeaveUrl("/dashboard/posts");
+                        setShowLeaveConfirm(true);
+                      } else router.push("/dashboard/posts");
                     }}
                     disabled={isSubmitting || isDeleting}
                   >
@@ -701,9 +973,47 @@ export default function EditPostPage({
               </div>
             </form>
 
+            <ConfirmDialog
+              open={showDeleteConfirm}
+              onClose={() => setShowDeleteConfirm(false)}
+              title="Delete post"
+              description="Are you sure you want to delete this post? This action cannot be undone."
+              confirmLabel="Delete"
+              variant="danger"
+              onConfirm={handleDelete}
+              loading={isDeleting}
+            />
+            <ConfirmDialog
+              open={showLeaveConfirm}
+              onClose={() => { setShowLeaveConfirm(false); setPendingLeaveUrl(null); }}
+              title="Unsaved changes"
+              description="You have unsaved changes. Leave anyway?"
+              confirmLabel="Leave"
+              onConfirm={() => {
+                setShowLeaveConfirm(false);
+                const url = pendingLeaveUrl ?? "/dashboard/posts";
+                setPendingLeaveUrl(null);
+                setLeaveGuardDirty(false);
+                router.push(url);
+              }}
+            />
+            {restoreConfirmId && (
+              <ConfirmDialog
+                open={!!restoreConfirmId}
+                onClose={() => setRestoreConfirmId(null)}
+                title="Restore version"
+                description="Restore to this version? The current content will be saved as a new version in history."
+                confirmLabel="Restore"
+                onConfirm={() => handleRestore(restoreConfirmId)}
+              />
+            )}
             {/* 版本歷史對話框 */}
             {showVersions && (
-              <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
+              <div
+                className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4"
+                role="dialog"
+                aria-modal="true"
+              >
                 <Card className="w-full max-w-3xl max-h-[80vh] overflow-hidden flex flex-col">
                   <CardHeader>
                     <div className="flex items-center justify-between">
@@ -712,6 +1022,7 @@ export default function EditPostPage({
                         variant="ghost"
                         size="sm"
                         onClick={() => setShowVersions(false)}
+                        title="Close (Esc)"
                       >
                         ✕
                       </Button>
@@ -747,7 +1058,7 @@ export default function EditPostPage({
                                 <Button
                                   variant="outline"
                                   size="sm"
-                                  onClick={() => handleRestore(version.id)}
+                                  onClick={() => setRestoreConfirmId(version.id)}
                                   disabled={isRestoring === version.id}
                                   className="flex items-center gap-2"
                                 >
