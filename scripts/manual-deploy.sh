@@ -1,5 +1,5 @@
 #!/bin/bash
-# 手動部署腳本（不使用 CI/CD）
+# 部署腳本（手動或由 CI/CD 呼叫；設 CI=1 時為非互動模式）
 
 set -e
 ROOT="$(cd "$(dirname "$0")/.." && pwd)"
@@ -16,27 +16,35 @@ if [ ! -f "docker-compose.yml" ]; then
     exit 1
 fi
 
-# 檢查是否有未提交的變更
-if [ -n "$(git status --porcelain)" ]; then
-    echo "⚠️  有未提交的變更："
-    git status --short
-    echo ""
-    read -p "是否要先提交這些變更？(y/N): " -n 1 -r
-    echo
-    if [[ $REPLY =~ ^[Yy]$ ]]; then
-        read -p "提交訊息: " COMMIT_MSG
-        git add .
-        git commit -m "$COMMIT_MSG"
-        echo "✅ 已提交"
+# CI/non-interactive mode: no prompts, force clean from origin/main
+if [ -n "${CI:-}" ] || [ -n "${NONINTERACTIVE:-}" ]; then
+    echo "📥 CI mode: fetch and reset to origin/main..."
+    git fetch origin main
+    git reset --hard origin/main
+    git clean -fd
+else
+    # 檢查是否有未提交的變更
+    if [ -n "$(git status --porcelain)" ]; then
+        echo "⚠️  有未提交的變更："
+        git status --short
+        echo ""
+        read -p "是否要先提交這些變更？(y/N): " -n 1 -r
+        echo
+        if [[ $REPLY =~ ^[Yy]$ ]]; then
+            read -p "提交訊息: " COMMIT_MSG
+            git add .
+            git commit -m "$COMMIT_MSG"
+            echo "✅ 已提交"
+        fi
     fi
-fi
 
-# 拉取最新代碼
-echo ""
-echo "📥 拉取最新代碼..."
-git pull origin main || {
-    echo "⚠️  git pull 失敗，繼續使用本地代碼"
-}
+    # 拉取最新代碼
+    echo ""
+    echo "📥 拉取最新代碼..."
+    git pull origin main || {
+        echo "⚠️  git pull 失敗，繼續使用本地代碼"
+    }
+fi
 
 # 建置 Docker image
 echo ""
