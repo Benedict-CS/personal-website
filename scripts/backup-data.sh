@@ -11,6 +11,10 @@ mkdir -p "$NAME"
 
 echo "1. 備份資料庫（含 Post、Tag、AboutConfig、PageView 等）..."
 sudo docker compose exec -T postgres pg_dump -U ben blog > "$NAME/backup.sql"
+if [ ! -s "$NAME/backup.sql" ]; then
+  echo "錯誤: backup.sql 為空，pg_dump 可能失敗（請檢查 postgres 容器是否運行、DB 名稱是否為 blog）"
+  exit 1
+fi
 
 echo "2. 備份 public/about、cv.pdf..."
 mkdir -p "$NAME/public"
