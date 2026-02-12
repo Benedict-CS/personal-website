@@ -17,6 +17,7 @@ import { stripMarkdown } from "@/lib/utils";
 import { Pencil } from "lucide-react";
 import { calculateReadingTime, formatReadingTime } from "@/lib/reading-time";
 import { siteConfig } from "@/config/site";
+import { getSiteConfigForRender } from "@/lib/site-config";
 
 // Force dynamic rendering to avoid build-time database connection
 export const dynamic = 'force-dynamic';
@@ -43,9 +44,12 @@ export async function generateMetadata({
     };
   }
 
+  const config = await getSiteConfigForRender();
   const description = stripMarkdown(post.content).substring(0, 160) + "...";
-
-  const canonicalUrl = `${siteConfig.url}/blog/${slug}`;
+  const canonicalUrl = `${config.url}/blog/${slug}`;
+  const ogUrl = config.ogImageUrl
+    ? (config.ogImageUrl.startsWith("http") ? config.ogImageUrl : new URL(config.ogImageUrl, config.url).toString())
+    : undefined;
 
   return {
     title: post.title,
@@ -57,13 +61,13 @@ export async function generateMetadata({
       url: canonicalUrl,
       type: "article",
       publishedTime: post.createdAt.toISOString(),
-      images: [siteConfig.ogImage],
+      ...(ogUrl && { images: [ogUrl] }),
     },
     twitter: {
       card: "summary_large_image",
       title: post.title,
       description: description,
-      images: [siteConfig.ogImage],
+      ...(ogUrl && { images: [ogUrl] }),
     },
   };
 }
@@ -146,7 +150,13 @@ export default async function BlogPostPage({
 
   const readingTime = calculateReadingTime(post.content);
 
-  const canonicalUrl = `${siteConfig.url}/blog/${post.slug}`;
+  const configForRender = await getSiteConfigForRender();
+  const canonicalUrl = `${configForRender.url}/blog/${post.slug}`;
+  const publisherLogoUrl = configForRender.ogImageUrl
+    ? (configForRender.ogImageUrl.startsWith("http")
+        ? configForRender.ogImageUrl
+        : new URL(configForRender.ogImageUrl, configForRender.url).toString())
+    : undefined;
   const jsonLd = {
     "@context": "https://schema.org",
     "@type": "Article",
@@ -161,10 +171,9 @@ export default async function BlogPostPage({
     publisher: {
       "@type": "Organization",
       name: siteConfig.name,
-      logo: {
-        "@type": "ImageObject",
-        url: `${siteConfig.url}${siteConfig.ogImage}`,
-      },
+      ...(publisherLogoUrl && {
+        logo: { "@type": "ImageObject", url: publisherLogoUrl },
+      }),
     },
     mainEntityOfPage: {
       "@type": "WebPage",

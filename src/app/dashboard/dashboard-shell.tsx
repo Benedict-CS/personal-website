@@ -48,10 +48,10 @@ export function DashboardShell({ children }: { children: React.ReactNode }) {
     <BreadcrumbProvider>
     <div className="flex flex-1 min-h-0">
       <aside
-        className={`fixed left-0 top-16 h-[calc(100vh-4rem)] border-r border-slate-200 bg-slate-50 z-10 transition-[width] duration-200 ease-out ${sidebarWidth} flex flex-col`}
+        className={`fixed left-0 top-16 h-[calc(100vh-4rem)] border-r border-slate-200 bg-slate-50 z-10 transition-[width] duration-200 ease-out ${sidebarWidth} flex flex-col overflow-hidden`}
       >
-        <div className={`flex flex-col flex-1 ${collapsed ? "p-2" : "p-6"} overflow-hidden`}>
-          <div className={`flex items-center ${collapsed ? "justify-center" : "justify-between"} mb-4`}>
+        <div className={`flex flex-col flex-1 min-h-0 ${collapsed ? "p-2" : "p-6"} overflow-y-auto`}>
+          <div className={`flex items-center shrink-0 ${collapsed ? "justify-center" : "justify-between"} mb-4`}>
             {!collapsed && <span className="text-xs font-medium text-slate-500 uppercase tracking-wider">Menu</span>}
             <Button
               type="button"

@@ -38,7 +38,7 @@ function getRedirectBase(req: NextRequest): string {
   return req.nextUrl.origin;
 }
 
-/** Log CV download then redirect to /cv.pdf */
+/** Log CV download then redirect to S3-served CV (/api/media/serve/cv.pdf). */
 export async function GET(request: NextRequest) {
   const ip = getClientIP(request);
   if (!excludedIPs.has(ip) && !isPrivateIP(ip)) {
@@ -64,5 +64,5 @@ export async function GET(request: NextRequest) {
     }
   }
   const base = getRedirectBase(request);
-  return NextResponse.redirect(`${base}/cv.pdf`, 302);
+  return NextResponse.redirect(`${base}/api/media/serve/cv.pdf`, 302);
 }

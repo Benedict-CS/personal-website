@@ -27,60 +27,27 @@ export async function POST(_request: NextRequest) {
       });
     }
 
-    // 解析所有使用的圖片 URL
+    // Only URLs under /api/about/serve/ refer to local public/about files (S3 URLs are not in this dir)
     const usedFiles = new Set<string>();
-    
-    // Profile image
-    if (config.profileImage) {
-      const profileFileName = config.profileImage.split("/").pop();
-      if (profileFileName) {
-        usedFiles.add(profileFileName);
-      }
-    }
+    const addIfLocal = (url: string) => {
+      if (!url?.startsWith("/api/about/serve/")) return;
+      const fileName = url.replace("/api/about/serve/", "").split("?")[0];
+      if (fileName) usedFiles.add(fileName);
+    };
 
-    // School logos
-    if (config.schoolLogos) {
-      try {
-        const schoolLogos = JSON.parse(config.schoolLogos) as Array<{ school: string; logo: string }>;
-        schoolLogos.forEach((logo) => {
-          const fileName = logo.logo.split("/").pop();
-          if (fileName) {
-            usedFiles.add(fileName);
-          }
-        });
-      } catch (e) {
-        console.error("Error parsing schoolLogos:", e);
+    if (config.profileImage) addIfLocal(config.profileImage);
+    try {
+      if (config.schoolLogos) {
+        (JSON.parse(config.schoolLogos) as Array<{ logo: string }>).forEach((l) => addIfLocal(l.logo));
       }
-    }
-
-    // Project images
-    if (config.projectImages) {
-      try {
-        const projectImages = JSON.parse(config.projectImages) as Array<{ project: string; image: string }>;
-        projectImages.forEach((img) => {
-          const fileName = img.image.split("/").pop();
-          if (fileName) {
-            usedFiles.add(fileName);
-          }
-        });
-      } catch (e) {
-        console.error("Error parsing projectImages:", e);
+      if (config.projectImages) {
+        (JSON.parse(config.projectImages) as Array<{ image: string }>).forEach((p) => addIfLocal(p.image));
       }
-    }
-
-    // Company logos
-    if (config.companyLogos) {
-      try {
-        const companyLogos = JSON.parse(config.companyLogos) as Array<{ company: string; logo: string }>;
-        companyLogos.forEach((logo) => {
-          const fileName = logo.logo.split("/").pop();
-          if (fileName) {
-            usedFiles.add(fileName);
-          }
-        });
-      } catch (e) {
-        console.error("Error parsing companyLogos:", e);
+      if (config.companyLogos) {
+        (JSON.parse(config.companyLogos) as Array<{ logo: string }>).forEach((l) => addIfLocal(l.logo));
       }
+    } catch (e) {
+      console.error("Error parsing About config JSON:", e);
     }
 
     // 2. 讀取 public/about 目錄中的所有文件

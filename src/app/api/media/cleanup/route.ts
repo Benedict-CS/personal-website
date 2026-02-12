@@ -15,31 +15,49 @@ export async function POST(_request: NextRequest) {
       );
     }
 
-    // 1. 從資料庫查詢所有文章的 content
-    const posts = await prisma.post.findMany({
-      select: {
-        content: true,
-      },
-    });
+    // 1. Gather all "used" references: posts + SiteConfig (logo, favicon, OG) + AboutConfig (any /api/media/serve/ URLs)
+    const [posts, siteConfig, aboutConfig] = await Promise.all([
+      prisma.post.findMany({ select: { content: true } }),
+      prisma.siteConfig.findUnique({ where: { id: 1 } }),
+      prisma.aboutConfig.findFirst(),
+    ]);
+    const allContent = posts.map((p) => p.content).join("\n");
+    const urlStrings: string[] = [
+      siteConfig?.logoUrl ?? "",
+      siteConfig?.faviconUrl ?? "",
+      siteConfig?.ogImageUrl ?? "",
+      aboutConfig?.profileImage ?? "",
+      aboutConfig?.schoolLogos ?? "",
+      aboutConfig?.companyLogos ?? "",
+      aboutConfig?.projectImages ?? "",
+      aboutConfig?.educationBlocks ?? "",
+      aboutConfig?.experienceBlocks ?? "",
+      aboutConfig?.projectBlocks ?? "",
+    ].filter(Boolean);
 
-    // 合併所有文章的內容
-    const allContent = posts.map((post) => post.content).join("\n");
+    // Extract S3 key from any URL like /api/media/serve/<key>
+    const usedKeys = new Set<string>();
+    for (const s of urlStrings) {
+      const matches = s.matchAll(/\/api\/media\/serve\/([^/?]+)/g);
+      for (const m of matches) if (m[1]) usedKeys.add(m[1]);
+    }
+    usedKeys.add("cv.pdf"); // CV is always "used", never delete
 
-    // 2. 從 RustFS (S3) 取得所有檔案列表
+    // 2. From RustFS (S3) list all files
     const objects = await listS3Objects();
     const files = objects.filter((obj) => obj.Key).map((obj) => obj.Key!);
 
-    // 3. 比對：檢查每個檔案是否被引用
+    // 3. Delete only if not referenced in posts, SiteConfig, or AboutConfig
     const deletedFiles: string[] = [];
     const errors: string[] = [];
 
     for (const fileName of files) {
-      // 檢查檔名是否出現在任何文章的內容中
-      // 使用 includes 檢查，因為 Markdown 中可能會有 `/api/media/serve/filename` 或 `filename` 等格式
-      const isReferenced =
+      const inPosts =
         allContent.includes(fileName) ||
         allContent.includes(`/api/media/serve/${fileName}`) ||
         allContent.includes(`api/media/serve/${fileName}`);
+      const isAboutAsset = fileName.startsWith("about-"); // About uploads (profile, school, company) — never delete
+      const isReferenced = inPosts || usedKeys.has(fileName) || isAboutAsset;
 
       if (!isReferenced) {
         // 4. 如果沒有被引用，則從 RustFS 刪除

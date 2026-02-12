@@ -11,7 +11,7 @@ export const siteConfig = {
   description:
     "Network Administrator | Full Stack Developer | Open Source Enthusiast. Master's student in Computer Science at NYCU, specializing in Cloud Native Technologies, CI/CD, and Network Infrastructure.",
   url: siteUrl,
-  ogImage: "/images/og.png",
+  ogImage: null as string | null, // Use Site settings → OG image (S3) instead; no public/images needed
   links: {
     github: "https://github.com/Benedict-CS",
     linkedin: "https://www.linkedin.com/in/benedict-tiong",

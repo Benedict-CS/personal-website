@@ -6,9 +6,9 @@ export async function GET() {
     // 從 RustFS (S3) 列出所有檔案
     const objects = await listS3Objects();
 
-    // 轉換為 API 格式
+    // 轉換為 API 格式（排除 cv.pdf，由 CV 頁面管理）
     const fileList = objects
-      .filter((obj) => obj.Key) // 過濾掉沒有 Key 的物件
+      .filter((obj) => obj.Key && obj.Key !== "cv.pdf")
       .map((obj) => ({
         name: obj.Key!,
         size: obj.Size || 0,

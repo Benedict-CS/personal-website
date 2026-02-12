@@ -6,6 +6,7 @@ import { Footer } from "@/components/footer";
 import { Providers } from "@/components/providers";
 import { AnalyticsBeacon } from "@/components/analytics-beacon";
 import { siteConfig } from "@/config/site";
+import { getSiteConfigForRender } from "@/lib/site-config";
 
 const geistSans = Geist({
   variable: "--font-geist-sans",
@@ -17,73 +18,84 @@ const geistMono = Geist_Mono({
   subsets: ["latin"],
 });
 
-export const metadata: Metadata = {
-  metadataBase: new URL(siteConfig.url),
-  title: {
-    default: siteConfig.title,
-    template: `%s | ${siteConfig.name}`,
-  },
-  description: siteConfig.description,
-  keywords: [
-    "Benedict Tiong",
-    "Network Administrator",
-    "Full Stack Developer",
-    "Cloud Native",
-    "Kubernetes",
-    "CI/CD",
-    "DevOps",
-    "Next.js",
-    "TypeScript",
-    "Proxmox",
-    "Linux",
-  ],
-  authors: [
-    {
-      name: siteConfig.author.name,
-      url: siteConfig.links.linkedin,
+export async function generateMetadata(): Promise<Metadata> {
+  const config = await getSiteConfigForRender();
+  return {
+    metadataBase: new URL(config.url),
+    title: {
+      default: config.metaTitle || siteConfig.title,
+      template: `%s | ${config.siteName}`,
     },
-  ],
-  creator: siteConfig.author.name,
-  openGraph: {
-    type: "website",
-    locale: "en_US",
-    url: siteConfig.url,
-    title: siteConfig.title,
-    description: siteConfig.description,
-    siteName: siteConfig.name,
-  },
-  twitter: {
-    card: "summary",
-    title: siteConfig.title,
-    description: siteConfig.description,
-    creator: "@benedicttiong",
-  },
-  robots: {
-    index: true,
-    follow: true,
-    googleBot: {
+    description: config.metaDescription ?? siteConfig.description,
+    keywords: [
+      "Benedict Tiong",
+      "Network Administrator",
+      "Full Stack Developer",
+      "Cloud Native",
+      "Kubernetes",
+      "CI/CD",
+      "DevOps",
+      "Next.js",
+      "TypeScript",
+      "Proxmox",
+      "Linux",
+    ],
+    authors: [{ name: config.authorName ?? siteConfig.author.name, url: config.links?.linkedin }],
+    creator: config.authorName ?? siteConfig.author.name,
+    openGraph: {
+      type: "website",
+      locale: "en_US",
+      url: config.url,
+      title: config.metaTitle || siteConfig.title,
+      description: config.metaDescription ?? siteConfig.description,
+      siteName: config.siteName,
+      ...(config.ogImageUrl && {
+        images: [
+          config.ogImageUrl.startsWith("http") ? config.ogImageUrl : new URL(config.ogImageUrl, config.url).toString(),
+        ],
+      }),
+    },
+    twitter: {
+      card: "summary_large_image",
+      title: config.metaTitle || siteConfig.title,
+      description: config.metaDescription ?? siteConfig.description,
+      creator: "@benedicttiong",
+      ...(config.ogImageUrl && {
+        images: [
+          config.ogImageUrl.startsWith("http") ? config.ogImageUrl : new URL(config.ogImageUrl, config.url).toString(),
+        ],
+      }),
+    },
+    robots: {
       index: true,
       follow: true,
-      "max-video-preview": -1,
-      "max-image-preview": "large",
-      "max-snippet": -1,
+      googleBot: {
+        index: true,
+        follow: true,
+        "max-video-preview": -1,
+        "max-image-preview": "large",
+        "max-snippet": -1,
+      },
     },
-  },
-  icons: {
-    icon: "/favicon.ico",
-    shortcut: "/favicon.ico",
-  },
-};
+    icons: config.faviconUrl
+      ? { icon: config.faviconUrl, shortcut: config.faviconUrl }
+      : { icon: "/favicon.ico", shortcut: "/favicon.ico" },
+  };
+}
 
 export const viewport = {
   themeColor: "#f8fafc",
 };
 
-export default function RootLayout({
+// Always read site config from DB on each request (no static cache)
+export const dynamic = "force-dynamic";
+
+export default async function RootLayout({
   children,
 }: Readonly<{
   children: React.ReactNode;
 }>) {
+  const siteConfigForRender = await getSiteConfigForRender();
   return (
     <html lang="en">
       <body
@@ -97,9 +109,9 @@ export default function RootLayout({
           >
             Skip to main content
           </a>
-          <Navbar />
+          <Navbar siteConfig={siteConfigForRender} />
           <main id="main-content" className="flex flex-1 flex-col min-h-0 main-fade-in">{children}</main>
-          <Footer />
+          <Footer siteConfig={siteConfigForRender} />
         </Providers>
       </body>
     </html>

@@ -22,7 +22,7 @@ export default function CVPage() {
   useEffect(() => {
     const checkCVExists = async () => {
       try {
-        const response = await fetch("/cv.pdf", { method: "HEAD" });
+        const response = await fetch("/api/media/serve/cv.pdf", { method: "HEAD" });
         setCvExists(response.ok);
       } catch {
         setCvExists(false);

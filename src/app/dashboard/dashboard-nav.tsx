@@ -6,6 +6,7 @@ import { LeaveGuardLink } from "@/components/leave-guard-link";
 import { FileText, Image as ImageIcon, Tags, StickyNote, Layout, BarChart3, Home, ChevronDown, ChevronRight } from "lucide-react";
 
 const contentSubItems = [
+  { href: "/dashboard/content/site", label: "Site settings" },
   { href: "/dashboard/content/home", label: "Home" },
   { href: "/dashboard/content/contact", label: "Contact" },
   { href: "/dashboard/content/about", label: "About & CV" },

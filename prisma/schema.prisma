@@ -56,7 +56,13 @@ model PostVersion {
 model AboutConfig {
   id            String   @id @default(uuid())
   profileImage  String?  // Profile photo URL
-  introText        String?  // Optional intro/bio at top of About page
+  heroName      String?  // Display name in hero (e.g. Benedict Ing Ngie Tiong)
+  heroTagline   String?  // Subtitle under name (e.g. Master's Student in Computer Science | Full Stack Developer)
+  heroPhone     String?  // Phone number
+  heroEmail     String?  // Email
+  heroPortfolioLabel String?  // Link label (e.g. benedict-tiong, LinkedIn)
+  heroPortfolioUrl   String?  // Link URL (e.g. https://linkedin.com/in/benedict-tiong)
+  introText        String?  // Short bio paragraph shown below hero card; leave empty to hide
   aboutMainContent  String?  // Legacy: one markdown; use educationBlocks/experienceBlocks/projectBlocks instead
   educationBlocks   String   @default("[]") // [{title, logoUrl?, organization, dateRange, content}]
   experienceBlocks  String   @default("[]")
@@ -64,10 +70,31 @@ model AboutConfig {
   schoolLogos       String   @default("[]") // JSON array: [{school: "NYCU", logo: "url"}, ...]
   projectImages String   @default("[]") // JSON array: [{project: "project-name", image: "url"}, ...]
   companyLogos  String   @default("[]") // JSON array: [{company: "Company Name", logo: "url"}, ...]
+  contactHeading String?  // Let's Connect section title
+  contactText    String?  // Short intro text above contact buttons
+  contactLinks   String   @default("[]") // JSON: [{label, url}, ...] e.g. Email, LinkedIn, GitHub
+  technicalSkills String @default("[]") // JSON: [{category, items: string[]}, ...]
+  achievements   String   @default("[]") // JSON: [{title, organization, year}, ...]
   createdAt    DateTime @default(now())
   updatedAt    DateTime @updatedAt
 
   @@unique([id])
+}
+
+// Global site branding & meta (navbar name, favicon, meta title, footer links, nav, footer text, OG). Singleton: single row id=1.
+model SiteConfig {
+  id              Int      @id @default(1)
+  siteName        String   @default("My Site")
+  logoUrl         String?
+  faviconUrl      String?
+  metaTitle       String   @default("")
+  metaDescription String?
+  authorName      String?
+  links           Json     @default("{}") // { email?, github?, linkedin? }
+  navItems        Json     @default("[]") // [{ label: string, href: string }]
+  footerText      String?  // e.g. "All rights reserved." or second line
+  ogImageUrl      String?
+  updatedAt       DateTime @updatedAt
 }
 
 // Editable content for Home and Contact (and optional About intro is in AboutConfig)

@@ -6,32 +6,60 @@ import { prisma } from "@/lib/prisma";
 // GET: 獲取 about 配置
 export async function GET() {
   try {
-    let config = await prisma.aboutConfig.findFirst();
+    let config = await prisma.aboutConfig.findFirst({ orderBy: { updatedAt: "desc" } });
 
     // 如果沒有配置，創建一個預設的
     if (!config) {
       config = await prisma.aboutConfig.create({
         data: {
           profileImage: null,
+          heroName: null,
+          heroTagline: null,
+          heroPhone: null,
+          heroEmail: null,
+          heroPortfolioLabel: null,
+          heroPortfolioUrl: null,
           introText: null,
+          aboutMainContent: null,
+          educationBlocks: "[]",
+          experienceBlocks: "[]",
+          projectBlocks: "[]",
           schoolLogos: "[]",
           projectImages: "[]",
           companyLogos: "[]",
+          contactLinks: "[]",
+          technicalSkills: "[]",
+          achievements: "[]",
         },
       });
     }
 
-    const c = config as { introText?: string | null; aboutMainContent?: string | null; educationBlocks?: string; experienceBlocks?: string; projectBlocks?: string };
+    const c = config as { introText?: string | null; aboutMainContent?: string | null; educationBlocks?: string | null; experienceBlocks?: string | null; projectBlocks?: string | null; contactLinks?: string | null; technicalSkills?: string | null; achievements?: string | null };
+    const parseBlocks = (s: string | null | undefined) => {
+      if (s == null || s === "") return [];
+      try { return JSON.parse(s); } catch { return []; }
+    };
     return NextResponse.json({
       profileImage: config.profileImage ?? null,
+      heroName: config.heroName ?? null,
+      heroTagline: config.heroTagline ?? null,
+      heroPhone: config.heroPhone ?? null,
+      heroEmail: config.heroEmail ?? null,
+      heroPortfolioLabel: config.heroPortfolioLabel ?? null,
+      heroPortfolioUrl: config.heroPortfolioUrl ?? null,
       introText: c.introText ?? null,
       aboutMainContent: c.aboutMainContent ?? null,
-      educationBlocks: c.educationBlocks ? JSON.parse(c.educationBlocks) : [],
-      experienceBlocks: c.experienceBlocks ? JSON.parse(c.experienceBlocks) : [],
-      projectBlocks: c.projectBlocks ? JSON.parse(c.projectBlocks) : [],
+      educationBlocks: parseBlocks(c.educationBlocks),
+      experienceBlocks: parseBlocks(c.experienceBlocks),
+      projectBlocks: parseBlocks(c.projectBlocks),
       schoolLogos: config.schoolLogos ? JSON.parse(config.schoolLogos) : [],
       projectImages: config.projectImages ? JSON.parse(config.projectImages) : [],
       companyLogos: config.companyLogos ? JSON.parse(config.companyLogos) : [],
+      contactHeading: config.contactHeading ?? null,
+      contactText: config.contactText ?? null,
+      contactLinks: parseBlocks(c.contactLinks ?? config.contactLinks),
+      technicalSkills: parseBlocks(c.technicalSkills ?? config.technicalSkills),
+      achievements: parseBlocks(c.achievements ?? config.achievements),
     }, { status: 200 });
   } catch (error) {
     console.error("Error fetching about config:", error);
@@ -39,6 +67,12 @@ export async function GET() {
     if (error instanceof Error && error.message.includes("does not exist")) {
       return NextResponse.json({
         profileImage: null,
+        heroName: null,
+        heroTagline: null,
+        heroPhone: null,
+        heroEmail: null,
+        heroPortfolioLabel: null,
+        heroPortfolioUrl: null,
         introText: null,
         aboutMainContent: null,
         educationBlocks: [],
@@ -47,6 +81,11 @@ export async function GET() {
         schoolLogos: [],
         projectImages: [],
         companyLogos: [],
+        contactHeading: null,
+        contactText: null,
+        contactLinks: [],
+        technicalSkills: [],
+        achievements: [],
       }, { status: 200 });
     }
     return NextResponse.json(
@@ -72,7 +111,28 @@ export async function POST(request: NextRequest) {
     }
 
     const body = await request.json();
-    const { profileImage, introText, aboutMainContent, educationBlocks, experienceBlocks, projectBlocks, schoolLogos, projectImages, companyLogos } = body;
+    const {
+      profileImage,
+      heroName,
+      heroTagline,
+      heroPhone,
+      heroEmail,
+      heroPortfolioLabel,
+      heroPortfolioUrl,
+      introText,
+      aboutMainContent,
+      educationBlocks,
+      experienceBlocks,
+      projectBlocks,
+      schoolLogos,
+      projectImages,
+      companyLogos,
+      contactHeading,
+      contactText,
+      contactLinks,
+      technicalSkills,
+      achievements,
+    } = body;
 
     let config = await prisma.aboutConfig.findFirst();
     const cfg = config as { educationBlocks?: string; experienceBlocks?: string; projectBlocks?: string; introText?: string | null; aboutMainContent?: string | null };
@@ -81,6 +141,12 @@ export async function POST(request: NextRequest) {
       config = await prisma.aboutConfig.create({
         data: {
           profileImage: profileImage || null,
+          heroName: heroName ?? null,
+          heroTagline: heroTagline ?? null,
+          heroPhone: heroPhone ?? null,
+          heroEmail: heroEmail ?? null,
+          heroPortfolioLabel: heroPortfolioLabel ?? null,
+          heroPortfolioUrl: heroPortfolioUrl ?? null,
           introText: introText ?? null,
           aboutMainContent: aboutMainContent ?? null,
           educationBlocks: educationBlocks ? JSON.stringify(educationBlocks) : "[]",
@@ -89,6 +155,11 @@ export async function POST(request: NextRequest) {
           schoolLogos: schoolLogos ? JSON.stringify(schoolLogos) : "[]",
           projectImages: projectImages ? JSON.stringify(projectImages) : "[]",
           companyLogos: companyLogos ? JSON.stringify(companyLogos) : "[]",
+          contactHeading: contactHeading ?? null,
+          contactText: contactText ?? null,
+          contactLinks: contactLinks ? JSON.stringify(contactLinks) : "[]",
+          technicalSkills: technicalSkills ? JSON.stringify(technicalSkills) : "[]",
+          achievements: achievements ? JSON.stringify(achievements) : "[]",
         },
       });
     } else {
@@ -96,6 +167,12 @@ export async function POST(request: NextRequest) {
         where: { id: config.id },
         data: {
           profileImage: profileImage !== undefined ? profileImage : config.profileImage,
+          heroName: heroName !== undefined ? heroName : config.heroName,
+          heroTagline: heroTagline !== undefined ? heroTagline : config.heroTagline,
+          heroPhone: heroPhone !== undefined ? heroPhone : config.heroPhone,
+          heroEmail: heroEmail !== undefined ? heroEmail : config.heroEmail,
+          heroPortfolioLabel: heroPortfolioLabel !== undefined ? heroPortfolioLabel : config.heroPortfolioLabel,
+          heroPortfolioUrl: heroPortfolioUrl !== undefined ? heroPortfolioUrl : config.heroPortfolioUrl,
           introText: introText !== undefined ? introText : config.introText,
           aboutMainContent: aboutMainContent !== undefined ? aboutMainContent : cfg.aboutMainContent,
           educationBlocks: educationBlocks !== undefined ? JSON.stringify(educationBlocks) : (cfg.educationBlocks ?? "[]"),
@@ -104,21 +181,38 @@ export async function POST(request: NextRequest) {
           schoolLogos: schoolLogos !== undefined ? JSON.stringify(schoolLogos) : config.schoolLogos,
           projectImages: projectImages !== undefined ? JSON.stringify(projectImages) : config.projectImages,
           companyLogos: companyLogos !== undefined ? JSON.stringify(companyLogos) : (config.companyLogos || "[]"),
+          contactHeading: contactHeading !== undefined ? contactHeading : config.contactHeading,
+          contactText: contactText !== undefined ? contactText : config.contactText,
+          contactLinks: contactLinks !== undefined ? JSON.stringify(contactLinks) : (config.contactLinks ?? "[]"),
+          technicalSkills: technicalSkills !== undefined ? JSON.stringify(technicalSkills) : (config.technicalSkills ?? "[]"),
+          achievements: achievements !== undefined ? JSON.stringify(achievements) : (config.achievements ?? "[]"),
         },
       });
     }
 
-    const out = config as { introText?: string | null; aboutMainContent?: string | null; educationBlocks?: string; experienceBlocks?: string; projectBlocks?: string };
+    const out = config as { introText?: string | null; aboutMainContent?: string | null; educationBlocks?: string; experienceBlocks?: string; projectBlocks?: string; contactLinks?: string; technicalSkills?: string; achievements?: string };
+    const parse = (s: string | null | undefined) => { if (s == null || s === "") return []; try { return JSON.parse(s); } catch { return []; } };
     return NextResponse.json({
       profileImage: config.profileImage ?? null,
+      heroName: config.heroName ?? null,
+      heroTagline: config.heroTagline ?? null,
+      heroPhone: config.heroPhone ?? null,
+      heroEmail: config.heroEmail ?? null,
+      heroPortfolioLabel: config.heroPortfolioLabel ?? null,
+      heroPortfolioUrl: config.heroPortfolioUrl ?? null,
       introText: out.introText ?? null,
       aboutMainContent: out.aboutMainContent ?? null,
-      educationBlocks: out.educationBlocks ? JSON.parse(out.educationBlocks) : [],
-      experienceBlocks: out.experienceBlocks ? JSON.parse(out.experienceBlocks) : [],
-      projectBlocks: out.projectBlocks ? JSON.parse(out.projectBlocks) : [],
+      educationBlocks: parse(out.educationBlocks),
+      experienceBlocks: parse(out.experienceBlocks),
+      projectBlocks: parse(out.projectBlocks),
       schoolLogos: config.schoolLogos ? JSON.parse(config.schoolLogos) : [],
       projectImages: config.projectImages ? JSON.parse(config.projectImages) : [],
       companyLogos: config.companyLogos ? JSON.parse(config.companyLogos) : [],
+      contactHeading: config.contactHeading ?? null,
+      contactText: config.contactText ?? null,
+      contactLinks: parse(out.contactLinks ?? config.contactLinks),
+      technicalSkills: parse(out.technicalSkills ?? config.technicalSkills),
+      achievements: parse(out.achievements ?? config.achievements),
     }, { status: 200 });
   } catch (error) {
     console.error("Error updating about config:", error);

@@ -1,12 +1,12 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import Link from "next/link";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { ConfirmDialog } from "@/components/ui/confirm-dialog";
-import { Trash2, Image as ImageIcon, Loader2 } from "lucide-react";
+import { Trash2, Image as ImageIcon, Loader2, Upload } from "lucide-react";
 import Image from "next/image";
 
 export const dynamic = "force-dynamic";
@@ -29,6 +29,9 @@ export default function MediaPage() {
     message: string;
     type: "success" | "error";
   } | null>(null);
+  const [uploading, setUploading] = useState(false);
+  const [dragOver, setDragOver] = useState(false);
+  const inputRef = useRef<HTMLInputElement>(null);
 
   // 載入媒體檔案列表
   const fetchMediaFiles = async () => {
@@ -115,6 +118,45 @@ export default function MediaPage() {
       timeStyle: "short",
     });
 
+  const uploadFiles = async (fileList: FileList | null) => {
+    if (!fileList?.length) return;
+    setUploading(true);
+    setDeleteStatus(null);
+    let ok = 0;
+    let err = 0;
+    for (let i = 0; i < fileList.length; i++) {
+      const file = fileList[i];
+      const allowed = ["image/jpeg", "image/jpg", "image/png", "image/gif", "image/webp"];
+      if (!allowed.includes(file.type)) {
+        err++;
+        continue;
+      }
+      try {
+        const form = new FormData();
+        form.append("file", file);
+        const res = await fetch("/api/upload", { method: "POST", body: form });
+        if (res.ok) ok++;
+        else err++;
+      } catch {
+        err++;
+      }
+    }
+    setUploading(false);
+    if (ok > 0) await fetchMediaFiles();
+    setDeleteStatus({
+      show: true,
+      message: ok > 0 ? `Uploaded ${ok} image(s).${err ? ` ${err} failed.` : ""}` : err > 0 ? "Upload failed. Only JPEG, PNG, GIF, WebP are allowed." : "No files to upload.",
+      type: ok > 0 ? "success" : "error",
+    });
+    setTimeout(() => setDeleteStatus(null), 4000);
+  };
+
+  const handleDrop = (e: React.DragEvent) => {
+    e.preventDefault();
+    setDragOver(false);
+    uploadFiles(e.dataTransfer.files);
+  };
+
   const filteredFiles = search.trim()
     ? files.filter((f) => f.name.toLowerCase().includes(search.trim().toLowerCase()))
     : files;
@@ -133,7 +175,35 @@ export default function MediaPage() {
       />
       <div className="flex flex-wrap items-center justify-between gap-4">
         <h2 className="text-3xl font-bold text-slate-900">Media</h2>
-        <div className="flex items-center gap-2">
+        <div className="flex items-center gap-2 flex-wrap">
+          <input
+            ref={inputRef}
+            type="file"
+            accept="image/jpeg,image/jpg,image/png,image/gif,image/webp"
+            multiple
+            className="hidden"
+            onChange={(e) => {
+              uploadFiles(e.target.files);
+              e.target.value = "";
+            }}
+          />
+          <Button
+            onClick={() => inputRef.current?.click()}
+            disabled={uploading}
+            className="gap-2"
+          >
+            {uploading ? (
+              <>
+                <Loader2 className="h-4 w-4 animate-spin" />
+                Uploading...
+              </>
+            ) : (
+              <>
+                <Upload className="h-4 w-4" />
+                Upload images
+              </>
+            )}
+          </Button>
           <Input
             type="text"
             placeholder="Search by filename..."
@@ -189,20 +259,58 @@ export default function MediaPage() {
           ))}
         </div>
       ) : files.length === 0 ? (
-        <Card>
+        <Card
+          className={`border-2 border-dashed transition-colors ${
+            dragOver ? "border-slate-400 bg-slate-50" : "border-slate-200"
+          }`}
+          onDragOver={(e) => {
+            e.preventDefault();
+            setDragOver(true);
+          }}
+          onDragLeave={() => setDragOver(false)}
+          onDrop={handleDrop}
+        >
           <CardContent className="py-12 text-center">
             <ImageIcon className="mx-auto h-12 w-12 text-slate-400" />
             <p className="mt-4 font-medium text-slate-700">No media files yet</p>
             <p className="mt-2 text-sm text-slate-500 max-w-md mx-auto">
-              Upload images when editing a post (Upload Image or Insert from Media), or add images to your content—they will appear here.
+              Upload images here or drag and drop. Supported: JPEG, PNG, GIF, WebP.
             </p>
-            <Link href="/dashboard/posts/new" className="mt-6 inline-block">
-              <Button>Create New Post</Button>
-            </Link>
+            <Button
+              onClick={() => inputRef.current?.click()}
+              disabled={uploading}
+              className="mt-6 gap-2"
+            >
+              {uploading ? <Loader2 className="h-4 w-4 animate-spin" /> : <Upload className="h-4 w-4" />}
+              {uploading ? "Uploading..." : "Upload images"}
+            </Button>
           </CardContent>
         </Card>
       ) : (
         <>
+          <div
+            className={`rounded-lg border-2 border-dashed p-4 text-center transition-colors ${
+              dragOver ? "border-slate-400 bg-slate-50" : "border-slate-200"
+            }`}
+            onDragOver={(e) => {
+              e.preventDefault();
+              setDragOver(true);
+            }}
+            onDragLeave={() => setDragOver(false)}
+            onDrop={handleDrop}
+          >
+            <p className="text-sm text-slate-600">Drag and drop images here, or</p>
+            <Button
+              variant="outline"
+              size="sm"
+              className="mt-2 gap-2"
+              onClick={() => inputRef.current?.click()}
+              disabled={uploading}
+            >
+              {uploading ? <Loader2 className="h-4 w-4 animate-spin" /> : <Upload className="h-4 w-4" />}
+              {uploading ? "Uploading..." : "Upload images"}
+            </Button>
+          </div>
           {search.trim() && (
             <p className="text-sm text-slate-600">
               {filteredFiles.length === 0

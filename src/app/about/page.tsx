@@ -5,27 +5,35 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Mail, Linkedin, Github, GraduationCap, Briefcase, Award, Trophy, Download, Code, Network } from "lucide-react";
 import { siteConfig } from "@/config/site";
+import { getSiteConfigForRender } from "@/lib/site-config";
 import { prisma } from "@/lib/prisma";
 import { AboutHighlightScroll } from "@/components/about-highlight-scroll";
 import { MarkdownRenderer } from "@/components/markdown-renderer";
+import { CountryFlag } from "@/components/country-flag";
 import { Suspense } from "react";
 
 // 啟用動態渲染並設置重新驗證時間（30秒）
 export const revalidate = 30;
 export const dynamic = "force-dynamic";
 
-export const metadata: Metadata = {
-  title: "About Me",
-  description:
-    "Learn more about Benedict Tiong - Master's student in Computer Science at NYCU, specializing in Network Architecture, Cloud Native Technologies, and Full Stack Development.",
-  openGraph: {
+export async function generateMetadata(): Promise<Metadata> {
+  const config = await getSiteConfigForRender();
+  const ogUrl = config.ogImageUrl
+    ? (config.ogImageUrl.startsWith("http") ? config.ogImageUrl : new URL(config.ogImageUrl, config.url).toString())
+    : undefined;
+  return {
     title: "About Me",
     description:
       "Learn more about Benedict Tiong - Master's student in Computer Science at NYCU, specializing in Network Architecture, Cloud Native Technologies, and Full Stack Development.",
-    url: `${siteConfig.url}/about`,
-    images: [siteConfig.ogImage],
-  },
-};
+    openGraph: {
+      title: "About Me",
+      description:
+        "Learn more about Benedict Tiong - Master's student in Computer Science at NYCU, specializing in Network Architecture, Cloud Native Technologies, and Full Stack Development.",
+      url: `${config.url}/about`,
+      ...(ogUrl && { images: [ogUrl] }),
+    },
+  };
+}
 
 interface SchoolLogo {
   school: string;
@@ -46,6 +54,8 @@ export interface AboutBlockEntry {
   title: string;
   logoUrl?: string | null;
   organization: string;
+  /** ISO 3166-1 alpha-2 country code (e.g. TW, US) for Education; shown as flag after school name */
+  countryCode?: string | null;
   dateRange: string;
   content: string;
 }
@@ -56,6 +66,12 @@ async function getAboutConfig() {
     if (!config) {
       return {
         profileImage: null,
+        heroName: null,
+        heroTagline: null,
+        heroPhone: null,
+        heroEmail: null,
+        heroPortfolioLabel: null,
+        heroPortfolioUrl: null,
         introText: null,
         aboutMainContent: null,
         educationBlocks: [] as AboutBlockEntry[],
@@ -64,24 +80,67 @@ async function getAboutConfig() {
         schoolLogos: [] as SchoolLogo[],
         projectImages: [] as ProjectImage[],
         companyLogos: [] as CompanyLogo[],
+        contactHeading: null,
+        contactText: null,
+        contactLinks: [] as { label: string; url: string }[],
+        technicalSkills: [] as { category: string; items: string[] }[],
+        achievements: [] as { title: string; organization: string; year: string }[],
       };
     }
-    const c = config as { introText?: string | null; aboutMainContent?: string | null; educationBlocks?: string; experienceBlocks?: string; projectBlocks?: string };
+    const c = config as {
+      introText?: string | null;
+      aboutMainContent?: string | null;
+      educationBlocks?: string;
+      experienceBlocks?: string;
+      projectBlocks?: string;
+      heroName?: string | null;
+      heroTagline?: string | null;
+      heroPhone?: string | null;
+      heroEmail?: string | null;
+      heroPortfolioLabel?: string | null;
+      heroPortfolioUrl?: string | null;
+      contactHeading?: string | null;
+      contactText?: string | null;
+      contactLinks?: string | null;
+      technicalSkills?: string | null;
+      achievements?: string | null;
+    };
+    const parseJson = (s: string | null | undefined, fallback: unknown): unknown => {
+      if (s == null || s === "") return fallback;
+      try { return JSON.parse(s); } catch { return fallback; }
+    };
     return {
       profileImage: config.profileImage,
+      heroName: c.heroName ?? null,
+      heroTagline: c.heroTagline ?? null,
+      heroPhone: c.heroPhone ?? null,
+      heroEmail: c.heroEmail ?? null,
+      heroPortfolioLabel: c.heroPortfolioLabel ?? null,
+      heroPortfolioUrl: c.heroPortfolioUrl ?? null,
       introText: c.introText ?? null,
       aboutMainContent: c.aboutMainContent ?? null,
-      educationBlocks: (c.educationBlocks ? JSON.parse(c.educationBlocks) : []) as AboutBlockEntry[],
-      experienceBlocks: (c.experienceBlocks ? JSON.parse(c.experienceBlocks) : []) as AboutBlockEntry[],
-      projectBlocks: (c.projectBlocks ? JSON.parse(c.projectBlocks) : []) as AboutBlockEntry[],
+      educationBlocks: parseJson(c.educationBlocks, []) as AboutBlockEntry[],
+      experienceBlocks: parseJson(c.experienceBlocks, []) as AboutBlockEntry[],
+      projectBlocks: parseJson(c.projectBlocks, []) as AboutBlockEntry[],
       schoolLogos: config.schoolLogos ? (JSON.parse(config.schoolLogos) as SchoolLogo[]) : [],
       projectImages: config.projectImages ? (JSON.parse(config.projectImages) as ProjectImage[]) : [],
       companyLogos: config.companyLogos ? (JSON.parse(config.companyLogos) as CompanyLogo[]) : [],
+      contactHeading: c.contactHeading ?? null,
+      contactText: c.contactText ?? null,
+      contactLinks: (parseJson(c.contactLinks ?? (config as { contactLinks?: string }).contactLinks, []) as { label: string; url: string }[]),
+      technicalSkills: (parseJson(c.technicalSkills ?? (config as { technicalSkills?: string }).technicalSkills, []) as { category: string; items: string[] }[]),
+      achievements: (parseJson(c.achievements ?? (config as { achievements?: string }).achievements, []) as { title: string; organization: string; year: string }[]),
     };
   } catch (error) {
     console.error("Error loading about config:", error);
     return {
       profileImage: null,
+      heroName: null,
+      heroTagline: null,
+      heroPhone: null,
+      heroEmail: null,
+      heroPortfolioLabel: null,
+      heroPortfolioUrl: null,
       introText: null,
       aboutMainContent: null,
       educationBlocks: [] as AboutBlockEntry[],
@@ -90,6 +149,11 @@ async function getAboutConfig() {
       schoolLogos: [] as SchoolLogo[],
       projectImages: [] as ProjectImage[],
       companyLogos: [] as CompanyLogo[],
+      contactHeading: null,
+      contactText: null,
+      contactLinks: [] as { label: string; url: string }[],
+      technicalSkills: [] as { category: string; items: string[] }[],
+      achievements: [] as { title: string; organization: string; year: string }[],
     };
   }
 }
@@ -163,7 +227,7 @@ function getCompanyLogo(companyLogos: CompanyLogo[], companyName: string): strin
 
 export default async function AboutPage() {
   const config = await getAboutConfig();
-  const { profileImage, introText, aboutMainContent, educationBlocks, experienceBlocks, projectBlocks, schoolLogos, projectImages, companyLogos } = config;
+  const { profileImage, heroName, heroTagline, introText, aboutMainContent, educationBlocks, experienceBlocks, projectBlocks, schoolLogos, projectImages, companyLogos, technicalSkills, achievements } = config;
   const useStructuredBlocks = educationBlocks.length > 0 || experienceBlocks.length > 0 || projectBlocks.length > 0;
 
   // 調試：輸出配置信息（僅在開發環境）
@@ -248,19 +312,13 @@ export default async function AboutPage() {
   }
 
   return (
-    <div className="container mx-auto max-w-4xl px-4 py-12">
+    <div className="container mx-auto max-w-5xl px-4 py-12">
       <Suspense fallback={null}>
         <AboutHighlightScroll />
       </Suspense>
       <div className="space-y-8" data-about-content>
-        {introText && introText.trim() && (
-          <Card className="shadow-lg">
-            <CardContent className="pt-6 pb-6">
-              <p className="text-slate-700 whitespace-pre-wrap leading-relaxed">{introText}</p>
-            </CardContent>
-          </Card>
-        )}
-        {/* Profile Header */}
+        {/* Hero: profile card (name, tagline, contact, CV) — first thing visitors see */}
+        {/* Hero + Intro merged into one card for a tighter, less empty layout */}
         <Card className="shadow-lg">
           <CardContent className="pt-8 pb-8">
             <div className="text-center">
@@ -270,35 +328,29 @@ export default async function AboutPage() {
                     {/* eslint-disable-next-line @next/next/no-img-element */}
                     <img
                       src={profileImage}
-                      alt="Benedict Tiong"
+                      alt={heroName?.trim() || "Profile"}
                       className="w-full h-full object-cover"
                     />
                   </div>
                 </div>
               ) : (
                 <div className="mb-6 inline-flex h-32 w-32 items-center justify-center rounded-full bg-gradient-to-br from-slate-400 to-slate-600 text-5xl font-bold text-white shadow-md">
-                  B
+                  {(heroName?.trim() || "B")[0]}
                 </div>
               )}
               <h1 className="mb-2 text-4xl font-bold text-slate-900">
-                Benedict Ing Ngie Tiong
+                {heroName?.trim() || "Benedict Ing Ngie Tiong"}
               </h1>
-              <p className="mb-2 text-lg text-slate-600">
-                Master&apos;s Student in Computer Science | Full Stack Developer
-              </p>
-              <div className="mb-6 flex flex-wrap items-center justify-center gap-4 text-sm text-slate-600">
-                <span>📞 (+886) 905-754-546</span>
-                <span>✉️ benedict.cs12@nycu.edu.tw</span>
-                <Link 
-                  href="https://www.linkedin.com/in/benedict-tiong" 
-                  target="_blank" 
-                  rel="noopener noreferrer"
-                  className="hover:text-slate-900 transition-colors"
-                >
-                  🔗 benedict-tiong
-                </Link>
-              </div>
-              <div className="flex justify-center gap-3">
+              {(heroTagline?.trim()) ? (
+                <p className="mb-2 text-lg text-slate-600">
+                  {heroTagline}
+                </p>
+              ) : (
+                <p className="mb-2 text-lg text-slate-600">
+                  Master&apos;s Student in Computer Science | Full Stack Developer
+                </p>
+              )}
+              <div className="flex justify-center gap-3 mt-6">
                 <Link href="/api/cv/download" download="Benedict_Tiong_CV.pdf" prefetch={false}>
                   <Button variant="default" className="gap-2 shadow-md">
                     <Download className="h-4 w-4" />
@@ -307,6 +359,11 @@ export default async function AboutPage() {
                 </Link>
               </div>
             </div>
+            {introText && introText.trim() && (
+              <div className="mt-8 pt-6 border-t border-slate-200 text-left max-w-4xl mx-auto px-0">
+                <p className="text-slate-700 whitespace-pre-wrap leading-relaxed">{introText}</p>
+              </div>
+            )}
           </CardContent>
         </Card>
 
@@ -323,36 +380,44 @@ export default async function AboutPage() {
                 </CardHeader>
                 <CardContent>
                   <div className="space-y-6">
-                    {educationBlocks.map((entry, i) => (
-                      <div key={i} className="border-l-4 border-blue-500 pl-4 relative">
-                        <div className="flex items-start gap-4">
-                          {entry.logoUrl && (
-                            <div className="relative h-16 w-16 flex-shrink-0 mt-1">
+                    {educationBlocks.map((entry, i) => {
+                      const entryLogo = (entry.logoUrl && entry.logoUrl.trim()) ? entry.logoUrl : (entry.logoUrl === "" ? null : getSchoolLogo(schoolLogos, entry.organization));
+                      return (
+                      <div key={i} className="border-l-4 border-blue-500 pl-4">
+                        <div className="flex gap-4">
+                          {entryLogo && (
+                            <div className="relative h-16 w-16 flex-shrink-0">
                               {/* eslint-disable-next-line @next/next/no-img-element */}
-                              <img src={entry.logoUrl} alt="" className="w-full h-full object-contain" />
+                              <img src={entryLogo} alt="" className="w-full h-full object-contain" />
                             </div>
                           )}
-                          <div className="flex-1 min-w-0">
-                            <div className="flex flex-wrap items-start justify-between gap-4 mb-2">
-                              <h3 className="font-semibold text-slate-900 text-lg flex-1">{entry.title}</h3>
-                              {entry.dateRange && (
-                                <Badge variant="secondary" className="flex-shrink-0 whitespace-nowrap">
-                                  {entry.dateRange}
-                                </Badge>
+                          <div className="flex-1 min-w-0 flex flex-wrap items-start justify-between gap-x-4 gap-y-1">
+                            <div>
+                              <h3 className="font-semibold text-slate-900 text-lg mb-0.5">{entry.title}</h3>
+                              {entry.organization && (
+                                <p className="text-base font-semibold text-slate-700 flex items-center gap-1.5 flex-wrap">
+                                  <span>{entry.organization}</span>
+                                  {entry.countryCode?.trim() && (
+                                    <CountryFlag countryCode={entry.countryCode} />
+                                  )}
+                                </p>
                               )}
                             </div>
-                            {entry.organization && (
-                              <p className="text-sm text-slate-600 font-medium mb-2">{entry.organization}</p>
-                            )}
-                            {entry.content && (
-                              <div className="prose prose-slate prose-sm max-w-none">
-                                <MarkdownRenderer content={entry.content} />
-                              </div>
+                            {entry.dateRange && (
+                              <Badge variant="secondary" className="shrink-0 text-slate-600 font-normal">{entry.dateRange}</Badge>
                             )}
                           </div>
                         </div>
+                        {entry.content && (
+                          <div className="mt-1">
+                            <div className="prose prose-slate prose-sm max-w-none text-sm">
+                              <MarkdownRenderer content={entry.content} />
+                            </div>
+                          </div>
+                        )}
                       </div>
-                    ))}
+                    );
+                    })}
                   </div>
                 </CardContent>
               </Card>
@@ -367,36 +432,39 @@ export default async function AboutPage() {
                 </CardHeader>
                 <CardContent>
                   <div className="space-y-6">
-                    {experienceBlocks.map((entry, i) => (
-                      <div key={i} className="border-l-4 border-green-500 pl-4 relative">
-                        <div className="flex items-start gap-4">
-                          {entry.logoUrl && (
-                            <div className="relative h-16 w-16 flex-shrink-0 mt-1">
+                    {experienceBlocks.map((entry, i) => {
+                      const entryLogo = (entry.logoUrl && entry.logoUrl.trim()) ? entry.logoUrl : (entry.logoUrl === "" ? null : getCompanyLogo(companyLogos, entry.organization));
+                      return (
+                      <div key={i} className="border-l-4 border-green-500 pl-4">
+                        <div className="flex gap-4">
+                          {entryLogo && (
+                            <div className="relative h-16 w-16 flex-shrink-0">
                               {/* eslint-disable-next-line @next/next/no-img-element */}
-                              <img src={entry.logoUrl} alt="" className="w-full h-full object-contain" />
+                              <img src={entryLogo} alt="" className="w-full h-full object-contain" />
                             </div>
                           )}
-                          <div className="flex-1 min-w-0">
-                            <div className="flex flex-wrap items-start justify-between gap-4 mb-2">
-                              <h3 className="font-semibold text-slate-900 text-lg flex-1">{entry.title}</h3>
-                              {entry.dateRange && (
-                                <Badge variant="secondary" className="flex-shrink-0 whitespace-nowrap">
-                                  {entry.dateRange}
-                                </Badge>
+                          <div className="flex-1 min-w-0 flex flex-wrap items-start justify-between gap-x-4 gap-y-1">
+                            <div>
+                              <h3 className="font-semibold text-slate-900 text-lg mb-0.5">{entry.title}</h3>
+                              {entry.organization && (
+                                <p className="text-base font-semibold text-slate-700">{entry.organization}</p>
                               )}
                             </div>
-                            {entry.organization && (
-                              <p className="text-sm text-slate-600 font-medium mb-2">{entry.organization}</p>
-                            )}
-                            {entry.content && (
-                              <div className="prose prose-slate prose-sm max-w-none">
-                                <MarkdownRenderer content={entry.content} />
-                              </div>
+                            {entry.dateRange && (
+                              <Badge variant="secondary" className="shrink-0 text-slate-600 font-normal">{entry.dateRange}</Badge>
                             )}
                           </div>
                         </div>
+                        {entry.content && (
+                          <div className="mt-1">
+                            <div className="prose prose-slate prose-sm max-w-none text-sm">
+                              <MarkdownRenderer content={entry.content} />
+                            </div>
+                          </div>
+                        )}
                       </div>
-                    ))}
+                    );
+                    })}
                   </div>
                 </CardContent>
               </Card>
@@ -413,31 +481,25 @@ export default async function AboutPage() {
                   <div className="space-y-6">
                     {projectBlocks.map((entry, i) => (
                       <div key={i} className="border-l-4 border-purple-500 pl-4 relative">
-                        <div className="flex flex-col md:flex-row gap-4">
-                          {entry.logoUrl && (
-                            <div className="relative w-full md:w-64 h-48 flex-shrink-0 rounded-lg overflow-hidden shadow-md">
-                              {/* eslint-disable-next-line @next/next/no-img-element */}
-                              <img src={entry.logoUrl} alt="" className="w-full h-full object-cover" />
-                            </div>
-                          )}
-                          <div className="flex-1 min-w-0">
-                            <div className="flex flex-wrap items-start justify-between gap-4 mb-2">
-                              <h3 className="font-semibold text-slate-900 text-lg flex-1">{entry.title}</h3>
+                        <div className="flex-1 min-w-0">
+                            <div className="flex flex-wrap items-start justify-between gap-x-4 gap-y-1">
+                              <div>
+                                <h3 className="font-semibold text-slate-900 text-lg mb-0.5">{entry.title}</h3>
+                                {entry.organization && (
+                                  <p className="text-base font-semibold text-slate-700">{entry.organization}</p>
+                                )}
+                              </div>
                               {entry.dateRange && (
-                                <Badge variant="secondary" className="flex-shrink-0 whitespace-nowrap">
-                                  {entry.dateRange}
-                                </Badge>
+                                <Badge variant="secondary" className="shrink-0 text-slate-600 font-normal">{entry.dateRange}</Badge>
                               )}
                             </div>
-                            {entry.organization && (
-                              <p className="text-sm text-slate-600 font-medium mb-2">{entry.organization}</p>
-                            )}
                             {entry.content && (
-                              <div className="prose prose-slate prose-sm max-w-none">
-                                <MarkdownRenderer content={entry.content} />
+                              <div className="mt-1">
+                                <div className="prose prose-slate prose-sm max-w-none text-sm">
+                                  <MarkdownRenderer content={entry.content} />
+                                </div>
                               </div>
                             )}
-                          </div>
                         </div>
                       </div>
                     ))}
@@ -445,6 +507,76 @@ export default async function AboutPage() {
                 </CardContent>
               </Card>
             )}
+
+            {/* Technical Skills — from config or default when empty */}
+            {(() => {
+              const skills = technicalSkills.length > 0 ? technicalSkills : [
+                { category: "Cloud Native & K8s", items: ["Kubernetes (K8s)", "Docker", "Helm", "Cilium (Service Mesh)", "Karmada", "Harbor", "Linux Containers (LXC)"] },
+                { category: "CI/CD & GitOps", items: ["Jenkins", "GitLab CI/CD", "GitHub Actions", "ArgoCD", "Flux CD", "GitOps Workflow", "Git"] },
+                { category: "Observability", items: ["Prometheus", "Grafana", "Thanos", "Monitoring & Logging"] },
+                { category: "Infrastructure & Networking", items: ["Google Cloud Platform (GCP)", "Proxmox VE", "Ansible", "Linux Networking", "SSL/TLS Management"] },
+              ];
+              return (
+                <Card className="shadow-lg">
+                  <CardHeader>
+                    <CardTitle className="flex items-center gap-2 text-slate-900">
+                      <Network className="h-5 w-5" />
+                      Technical Skills
+                    </CardTitle>
+                  </CardHeader>
+                  <CardContent>
+                    <div className="space-y-4">
+                      {skills.map((section, i) => (
+                        <div key={i}>
+                          <h3 className="mb-2 text-sm font-semibold text-slate-800">{section.category}</h3>
+                          <div className="flex flex-wrap gap-2">
+                            {section.items.map((skill) => (
+                              <Badge key={skill} variant="secondary" className="text-xs">
+                                {skill}
+                              </Badge>
+                            ))}
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  </CardContent>
+                </Card>
+              );
+            })()}
+
+            {/* Achievements — from config or default when empty */}
+            {(() => {
+              const list = achievements.length > 0 ? achievements : [
+                { title: "National Makerthon: Good Health and Well‑Being - 1st Place", organization: "Ministry of Education 2022", year: "2022" },
+                { title: "Vision Get Wild XR Social Welfare Potential Award", organization: "Meta XR Hub Taiwan 2023", year: "2023" },
+                { title: "Intel® DevCup x OpenVINO™ Toolkit Competition - Shortlisted", organization: "Intel Corporation 2021", year: "2021" },
+                { title: "5G Mobileheroes - Shortlisted", organization: "Industrial Development Administration 2021", year: "2021" },
+              ];
+              return (
+                <Card className="shadow-lg">
+                  <CardHeader>
+                    <CardTitle className="flex items-center gap-2 text-slate-900">
+                      <Trophy className="h-5 w-5" />
+                      Achievements
+                    </CardTitle>
+                  </CardHeader>
+                  <CardContent>
+                    <div className="space-y-3">
+                      {list.map((a, i) => (
+                        <div key={i} className="flex items-start gap-3">
+                          <Award className="mt-0.5 h-4 w-4 text-slate-500 shrink-0" />
+                          <div>
+                            <p className="text-sm font-medium text-slate-800">{a.title}</p>
+                            <p className="text-xs text-slate-500">{a.organization}</p>
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  </CardContent>
+                </Card>
+              );
+            })()}
+
           </>
         )}
 

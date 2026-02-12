@@ -2,14 +2,28 @@
 
 import { useState } from "react";
 import Link from "next/link";
+import Image from "next/image";
 import { usePathname } from "next/navigation";
 import { useSession, signOut } from "next-auth/react";
 import { Button } from "@/components/ui/button";
 import { GlobalSearch } from "@/components/global-search";
-import { LayoutDashboard, ExternalLink, Menu, X } from "lucide-react";
+import { ExternalLink, Menu, X } from "lucide-react";
 import { SessionCountdown } from "@/components/session-countdown";
+import type { SiteConfigForRender } from "@/lib/site-config";
 
-export function Navbar() {
+const FALLBACK_NAME = "My Site";
+
+const DEFAULT_NAV = [
+  { label: "Home", href: "/" },
+  { label: "About", href: "/about" },
+  { label: "Blog", href: "/blog" },
+  { label: "Contact", href: "/contact" },
+];
+
+export function Navbar({ siteConfig }: { siteConfig?: SiteConfigForRender | null }) {
+  const siteName = siteConfig?.siteName ?? FALLBACK_NAME;
+  const logoUrl = siteConfig?.logoUrl;
+  const navItems = (siteConfig?.navItems?.length ? siteConfig.navItems : DEFAULT_NAV) as { label: string; href: string }[];
   const { data: session } = useSession();
   const pathname = usePathname();
   const isLoggedIn = !!session;
@@ -19,26 +33,13 @@ export function Navbar() {
 
   const publicLinks = (
     <>
-      <Link href="/" onClick={() => setMobileOpen(false)}>
-        <Button variant="ghost" size="sm" className="text-slate-700 hover:text-slate-900 hover:underline text-xs sm:text-sm w-full sm:w-auto justify-center sm:justify-start">
-          Home
-        </Button>
-      </Link>
-      <Link href="/about" onClick={() => setMobileOpen(false)}>
-        <Button variant="ghost" size="sm" className="text-slate-700 hover:text-slate-900 text-xs sm:text-sm w-full sm:w-auto justify-center sm:justify-start">
-          About
-        </Button>
-      </Link>
-      <Link href="/blog" onClick={() => setMobileOpen(false)}>
-        <Button variant="ghost" size="sm" className="text-slate-700 hover:text-slate-900 text-xs sm:text-sm w-full sm:w-auto justify-center sm:justify-start">
-          Blog
-        </Button>
-      </Link>
-      <Link href="/contact" onClick={() => setMobileOpen(false)}>
-        <Button variant="ghost" size="sm" className="text-slate-700 hover:text-slate-900 text-xs sm:text-sm w-full sm:w-auto justify-center sm:justify-start">
-          Contact
-        </Button>
-      </Link>
+      {navItems.map((item) => (
+        <Link key={item.href + item.label} href={item.href} onClick={() => setMobileOpen(false)}>
+          <Button variant="ghost" size="sm" className="text-slate-700 hover:text-slate-900 text-xs sm:text-sm w-full sm:w-auto justify-center sm:justify-start">
+            {item.label}
+          </Button>
+        </Link>
+      ))}
     </>
   );
 
@@ -49,8 +50,10 @@ export function Navbar() {
           href={isDashboard ? "/dashboard" : "/"}
           className="text-lg sm:text-xl font-bold text-slate-900 hover:text-slate-700 transition-colors whitespace-nowrap flex items-center gap-1.5 btn-interactive"
         >
-          {isDashboard && <LayoutDashboard className="h-5 w-5 shrink-0" />}
-          Benedict{isDashboard ? " · Dashboard" : ""}
+          {logoUrl ? (
+            <Image src={logoUrl} alt="" width={28} height={28} className="rounded object-contain shrink-0" />
+          ) : null}
+          {siteName}{isDashboard ? " · Dashboard" : ""}
         </Link>
         {/* Desktop: inline links */}
         <div className="hidden sm:flex items-center gap-1 sm:gap-2 flex-wrap justify-end">

@@ -8,19 +8,26 @@ import { Badge } from "@/components/ui/badge";
 import { stripMarkdown } from "@/lib/utils";
 import { calculateReadingTime, formatReadingTime } from "@/lib/reading-time";
 import { siteConfig } from "@/config/site";
+import { getSiteConfigForRender } from "@/lib/site-config";
 
 export const dynamic = "force-dynamic";
 
-export const metadata: Metadata = {
-  title: "Home",
-  description: siteConfig.description,
-  openGraph: {
+export async function generateMetadata(): Promise<Metadata> {
+  const config = await getSiteConfigForRender();
+  const ogUrl = config.ogImageUrl
+    ? (config.ogImageUrl.startsWith("http") ? config.ogImageUrl : new URL(config.ogImageUrl, config.url).toString())
+    : undefined;
+  return {
     title: "Home",
     description: siteConfig.description,
-    url: siteConfig.url,
-    images: [siteConfig.ogImage],
-  },
-};
+    openGraph: {
+      title: "Home",
+      description: siteConfig.description,
+      url: config.url,
+      ...(ogUrl && { images: [ogUrl] }),
+    },
+  };
+}
 
 type HomeContent = {
   heroTitle?: string;

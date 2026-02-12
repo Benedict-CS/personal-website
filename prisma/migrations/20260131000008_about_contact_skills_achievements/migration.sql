@@ -1,0 +1,6 @@
+-- AlterTable
+ALTER TABLE "AboutConfig" ADD COLUMN IF NOT EXISTS "contactHeading" TEXT;
+ALTER TABLE "AboutConfig" ADD COLUMN IF NOT EXISTS "contactText" TEXT;
+ALTER TABLE "AboutConfig" ADD COLUMN IF NOT EXISTS "contactLinks" TEXT NOT NULL DEFAULT '[]';
+ALTER TABLE "AboutConfig" ADD COLUMN IF NOT EXISTS "technicalSkills" TEXT NOT NULL DEFAULT '[]';
+ALTER TABLE "AboutConfig" ADD COLUMN IF NOT EXISTS "achievements" TEXT NOT NULL DEFAULT '[]';

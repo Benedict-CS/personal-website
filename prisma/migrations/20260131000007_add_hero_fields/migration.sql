@@ -1,0 +1,7 @@
+-- AlterTable
+ALTER TABLE "AboutConfig" ADD COLUMN IF NOT EXISTS "heroName" TEXT;
+ALTER TABLE "AboutConfig" ADD COLUMN IF NOT EXISTS "heroTagline" TEXT;
+ALTER TABLE "AboutConfig" ADD COLUMN IF NOT EXISTS "heroPhone" TEXT;
+ALTER TABLE "AboutConfig" ADD COLUMN IF NOT EXISTS "heroEmail" TEXT;
+ALTER TABLE "AboutConfig" ADD COLUMN IF NOT EXISTS "heroPortfolioLabel" TEXT;
+ALTER TABLE "AboutConfig" ADD COLUMN IF NOT EXISTS "heroPortfolioUrl" TEXT;

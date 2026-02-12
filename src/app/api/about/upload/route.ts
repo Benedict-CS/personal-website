@@ -1,13 +1,15 @@
 import { NextRequest, NextResponse } from "next/server";
-import { writeFile, mkdir } from "fs/promises";
-import { existsSync } from "fs";
 import path from "path";
 import { getServerSession } from "next-auth";
 import { authOptions } from "@/lib/auth";
+import { uploadToS3 } from "@/lib/s3";
+import { processImage } from "@/lib/image-process";
+
+// S3 key prefix for About images (single segment, no slash)
+const ABOUT_PREFIX = "about-";
 
 export async function POST(request: NextRequest) {
   try {
-    // 檢查是否已登入
     const session = await getServerSession(authOptions);
     if (!session) {
       return NextResponse.json(
@@ -19,7 +21,7 @@ export async function POST(request: NextRequest) {
     const formData = await request.formData();
     const file = formData.get("file") as File;
     const type = formData.get("type") as string; // "profile" | "school" | "project" | "company"
-    const name = formData.get("name") as string | null; // 名稱（用於生成固定檔名）
+    const name = formData.get("name") as string | null;
 
     if (!file) {
       return NextResponse.json(
@@ -35,7 +37,6 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    // 檢查檔案類型是否為圖片
     const allowedTypes = ["image/jpeg", "image/jpg", "image/png", "image/gif", "image/webp"];
     if (!allowedTypes.includes(file.type)) {
       return NextResponse.json(
@@ -44,60 +45,43 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    // 確保 public/about 資料夾存在
-    const aboutDir = path.join(process.cwd(), "public", "about");
-    if (!existsSync(aboutDir)) {
-      await mkdir(aboutDir, { recursive: true });
-    }
-
-    // 根據類型決定檔名（使用固定檔名以便覆蓋）
-    let fileName: string;
+    // Same naming as before: fixed key per type/name so uploads overwrite
+    let baseName: string;
     if (type === "profile") {
-      fileName = "profile.jpg";
+      baseName = "profile.jpg";
     } else if (name) {
-      // 使用名稱生成固定檔名（覆蓋模式）
       const sanitizedName = name.toLowerCase().replace(/[^a-zA-Z0-9]/g, "-");
-      const originalName = file.name.replace(/[^a-zA-Z0-9.-]/g, "_");
-      const ext = path.extname(originalName) || ".jpg";
-      fileName = `${type}-${sanitizedName}${ext}`;
+      const ext = path.extname(file.name.replace(/[^a-zA-Z0-9.-]/g, "_")) || ".jpg";
+      baseName = `${type}-${sanitizedName}${ext}`;
     } else {
-      // 如果沒有名稱，使用時間戳記（向後兼容）
       const timestamp = Date.now();
-      const originalName = file.name.replace(/[^a-zA-Z0-9.-]/g, "_");
-      const ext = path.extname(originalName) || ".jpg";
-      fileName = `${type}-${timestamp}${ext}`;
+      const ext = path.extname(file.name.replace(/[^a-zA-Z0-9.-]/g, "_")) || ".jpg";
+      baseName = `${type}-${timestamp}${ext}`;
     }
 
-    const filePath = path.join(aboutDir, fileName);
+    const s3Key = ABOUT_PREFIX + baseName;
 
-    // 將檔案轉換為 Buffer 並寫入
     const bytes = await file.arrayBuffer();
     const buffer = Buffer.from(bytes);
-    
-    try {
-      await writeFile(filePath, buffer);
-    } catch (writeError: unknown) {
-      console.error("Write error:", writeError);
-      const err = writeError as { code?: string };
-      if (err.code === "EACCES" || err.code === "EPERM") {
-        throw new Error("Permission denied. Please check public directory permissions.");
-      }
-      throw writeError;
-    }
 
-    // 使用 API 路由來服務圖片，而不是直接使用靜態文件路徑
-    const url = `/api/about/serve/${fileName}`;
+    const { buffer: finalBuffer, contentType, fileName: finalKey } = await processImage(
+      buffer,
+      file.type,
+      s3Key
+    );
+
+    const url = await uploadToS3(finalKey, finalBuffer, contentType);
 
     return NextResponse.json(
-      { message: "File uploaded successfully", url, fileName },
+      { message: "File uploaded successfully", url, fileName: finalKey.replace(/^about-/, "") },
       { status: 200 }
     );
   } catch (error) {
-    console.error("Error uploading file:", error);
+    console.error("Error uploading About file:", error);
     return NextResponse.json(
-      { 
+      {
         error: "Failed to upload file",
-        details: error instanceof Error ? error.message : "Unknown error"
+        details: error instanceof Error ? error.message : "Unknown error",
       },
       { status: 500 }
     );
