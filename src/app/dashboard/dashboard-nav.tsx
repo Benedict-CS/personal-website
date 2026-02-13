@@ -10,6 +10,7 @@ const contentSubItems = [
   { href: "/dashboard/content/home", label: "Home" },
   { href: "/dashboard/content/contact", label: "Contact" },
   { href: "/dashboard/content/about", label: "About & CV" },
+  { href: "/dashboard/content/pages", label: "Custom pages" },
 ] as const;
 
 const navItems: Array<{

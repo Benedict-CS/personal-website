@@ -4,6 +4,7 @@ import "./globals.css";
 import { Navbar } from "@/components/navbar";
 import { Footer } from "@/components/footer";
 import { Providers } from "@/components/providers";
+import { ThemeApplier } from "@/components/theme-applier";
 import { AnalyticsBeacon } from "@/components/analytics-beacon";
 import { siteConfig } from "@/config/site";
 import { getSiteConfigForRender } from "@/lib/site-config";
@@ -100,7 +101,9 @@ export default async function RootLayout({
     <html lang="en">
       <body
         className={`${geistSans.variable} ${geistMono.variable} antialiased flex min-h-screen flex-col`}
+        data-template={siteConfigForRender.templateId ?? "default"}
       >
+        <ThemeApplier themeMode={siteConfigForRender.themeMode ?? "system"} />
         <Providers>
           <AnalyticsBeacon />
           <a

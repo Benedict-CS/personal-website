@@ -2,6 +2,7 @@ import path from "path";
 import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { isPrivateIP } from "@/lib/is-private-url";
+import { isExcludedIP } from "@/lib/analytics-excluded-ips";
 
 export const dynamic = "force-dynamic";
 
@@ -10,13 +11,6 @@ function ensureGeoIPDataDir() {
     process.env.GEODATADIR = path.join(process.cwd(), "node_modules", "geoip-lite", "data");
   }
 }
-
-const excludedIPs = new Set(
-  (process.env.ANALYTICS_EXCLUDED_IPS || "")
-    .split(",")
-    .map((s) => s.trim())
-    .filter(Boolean)
-);
 
 function getClientIP(req: NextRequest): string {
   const xff = req.headers.get("x-forwarded-for");
@@ -41,7 +35,7 @@ function getRedirectBase(req: NextRequest): string {
 /** Log CV download then redirect to S3-served CV (/api/media/serve/cv.pdf). */
 export async function GET(request: NextRequest) {
   const ip = getClientIP(request);
-  if (!excludedIPs.has(ip) && !isPrivateIP(ip)) {
+  if (!isExcludedIP(ip) && !isPrivateIP(ip)) {
     let country: string | null = null;
     let city: string | null = null;
     try {

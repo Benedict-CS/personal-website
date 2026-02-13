@@ -44,16 +44,21 @@ COPY --from=builder /app/.next/standalone ./
 COPY --from=builder /app/.next/static ./.next/static
 COPY --from=builder /app/public ./public
 
+# Copy package.json so Prisma CLI can find it (requires from .bin resolve to node_modules/package.json and project root)
+COPY --from=builder /app/package.json ./package.json
+COPY --from=builder /app/package.json ./node_modules/package.json
+
 # Copy Prisma files (schema and migrations)
 COPY --from=builder /app/prisma ./prisma
 
 # Copy Prisma Client and CLI (needed for runtime and migrations)
-# Standalone mode should include these, but we copy them explicitly to be safe
+# The prisma CLI wrapper looks for prisma_schema_build_bg.wasm in .bin/ so we copy it there too
 RUN mkdir -p ./node_modules/.prisma ./node_modules/@prisma ./node_modules/prisma ./node_modules/.bin
 COPY --from=builder --chown=nextjs:nodejs /app/node_modules/.prisma ./node_modules/.prisma
 COPY --from=builder --chown=nextjs:nodejs /app/node_modules/@prisma ./node_modules/@prisma
 COPY --from=builder --chown=nextjs:nodejs /app/node_modules/prisma ./node_modules/prisma
 COPY --from=builder --chown=nextjs:nodejs /app/node_modules/.bin/prisma ./node_modules/.bin/prisma
+COPY --from=builder --chown=nextjs:nodejs /app/node_modules/prisma/build/prisma_schema_build_bg.wasm ./node_modules/.bin/prisma_schema_build_bg.wasm
 
 # Ensure public directory exists (will be mounted as volume, so permissions handled by host)
 RUN mkdir -p ./public
@@ -66,4 +71,5 @@ EXPOSE 3000
 ENV PORT=3000
 ENV HOSTNAME="0.0.0.0"
 
-CMD ["node", "server.js"]
+# Run migrations on startup, then start the app (so you never have to run migrate manually after deploy)
+CMD ["/bin/sh", "-c", "npx prisma migrate deploy && exec node server.js"]

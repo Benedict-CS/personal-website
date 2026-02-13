@@ -2,6 +2,7 @@ import path from "path";
 import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { isPrivateIP } from "@/lib/is-private-url";
+import { isExcludedIP } from "@/lib/analytics-excluded-ips";
 
 export const dynamic = "force-dynamic";
 
@@ -14,12 +15,6 @@ function ensureGeoIPDataDir() {
 
 const secret = process.env.ANALYTICS_SECRET;
 const siteOrigin = process.env.NEXT_PUBLIC_SITE_URL || process.env.NEXTAUTH_URL || "";
-const excludedIPs = new Set(
-  (process.env.ANALYTICS_EXCLUDED_IPS || "")
-    .split(",")
-    .map((s) => s.trim())
-    .filter(Boolean)
-);
 
 function getClientIP(req: NextRequest): string {
   const xff = req.headers.get("x-forwarded-for");
@@ -66,7 +61,7 @@ export async function POST(request: NextRequest) {
     ip = getClientIP(request);
   }
 
-  if (excludedIPs.has(ip)) {
+  if (isExcludedIP(ip)) {
     return NextResponse.json({ ok: true, skipped: "excluded" });
   }
   if (isPrivateIP(ip)) {

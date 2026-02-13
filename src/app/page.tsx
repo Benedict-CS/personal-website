@@ -54,7 +54,7 @@ const defaultHomeContent: HomeContent = {
 };
 
 export default async function Home() {
-  const [latestPosts, homeRow] = await Promise.all([
+  const [latestPosts, homeRow, siteConfig] = await Promise.all([
     prisma.post.findMany({
       where: { published: true },
       include: { tags: true },
@@ -62,7 +62,9 @@ export default async function Home() {
       take: 3,
     }),
     prisma.sitePageContent.findUnique({ where: { page: "home" } }),
+    getSiteConfigForRender(),
   ]);
+  const templateId = siteConfig.templateId ?? "default";
 
   const homeContent: HomeContent = homeRow?.content
     ? { ...defaultHomeContent, ...(homeRow.content as object) }
@@ -87,10 +89,17 @@ export default async function Home() {
     return plainText.substring(0, maxLength).trim() + "...";
   };
 
+  const wrapperClass =
+    templateId === "minimal"
+      ? "min-h-screen bg-white"
+      : templateId === "card"
+        ? "min-h-screen bg-slate-100"
+        : "min-h-screen bg-gradient-to-br from-slate-50 via-white to-slate-100";
+
   return (
-    <div className="min-h-screen bg-gradient-to-br from-slate-50 via-white to-slate-100">
+    <div className={wrapperClass}>
       {/* Hero Section */}
-      <section className="container mx-auto max-w-6xl px-4 py-20 md:py-32">
+      <section className={`container mx-auto max-w-6xl px-4 ${templateId === "minimal" ? "py-12 md:py-16" : "py-20 md:py-32"}`}>
         <div className="mx-auto max-w-4xl text-center">
           <h1 className="mb-6 text-5xl font-bold tracking-tight text-slate-900 md:text-6xl lg:text-7xl">
             {homeContent.heroTitle ?? defaultHomeContent.heroTitle}

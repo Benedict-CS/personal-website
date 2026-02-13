@@ -17,14 +17,15 @@
 | About & CV | Content → About & CV | 大頭照、intro、學歷/經歷/專案、學校/公司 logo、CV PDF |
 | 文章 | Posts / Notes | 標題、slug、內文、標籤、發布、置頂 |
 | 媒體 | Media | 上傳圖片，文章內與 Site settings 的「From Media」 |
+| **自訂頁面** | Content → Custom pages | 新增/編輯頁面（slug、標題、Markdown）；前台網址為 `/page/[slug]`，導覽可連結至此（如 /page/portfolio） |
+| **版型** | Site settings → Branding & meta → Site template | 可選 Default、Minimal、Card，影響首頁與整體風格 |
+| **首次設定** | Site settings 頂部橫幅 | 填好站名、Logo、導覽、Footer 後點「Mark setup as complete」；Dashboard 首頁會提示部署後必做 |
 
 ## 部署後必做
 
-1. **跑 migrations**（建立/更新 SiteConfig）：  
-   `npx prisma migrate deploy`（在 app 容器內或本機有 DATABASE_URL 時）。  
-   需包含：`20260212000001_add_site_config`、`20260212000002_site_config_nav_footer_og`。
-
-2. **第一次使用**：到 **Dashboard → Content → Site settings**，填好站名、meta、導覽、footer、OG 圖等，按 Save。前台會用這些設定（沒填則用預設）。
+1. **Migrations**：容器啟動時會自動執行 `npx prisma migrate deploy`（見 Dockerfile CMD），不需手動跑。若未用 Docker，請在本機執行一次。
+2. **第一次使用**：到 **Dashboard** 點「Start setup wizard」完成 Step 1～5（站名、Logo、導覽、Footer），或到 **Content → Site settings** 填寫後點「Mark setup as complete」。  
+   Custom pages 說明（英文）：見 **docs/CUSTOM_PAGES.md**。
 
 原則：**任何前端顯示的字或圖，都盡量有對應的後台欄位或「From Media」**，操作步驟越少越好。
 
@@ -53,20 +54,10 @@
 | 4. 關於我 | 大頭照、簡介、學歷/經歷/專案、學校與公司 logo、CV PDF | Content → About & CV |
 | 5. 聯絡 | 表單上方說明文字 | Content → Contact |
 | 6. 部落格 | 新增/編輯文章、標籤、媒體 | Posts、Notes、Media、Tags |
+| 7. 自訂頁面 | 新增頁面（如 Portfolio、Services） | Content → Custom pages；導覽連結填 `/page/slug` |
 
-做完以上，前台就會是「你的」站：站名、導覽、首頁、關於、聯絡、部落格都可見且可改，不需改 code。
+做完以上，前台就會是「你的」站：站名、導覽、首頁、關於、聯絡、部落格、自訂頁都可見且可改，不需改 code。
 
-**目前還沒有、可之後補的（更像 Google Sites）：**
+**目前還沒有、可之後補的：**
 
 - **主題/顏色**：在後台選主色、字型或亮/暗主題（目前要改 code 或 Tailwind）。
-- **自訂頁面**：從後台新增「自訂頁面」（例如 Portfolio、Services），而不是只有固定 Home/About/Contact/Blog。
-- **首次設定精靈**：第一次登入時引導「Step 1 站名 → Step 2 Logo → …」。
-- **版型選擇**：多種首頁或全站版型可選（目前是一套固定版型）。
-
-### 下一步實作規劃
-
-| 功能 | 實作要點 |
-|------|----------|
-| **自訂頁面** | 新增 DB 表（CustomPage: slug, title, content, order）；導覽可選「內建」或「自訂頁」；Dashboard 新增「Pages」可增刪改；前台動態 route `/page/[slug]` 依 slug 渲染 Markdown。 |
-| **首次設定精靈** | SiteConfig 加 `setupCompleted` 或以「站名仍為 My Site」判斷；Dashboard 首次進入時顯示步驟 modal 或導向 `/dashboard/setup`（Step 1 站名 → 2 Logo → 3 導覽 → 完成），完成後設 flag。 |
-| **版型選擇** | SiteConfig 加 `templateId`（如 default、minimal、card）；首頁／全站依 templateId 選不同 layout 或 component set；Dashboard Site settings 可選版型。 |

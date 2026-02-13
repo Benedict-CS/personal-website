@@ -94,7 +94,23 @@ model SiteConfig {
   navItems        Json     @default("[]") // [{ label: string, href: string }]
   footerText      String?  // e.g. "All rights reserved." or second line
   ogImageUrl      String?
-  updatedAt       DateTime @updatedAt
+  setupCompleted  Boolean  @default(false) // true after first-time setup wizard
+  templateId              String   @default("default") // "default" | "minimal" | "card" for layout variants
+  themeMode               String   @default("system") // "light" | "dark" | "system"
+  autoAddCustomPagesToNav  Boolean  @default(true) // when true, custom pages are appended to navbar
+  updatedAt               DateTime @updatedAt
+}
+
+// Custom pages (e.g. Portfolio, Services) created from dashboard; rendered at /page/[slug]
+model CustomPage {
+  id        String   @id @default(uuid())
+  slug      String   @unique // URL path, e.g. "portfolio", "services"
+  title     String   // Page title (and nav label if linked)
+  content   String   // Markdown body
+  order     Int      @default(0) // For dashboard ordering
+  published Boolean  @default(true) // false = draft, not shown on site or in nav
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
 }
 
 // Editable content for Home and Contact (and optional About intro is in AboutConfig)

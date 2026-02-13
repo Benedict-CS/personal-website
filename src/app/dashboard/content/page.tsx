@@ -2,13 +2,14 @@
 
 import Link from "next/link";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { Home, FileText, Mail, Settings } from "lucide-react";
+import { Home, FileText, Mail, Settings, Layers } from "lucide-react";
 
 const items = [
-  { href: "/dashboard/content/site", label: "Site settings", icon: Settings, description: "Site name, logo, favicon, meta, navigation, footer text, OG image" },
+  { href: "/dashboard/content/site", label: "Site settings", icon: Settings, description: "Site name, logo, favicon, meta, navigation, footer text, OG image, template, setup" },
   { href: "/dashboard/content/home", label: "Home", icon: Home, description: "Hero title, subtitle, skills, CTA buttons" },
   { href: "/dashboard/content/contact", label: "Contact", icon: Mail, description: "Intro text and form description" },
   { href: "/dashboard/content/about", label: "About & CV", icon: FileText, description: "Profile image, intro text, logos, CV" },
+  { href: "/dashboard/content/pages", label: "Custom pages", icon: Layers, description: "Add pages like Portfolio, Services; link from nav" },
 ];
 
 export default function ContentIndexPage() {

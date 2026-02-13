@@ -7,21 +7,45 @@ import { FileText, Layout, BarChart3, Image as ImageIcon, PlusCircle } from "luc
 export const dynamic = "force-dynamic";
 
 export default async function DashboardHomePage() {
-  const [draftCount, recentPosts] = await Promise.all([
+  const [draftCount, recentPosts, siteRow] = await Promise.all([
     prisma.post.count({ where: { published: false } }),
     prisma.post.findMany({
       take: 5,
       orderBy: { updatedAt: "desc" },
       select: { id: true, title: true, slug: true, published: true, updatedAt: true },
     }),
+    prisma.siteConfig
+      .findUnique({ where: { id: 1 }, select: { setupCompleted: true } })
+      .catch(() => null),
   ]);
 
   const formatDate = (d: Date) =>
     new Date(d).toLocaleDateString("en-GB", { day: "numeric", month: "short", year: "numeric" });
 
+  const setupCompleted = (siteRow as { setupCompleted?: boolean } | null)?.setupCompleted ?? false;
+
   return (
     <div className="space-y-8">
       <h2 className="text-3xl font-bold text-slate-900">Dashboard</h2>
+
+      {!setupCompleted && (
+        <Card className="border-amber-200 bg-amber-50">
+          <CardHeader>
+            <CardTitle className="text-lg">First-time setup</CardTitle>
+            <p className="text-sm font-normal text-slate-700">
+              Migrations run automatically on container start. Complete the setup wizard to configure site name, logo, navigation, and footer.
+            </p>
+          </CardHeader>
+          <CardContent className="flex flex-wrap gap-2">
+            <Link href="/dashboard/setup">
+              <Button>Start setup wizard</Button>
+            </Link>
+            <Link href="/dashboard/content/site">
+              <Button variant="outline">Site settings (skip wizard)</Button>
+            </Link>
+          </CardContent>
+        </Card>
+      )}
 
       <section>
         <h3 className="mb-3 text-sm font-medium uppercase tracking-wider text-slate-500">

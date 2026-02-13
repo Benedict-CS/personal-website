@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useEffect } from "react";
+import Link from "next/link";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
@@ -22,6 +23,10 @@ const defaults: SiteConfigResponse = {
   navItems: DEFAULT_NAV_ITEMS,
   footerText: null,
   ogImageUrl: null,
+  setupCompleted: false,
+  templateId: "default",
+  themeMode: "system",
+  autoAddCustomPagesToNav: true,
 };
 
 export default function SiteSettingsPage() {
@@ -30,14 +35,32 @@ export default function SiteSettingsPage() {
   const [saving, setSaving] = useState(false);
   const [message, setMessage] = useState<{ type: "success" | "error"; text: string } | null>(null);
   const [mediaPickerFor, setMediaPickerFor] = useState<"logo" | "favicon" | "og" | null>(null);
+  const [customPagesForNav, setCustomPagesForNav] = useState<{ slug: string; title: string }[]>([]);
 
   useEffect(() => {
-    fetch("/api/site-config")
-      .then((r) => r.json())
-      .then((data) => {
+    Promise.all([
+      fetch("/api/site-config").then((r) => r.json()),
+      fetch("/api/custom-pages", { cache: "no-store" }).then((r) => r.json()).catch(() => []),
+    ])
+      .then(([data, pages]) => {
         const merged = { ...defaults, ...data };
         if (!Array.isArray(merged.navItems) || merged.navItems.length === 0) merged.navItems = DEFAULT_NAV_ITEMS;
+        // When auto-add is ON, merge custom pages into the same list so they appear with up/down and delete
+        if (merged.autoAddCustomPagesToNav !== false) {
+          const list = Array.isArray(pages) ? pages : [];
+          const existingHrefs = new Set(merged.navItems.map((n: NavItem) => n.href));
+          for (const p of list) {
+            if (p.published === false) continue;
+            const href = `/page/${String(p.slug ?? "").trim()}`;
+            if (href !== "/page/" && !existingHrefs.has(href)) {
+              merged.navItems = [...merged.navItems, { label: String(p.title ?? p.slug ?? ""), href }];
+              existingHrefs.add(href);
+            }
+          }
+        }
         setConfig(merged);
+        const list = Array.isArray(pages) ? pages : [];
+        setCustomPagesForNav(list.map((p: { slug?: string; title?: string }) => ({ slug: String(p.slug ?? ""), title: String(p.title ?? "") })).filter((p) => p.slug));
       })
       .catch(() => setConfig(defaults))
       .finally(() => setLoading(false));
@@ -102,6 +125,42 @@ export default function SiteSettingsPage() {
         <h2 className="text-3xl font-bold text-slate-900">Site settings</h2>
         <p className="mt-1 text-slate-600">Site name, favicon, logo, meta, navigation, footer, and OG image. All visible on the site.</p>
       </div>
+
+      {!config.setupCompleted && (
+        <Card className="border-amber-200 bg-amber-50">
+          <CardHeader>
+            <CardTitle className="text-lg">First-time setup</CardTitle>
+            <p className="text-sm font-normal text-slate-600">Use the step-by-step wizard or fill this page and mark complete.</p>
+          </CardHeader>
+          <CardContent className="flex flex-wrap gap-2">
+            <Link href="/dashboard/setup">
+              <Button variant="outline">Open setup wizard (Step 1 → 5)</Button>
+            </Link>
+            <Button
+              onClick={async () => {
+                setSaving(true);
+                try {
+                  await fetch("/api/site-config", {
+                    method: "PATCH",
+                    headers: { "Content-Type": "application/json" },
+                    body: JSON.stringify({ ...config, setupCompleted: true }),
+                  });
+                  setConfig((c) => ({ ...c, setupCompleted: true }));
+                  setMessage({ type: "success", text: "Setup marked complete." });
+                } catch {
+                  setMessage({ type: "error", text: "Failed to update." });
+                } finally {
+                  setSaving(false);
+                }
+              }}
+              disabled={saving}
+            >
+              Mark setup as complete
+            </Button>
+          </CardContent>
+        </Card>
+      )}
+
 
       <Card>
         <CardHeader>
@@ -180,9 +239,18 @@ export default function SiteSettingsPage() {
       <Card>
         <CardHeader>
           <CardTitle>Navigation (navbar links)</CardTitle>
-          <p className="text-sm font-normal text-slate-500">Order and labels for Home, About, Blog, Contact. Drag order with arrows.</p>
+          <p className="text-sm font-normal text-slate-500">Order and labels for Home, About, Blog, Contact. When enabled, custom pages are auto-added to the end of this list.</p>
         </CardHeader>
         <CardContent className="space-y-3">
+          <label className="flex items-center gap-2 cursor-pointer">
+            <input
+              type="checkbox"
+              checked={config.autoAddCustomPagesToNav !== false}
+              onChange={(e) => setConfig((c) => ({ ...c, autoAddCustomPagesToNav: e.target.checked }))}
+              className="rounded border-slate-300"
+            />
+            <span className="text-sm text-slate-700">Auto-add custom pages to navigation</span>
+          </label>
           {config.navItems.map((item, index) => (
             <div key={index} className="flex items-center gap-2 flex-wrap">
               <div className="flex items-center gap-1">
@@ -213,6 +281,9 @@ export default function SiteSettingsPage() {
           <Button type="button" variant="outline" size="sm" onClick={addNavItem}>
             <Plus className="h-4 w-4 mr-1" /> Add link
           </Button>
+          {config.autoAddCustomPagesToNav !== false && customPagesForNav.length > 0 && (
+            <p className="text-xs text-slate-500 mt-2">Custom pages (e.g. test, hello) are merged into the list above when auto-add is ON. Reorder or remove as needed, then Save.</p>
+          )}
         </CardContent>
       </Card>
 

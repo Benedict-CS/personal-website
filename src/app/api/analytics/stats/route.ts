@@ -3,13 +3,7 @@ import { getServerSession } from "next-auth";
 import { authOptions } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 import type { Prisma } from "@prisma/client";
-
-const excludedIPs = new Set(
-  (process.env.ANALYTICS_EXCLUDED_IPS || "")
-    .split(",")
-    .map((s) => s.trim())
-    .filter(Boolean)
-);
+import { getExcludedIPsForNotIn, getExcludedIPsSet } from "@/lib/analytics-excluded-ips";
 
 export async function GET(request: NextRequest) {
   const session = await getServerSession(authOptions);
@@ -34,9 +28,12 @@ export async function GET(request: NextRequest) {
     }
   }
 
+  const excludedForNotIn = getExcludedIPsForNotIn();
+  const excludedSet = getExcludedIPsSet();
+
   const where: Prisma.PageViewWhereInput = {};
-  if (excludedIPs.size > 0) {
-    where.ip = filterIP ? filterIP : { notIn: Array.from(excludedIPs) };
+  if (excludedForNotIn.length > 0) {
+    where.ip = filterIP ? filterIP : { notIn: excludedForNotIn };
   } else if (filterIP) {
     where.ip = filterIP;
   }
@@ -105,7 +102,7 @@ export async function GET(request: NextRequest) {
         createdAt: r.createdAt.toISOString(),
       })),
       filterIP: filterIP || undefined,
-      excludedIPs: excludedIPs.size > 0 ? Array.from(excludedIPs) : undefined,
+      excludedIPs: excludedSet.size > 0 ? Array.from(excludedSet) : undefined,
     });
   } catch (e) {
     console.error("Analytics stats error:", e);

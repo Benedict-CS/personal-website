@@ -25,6 +25,10 @@ export type SiteConfigResponse = {
   navItems: NavItem[];
   footerText: string | null;
   ogImageUrl: string | null;
+  setupCompleted: boolean;
+  templateId: string;
+  themeMode: "light" | "dark" | "system";
+  autoAddCustomPagesToNav: boolean;
 };
 
 const defaultResponse: SiteConfigResponse = {
@@ -38,16 +42,54 @@ const defaultResponse: SiteConfigResponse = {
   navItems: DEFAULT_NAV_ITEMS,
   footerText: null,
   ogImageUrl: null,
+  setupCompleted: false,
+  templateId: "default",
+  themeMode: "system",
+  autoAddCustomPagesToNav: true,
 };
+
+const SITE_CONFIG_SAFE_SELECT = {
+  siteName: true,
+  logoUrl: true,
+  faviconUrl: true,
+  metaTitle: true,
+  metaDescription: true,
+  authorName: true,
+  links: true,
+  navItems: true,
+  footerText: true,
+  ogImageUrl: true,
+} as const;
 
 export async function GET() {
   try {
-    const row = await prisma.siteConfig.findUnique({ where: { id: 1 } });
+    const row = await prisma.siteConfig.findUnique({
+      where: { id: 1 },
+      select: SITE_CONFIG_SAFE_SELECT,
+    });
     if (!row) return NextResponse.json(defaultResponse);
     const links = (row.links as Record<string, string>) ?? {};
     const navItems = Array.isArray(row.navItems) && (row.navItems as NavItem[]).length > 0
       ? (row.navItems as NavItem[])
       : DEFAULT_NAV_ITEMS;
+    let setupCompleted = false;
+    let templateId = "default";
+    let themeMode: "light" | "dark" | "system" = "system";
+    let autoAddCustomPagesToNav = true;
+    try {
+      const extra = await prisma.siteConfig.findUnique({
+        where: { id: 1 },
+        select: { setupCompleted: true, templateId: true, themeMode: true, autoAddCustomPagesToNav: true },
+      });
+      if (extra) {
+        setupCompleted = extra.setupCompleted ?? false;
+        templateId = extra.templateId ?? "default";
+        themeMode = (extra.themeMode === "light" || extra.themeMode === "dark" || extra.themeMode === "system") ? extra.themeMode : "system";
+        autoAddCustomPagesToNav = extra.autoAddCustomPagesToNav ?? true;
+      }
+    } catch {
+      // New columns not yet migrated
+    }
     return NextResponse.json({
       siteName: row.siteName,
       logoUrl: row.logoUrl,
@@ -59,6 +101,10 @@ export async function GET() {
       navItems,
       footerText: row.footerText ?? null,
       ogImageUrl: row.ogImageUrl ?? null,
+      setupCompleted,
+      templateId,
+      themeMode,
+      autoAddCustomPagesToNav,
     } satisfies SiteConfigResponse);
   } catch {
     return NextResponse.json(defaultResponse);
@@ -82,6 +128,10 @@ export async function PATCH(request: Request) {
     navItems,
     footerText,
     ogImageUrl,
+    setupCompleted,
+    templateId,
+    themeMode,
+    autoAddCustomPagesToNav,
   } = body;
   const safeNavItems = Array.isArray(navItems)
     ? (navItems as unknown[]).filter((n): n is { label: string; href: string } =>
@@ -104,6 +154,10 @@ export async function PATCH(request: Request) {
         navItems: safeNavItems,
         footerText: footerText ?? null,
         ogImageUrl: ogImageUrl ?? null,
+        setupCompleted: setupCompleted === true,
+        templateId: typeof templateId === "string" && ["default", "minimal", "card"].includes(templateId) ? templateId : "default",
+        themeMode: typeof themeMode === "string" && ["light", "dark", "system"].includes(themeMode) ? themeMode : "system",
+        autoAddCustomPagesToNav: autoAddCustomPagesToNav !== false,
         updatedAt: now,
       },
       update: {
@@ -117,6 +171,10 @@ export async function PATCH(request: Request) {
         navItems: safeNavItems,
         ...(footerText !== undefined && { footerText: footerText || null }),
         ...(ogImageUrl !== undefined && { ogImageUrl: ogImageUrl || null }),
+        ...(setupCompleted !== undefined && { setupCompleted: setupCompleted === true }),
+        ...(typeof templateId === "string" && ["default", "minimal", "card"].includes(templateId) && { templateId }),
+        ...(typeof themeMode === "string" && ["light", "dark", "system"].includes(themeMode) && { themeMode }),
+        ...(typeof autoAddCustomPagesToNav === "boolean" && { autoAddCustomPagesToNav }),
         updatedAt: now,
       },
     });
