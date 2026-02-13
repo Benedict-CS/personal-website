@@ -1,17 +1,15 @@
 # Personal website: daily at 0:00 (midnight)
-# 1. Install cron if missing: sudo apt update && sudo apt install -y cron && sudo systemctl enable cron && sudo systemctl start cron
-# 2. Install this crontab (no editor needed): cd "$PROJECT_DIR" && crontab scripts/crontab.example
-#    Or edit manually: crontab -e (requires an editor; if missing: sudo apt install -y nano)
-# 3. Ensure logs dir exists: mkdir -p "$PROJECT_DIR/logs"
-# Manual run (all jobs): ./scripts/run-cron-jobs.sh   or   ./scripts/run-cron-jobs.sh --no-clean  (skip clean build)
+# 1. Install cron: sudo apt install -y cron && sudo systemctl enable cron && sudo systemctl start cron
+# 2. Install: crontab -e  then paste the lines below (adjust PROJECT_DIR)
+# 3. mkdir -p "$PROJECT_DIR/logs"
+# 4. Backup 需目前使用者在 docker 群組: sudo usermod -aG docker $USER (登出再登入)
+# 5. Git push 需可免密 push: 用 SSH key (ssh -T git@github.com 測試) 或 credential helper
+# Manual run: ./scripts/run-cron-jobs.sh   or   ./scripts/run-cron-jobs.sh --no-clean
 
 PROJECT_DIR=/home/ben/personal-website
 
-# Backup DB + files, keep latest 3 backups (requires: sudo visudo → ben ALL=(ALL) NOPASSWD: $PROJECT_DIR/scripts/backup-data.sh)
-0 0 * * * cd "$PROJECT_DIR" && sudo ./scripts/backup-data.sh >> "$PROJECT_DIR/logs/backup.log" 2>&1
+# Single entry: backup + git add/commit/push (no sudo; run as your user)
+0 0 * * * cd "$PROJECT_DIR" && ./scripts/run-cron-jobs.sh --no-clean >> "$PROJECT_DIR/logs/cron.log" 2>&1
 
-# Optional: auto-commit (date as message) and push
-0 0 * * * cd "$PROJECT_DIR" && git add -A && (git diff --staged --quiet || git commit -m "$(date +%Y-%m-%d)") && git push >> "$PROJECT_DIR/logs/git-push.log" 2>&1
-
-# Clean build (optional: heavy, run weekly if needed)
-0 0 * * 0 cd "$PROJECT_DIR" && ./scripts/clean-build.sh >> "$PROJECT_DIR/logs/clean-build.log" 2>&1
+# Clean build (optional, weekly)
+# 0 0 * * 0 cd "$PROJECT_DIR" && ./scripts/clean-build.sh >> "$PROJECT_DIR/logs/clean-build.log" 2>&1
