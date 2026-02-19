@@ -1,0 +1,96 @@
+# New website / backup VM: one compose, full stack (postgres + rustfs + app).
+# App runs "prisma migrate deploy" on startup → DB tables created automatically.
+#
+# One-time setup on the VM:
+#   1. Copy this file and .env to the VM (e.g. ~/ or ~/personal-website-backup/).
+#   2. Load app image (Harbor returns 403 for docker pull → use skopeo once):
+#        rm -f personal-website.tar
+#        skopeo copy --src-creds "USER:PASS" \
+#          docker://harbor.ben.winlab.tw/personal-website/personal-website:latest \
+#          docker-archive:personal-website.tar
+#        sudo docker load -i personal-website.tar
+#   3. From the directory that has this file and .env:
+#        sudo docker compose -f docker-compose.backup.yml up -d
+#
+# After that, "docker compose up -d" is enough (pull_policy: if_not_present = no pull, use local image).
+
+volumes:
+  backup-postgres-data:
+  backup-rustfs-data:
+  backup-rustfs-logs:
+
+services:
+  postgres:
+    image: postgres:15-alpine
+    container_name: personal-website-backup-postgres
+    restart: unless-stopped
+    ports:
+      - "5432:5432"
+    environment:
+      - POSTGRES_USER=${POSTGRES_USER:-ben}
+      - POSTGRES_PASSWORD=${POSTGRES_PASSWORD}
+      - POSTGRES_DB=${POSTGRES_DB:-blog}
+    volumes:
+      - backup-postgres-data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U $$POSTGRES_USER -d $$POSTGRES_DB"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  rustfs:
+    image: rustfs/rustfs:latest
+    container_name: personal-website-backup-rustfs
+    restart: unless-stopped
+    ports:
+      - "9000:9000"
+      - "9001:9001"
+    volumes:
+      - backup-rustfs-data:/data
+      - backup-rustfs-logs:/logs
+    environment:
+      - RUSTFS_ROOT_USER=${RUSTFS_ROOT_USER:-rustfsadmin}
+      - RUSTFS_ROOT_PASSWORD=${RUSTFS_ROOT_PASSWORD}
+    healthcheck:
+      test: ["CMD", "wget", "--no-verbose", "--tries=1", "--spider", "http://localhost:9000/health"]
+      interval: 10s
+      timeout: 5s
+      retries: 3
+      start_period: 30s
+
+  app:
+    # Use Harbor image (has Prisma wasm; runs migrate on startup). Load first via skopeo (docker pull 403).
+    image: harbor.ben.winlab.tw/personal-website/personal-website:latest
+    pull_policy: if_not_present
+    container_name: personal-website-backup-app
+    restart: unless-stopped
+    depends_on:
+      postgres:
+        condition: service_healthy
+      rustfs:
+        condition: service_healthy
+    ports:
+      - "3001:3000"
+    volumes:
+      - ./public:/app/public
+    environment:
+      - NODE_ENV=production
+      - DATABASE_URL=postgresql://${POSTGRES_USER:-ben}:${POSTGRES_PASSWORD}@postgres:5432/${POSTGRES_DB:-blog}
+      - ADMIN_PASSWORD=${ADMIN_PASSWORD}
+      - NEXTAUTH_SECRET=${NEXTAUTH_SECRET}
+      - NEXTAUTH_URL=${NEXTAUTH_URL:-https://benedict.winlab.tw}
+      - NEXT_PUBLIC_SITE_URL=${NEXT_PUBLIC_SITE_URL:-https://benedict.winlab.tw}
+      - S3_ENDPOINT=http://rustfs:9000
+      - S3_REGION=us-east-1
+      - S3_ACCESS_KEY=${S3_ACCESS_KEY}
+      - S3_SECRET_KEY=${S3_SECRET_KEY}
+      - S3_BUCKET=uploads
+      - RESEND_API_KEY=${RESEND_API_KEY}
+      - RESEND_FROM_EMAIL=${RESEND_FROM_EMAIL:-onboarding@resend.dev}
+      - CONTACT_EMAIL=${CONTACT_EMAIL}
+    healthcheck:
+      test: ["CMD", "node", "-e", "require('http').get('http://localhost:3000', (r) => {process.exit(r.statusCode === 200 ? 0 : 1)})"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 40s

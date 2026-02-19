@@ -254,7 +254,52 @@ docker run --rm -p 3000:3000 --env-file .env \
 
 ---
 
-## 8. 參考
+## 8. 在 website-backup 上完整跑一份（postgres + rustfs + app）
+
+**新起一個 website（新環境、新 DB）**：只要起一次 stack 就好。App 的 Docker image 在啟動時會自動跑 `prisma migrate deploy`，所以**不用手動 migrate**；只要用的是從 Harbor 拉下來的 image（用 skopeo 載入），就會有 Prisma 所需檔案並自動建表。
+
+若要在 backup VM 上跑完整 stack 做測試（不連到 website 的 DB），步驟如下。
+
+### 8.1 準備 app image（因 403 無法 docker pull，用 skopeo）
+
+```bash
+skopeo copy --src-creds "USER:PASS" \
+  docker://harbor.ben.winlab.tw/personal-website/personal-website:latest \
+  docker-archive:personal-website.tar
+sudo docker load -i personal-website.tar
+```
+
+載入後 image 名稱為 `harbor.ben.winlab.tw/personal-website/personal-website:latest`。**請用這個 image 跑 compose**（`docker-compose.backup.yml` 已指定此名稱），不要用舊的 `personal-website-app:latest`，否則會缺 Prisma wasm、無法自動 migrate。
+
+### 8.2 複製 compose 與 .env 到 backup VM
+
+在 backup 上建一個目錄，例如 `~/personal-website-backup`，放入：
+
+- `docker-compose.backup.yml`（專案裡的 `docker-compose.backup.yml`）
+- `.env`（從 website 複製或依 `.env.example` 填寫，**不需**填 DATABASE_URL 的 host，compose 會用 `postgres:5432`）
+
+### 8.3 啟動
+
+```bash
+cd ~/personal-website-backup
+sudo docker compose -f docker-compose.backup.yml up -d
+```
+
+- Postgres、RustFS、App 會一起起來；app 對外 port 為 **3001**（避免與 host 上 3000 衝突）。
+- 開啟：`http://<backup 的 IP>:3001`
+
+### 8.4 更新 app image 後重啟
+
+重新用 skopeo 拉 image、`docker load`，再：
+
+```bash
+sudo docker tag harbor.ben.winlab.tw/personal-website/personal-website:latest personal-website-app:latest
+sudo docker compose -f docker-compose.backup.yml up -d --force-recreate app
+```
+
+---
+
+## 9. 參考
 
 - Harbor 安裝目錄：`~/harbor`（依實際環境）
 - Workflow：`.github/workflows/build-push-harbor.yml`
