@@ -54,12 +54,16 @@ jobs:
           IMAGE="$HARBOR_HOST/${{ steps.project.outputs.project }}/${{ env.IMAGE_NAME }}:latest"
           echo "Building $IMAGE"
           docker build -t "$IMAGE" -f ./Dockerfile .
+          docker save "$IMAGE" -o image.tar
 
-      # TEST: use docker push (may get 403 on POST /service/token). If 403, switch back to skopeo.
-      - name: Push to Harbor (docker push – test if 403)
+      - name: Push to Harbor (skopeo from tarball – avoids Docker API version + POST 403)
         env:
           HARBOR_HOST: ${{ secrets.HARBOR_HOST }}
+          HARBOR_USERNAME: ${{ secrets.HARBOR_USERNAME }}
+          HARBOR_PASSWORD: ${{ secrets.HARBOR_PASSWORD }}
         run: |
+          sudo apt-get update -qq && sudo apt-get install -y skopeo
           IMAGE="$HARBOR_HOST/${{ steps.project.outputs.project }}/${{ env.IMAGE_NAME }}:latest"
-          echo "Pushing $IMAGE with docker push..."
-          docker push "$IMAGE"
+          echo "Pushing $IMAGE with skopeo..."
+          skopeo copy --dest-creds "$HARBOR_USERNAME:$HARBOR_PASSWORD" \
+            "docker-archive:image.tar" "docker://$IMAGE"
