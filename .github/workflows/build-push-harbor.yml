@@ -1,0 +1,63 @@
+# Build Docker image and push to Harbor (CD)
+#
+# Prerequisites:
+# 1. In GitHub repo: Settings → Secrets and variables → Actions, add:
+#    - HARBOR_HOST       (e.g. harbor.yourcompany.com, no https://)
+#    - HARBOR_USERNAME
+#    - HARBOR_PASSWORD   (or use a Harbor Robot Account token)
+#    - HARBOR_PROJECT    (optional, e.g. "myteam" → image: harbor.xx/myteam/personal-website:tag)
+# 2. Harbor must be reachable from GitHub (public or via self-hosted runner in your network).
+#
+# If Harbor is only on internal network, use Jenkins/GitLab CI with the same steps; see docs/CI_CD_GUIDE.md.
+name: Build and Push to Harbor
+
+on:
+  push:
+    branches: [main, master]   # change to your default branch
+  workflow_dispatch:
+
+env:
+  IMAGE_NAME: personal-website
+
+jobs:
+  build-and-push:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
+
+      - name: Log in to Harbor
+        uses: docker/login-action@v3
+        with:
+          registry: ${{ secrets.HARBOR_HOST }}
+          username: ${{ secrets.HARBOR_USERNAME }}
+          password: ${{ secrets.HARBOR_PASSWORD }}
+
+      - name: Set Harbor project
+        id: project
+        env:
+          HARBOR_PROJECT: ${{ secrets.HARBOR_PROJECT }}
+        run: echo "project=${HARBOR_PROJECT:-library}" >> $GITHUB_OUTPUT
+
+      - name: Extract metadata (tags, labels)
+        id: meta
+        uses: docker/metadata-action@v5
+        with:
+          images: ${{ secrets.HARBOR_HOST }}/${{ steps.project.outputs.project }}/${{ env.IMAGE_NAME }}
+          tags: |
+            type=sha,prefix=
+            type=raw,value=latest
+
+      - name: Build and push
+        uses: docker/build-push-action@v6
+        with:
+          context: .
+          file: ./Dockerfile
+          push: true
+          tags: ${{ steps.meta.outputs.tags }}
+          labels: ${{ steps.meta.outputs.labels }}
+          cache-from: type=gha
+          cache-to: type=gha,mode=max

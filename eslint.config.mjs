@@ -12,6 +12,12 @@ const eslintConfig = defineConfig([
     "out/**",
     "build/**",
     "next-env.d.ts",
+    // Docker/data dirs (often root-owned, cause EACCES when lint scans)
+    "postgres-data/**",
+    "rustfs-data/**",
+    "rustfs-logs/**",
+    "backups/**",
+    "node_modules/**",
   ]),
 ]);
 
