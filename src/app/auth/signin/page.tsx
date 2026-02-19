@@ -30,7 +30,9 @@ export default function SignInPage() {
         redirect: false,
       });
       if (result?.ok && result?.url) {
-        router.push(result.url);
+        // Stay on current host (e.g. backup VM); result.url is built from NEXTAUTH_URL (main domain).
+        const path = new URL(result.url).pathname || "/dashboard";
+        router.push(path);
         return;
       }
       const err = result?.error;
