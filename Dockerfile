@@ -18,6 +18,9 @@ COPY --from=deps /app/node_modules ./node_modules
 # Copy application files
 COPY . .
 
+# Ensure public exists (repo may not have it or it may be empty)
+RUN mkdir -p /app/public
+
 # Generate Prisma Client
 RUN npx prisma generate
 
