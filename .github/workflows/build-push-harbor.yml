@@ -5,8 +5,8 @@
 name: Build and Push to Harbor
 
 on:
-  # push:
-  #   branches: [main, master]
+  push:
+    branches: [main, master]
   workflow_dispatch:
 
 env:
@@ -35,6 +35,23 @@ jobs:
         env:
           HARBOR_PROJECT: ${{ env.HARBOR_PROJECT }}
         run: echo "project=${HARBOR_PROJECT:-library}" >> $GITHUB_OUTPUT
+
+      - name: Verify registry auth (token API)
+        env:
+          HARBOR_HOST: ${{ env.HARBOR_HOST }}
+          HARBOR_USERNAME: ${{ env.HARBOR_USERNAME }}
+          HARBOR_PASSWORD: ${{ env.HARBOR_PASSWORD }}
+          PROJECT: ${{ steps.project.outputs.project }}
+          IMAGE_NAME: ${{ env.IMAGE_NAME }}
+        run: |
+          SCOPE="repository:$PROJECT/$IMAGE_NAME:pull,push"
+          URL="https://$HARBOR_HOST/service/token?service=harbor-registry&scope=$SCOPE"
+          CODE=$(curl -s -o /dev/null -w "%{http_code}" -u "$HARBOR_USERNAME:$HARBOR_PASSWORD" "$URL")
+          echo "Token API (GET) -> $CODE (200 = credentials OK, 401 = bad user/token, 403 = no push permission)"
+          if [ "$CODE" != "200" ]; then
+            echo "::error::Registry auth failed ($CODE). Fix credentials or Robot push permission, then retry."
+            exit 1
+          fi
 
       - name: Build image
         run: |
