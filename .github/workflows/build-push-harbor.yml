@@ -7,6 +7,7 @@
 #    - HARBOR_PASSWORD   (or use a Harbor Robot Account token)
 #    - HARBOR_PROJECT    (optional, e.g. "myteam" → image: harbor.xx/myteam/personal-website:tag)
 # 2. Harbor must be reachable from GitHub (public or via self-hosted runner in your network).
+# 3. If your image goes to a project other than "library", add HARBOR_PROJECT (e.g. personal_website).
 #
 # If Harbor is only on internal network, use Jenkins/GitLab CI with the same steps; see docs/CI_CD_GUIDE.md.
 name: Build and Push to Harbor
@@ -41,6 +42,7 @@ jobs:
         env:
           HARBOR_PROJECT: ${{ secrets.HARBOR_PROJECT }}
         run: echo "project=${HARBOR_PROJECT:-library}" >> $GITHUB_OUTPUT
+        # When using a non-default project (e.g. personal_website), set HARBOR_PROJECT in repo Secrets
 
       - name: Extract metadata (tags, labels)
         id: meta
