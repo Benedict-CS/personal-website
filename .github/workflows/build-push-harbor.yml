@@ -53,6 +53,32 @@ jobs:
             type=sha,prefix=
             type=raw,value=latest
 
+      - name: Debug – push target and Harbor token
+        env:
+          HARBOR_HOST: ${{ secrets.HARBOR_HOST }}
+          HARBOR_USERNAME: ${{ secrets.HARBOR_USERNAME }}
+          HARBOR_PASSWORD: ${{ secrets.HARBOR_PASSWORD }}
+          PROJECT: ${{ steps.project.outputs.project }}
+          IMAGE_NAME: ${{ env.IMAGE_NAME }}
+        run: |
+          echo "=== Push target (host masked if from Secrets) ==="
+          echo "registry=$HARBOR_HOST"
+          echo "project=$PROJECT"
+          echo "image=$IMAGE_NAME"
+          echo "full_repo=$HARBOR_HOST/$PROJECT/$IMAGE_NAME"
+          echo ""
+          echo "=== Harbor token API (to see exact 403 body) ==="
+          SCOPE="repository:$PROJECT/$IMAGE_NAME:pull,push"
+          URL="https://$HARBOR_HOST/service/token?service=harbor-registry&scope=$SCOPE"
+          echo "url=$URL"
+          HTTP=$(curl -s -w "\n%{http_code}" -u "$HARBOR_USERNAME:$HARBOR_PASSWORD" "$URL")
+          CODE=$(echo "$HTTP" | tail -n1)
+          BODY=$(echo "$HTTP" | sed '$d')
+          echo "http_status=$CODE"
+          echo "response_body<<EOF"
+          echo "$BODY"
+          echo "EOF"
+
       - name: Build and push
         uses: docker/build-push-action@v6
         with:
