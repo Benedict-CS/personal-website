@@ -189,7 +189,72 @@ env:
 
 ---
 
-## 7. 參考
+## 7. 測試 Harbor 上的 image 是否可用
+
+在能連到 Harbor 的機器上（本機或伺服器）執行以下步驟，確認拉下來的 image 能正常跑。
+
+### 7.1 拉取 image（Harbor 對 POST token 回 403 時請用 skopeo）
+
+Docker 的 `docker pull` 會用 **POST** 向 Harbor 要 token，若你遇到 `403 Forbidden` on `/service/token`，請改用 **skopeo** 拉 image，再載入本機 Docker：
+
+```bash
+# 安裝 skopeo（若尚未安裝）
+# Ubuntu/Debian:
+sudo apt-get update && sudo apt-get install -y skopeo
+
+# 用 skopeo 從 Harbor 拉 image 到本機（GET 要 token，不會 403）
+# 替換 <USERNAME> <PASSWORD> 為你的 Harbor 帳密
+skopeo copy --src-creds "<USERNAME>:<PASSWORD>" \
+  docker://harbor.ben.winlab.tw/personal-website/personal-website:latest \
+  docker-archive:personal-website.tar
+
+# 載入到 Docker（之後就能 docker run）
+sudo docker load -i personal-website.tar
+```
+
+載入後 image 名稱為 `harbor.ben.winlab.tw/personal-website/personal-website:latest`，可直接 `docker run`。
+
+若你那邊 Harbor 已接受 POST token，也可用一般登入＋拉取：
+
+```bash
+docker login harbor.ben.winlab.tw -u <USERNAME> -p <PASSWORD>
+docker pull harbor.ben.winlab.tw/personal-website/personal-website:latest
+```
+
+### 7.2 只驗證「能跑起來」（最小測試）
+
+用一個**假的 DATABASE_URL** 只驗證容器會啟動、不立刻崩潰（migrate 會失敗沒關係，重點是 image 可執行）：
+
+```bash
+docker run --rm -p 3000:3000 \
+  -e DATABASE_URL="postgresql://dummy:dummy@host.docker.internal:5432/dummy" \
+  harbor.ben.winlab.tw/personal-website/personal-website:latest
+```
+
+若看到 Prisma migrate 報錯但 **node server.js 有啟動**，或 process 有跑一陣子才因 DB 錯誤退出，都算 image 本身是好的。按 `Ctrl+C` 結束。
+
+### 7.3 完整可用的測試（有真實 DB 與 .env）
+
+若有專案根目錄的 `.env`（含正確的 `DATABASE_URL`、`NEXTAUTH_*` 等），可掛入容器做完整測試：
+
+```bash
+cd /path/to/personal-website
+docker run --rm -p 3000:3000 --env-file .env \
+  harbor.ben.winlab.tw/personal-website/personal-website:latest
+```
+
+- 若 DB 在**本機**，容器內連不到 `localhost`，請把 `.env` 裡的 `DATABASE_URL` 改成用 `host.docker.internal`（Mac/Windows）或 host 的實際 IP（Linux）。
+- 瀏覽器開 `http://localhost:3000`，能開首頁或登入頁即代表 image 可用。
+
+### 7.4 檢查清單
+
+- [ ] `docker pull` 成功
+- [ ] `docker run` 後容器有啟動（不立刻 exit 1）
+- [ ] 有真實 DB 時，可開 `http://localhost:3000` 並看到畫面
+
+---
+
+## 8. 參考
 
 - Harbor 安裝目錄：`~/harbor`（依實際環境）
 - Workflow：`.github/workflows/build-push-harbor.yml`
