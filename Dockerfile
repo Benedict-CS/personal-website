@@ -45,7 +45,8 @@ RUN adduser --system --uid 1001 nextjs
 # Copy standalone output from builder
 COPY --from=builder /app/.next/standalone ./
 COPY --from=builder /app/.next/static ./.next/static
-COPY --from=builder /app/public ./public
+# public: create empty dir here; real assets come from volume mount (./public) at runtime
+RUN mkdir -p ./public
 
 # Copy package.json so Prisma CLI can find it (requires from .bin resolve to node_modules/package.json and project root)
 COPY --from=builder /app/package.json ./package.json
@@ -62,9 +63,6 @@ COPY --from=builder --chown=nextjs:nodejs /app/node_modules/@prisma ./node_modul
 COPY --from=builder --chown=nextjs:nodejs /app/node_modules/prisma ./node_modules/prisma
 COPY --from=builder --chown=nextjs:nodejs /app/node_modules/.bin/prisma ./node_modules/.bin/prisma
 COPY --from=builder --chown=nextjs:nodejs /app/node_modules/prisma/build/prisma_schema_build_bg.wasm ./node_modules/.bin/prisma_schema_build_bg.wasm
-
-# Ensure public directory exists (will be mounted as volume, so permissions handled by host)
-RUN mkdir -p ./public
 
 # Switch to non-root user
 USER nextjs

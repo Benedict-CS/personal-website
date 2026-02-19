@@ -57,8 +57,7 @@ garage-meta/
 seaweedfs-data/
 rustfs-data/
 rustfs-logs/
-public/uploads/
-public/images/
+
 
 # cron / script logs (do not commit)
 logs/
@@ -69,7 +68,7 @@ backups/
 
 # keep public directory but ignore runtime files
 !public/.gitkeep
-public/cv.pdf
+
 
 # Stray build/cache artifacts (0-byte junk, do not commit)
 /\[builder
@@ -85,3 +84,5 @@ public/cv.pdf
 /resolving
 /transferring
 /unpacking
+
+.vscode
