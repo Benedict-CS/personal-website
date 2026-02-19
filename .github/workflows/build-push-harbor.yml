@@ -22,9 +22,6 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v4
 
-      - name: Set up Docker Buildx
-        uses: docker/setup-buildx-action@v3
-
       - name: Log in to Harbor
         uses: docker/login-action@v3
         with:
@@ -38,48 +35,14 @@ jobs:
           HARBOR_PROJECT: ${{ env.HARBOR_PROJECT }}
         run: echo "project=${HARBOR_PROJECT:-library}" >> $GITHUB_OUTPUT
 
-      - name: Extract metadata (tags, labels)
-        id: meta
-        uses: docker/metadata-action@v5
-        with:
-          images: ${{ env.HARBOR_HOST }}/${{ steps.project.outputs.project }}/${{ env.IMAGE_NAME }}
-          tags: |
-            type=sha,prefix=
-            type=raw,value=latest
-
-      - name: Debug – push target and Harbor token
-        env:
-          HARBOR_HOST: ${{ env.HARBOR_HOST }}
-          HARBOR_USERNAME: ${{ env.HARBOR_USERNAME }}
-          HARBOR_PASSWORD: ${{ env.HARBOR_PASSWORD }}
-          PROJECT: ${{ steps.project.outputs.project }}
-          IMAGE_NAME: ${{ env.IMAGE_NAME }}
+      - name: Build image
         run: |
-          echo "=== Push target (host masked if from Secrets) ==="
-          echo "registry=$HARBOR_HOST"
-          echo "project=$PROJECT"
-          echo "image=$IMAGE_NAME"
-          echo "full_repo=$HARBOR_HOST/$PROJECT/$IMAGE_NAME"
-          echo ""
-          echo "=== Harbor token API (to see exact 403 body) ==="
-          SCOPE="repository:$PROJECT/$IMAGE_NAME:pull,push"
-          URL="https://$HARBOR_HOST/service/token?service=harbor-registry&scope=$SCOPE"
-          echo "url=$URL"
-          HTTP=$(curl -s -w "\n%{http_code}" -u "$HARBOR_USERNAME:$HARBOR_PASSWORD" "$URL")
-          CODE=$(echo "$HTTP" | tail -n1)
-          BODY=$(echo "$HTTP" | sed '$d')
-          echo "http_status=$CODE"
-          echo "response_body<<EOF"
-          echo "$BODY"
-          echo "EOF"
+          IMAGE="${{ env.HARBOR_HOST }}/${{ steps.project.outputs.project }}/${{ env.IMAGE_NAME }}:latest"
+          echo "Building $IMAGE"
+          docker build -t "$IMAGE" -f ./Dockerfile .
 
-      - name: Build and push
-        uses: docker/build-push-action@v6
-        with:
-          context: .
-          file: ./Dockerfile
-          push: true
-          tags: ${{ steps.meta.outputs.tags }}
-          labels: ${{ steps.meta.outputs.labels }}
-          cache-from: type=gha
-          cache-to: type=gha,mode=max
+      - name: Push to Harbor
+        run: |
+          IMAGE="${{ env.HARBOR_HOST }}/${{ steps.project.outputs.project }}/${{ env.IMAGE_NAME }}:latest"
+          echo "Pushing $IMAGE"
+          docker push "$IMAGE"
