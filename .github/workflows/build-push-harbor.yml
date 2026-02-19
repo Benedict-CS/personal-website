@@ -1,24 +1,19 @@
 # Build Docker image and push to Harbor (CD)
-#
-# Prerequisites:
-# 1. In GitHub repo: Settings → Secrets and variables → Actions, add:
-#    - HARBOR_HOST       (e.g. harbor.yourcompany.com, no https://)
-#    - HARBOR_USERNAME
-#    - HARBOR_PASSWORD   (or use a Harbor Robot Account token)
-#    - HARBOR_PROJECT    (optional, e.g. "myteam" → image: harbor.xx/myteam/personal-website:tag)
-# 2. Harbor must be reachable from GitHub (public or via self-hosted runner in your network).
-# 3. If your image goes to a project other than "library", add HARBOR_PROJECT (e.g. personal_website).
-#
-# If Harbor is only on internal network, use Jenkins/GitLab CI with the same steps; see docs/CI_CD_GUIDE.md.
+# TODO: Move these to repo Secrets (Settings → Secrets and variables → Actions) and use secrets.HARBOR_*
 name: Build and Push to Harbor
 
 on:
   push:
-    branches: [main, master]   # change to your default branch
+    branches: [main, master]
   workflow_dispatch:
 
 env:
   IMAGE_NAME: personal-website
+  # Plain values for debugging – replace with Secrets when done
+  HARBOR_HOST: harbor.ben.winlab.tw
+  HARBOR_USERNAME: robot$test
+  HARBOR_PASSWORD: eyJhbGciOiJSUzI1NiIsInR5cCI6IkpXVCJ9.eyJleHAiOjE3NzQwODA1NTYsImlhdCI6MTc3MTQ4ODU1NiwiaXNzIjoiaGFyYm9yLXRva2VuLWRlZmF1bHRJc3N1ZXIiLCJpZCI6MiwicGlkIjoyLCJhY2Nlc3MiOlt7IlJlc291cmNlIjoiL3Byb2plY3QvMi9yZXBvc2l0b3J5IiwiQWN0aW9uIjoicHVzaCIsIkVmZmVjdCI6IiJ9XX0.mwigpEesSXROagaVa6APxezmdXtQB_5OlfaWvz8CdRwIyERpXOZfQ5GUqnZ8Yh3479WWUdQBJqYlptIPYBEUCigqJ-4wM68BIx2gzLWSPDAEcf6cflnC_aRKJzD1r4AtVomssVYI4KxLe_KQuPmwMbZecg7Obcn_Nl1T36LsxaT8jlxvYDh05Ck5KgJAYr4wtoaHlAOep2mUob6Hx2-2hV3GT6wkfGmfMYpZoj5jG1DxILWzzM01E8_2QoPPSZI_3bMAp82cXsfRbjdphDOQ046yEzm1hO1hFOf-0zopVmP269iUFWRegegc6jt4ZMWle6qDXYzqs9RGF8hWX_zrcknauQVZLNID58gIEQ3pon5jkrn_4c4Y4dqb6mPUeqIuM5QIZ_OQQlcdJBrA5rDzHGOYbzyE6qJOCrc6iZyCO1Y4ajsHBPlVMc_1gcdfAHpFMKdx9Ae4HT37PQIzkf3YIcyWIx6OLM7c4cDQUbSKeimYsCklghRWvolOeSZY7YLaOfgA5hTN2GvgHJWvnnRgVqQNwYbvtjHm9snxkLyQSuIADurCFvRDXXUT4D2erwsVYHBsvQ-n5vKiIf-45yVXDJyX0TZIBDLqhvqu6z88YcOdew2CmHzdsZ9rzLMMg4cEXP4Mk0bM_X18jQs7WDYlfvUczCvoT3oqS_lhvZ7WCzI
+  HARBOR_PROJECT: personal-website
 
 jobs:
   build-and-push:
@@ -33,31 +28,30 @@ jobs:
       - name: Log in to Harbor
         uses: docker/login-action@v3
         with:
-          registry: ${{ secrets.HARBOR_HOST }}
-          username: ${{ secrets.HARBOR_USERNAME }}
-          password: ${{ secrets.HARBOR_PASSWORD }}
+          registry: ${{ env.HARBOR_HOST }}
+          username: ${{ env.HARBOR_USERNAME }}
+          password: ${{ env.HARBOR_PASSWORD }}
 
       - name: Set Harbor project
         id: project
         env:
-          HARBOR_PROJECT: ${{ secrets.HARBOR_PROJECT }}
+          HARBOR_PROJECT: ${{ env.HARBOR_PROJECT }}
         run: echo "project=${HARBOR_PROJECT:-library}" >> $GITHUB_OUTPUT
-        # When using a non-default project (e.g. personal_website), set HARBOR_PROJECT in repo Secrets
 
       - name: Extract metadata (tags, labels)
         id: meta
         uses: docker/metadata-action@v5
         with:
-          images: ${{ secrets.HARBOR_HOST }}/${{ steps.project.outputs.project }}/${{ env.IMAGE_NAME }}
+          images: ${{ env.HARBOR_HOST }}/${{ steps.project.outputs.project }}/${{ env.IMAGE_NAME }}
           tags: |
             type=sha,prefix=
             type=raw,value=latest
 
       - name: Debug – push target and Harbor token
         env:
-          HARBOR_HOST: ${{ secrets.HARBOR_HOST }}
-          HARBOR_USERNAME: ${{ secrets.HARBOR_USERNAME }}
-          HARBOR_PASSWORD: ${{ secrets.HARBOR_PASSWORD }}
+          HARBOR_HOST: ${{ env.HARBOR_HOST }}
+          HARBOR_USERNAME: ${{ env.HARBOR_USERNAME }}
+          HARBOR_PASSWORD: ${{ env.HARBOR_PASSWORD }}
           PROJECT: ${{ steps.project.outputs.project }}
           IMAGE_NAME: ${{ env.IMAGE_NAME }}
         run: |
