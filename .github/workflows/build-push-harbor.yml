@@ -59,8 +59,10 @@ jobs:
           echo "Building $IMAGE"
           docker build -t "$IMAGE" -f ./Dockerfile .
 
-      - name: Push to Harbor
+      - name: Push to Harbor (skopeo – uses GET for token; avoids 403 from docker POST)
         run: |
+          sudo apt-get update -qq && sudo apt-get install -y skopeo
           IMAGE="${{ env.HARBOR_HOST }}/${{ steps.project.outputs.project }}/${{ env.IMAGE_NAME }}:latest"
-          echo "Pushing $IMAGE"
-          docker push "$IMAGE"
+          echo "Pushing $IMAGE with skopeo..."
+          skopeo copy --dest-creds "${{ env.HARBOR_USERNAME }}:${{ env.HARBOR_PASSWORD }}" \
+            "docker-daemon:$IMAGE" "docker://$IMAGE"
