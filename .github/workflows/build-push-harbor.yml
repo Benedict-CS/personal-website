@@ -1,7 +1,5 @@
 # Build Docker image and push to Harbor (CD)
-# Temporarily disabled on push – 403 on POST /service/token (Docker uses POST; fix Harbor then re-enable).
-# Fix: Harbor/proxy may reject POST; check nginx/proxy allows POST to /service/token, or Harbor token config.
-# TODO: Use Secrets for HARBOR_* and uncomment "on: push" when Harbor works.
+# Requires repo Secrets: HARBOR_HOST, HARBOR_USERNAME, HARBOR_PASSWORD, HARBOR_PROJECT
 name: Build and Push to Harbor
 
 on:
@@ -11,14 +9,7 @@ on:
 
 env:
   IMAGE_NAME: personal-website
-  HARBOR_HOST: harbor.ben.winlab.tw
 
-  HARBOR_USERNAME: admin
-  HARBOR_PASSWORD: Harbor12345
-  #eyJhbGciOiJSUzI1NiIsInR5cCI6IkpXVCJ9.eyJleHAiOjE3NzQwODA1NTYsImlhdCI6MTc3MTQ4ODU1NiwiaXNzIjoiaGFyYm9yLXRva2VuLWRlZmF1bHRJc3N1ZXIiLCJpZCI6MiwicGlkIjoyLCJhY2Nlc3MiOlt7IlJlc291cmNlIjoiL3Byb2plY3QvMi9yZXBvc2l0b3J5IiwiQWN0aW9uIjoicHVzaCIsIkVmZmVjdCI6IiJ9XX0.mwigpEesSXROagaVa6APxezmdXtQB_5OlfaWvz8CdRwIyERpXOZfQ5GUqnZ8Yh3479WWUdQBJqYlptIPYBEUCigqJ-4wM68BIx2gzLWSPDAEcf6cflnC_aRKJzD1r4AtVomssVYI4KxLe_KQuPmwMbZecg7Obcn_Nl1T36LsxaT8jlxvYDh05Ck5KgJAYr4wtoaHlAOep2mUob6Hx2-2hV3GT6wkfGmfMYpZoj5jG1DxILWzzM01E8_2QoPPSZI_3bMAp82cXsfRbjdphDOQ046yEzm1hO1hFOf-0zopVmP269iUFWRegegc6jt4ZMWle6qDXYzqs9RGF8hWX_zrcknauQVZLNID58gIEQ3pon5jkrn_4c4Y4dqb6mPUeqIuM5QIZ_OQQlcdJBrA5rDzHGOYbzyE6qJOCrc6iZyCO1Y4ajsHBPlVMc_1gcdfAHpFMKdx9Ae4HT37PQIzkf3YIcyWIx6OLM7c4cDQUbSKeimYsCklghRWvolOeSZY7YLaOfgA5hTN2GvgHJWvnnRgVqQNwYbvtjHm9snxkLyQSuIADurCFvRDXXUT4D2erwsVYHBsvQ-n5vKiIf-45yVXDJyX0TZIBDLqhvqu6z88YcOdew2CmHzdsZ9rzLMMg4cEXP4Mk0bM_X18jQs7WDYlfvUczCvoT3oqS_lhvZ7WCzI
-  
-  HARBOR_PROJECT: personal-website
- 
 jobs:
   build-and-push:
     runs-on: ubuntu-latest
@@ -29,21 +20,21 @@ jobs:
       - name: Log in to Harbor
         uses: docker/login-action@v3
         with:
-          registry: ${{ env.HARBOR_HOST }}
-          username: ${{ env.HARBOR_USERNAME }}
-          password: ${{ env.HARBOR_PASSWORD }}
+          registry: ${{ secrets.HARBOR_HOST }}
+          username: ${{ secrets.HARBOR_USERNAME }}
+          password: ${{ secrets.HARBOR_PASSWORD }}
 
       - name: Set Harbor project
         id: project
         env:
-          HARBOR_PROJECT: ${{ env.HARBOR_PROJECT }}
+          HARBOR_PROJECT: ${{ secrets.HARBOR_PROJECT }}
         run: echo "project=${HARBOR_PROJECT:-library}" >> $GITHUB_OUTPUT
 
       - name: Verify registry auth (token API)
         env:
-          HARBOR_HOST: ${{ env.HARBOR_HOST }}
-          HARBOR_USERNAME: ${{ env.HARBOR_USERNAME }}
-          HARBOR_PASSWORD: ${{ env.HARBOR_PASSWORD }}
+          HARBOR_HOST: ${{ secrets.HARBOR_HOST }}
+          HARBOR_USERNAME: ${{ secrets.HARBOR_USERNAME }}
+          HARBOR_PASSWORD: ${{ secrets.HARBOR_PASSWORD }}
           PROJECT: ${{ steps.project.outputs.project }}
           IMAGE_NAME: ${{ env.IMAGE_NAME }}
         run: |
@@ -57,16 +48,22 @@ jobs:
           fi
 
       - name: Build image
+        env:
+          HARBOR_HOST: ${{ secrets.HARBOR_HOST }}
         run: |
-          IMAGE="${{ env.HARBOR_HOST }}/${{ steps.project.outputs.project }}/${{ env.IMAGE_NAME }}:latest"
+          IMAGE="$HARBOR_HOST/${{ steps.project.outputs.project }}/${{ env.IMAGE_NAME }}:latest"
           echo "Building $IMAGE"
           docker build -t "$IMAGE" -f ./Dockerfile .
           docker save "$IMAGE" -o image.tar
 
       - name: Push to Harbor (skopeo from tarball – avoids Docker API version + POST 403)
+        env:
+          HARBOR_HOST: ${{ secrets.HARBOR_HOST }}
+          HARBOR_USERNAME: ${{ secrets.HARBOR_USERNAME }}
+          HARBOR_PASSWORD: ${{ secrets.HARBOR_PASSWORD }}
         run: |
           sudo apt-get update -qq && sudo apt-get install -y skopeo
-          IMAGE="${{ env.HARBOR_HOST }}/${{ steps.project.outputs.project }}/${{ env.IMAGE_NAME }}:latest"
+          IMAGE="$HARBOR_HOST/${{ steps.project.outputs.project }}/${{ env.IMAGE_NAME }}:latest"
           echo "Pushing $IMAGE with skopeo..."
-          skopeo copy --dest-creds "${{ env.HARBOR_USERNAME }}:${{ env.HARBOR_PASSWORD }}" \
+          skopeo copy --dest-creds "$HARBOR_USERNAME:$HARBOR_PASSWORD" \
             "docker-archive:image.tar" "docker://$IMAGE"
