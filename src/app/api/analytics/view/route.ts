@@ -48,7 +48,17 @@ export async function POST(request: NextRequest) {
     ip = typeof body.ip === "string" ? body.ip.trim() : "unknown";
   } else {
     const origin = request.headers.get("origin") || request.headers.get("referer") || "";
-    const allowed = siteOrigin && (origin.startsWith(siteOrigin) || origin === "");
+    const requestOrigin = (() => {
+      try {
+        return new URL(request.url).origin;
+      } catch {
+        return "";
+      }
+    })();
+    const allowed =
+      origin === "" ||
+      (siteOrigin && origin.startsWith(siteOrigin)) ||
+      (requestOrigin && origin.startsWith(requestOrigin));
     if (!allowed) {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }

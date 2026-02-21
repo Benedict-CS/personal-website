@@ -12,7 +12,18 @@ function getClientIP(req: NextRequest): string {
 /** Client sends when leaving a page; we update the most recent PageView for this IP+path with duration. */
 export async function POST(request: NextRequest) {
   const origin = request.headers.get("origin") || request.headers.get("referer") || "";
-  if (!siteOrigin || (!origin.startsWith(siteOrigin) && origin !== "")) {
+  const requestOrigin = (() => {
+    try {
+      return new URL(request.url).origin;
+    } catch {
+      return "";
+    }
+  })();
+  const allowed =
+    origin === "" ||
+    (siteOrigin && origin.startsWith(siteOrigin)) ||
+    (requestOrigin && origin.startsWith(requestOrigin));
+  if (!allowed) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   }
   let body: { path?: string; durationSeconds?: number };
