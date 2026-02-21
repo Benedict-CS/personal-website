@@ -18,20 +18,21 @@ rm -f personal-website.tar
 skopeo copy --src-creds "${HARBOR_CREDS:-admin:Harbor12345}" \
   docker://harbor.ben.winlab.tw/personal-website/personal-website:latest \
   docker-archive:personal-website.tar
-sudo docker load -i personal-website.tar
+LOAD_OUT=$(sudo docker load -i personal-website.tar 2>&1)
+echo "$LOAD_OUT"
 rm -f personal-website.tar
 
 echo "=== 4. Tag the JUST loaded image ==="
-# After load, Docker prints: Loaded image ID: sha256:55d8af32...
-# That image may have no tag. Find it (dangling = untagged).
-NEW_ID=$(sudo docker images -q --filter "dangling=true" | head -1)
+# Parse "Loaded image ID: sha256:XXXXXXXX..." from docker load output (full sha or short id both work)
+NEW_ID=$(echo "$LOAD_OUT" | sed -n 's/.*Loaded image ID: \(sha256:[a-f0-9]*\).*/\1/p' | tail -1)
 if [ -z "$NEW_ID" ]; then
-  echo "No dangling image; the loaded image may already have a tag. Check: sudo docker images"
-  echo "If harbor.ben.../personal-website:latest exists, skip to step 5. Else run:"
-  echo "  sudo docker tag <IMAGE_ID> harbor.ben.winlab.tw/personal-website/personal-website:latest"
-  read -p "Enter the image ID to tag (from 'Loaded image ID' above, e.g. 55d8af322663): " NEW_ID
+  # Fallback: dangling image (untagged) from the load
+  NEW_ID=$(sudo docker images -q --filter "dangling=true" | head -1)
 fi
-if [ -n "$NEW_ID" ]; then
+if [ -z "$NEW_ID" ]; then
+  echo "Could not auto-detect loaded image. If it already has the correct tag, continuing."
+  echo "Otherwise run: sudo docker tag <IMAGE_ID> harbor.ben.winlab.tw/personal-website/personal-website:latest"
+else
   sudo docker tag "$NEW_ID" harbor.ben.winlab.tw/personal-website/personal-website:latest
   echo "Tagged $NEW_ID as harbor.ben.winlab.tw/personal-website/personal-website:latest"
 fi

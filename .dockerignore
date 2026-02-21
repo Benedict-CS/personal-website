@@ -3,6 +3,7 @@ node_modules
 npm-debug.log*
 yarn-debug.log*
 yarn-error.log*
+.pnpm-debug.log*
 
 # Next.js
 .next
@@ -11,18 +12,17 @@ dist
 
 # Environment variables
 .env
-.env.local
-.env.development.local
-.env.test.local
-.env.production.local
+.env.*
+!.env.example
 
 # Git
 .git
 .gitignore
 
-# IDE
+# IDE / editor
 .vscode
 .idea
+.cursor
 *.swp
 *.swo
 *~
@@ -31,16 +31,32 @@ dist
 .DS_Store
 Thumbs.db
 
-# Testing
+# Testing / coverage
 coverage
 .nyc_output
+**/*.test.ts
+**/*.test.tsx
+**/*.spec.ts
+**/*.spec.tsx
+**/__tests__
+**/__mocks__
+
+# Docs / scripts not needed at build
+docs
+.github
+backups
+*.md
+!prisma/migrations/**/*.md
 
 # Misc
 *.log
 .cache
 
-# Docker volumes (data persistence)
-postgres-data/
-minio-data/
+# Docker / data
+postgres-data
+minio-data
 *.db
 *.db-journal
+Dockerfile*
+docker-compose*
+.docker

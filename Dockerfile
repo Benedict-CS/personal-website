@@ -1,15 +1,13 @@
 # Stage 1: Dependencies
-FROM node:20-slim AS deps
+FROM node:20-alpine AS deps
 WORKDIR /app
 
-# Copy package files
 COPY package.json package-lock.json* ./
 RUN npm ci
 
 # Stage 2: Builder
-FROM node:20-slim AS builder
-# Install OpenSSL (Debian 12 uses OpenSSL 3.0)
-RUN apt-get update && apt-get install -y openssl && rm -rf /var/lib/apt/lists/*
+FROM node:20-alpine AS builder
+RUN apk add --no-cache openssl
 WORKDIR /app
 
 # Copy dependencies from deps stage
@@ -31,16 +29,13 @@ ENV DATABASE_URL="postgresql://dummy:dummy@localhost:5432/dummy"
 RUN npm run build
 
 # Stage 3: Runner
-FROM node:20-slim AS runner
-# Install OpenSSL (Debian 12 uses OpenSSL 3.0)
-RUN apt-get update && apt-get install -y openssl && rm -rf /var/lib/apt/lists/*
+FROM node:20-alpine AS runner
+RUN apk add --no-cache openssl
 WORKDIR /app
 
 ENV NODE_ENV=production
 
-# Create a non-root user
-RUN addgroup --system --gid 1001 nodejs
-RUN adduser --system --uid 1001 nextjs
+RUN addgroup -g 1001 -S nodejs && adduser -S -u 1001 -G nodejs nextjs
 
 # Copy standalone output from builder
 COPY --from=builder /app/.next/standalone ./

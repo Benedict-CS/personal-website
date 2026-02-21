@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
+import { getRequestOrigin } from "@/lib/get-request-origin";
 
 const siteOrigin = process.env.NEXT_PUBLIC_SITE_URL || process.env.NEXTAUTH_URL || "";
 
@@ -12,13 +13,7 @@ function getClientIP(req: NextRequest): string {
 /** Client sends when leaving a page; we update the most recent PageView for this IP+path with duration. */
 export async function POST(request: NextRequest) {
   const origin = request.headers.get("origin") || request.headers.get("referer") || "";
-  const requestOrigin = (() => {
-    try {
-      return new URL(request.url).origin;
-    } catch {
-      return "";
-    }
-  })();
+  const requestOrigin = getRequestOrigin(request);
   const allowed =
     origin === "" ||
     (siteOrigin && origin.startsWith(siteOrigin)) ||

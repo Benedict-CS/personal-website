@@ -3,6 +3,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { isPrivateIP } from "@/lib/is-private-url";
 import { isExcludedIP } from "@/lib/analytics-excluded-ips";
+import { getRequestOrigin } from "@/lib/get-request-origin";
 
 export const dynamic = "force-dynamic";
 
@@ -48,13 +49,7 @@ export async function POST(request: NextRequest) {
     ip = typeof body.ip === "string" ? body.ip.trim() : "unknown";
   } else {
     const origin = request.headers.get("origin") || request.headers.get("referer") || "";
-    const requestOrigin = (() => {
-      try {
-        return new URL(request.url).origin;
-      } catch {
-        return "";
-      }
-    })();
+    const requestOrigin = getRequestOrigin(request);
     const allowed =
       origin === "" ||
       (siteOrigin && origin.startsWith(siteOrigin)) ||
