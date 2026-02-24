@@ -6,7 +6,7 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { ConfirmDialog } from "@/components/ui/confirm-dialog";
-import { Trash2, Image as ImageIcon, Loader2, Upload } from "lucide-react";
+import { Trash2, Image as ImageIcon, Loader2, Upload, Copy, Check } from "lucide-react";
 import Image from "next/image";
 
 export const dynamic = "force-dynamic";
@@ -31,7 +31,60 @@ export default function MediaPage() {
   } | null>(null);
   const [uploading, setUploading] = useState(false);
   const [dragOver, setDragOver] = useState(false);
+  const [copiedName, setCopiedName] = useState<string | null>(null);
+  const [selected, setSelected] = useState<Set<string>>(new Set());
+  const [deleteConfirm, setDeleteConfirm] = useState(false);
+  const [deleting, setDeleting] = useState(false);
   const inputRef = useRef<HTMLInputElement>(null);
+
+  const toggleSelected = (name: string) => {
+    setSelected((prev) => {
+      const next = new Set(prev);
+      if (next.has(name)) next.delete(name);
+      else next.add(name);
+      return next;
+    });
+  };
+
+  const handleBulkDelete = async () => {
+    setDeleteConfirm(false);
+    if (selected.size === 0) return;
+    setDeleting(true);
+    setDeleteStatus(null);
+    try {
+      const res = await fetch("/api/media/delete", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ keys: Array.from(selected) }),
+      });
+      const data = await res.json().catch(() => ({}));
+      if (!res.ok) {
+        setDeleteStatus({ show: true, message: data.error || "Delete failed", type: "error" });
+        setTimeout(() => setDeleteStatus(null), 3000);
+        return;
+      }
+      setSelected(new Set());
+      await fetchMediaFiles();
+      setDeleteStatus({ show: true, message: `Deleted ${data.deleted ?? selected.size} file(s).`, type: "success" });
+      setTimeout(() => setDeleteStatus(null), 3000);
+    } catch {
+      setDeleteStatus({ show: true, message: "Delete failed", type: "error" });
+      setTimeout(() => setDeleteStatus(null), 3000);
+    } finally {
+      setDeleting(false);
+    }
+  };
+
+  const copyUrl = async (url: string, name: string) => {
+    try {
+      await navigator.clipboard.writeText(url);
+      setCopiedName(name);
+      setTimeout(() => setCopiedName(null), 2000);
+    } catch {
+      setDeleteStatus({ show: true, message: "Copy failed", type: "error" });
+      setTimeout(() => setDeleteStatus(null), 2000);
+    }
+  };
 
   // 載入媒體檔案列表
   const fetchMediaFiles = async () => {
@@ -229,8 +282,30 @@ export default function MediaPage() {
               </>
             )}
           </Button>
+          {files.length > 0 && (
+            <Button
+              variant="outline"
+              size="sm"
+              className="gap-2"
+              disabled={selected.size === 0 || deleting}
+              onClick={() => setDeleteConfirm(true)}
+            >
+              {deleting ? <Loader2 className="h-4 w-4 animate-spin" /> : <Trash2 className="h-4 w-4" />}
+              Delete selected {selected.size > 0 ? `(${selected.size})` : ""}
+            </Button>
+          )}
         </div>
       </div>
+      <ConfirmDialog
+        open={deleteConfirm}
+        onClose={() => setDeleteConfirm(false)}
+        title="Delete selected files"
+        description={`Permanently delete ${selected.size} file(s)? This cannot be undone.`}
+        confirmLabel="Delete"
+        variant="danger"
+        loading={deleting}
+        onConfirm={handleBulkDelete}
+      />
 
       {/* Toast 提示 */}
       {deleteStatus?.show && (
@@ -270,11 +345,13 @@ export default function MediaPage() {
           onDragLeave={() => setDragOver(false)}
           onDrop={handleDrop}
         >
-          <CardContent className="py-12 text-center">
-            <ImageIcon className="mx-auto h-12 w-12 text-slate-400" />
-            <p className="mt-4 font-medium text-slate-700">No media files yet</p>
-            <p className="mt-2 text-sm text-slate-500 max-w-md mx-auto">
-              Upload images here or drag and drop. Supported: JPEG, PNG, GIF, WebP.
+          <CardContent className="py-16 text-center">
+            <div className="mx-auto flex h-16 w-16 items-center justify-center rounded-full bg-slate-100">
+              <ImageIcon className="h-10 w-10 text-slate-500" />
+            </div>
+            <p className="mt-6 text-lg font-medium text-slate-800">No media files yet</p>
+            <p className="mt-2 text-sm text-slate-500 max-w-sm mx-auto leading-relaxed">
+              Upload images to use in posts, or drag and drop here. Supported: JPEG, PNG, GIF, WebP.
             </p>
             <Button
               onClick={() => inputRef.current?.click()}
@@ -320,8 +397,18 @@ export default function MediaPage() {
           )}
           <div className="grid grid-cols-2 gap-4 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5">
           {filteredFiles.map((file) => (
-            <Card key={file.name} className="overflow-hidden">
-              <div className="relative aspect-square w-full bg-slate-100">
+            <Card key={file.name} className={`overflow-hidden transition-shadow hover:shadow-md ${selected.has(file.name) ? "ring-2 ring-primary" : ""}`}>
+              <div className="relative aspect-square w-full bg-slate-100 group">
+                <button
+                  type="button"
+                  onClick={() => toggleSelected(file.name)}
+                  className="absolute left-2 top-2 z-10 flex h-5 w-5 items-center justify-center rounded border bg-white shadow"
+                  aria-label={selected.has(file.name) ? "Deselect" : "Select"}
+                >
+                  {selected.has(file.name) ? (
+                    <span className="text-xs font-bold text-primary">✓</span>
+                  ) : null}
+                </button>
                 <Image
                   src={file.url}
                   alt={file.name}
@@ -329,9 +416,20 @@ export default function MediaPage() {
                   className="object-cover"
                   sizes="(max-width: 768px) 50vw, (max-width: 1024px) 33vw, 20vw"
                 />
+                <div className="absolute inset-0 bg-slate-900/0 group-hover:bg-slate-900/40 transition-colors flex items-center justify-center opacity-0 group-hover:opacity-100">
+                  <Button
+                    size="sm"
+                    variant="secondary"
+                    className="gap-1.5 shadow-lg"
+                    onClick={() => copyUrl(file.url, file.name)}
+                  >
+                    {copiedName === file.name ? <Check className="h-4 w-4" /> : <Copy className="h-4 w-4" />}
+                    {copiedName === file.name ? "Copied" : "Copy URL"}
+                  </Button>
+                </div>
               </div>
               <CardContent className="p-3">
-                <p className="truncate text-xs font-medium text-slate-900">
+                <p className="truncate text-xs font-medium text-slate-900" title={file.name}>
                   {file.name}
                 </p>
                 <p className="mt-1 text-xs text-slate-500">

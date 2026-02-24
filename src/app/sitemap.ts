@@ -35,23 +35,29 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
     },
   ];
 
-  // 動態頁面：從資料庫查詢所有已發布的文章
+  // Dynamic: published blog posts (lastmod from updatedAt, priority 0.7)
   const posts = await prisma.post.findMany({
-    where: {
-      published: true,
-    },
-    select: {
-      slug: true,
-      updatedAt: true,
-    },
+    where: { published: true },
+    select: { slug: true, updatedAt: true },
   });
-
-  const dynamicPages: MetadataRoute.Sitemap = posts.map((post) => ({
+  const blogPages: MetadataRoute.Sitemap = posts.map((post) => ({
     url: `${baseUrl}/blog/${post.slug}`,
     lastModified: post.updatedAt,
     changeFrequency: "weekly" as const,
     priority: 0.7,
   }));
 
-  return [...staticPages, ...dynamicPages];
+  // Dynamic: published custom pages (e.g. /page/portfolio)
+  const customPages = await prisma.customPage.findMany({
+    where: { published: true },
+    select: { slug: true, updatedAt: true },
+  });
+  const customPagesSitemap: MetadataRoute.Sitemap = customPages.map((page) => ({
+    url: `${baseUrl}/page/${page.slug}`,
+    lastModified: page.updatedAt,
+    changeFrequency: "monthly" as const,
+    priority: 0.6,
+  }));
+
+  return [...staticPages, ...blogPages, ...customPagesSitemap];
 }

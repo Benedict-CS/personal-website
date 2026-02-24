@@ -1,3 +1,6 @@
+import { getServerSession } from "next-auth";
+import type { Session } from "next-auth";
+import { NextResponse } from "next/server";
 import CredentialsProvider from "next-auth/providers/credentials";
 import type { NextAuthOptions } from "next-auth";
 import {
@@ -9,6 +12,20 @@ import {
 import { isPrivateUrl } from "@/lib/is-private-url";
 
 type ReqLike = { headers?: Headers | Record<string, string | string[] | undefined> };
+
+/**
+ * Use in protected API routes: get session or a 401 response.
+ * Example: const auth = await requireSession(); if (auth.unauthorized) return auth.unauthorized;
+ */
+export async function requireSession(): Promise<
+  { session: Session } | { unauthorized: NextResponse }
+> {
+  const session = await getServerSession(authOptions);
+  if (!session) {
+    return { unauthorized: NextResponse.json({ error: "Unauthorized" }, { status: 401 }) };
+  }
+  return { session };
+}
 
 export const authOptions: NextAuthOptions = {
   providers: [

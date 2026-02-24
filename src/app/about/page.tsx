@@ -10,6 +10,7 @@ import { prisma } from "@/lib/prisma";
 import { AboutHighlightScroll } from "@/components/about-highlight-scroll";
 import { MarkdownRenderer } from "@/components/markdown-renderer";
 import { CountryFlag } from "@/components/country-flag";
+import { PublicBreadcrumbs } from "@/components/public-breadcrumbs";
 import { Suspense } from "react";
 
 // 啟用動態渲染並設置重新驗證時間（30秒）
@@ -313,6 +314,7 @@ export default async function AboutPage() {
 
   return (
     <div className="container mx-auto max-w-5xl px-4 py-12">
+      <PublicBreadcrumbs items={[{ label: "Home", href: "/" }, { label: "About" }]} />
       <Suspense fallback={null}>
         <AboutHighlightScroll />
       </Suspense>

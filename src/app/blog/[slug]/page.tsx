@@ -13,6 +13,9 @@ import { ReadingProgress } from "@/components/reading-progress";
 import { PrevNextKeys } from "@/components/prev-next-keys";
 import { MarkdownRenderer } from "@/components/markdown-renderer";
 import { HighlightScroll } from "@/components/highlight-scroll";
+import { BackToTop } from "@/components/back-to-top";
+import { GiscusComments } from "@/components/giscus-comments";
+import { PublicBreadcrumbs } from "@/components/public-breadcrumbs";
 import { stripMarkdown } from "@/lib/utils";
 import { Pencil } from "lucide-react";
 import { calculateReadingTime, formatReadingTime } from "@/lib/reading-time";
@@ -51,17 +54,19 @@ export async function generateMetadata({
     ? (config.ogImageUrl.startsWith("http") ? config.ogImageUrl : new URL(config.ogImageUrl, config.url).toString())
     : undefined;
 
+  const tagNames = post.tags.map((t) => t.name).filter(Boolean);
   return {
     title: post.title,
     description: description,
     alternates: { canonical: canonicalUrl },
+    ...(tagNames.length > 0 && { keywords: tagNames }),
     openGraph: {
       title: post.title,
       description: description,
       url: canonicalUrl,
       type: "article",
       publishedTime: post.createdAt.toISOString(),
-      ...(ogUrl && { images: [ogUrl] }),
+      ...(ogUrl && { images: [{ url: ogUrl, width: 1200, height: 630, alt: post.title }] }),
     },
     twitter: {
       card: "summary_large_image",
@@ -193,6 +198,7 @@ export default async function BlogPostPage({
         nextHref={nextPost ? `/blog/${nextPost.slug}` : null}
       />
       <div className="container mx-auto max-w-[90rem] px-4 py-12">
+      <PublicBreadcrumbs items={[{ label: "Home", href: "/" }, { label: "Blog", href: "/blog" }, { label: post.title }]} />
       <div className="grid grid-cols-1 gap-10 lg:grid-cols-[1fr_250px]">
         {/* 主要內容區 */}
         <div className="min-w-0">
@@ -203,10 +209,10 @@ export default async function BlogPostPage({
                   <h1 className="mb-4 text-4xl font-bold text-slate-900">
                     {post.title}
                   </h1>
-                  <div className="mb-3 flex items-center gap-4 text-sm text-slate-500">
+                  <div className="mb-4 flex flex-wrap items-center gap-x-4 gap-y-1 text-sm text-slate-500">
                     <span>Published on {formatDate(post.createdAt)}</span>
-                    <span>•</span>
-                    <span>{formatReadingTime(readingTime)}</span>
+                    <span aria-hidden>·</span>
+                    <span>{formatReadingTime(readingTime)} read</span>
                   </div>
                   {post.tags && post.tags.length > 0 && (
                     <div className="mb-4 flex flex-wrap gap-2">
@@ -244,7 +250,7 @@ export default async function BlogPostPage({
                   )}
                 </div>
 
-                <div data-post-content>
+                <div data-post-content className="prose-reading">
                   <MarkdownRenderer content={post.content} postId={post.id} editable={!!session} />
                 </div>
                 <HighlightScroll highlight={highlight} occurrence={occurrence} contentSelector="[data-post-content]" />
@@ -291,6 +297,8 @@ export default async function BlogPostPage({
                     <Button variant="outline">Back to Blog</Button>
                   </Link>
                 </div>
+
+                <GiscusComments mapping="pathname" />
               </div>
             </CardContent>
           </Card>
@@ -301,6 +309,7 @@ export default async function BlogPostPage({
           <TableOfContents content={post.content} />
         </aside>
       </div>
+      <BackToTop />
     </div>
     </>
   );

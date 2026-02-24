@@ -9,9 +9,10 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { InsertMediaModal } from "@/components/insert-media-modal";
-import { ImageIcon, Plus, Trash2, ArrowRight, ArrowLeft, Check } from "lucide-react";
-import type { SiteConfigResponse, NavItem } from "@/app/api/site-config/route";
+import { ImageIcon, ArrowRight, ArrowLeft, Check } from "lucide-react";
+import type { SiteConfigResponse, NavItem } from "@/types/site";
 import { DEFAULT_NAV_ITEMS } from "@/app/api/site-config/route";
+import { NavItemsEditor } from "@/components/nav-items-editor";
 
 const defaults: SiteConfigResponse = {
   siteName: "My Site",
@@ -59,36 +60,15 @@ export default function SetupWizardPage() {
       .finally(() => setLoading(false));
   }, []);
 
-  const updateNavItem = (index: number, field: "label" | "href", value: string) => {
-    setConfig((c) => ({
-      ...c,
-      navItems: c.navItems.map((item, i) =>
-        i === index ? { ...item, [field]: value } : item
-      ),
-    }));
-  };
-  const addNavItem = () => {
-    setConfig((c) => ({ ...c, navItems: [...c.navItems, { label: "New", href: "/" }] }));
-  };
-  const removeNavItem = (index: number) => {
-    setConfig((c) => ({ ...c, navItems: c.navItems.filter((_, i) => i !== index) }));
-  };
-  const moveNavItem = (index: number, dir: -1 | 1) => {
-    const next = index + dir;
-    if (next < 0 || next >= config.navItems.length) return;
-    const arr = [...config.navItems];
-    [arr[index], arr[next]] = [arr[next], arr[index]];
-    setConfig((c) => ({ ...c, navItems: arr }));
-  };
 
-  const completeSetup = async () => {
+  const saveAndGo = async (markComplete: boolean) => {
     setSaving(true);
     setError(null);
     try {
       const res = await fetch("/api/site-config", {
         method: "PATCH",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ ...config, setupCompleted: true }),
+        body: JSON.stringify({ ...config, setupCompleted: markComplete }),
       });
       const data = await res.json().catch(() => ({}));
       if (!res.ok) {
@@ -97,11 +77,14 @@ export default function SetupWizardPage() {
       router.push("/dashboard");
       router.refresh();
     } catch (e) {
-      setError(e instanceof Error ? e.message : "Failed to complete setup.");
+      setError(e instanceof Error ? e.message : "Failed to save.");
     } finally {
       setSaving(false);
     }
   };
+
+  const completeSetup = () => saveAndGo(true);
+  const skipWizard = () => saveAndGo(true);
 
   if (loading) return <p className="text-slate-600">Loading...</p>;
 
@@ -189,19 +172,12 @@ export default function SetupWizardPage() {
 
           {step === 3 && (
             <div className="space-y-3">
-              <p className="text-sm text-slate-600">Navbar links. Use arrows to reorder.</p>
-              {config.navItems.map((item, index) => (
-                <div key={index} className="flex items-center gap-2 flex-wrap">
-                  <div className="flex items-center gap-1">
-                    <Button type="button" variant="ghost" size="icon" className="h-8 w-8" onClick={() => moveNavItem(index, -1)} disabled={index === 0} title="Move up">↑</Button>
-                    <Button type="button" variant="ghost" size="icon" className="h-8 w-8" onClick={() => moveNavItem(index, 1)} disabled={index === config.navItems.length - 1} title="Move down">↓</Button>
-                  </div>
-                  <Input placeholder="Label" value={item.label} onChange={(e) => updateNavItem(index, "label", e.target.value)} className="w-28" />
-                  <Input placeholder="/path" value={item.href} onChange={(e) => updateNavItem(index, "href", e.target.value)} className="flex-1 min-w-[120px]" />
-                  <Button type="button" variant="ghost" size="icon" className="h-8 w-8 text-red-600" onClick={() => removeNavItem(index)} title="Remove"><Trash2 className="h-4 w-4" /></Button>
-                </div>
-              ))}
-              <Button type="button" variant="outline" size="sm" onClick={addNavItem}><Plus className="h-4 w-4 mr-1" /> Add link</Button>
+              <NavItemsEditor
+                items={config.navItems}
+                onChange={(navItems) => setConfig((c) => ({ ...c, navItems }))}
+                addLabel="Add link"
+                helpText="Menu links shown in the header. Drag the handle to reorder. Label is the text, Link is the URL (e.g. /about, /blog)."
+              />
             </div>
           )}
 
@@ -240,7 +216,9 @@ export default function SetupWizardPage() {
                   <ArrowLeft className="h-4 w-4 mr-1" /> Back
                 </Button>
               ) : (
-                <Link href="/dashboard"><Button variant="ghost">Skip for now</Button></Link>
+                <Button variant="ghost" onClick={skipWizard} disabled={saving} title="Save current settings and go to dashboard. You can edit everything later in Site settings.">
+                  Skip wizard and go to dashboard
+                </Button>
               )}
             </div>
             <div>

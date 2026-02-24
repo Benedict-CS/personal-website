@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { Resend } from "resend";
 import nodemailer from "nodemailer";
 import { siteConfig } from "@/config/site";
+import { checkRateLimit, getClientIP } from "@/lib/rate-limit";
 
 const RECIPIENT = process.env.CONTACT_EMAIL || siteConfig.author.email;
 
@@ -24,6 +25,14 @@ function getSmtpTransporter() {
 const smtpTransporter = getSmtpTransporter();
 
 export async function POST(request: NextRequest) {
+  const ip = getClientIP(request);
+  const { ok: allowed, remaining } = checkRateLimit(ip, "contact");
+  if (!allowed) {
+    return NextResponse.json(
+      { error: "Too many requests. Please try again in a minute." },
+      { status: 429, headers: { "X-RateLimit-Remaining": "0" } }
+    );
+  }
   try {
     const body = await request.json();
     const { name, email, subject, message } = body;
@@ -34,6 +43,7 @@ export async function POST(request: NextRequest) {
         { status: 400 }
       );
     }
+    const rateLimitHeaders = { "X-RateLimit-Remaining": String(remaining - 1) };
 
     const subjectLine = subject?.trim() || `Message from ${name.trim()}`;
     const textBody = `From: ${name.trim()} <${email.trim()}>\n\n${message.trim()}`;
@@ -55,7 +65,7 @@ export async function POST(request: NextRequest) {
           { status: 500 }
         );
       }
-      return NextResponse.json({ success: true, id: data?.id });
+      return NextResponse.json({ success: true, id: data?.id }, { headers: rateLimitHeaders });
     }
 
     // Fallback: SMTP (Gmail, Outlook, etc.)
@@ -68,7 +78,7 @@ export async function POST(request: NextRequest) {
         subject: subjectLine,
         text: textBody,
       });
-      return NextResponse.json({ success: true });
+      return NextResponse.json({ success: true }, { headers: rateLimitHeaders });
     }
 
     // Neither configured

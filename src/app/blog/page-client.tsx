@@ -6,6 +6,7 @@ import Link from "next/link";
 import { useSearchParams, useRouter } from "next/navigation";
 import { Pin, Rss } from "lucide-react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { PublicBreadcrumbs } from "@/components/public-breadcrumbs";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { stripMarkdown } from "@/lib/utils";
@@ -124,8 +125,10 @@ export default function BlogPageClient() {
 
   return (
     <div className="container mx-auto max-w-6xl px-4 py-12">
+      <PublicBreadcrumbs items={[{ label: "Home", href: "/" }, { label: "Blog" }]} />
       <div className="mb-8">
-        <h1 className="text-4xl font-bold text-slate-900">Blog</h1>
+        <h1 className="text-4xl font-bold tracking-tight text-slate-900 sm:text-5xl">Blog</h1>
+        <p className="mt-2 text-slate-600">Articles and notes by topic.</p>
       </div>
 
       {/* Tag filter: All + tag buttons */}
@@ -136,11 +139,12 @@ export default function BlogPageClient() {
             variant={activeTag === null ? "default" : "outline"}
             size="sm"
             onClick={() => setTagFilter(null)}
+            className="min-h-[44px] min-w-[44px] sm:min-w-0 rounded-full px-4"
           >
             All
           </Button>
           {tagsLoading ? (
-            <span className="text-sm text-slate-500">Loading tags…</span>
+            <span className="text-sm text-slate-500 py-2">Loading tags…</span>
           ) : (
             tags.map((tag) => (
               <Button
@@ -148,6 +152,7 @@ export default function BlogPageClient() {
                 variant={activeTag === tag.slug ? "default" : "outline"}
                 size="sm"
                 onClick={() => setTagFilter(tag.slug)}
+                className="min-h-[44px] rounded-full px-4"
               >
                 {tag.name}
               </Button>
@@ -179,8 +184,26 @@ export default function BlogPageClient() {
 
       {/* 文章列表 */}
       {isLoading ? (
-        <div className="text-center py-12">
-          <p className="text-slate-500">Loading...</p>
+        <div className="space-y-12 animate-pulse">
+          {[1, 2].map((block) => (
+            <div key={block}>
+              <div className="h-8 w-24 rounded bg-slate-200 mb-6" />
+              <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-3">
+                {[1, 2, 3].map((i) => (
+                  <div key={i} className="rounded-xl border border-slate-200 bg-white p-6 shadow-sm">
+                    <div className="h-6 w-3/4 rounded bg-slate-200 mb-3" />
+                    <div className="h-4 w-32 rounded bg-slate-100 mb-4" />
+                    <div className="flex gap-2 mb-4">
+                      <div className="h-5 w-14 rounded-full bg-slate-100" />
+                      <div className="h-5 w-16 rounded-full bg-slate-100" />
+                    </div>
+                    <div className="h-4 w-full rounded bg-slate-100" />
+                    <div className="h-4 w-2/3 rounded bg-slate-100 mt-2" />
+                  </div>
+                ))}
+              </div>
+            </div>
+          ))}
         </div>
       ) : posts.length === 0 ? (
         <div className="rounded-lg border border-slate-200 bg-white p-12 text-center">
@@ -200,8 +223,8 @@ export default function BlogPageClient() {
               </h2>
               <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-3">
                 {postsByYear[year].map((post) => (
-                  <Link key={post.id} href={`/blog/${post.slug}`}>
-                    <Card className="h-full transition-shadow hover:shadow-lg">
+                  <Link key={post.id} href={`/blog/${post.slug}`} className="block focus:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 rounded-xl">
+                    <Card className="h-full card-interactive border-slate-200/80 hover:border-slate-300 transition-all duration-200 hover:shadow-lg hover:shadow-slate-200/50">
                       <CardHeader className="gap-3">
                         <CardTitle className="line-clamp-2 text-slate-900 leading-relaxed flex items-start gap-1.5">
                           {post.pinned && (

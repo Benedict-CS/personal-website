@@ -5,6 +5,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { ConfirmDialog } from "@/components/ui/confirm-dialog";
 import { useToast } from "@/contexts/toast-context";
+import { Download } from "lucide-react";
 
 type Stats = {
   total: number;
@@ -31,6 +32,47 @@ function daysAgo(n: number) {
   const d = new Date();
   d.setDate(d.getDate() - n);
   return d.toISOString().slice(0, 10);
+}
+
+function escapeCsvCell(s: string | number | null | undefined): string {
+  const raw = String(s ?? "");
+  if (raw.includes('"') || raw.includes(",") || raw.includes("\n")) {
+    return `"${raw.replace(/"/g, '""')}"`;
+  }
+  return raw;
+}
+
+function exportStatsToCsv(stats: Stats, from: string, to: string) {
+  const rows: string[] = [];
+  rows.push("path,ip,country,city,duration_seconds,created_at");
+  for (const r of stats.recent) {
+    rows.push([
+      escapeCsvCell(r.path),
+      escapeCsvCell(r.ip),
+      escapeCsvCell(r.country),
+      escapeCsvCell(r.city),
+      escapeCsvCell(r.durationSeconds ?? ""),
+      escapeCsvCell(r.createdAt),
+    ].join(","));
+  }
+  rows.push("");
+  rows.push("path,count");
+  for (const p of stats.byPath) {
+    rows.push([escapeCsvCell(p.path), escapeCsvCell(p.count)].join(","));
+  }
+  rows.push("");
+  rows.push("ip,count");
+  for (const b of stats.byIP) {
+    rows.push([escapeCsvCell(b.ip), escapeCsvCell(b.count)].join(","));
+  }
+  const csv = rows.join("\n");
+  const blob = new Blob([csv], { type: "text/csv;charset=utf-8;" });
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement("a");
+  a.href = url;
+  a.download = `analytics-${from}-${to}.csv`;
+  a.click();
+  URL.revokeObjectURL(url);
 }
 
 export default function AnalyticsPage() {
@@ -323,6 +365,20 @@ export default function AnalyticsPage() {
               )}
             </div>
           </div>
+          {stats && !loading && (
+            <Button
+              variant="outline"
+              size="sm"
+              className="gap-2"
+              onClick={() => {
+                exportStatsToCsv(stats, from, to);
+                toast("CSV downloaded", "success");
+              }}
+            >
+              <Download className="h-4 w-4" />
+              Export CSV
+            </Button>
+          )}
         </div>
       </div>
 

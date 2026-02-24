@@ -1,15 +1,12 @@
 import { NextRequest, NextResponse } from "next/server";
-import { getServerSession } from "next-auth";
-import { authOptions } from "@/lib/auth";
+import { requireSession } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 import type { Prisma } from "@prisma/client";
-import { getExcludedIPsForNotIn, getExcludedIPsSet } from "@/lib/analytics-excluded-ips";
+import { getExcludedIPsForNotIn, getExcludedIPsSet, getExcludedPrefixes, filterByExcludedIP } from "@/lib/analytics-excluded-ips";
 
 export async function GET(request: NextRequest) {
-  const session = await getServerSession(authOptions);
-  if (!session) {
-    return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
-  }
+  const auth = await requireSession();
+  if ("unauthorized" in auth) return auth.unauthorized;
   const from = request.nextUrl.searchParams.get("from");
   const to = request.nextUrl.searchParams.get("to");
   const filterIP = request.nextUrl.searchParams.get("ip")?.trim() || null;
@@ -30,12 +27,17 @@ export async function GET(request: NextRequest) {
 
   const excludedForNotIn = getExcludedIPsForNotIn();
   const excludedSet = getExcludedIPsSet();
+  const excludedPrefixes = getExcludedPrefixes();
 
   const where: Prisma.PageViewWhereInput = {};
-  if (excludedForNotIn.length > 0) {
-    where.ip = filterIP ? filterIP : { notIn: excludedForNotIn };
-  } else if (filterIP) {
+  if (filterIP) {
     where.ip = filterIP;
+  } else {
+    const andParts: Prisma.PageViewWhereInput[] = [];
+    if (excludedForNotIn.length > 0) andParts.push({ ip: { notIn: excludedForNotIn } });
+    excludedPrefixes.forEach((p) => andParts.push({ ip: { not: { startsWith: p } } }));
+    if (andParts.length === 1) Object.assign(where, andParts[0]);
+    else if (andParts.length > 1) where.AND = andParts;
   }
   const dateFilter: { gte?: Date; lte?: Date } = {};
   if (fromDate) dateFilter.gte = fromDate;
@@ -81,10 +83,13 @@ export async function GET(request: NextRequest) {
 
     const cvDownloads = byPath.find((p) => p.path === "/cv.pdf" || p.path === "/api/cv/download")?._count?.path ?? 0;
 
+    const byIPFiltered = filterByExcludedIP(byIP.map((p) => ({ ip: p.ip, count: p._count.ip })));
+    const recentFiltered = filterByExcludedIP(recent);
+
     return NextResponse.json({
       total,
       byPath: byPath.map((p) => ({ path: p.path, count: p._count.path })),
-      byIP: byIP.map((p) => ({ ip: p.ip, count: p._count.ip })),
+      byIP: byIPFiltered,
       byCountry: byCountry
         .filter((c) => c.country)
         .map((c) => ({ country: c.country!, count: c._count.country })),
@@ -93,7 +98,7 @@ export async function GET(request: NextRequest) {
         : null,
       durationSampleCount: withDuration._count.durationSeconds,
       cvDownloads,
-      recent: recent.map((r) => ({
+      recent: recentFiltered.map((r) => ({
         path: r.path,
         ip: r.ip,
         country: r.country,
@@ -102,7 +107,10 @@ export async function GET(request: NextRequest) {
         createdAt: r.createdAt.toISOString(),
       })),
       filterIP: filterIP || undefined,
-      excludedIPs: excludedSet.size > 0 ? Array.from(excludedSet) : undefined,
+      excludedIPs:
+        excludedSet.size > 0 || excludedPrefixes.length > 0
+          ? [...Array.from(excludedSet), ...excludedPrefixes]
+          : undefined,
     });
   } catch (e) {
     console.error("Analytics stats error:", e);

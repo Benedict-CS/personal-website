@@ -6,6 +6,7 @@ import { Footer } from "@/components/footer";
 import { Providers } from "@/components/providers";
 import { ThemeApplier } from "@/components/theme-applier";
 import { AnalyticsBeacon } from "@/components/analytics-beacon";
+import { RssAutodiscovery } from "@/components/rss-autodiscovery";
 import { siteConfig } from "@/config/site";
 import { getSiteConfigForRender } from "@/lib/site-config";
 
@@ -105,6 +106,7 @@ export default async function RootLayout({
       >
         <ThemeApplier themeMode={siteConfigForRender.themeMode ?? "system"} />
         <Providers>
+          <RssAutodiscovery />
           <AnalyticsBeacon />
           <a
             href="#main-content"

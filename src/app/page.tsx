@@ -99,15 +99,15 @@ export default async function Home() {
   return (
     <div className={wrapperClass}>
       {/* Hero Section */}
-      <section className={`container mx-auto max-w-6xl px-4 ${templateId === "minimal" ? "py-12 md:py-16" : "py-20 md:py-32"}`}>
+      <section className={`container mx-auto max-w-6xl px-4 ${templateId === "minimal" ? "py-12 md:py-16" : "py-20 md:py-28 lg:py-32"}`}>
         <div className="mx-auto max-w-4xl text-center">
-          <h1 className="mb-6 text-5xl font-bold tracking-tight text-slate-900 md:text-6xl lg:text-7xl">
+          <h1 className="mb-6 text-4xl font-bold tracking-tight text-slate-900 sm:text-5xl md:text-6xl lg:text-7xl">
             {homeContent.heroTitle ?? defaultHomeContent.heroTitle}
           </h1>
-          <p className="mb-8 text-xl text-slate-600 md:text-2xl">
+          <p className="mb-10 text-lg text-slate-600 sm:text-xl md:text-2xl">
             {homeContent.heroSubtitle ?? defaultHomeContent.heroSubtitle}
           </p>
-          <div className="flex flex-col items-center justify-center gap-4 sm:flex-row">
+          <div className="flex flex-col items-center justify-center gap-3 sm:flex-row sm:gap-4">
             <Link href={homeContent.ctaPrimaryHref ?? "/blog"}>
               <Button size="lg" className="w-full sm:w-auto btn-interactive">
                 {homeContent.ctaPrimaryText ?? defaultHomeContent.ctaPrimaryText}
@@ -140,8 +140,8 @@ export default async function Home() {
           ) : (
             <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-3">
               {latestPosts.map((post) => (
-                <Link key={post.id} href={`/blog/${post.slug}`}>
-                  <Card className="h-full card-interactive hover:scale-[1.02]">
+                <Link key={post.id} href={`/blog/${post.slug}`} className="block focus:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 rounded-xl">
+                  <Card className="h-full card-interactive border-slate-200/80 hover:border-slate-300 transition-all duration-200 hover:shadow-lg hover:shadow-slate-200/50">
                     <CardHeader className="gap-3">
                       <CardTitle className="line-clamp-2 text-slate-900 leading-relaxed flex items-start gap-1.5">
                         {post.pinned && (

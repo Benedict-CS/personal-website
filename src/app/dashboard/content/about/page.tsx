@@ -9,6 +9,7 @@ import Link from "next/link";
 import { Textarea } from "@/components/ui/textarea";
 import { useToast } from "@/contexts/toast-context";
 import { InsertMediaModal } from "@/components/insert-media-modal";
+import { FieldHelp } from "@/components/ui/field-help";
 
 interface SchoolLogo {
   school: string;
@@ -756,14 +757,17 @@ export default function AboutPage() {
                               onChange={(e) => { const u = [...educationBlocks]; u[index] = { ...u[index], organization: e.target.value }; setEducationBlocks(u); }}
                               className="text-sm text-slate-600 font-medium border border-transparent hover:border-slate-200 focus:border-slate-400 focus:bg-slate-50/50 rounded px-1 -mx-1 flex-1 min-w-0 shadow-none"
                             />
-                            <Input
-                              placeholder="Country (e.g. TW, US)"
-                              value={entry.countryCode ?? ""}
-                              onChange={(e) => { const u = [...educationBlocks]; u[index] = { ...u[index], countryCode: e.target.value.trim().toUpperCase().slice(0, 2) || "" }; setEducationBlocks(u); }}
-                              className="flex-shrink-0 w-16 text-sm rounded-md border-slate-200 bg-slate-50"
-                              maxLength={2}
-                              title="ISO 3166-1 alpha-2 (2 letters); shown as flag on site"
-                            />
+                            <span className="flex items-center gap-1 flex-shrink-0">
+                              <Input
+                                placeholder="Country (e.g. TW, US)"
+                                value={entry.countryCode ?? ""}
+                                onChange={(e) => { const u = [...educationBlocks]; u[index] = { ...u[index], countryCode: e.target.value.trim().toUpperCase().slice(0, 2) || "" }; setEducationBlocks(u); }}
+                                className="w-16 text-sm rounded-md border-slate-200 bg-slate-50"
+                                maxLength={2}
+                                title="ISO 3166-1 alpha-2 (2 letters); shown as flag on site"
+                              />
+                              <FieldHelp text="Two-letter country code (e.g. TW, US). Shown as a flag next to the school name on your About page." />
+                            </span>
                             <Input
                               placeholder="Date range"
                               value={entry.dateRange ?? ""}

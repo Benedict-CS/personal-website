@@ -1,6 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
-import { getServerSession } from "next-auth";
-import { authOptions } from "@/lib/auth";
+import { requireSession } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 
 // 恢復到指定版本
@@ -13,16 +12,10 @@ export async function POST(
   }
 ) {
   try {
-    const { id, versionId } = await params;
+    const auth = await requireSession();
+    if ("unauthorized" in auth) return auth.unauthorized;
 
-    // 檢查登入狀態
-    const session = await getServerSession(authOptions);
-    if (!session) {
-      return NextResponse.json(
-        { error: "Unauthorized" },
-        { status: 401 }
-      );
-    }
+    const { id, versionId } = await params;
 
     // 取得要恢復的版本
     let version;

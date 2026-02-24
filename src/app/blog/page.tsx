@@ -25,9 +25,32 @@ export async function generateMetadata(): Promise<Metadata> {
   };
 }
 
+function BlogSkeleton() {
+  return (
+    <div className="container mx-auto max-w-6xl px-4 py-12 animate-pulse">
+      <div className="h-10 w-32 rounded bg-slate-200 mb-8" />
+      <div className="flex flex-wrap gap-2 mb-6">
+        <div className="h-9 w-16 rounded-full bg-slate-200" />
+        <div className="h-9 w-20 rounded-full bg-slate-200" />
+        <div className="h-9 w-24 rounded-full bg-slate-200" />
+      </div>
+      <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-3">
+        {[1, 2, 3, 4, 5, 6].map((i) => (
+          <div key={i} className="rounded-xl border border-slate-200 bg-white p-6">
+            <div className="h-6 w-3/4 rounded bg-slate-200 mb-3" />
+            <div className="h-4 w-28 rounded bg-slate-100 mb-4" />
+            <div className="h-4 w-full rounded bg-slate-100" />
+            <div className="h-4 w-2/3 rounded bg-slate-100 mt-2" />
+          </div>
+        ))}
+      </div>
+    </div>
+  );
+}
+
 export default function BlogPage() {
   return (
-    <Suspense fallback={<div className="container mx-auto max-w-6xl px-4 py-12"><p>Loading...</p></div>}>
+    <Suspense fallback={<BlogSkeleton />}>
       <BlogPageClient />
     </Suspense>
   );

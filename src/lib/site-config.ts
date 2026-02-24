@@ -1,8 +1,9 @@
 import { unstable_noStore } from "next/cache";
 import { prisma } from "@/lib/prisma";
 import { siteConfig } from "@/config/site";
+import type { NavItem, SiteConfigForRender } from "@/types/site";
 
-export type NavItem = { label: string; href: string };
+export type { NavItem, SiteConfigForRender } from "@/types/site";
 
 const DEFAULT_NAV: NavItem[] = [
   { label: "Home", href: "/" },
@@ -10,23 +11,6 @@ const DEFAULT_NAV: NavItem[] = [
   { label: "Blog", href: "/blog" },
   { label: "Contact", href: "/contact" },
 ];
-
-export type SiteConfigForRender = {
-  siteName: string;
-  logoUrl: string | null;
-  faviconUrl: string | null;
-  metaTitle: string;
-  metaDescription: string | null;
-  authorName: string | null;
-  links: { email?: string; github?: string; linkedin?: string };
-  navItems: NavItem[];
-  footerText: string | null;
-  ogImageUrl: string | null;
-  setupCompleted: boolean;
-  templateId: string;
-  themeMode: "light" | "dark" | "system";
-  url: string;
-};
 
 const fallback: SiteConfigForRender = {
   siteName: siteConfig.name,

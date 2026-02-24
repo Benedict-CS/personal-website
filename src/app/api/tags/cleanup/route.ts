@@ -1,18 +1,11 @@
 import { NextRequest, NextResponse } from "next/server";
-import { getServerSession } from "next-auth";
-import { authOptions } from "@/lib/auth";
+import { requireSession } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 
 export async function POST(_request: NextRequest) {
   try {
-    // 檢查登入狀態
-    const session = await getServerSession(authOptions);
-    if (!session) {
-      return NextResponse.json(
-        { error: "Unauthorized" },
-        { status: 401 }
-      );
-    }
+    const auth = await requireSession();
+    if ("unauthorized" in auth) return auth.unauthorized;
 
     // 取得所有標籤
     const allTags = await prisma.tag.findMany();

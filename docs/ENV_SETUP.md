@@ -53,6 +53,8 @@ cp .env.example .env
 | `S3_BUCKET` | S3 bucket 名稱 | `uploads` |
 | `RESEND_API_KEY` | 聯絡表單寄信（Resend） | 選填，不用聯絡表單可留空 |
 | `CONTACT_EMAIL` | 聯絡表單收件信箱 | 選填 |
+| `ANALYTICS_SECRET` | 後台 analytics 由 middleware 打 API 用 | 選填，如 `openssl rand -hex 16` |
+| `ANALYTICS_EXCLUDED_IPS` | 不計入 analytics 的 IP（逗號分隔）；可用**前綴**如 `140.113.` 排除整個網段 | 例：`140.113.194.249,140.113.` |
 
 ## 3. Docker Compose 使用 .env
 

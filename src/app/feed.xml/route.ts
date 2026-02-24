@@ -1,10 +1,16 @@
-import { NextResponse } from "next/server";
+import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { siteConfig } from "@/config/site";
 import { stripMarkdown } from "@/lib/utils";
 
-export async function GET() {
+/** Escape CDATA end marker so it doesn't break XML. */
+function escapeCdata(s: string): string {
+  return s.replace(/\]\]>/g, "]]]]><![CDATA[>");
+}
+
+export async function GET(request: NextRequest) {
   try {
+    const fullContent = request.nextUrl.searchParams.get("full") === "1";
     const baseUrl = siteConfig.url;
 
     // 查詢最新的 20 篇已發布文章
@@ -45,20 +51,25 @@ export async function GET() {
       return plainText.substring(0, maxLength).trim() + "...";
     };
 
-    // 構建 RSS XML
+    // Build RSS XML (atom:updated, optional content:encoded for full body)
     const rssItems = posts
       .map((post) => {
         const link = `${baseUrl}/blog/${post.slug}`;
         const pubDate = formatRSSDate(post.createdAt);
+        const updatedDate = formatRSSDate(post.updatedAt);
         // @ts-ignore - description field
         const description = generateDescription(post.content, post.description);
+        const contentEncoded = fullContent
+          ? `\n      <content:encoded><![CDATA[${escapeCdata(post.content)}]]></content:encoded>`
+          : "";
         return `    <item>
       <title><![CDATA[${post.title}]]></title>
       <link>${link}</link>
       <description><![CDATA[${description}]]></description>
       <pubDate>${pubDate}</pubDate>
+      <atom:updated>${updatedDate}</atom:updated>
       <guid isPermaLink="true">${link}</guid>
-      <author>${siteConfig.author.email} (${siteConfig.author.name})</author>
+      <author>${siteConfig.author.email} (${siteConfig.author.name})</author>${contentEncoded}
     </item>`;
       })
       .join("\n");

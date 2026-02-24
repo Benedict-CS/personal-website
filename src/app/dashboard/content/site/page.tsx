@@ -2,15 +2,18 @@
 
 import { useState, useEffect } from "react";
 import Link from "next/link";
+import { api } from "@/lib/api";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { InsertMediaModal } from "@/components/insert-media-modal";
-import { ImageIcon, Plus, Trash2 } from "lucide-react";
-import type { SiteConfigResponse, NavItem } from "@/app/api/site-config/route";
+import { ImageIcon } from "lucide-react";
+import type { SiteConfigResponse, NavItem } from "@/types/site";
 import { DEFAULT_NAV_ITEMS } from "@/app/api/site-config/route";
+import { NavItemsEditor } from "@/components/nav-items-editor";
+import { FieldHelp } from "@/components/ui/field-help";
 
 const defaults: SiteConfigResponse = {
   siteName: "My Site",
@@ -39,13 +42,13 @@ export default function SiteSettingsPage() {
 
   useEffect(() => {
     Promise.all([
-      fetch("/api/site-config").then((r) => r.json()),
-      fetch("/api/custom-pages", { cache: "no-store" }).then((r) => r.json()).catch(() => []),
+      api.get<SiteConfigResponse>("/api/site-config").then((r) => r.data ?? defaults),
+      api.get<{ slug?: string; title?: string; published?: boolean }[]>("/api/custom-pages").then((r) => (Array.isArray(r.data) ? r.data : [])),
     ])
       .then(([data, pages]) => {
-        const merged = { ...defaults, ...data };
-        if (!Array.isArray(merged.navItems) || merged.navItems.length === 0) merged.navItems = DEFAULT_NAV_ITEMS;
-        // When auto-add is ON, merge custom pages into the same list so they appear with up/down and delete
+        const dataObj = data && typeof data === "object" ? data : defaults;
+        const merged = { ...defaults, ...dataObj };
+        if (!Array.isArray(merged.navItems) || merged.navItems.length === 0) merged.navItems = [...DEFAULT_NAV_ITEMS];
         if (merged.autoAddCustomPagesToNav !== false) {
           const list = Array.isArray(pages) ? pages : [];
           const existingHrefs = new Set(merged.navItems.map((n: NavItem) => n.href));
@@ -93,28 +96,6 @@ export default function SiteSettingsPage() {
     if (mediaPickerFor === "favicon") setConfig((c) => ({ ...c, faviconUrl: url }));
     if (mediaPickerFor === "og") setConfig((c) => ({ ...c, ogImageUrl: url }));
     setMediaPickerFor(null);
-  };
-
-  const updateNavItem = (index: number, field: "label" | "href", value: string) => {
-    setConfig((c) => ({
-      ...c,
-      navItems: c.navItems.map((item, i) =>
-        i === index ? { ...item, [field]: value } : item
-      ),
-    }));
-  };
-  const addNavItem = () => {
-    setConfig((c) => ({ ...c, navItems: [...c.navItems, { label: "New", href: "/" }] }));
-  };
-  const removeNavItem = (index: number) => {
-    setConfig((c) => ({ ...c, navItems: c.navItems.filter((_, i) => i !== index) }));
-  };
-  const moveNavItem = (index: number, dir: -1 | 1) => {
-    const next = index + dir;
-    if (next < 0 || next >= config.navItems.length) return;
-    const arr = [...config.navItems];
-    [arr[index], arr[next]] = [arr[next], arr[index]];
-    setConfig((c) => ({ ...c, navItems: arr }));
   };
 
   if (loading) return <p className="text-slate-600">Loading...</p>;
@@ -169,7 +150,10 @@ export default function SiteSettingsPage() {
         </CardHeader>
         <CardContent className="space-y-4">
           <div className="space-y-2">
-            <Label htmlFor="siteName">Site name (navbar)</Label>
+            <div className="flex items-center gap-2">
+              <Label htmlFor="siteName">Site name (navbar)</Label>
+              <FieldHelp text="The name shown in the top bar of your site and as the main site title. Keep it short." />
+            </div>
             <Input
               id="siteName"
               value={config.siteName}
@@ -215,7 +199,10 @@ export default function SiteSettingsPage() {
             />
           </div>
           <div className="space-y-2">
-            <Label htmlFor="metaDescription">Default meta description (optional)</Label>
+            <div className="flex items-center gap-2">
+              <Label htmlFor="metaDescription">Default meta description (optional)</Label>
+              <FieldHelp text="Short text for search engines (Google, etc.). Shown in search results. Leave empty to use site name." />
+            </div>
             <Textarea
               id="metaDescription"
               value={config.metaDescription ?? ""}
@@ -238,7 +225,10 @@ export default function SiteSettingsPage() {
 
       <Card>
         <CardHeader>
-          <CardTitle>Navigation (navbar links)</CardTitle>
+          <div className="flex items-center gap-2">
+            <CardTitle>Navigation (navbar links)</CardTitle>
+            <FieldHelp text="Label = text shown in the menu. Link = web address: use /about for About page, /blog for the blog. Start with / for pages on your site." />
+          </div>
           <p className="text-sm font-normal text-slate-500">Order and labels for Home, About, Blog, Contact. When enabled, custom pages are auto-added to the end of this list.</p>
         </CardHeader>
         <CardContent className="space-y-3">
@@ -251,38 +241,14 @@ export default function SiteSettingsPage() {
             />
             <span className="text-sm text-slate-700">Auto-add custom pages to navigation</span>
           </label>
-          {config.navItems.map((item, index) => (
-            <div key={index} className="flex items-center gap-2 flex-wrap">
-              <div className="flex items-center gap-1">
-                <Button type="button" variant="ghost" size="icon" className="h-8 w-8" onClick={() => moveNavItem(index, -1)} disabled={index === 0} title="Move up">
-                  ↑
-                </Button>
-                <Button type="button" variant="ghost" size="icon" className="h-8 w-8" onClick={() => moveNavItem(index, 1)} disabled={index === config.navItems.length - 1} title="Move down">
-                  ↓
-                </Button>
-              </div>
-              <Input
-                placeholder="Label"
-                value={item.label}
-                onChange={(e) => updateNavItem(index, "label", e.target.value)}
-                className="w-28"
-              />
-              <Input
-                placeholder="/path"
-                value={item.href}
-                onChange={(e) => updateNavItem(index, "href", e.target.value)}
-                className="flex-1 min-w-[120px]"
-              />
-              <Button type="button" variant="ghost" size="icon" className="h-8 w-8 text-red-600" onClick={() => removeNavItem(index)} title="Remove">
-                <Trash2 className="h-4 w-4" />
-              </Button>
-            </div>
-          ))}
-          <Button type="button" variant="outline" size="sm" onClick={addNavItem}>
-            <Plus className="h-4 w-4 mr-1" /> Add link
-          </Button>
+          <NavItemsEditor
+            items={config.navItems}
+            onChange={(navItems) => setConfig((c) => ({ ...c, navItems }))}
+            addLabel="Add link"
+            helpText="Drag the handle to reorder. Label = text in menu, Link = URL (e.g. /about, /blog)."
+          />
           {config.autoAddCustomPagesToNav !== false && customPagesForNav.length > 0 && (
-            <p className="text-xs text-slate-500 mt-2">Custom pages (e.g. test, hello) are merged into the list above when auto-add is ON. Reorder or remove as needed, then Save.</p>
+            <p className="text-xs text-slate-500 mt-2">Custom pages are merged into the list above when auto-add is ON. Reorder or remove as needed, then Save.</p>
           )}
         </CardContent>
       </Card>
@@ -337,7 +303,10 @@ export default function SiteSettingsPage() {
 
       <Card>
         <CardHeader>
-          <CardTitle>OG image (social share)</CardTitle>
+          <div className="flex items-center gap-2">
+            <CardTitle>OG image (social share)</CardTitle>
+            <FieldHelp text="Image shown when someone shares your site on Facebook, Twitter, etc. Use a square or 1200×630 image for best results. Optional." />
+          </div>
           <p className="text-sm font-normal text-slate-500">Image when sharing the site on social media.</p>
         </CardHeader>
         <CardContent className="space-y-2">

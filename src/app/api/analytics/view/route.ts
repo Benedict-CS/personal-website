@@ -2,7 +2,7 @@ import path from "path";
 import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { isPrivateIP } from "@/lib/is-private-url";
-import { isExcludedIP } from "@/lib/analytics-excluded-ips";
+import { isExcludedIP, normalizeIP } from "@/lib/analytics-excluded-ips";
 import { getRequestOrigin } from "@/lib/get-request-origin";
 
 export const dynamic = "force-dynamic";
@@ -72,7 +72,8 @@ export async function POST(request: NextRequest) {
   if (isPrivateIP(ip)) {
     return NextResponse.json({ ok: true, skipped: "private_ip" });
   }
-  if (await isRecentDuplicate(ip, path)) {
+  const canonicalIP = normalizeIP(ip);
+  if (await isRecentDuplicate(canonicalIP, path)) {
     return NextResponse.json({ ok: true, skipped: "dedup" });
   }
   let country: string | null = null;
@@ -92,7 +93,7 @@ export async function POST(request: NextRequest) {
   }
   try {
     await prisma.pageView.create({
-      data: { path, ip, country, city },
+      data: { path, ip: canonicalIP, country, city },
     });
     return NextResponse.json({ ok: true });
   } catch (e) {

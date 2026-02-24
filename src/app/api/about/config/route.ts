@@ -1,7 +1,8 @@
 import { NextRequest, NextResponse } from "next/server";
-import { getServerSession } from "next-auth";
-import { authOptions } from "@/lib/auth";
+import { requireSession } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
+
+const CACHE_60 = { "Cache-Control": "public, s-maxage=60, stale-while-revalidate=120" };
 
 // GET: 獲取 about 配置
 export async function GET() {
@@ -39,54 +40,60 @@ export async function GET() {
       if (s == null || s === "") return [];
       try { return JSON.parse(s); } catch { return []; }
     };
-    return NextResponse.json({
-      profileImage: config.profileImage ?? null,
-      heroName: config.heroName ?? null,
-      heroTagline: config.heroTagline ?? null,
-      heroPhone: config.heroPhone ?? null,
-      heroEmail: config.heroEmail ?? null,
-      heroPortfolioLabel: config.heroPortfolioLabel ?? null,
-      heroPortfolioUrl: config.heroPortfolioUrl ?? null,
-      introText: c.introText ?? null,
-      aboutMainContent: c.aboutMainContent ?? null,
-      educationBlocks: parseBlocks(c.educationBlocks),
-      experienceBlocks: parseBlocks(c.experienceBlocks),
-      projectBlocks: parseBlocks(c.projectBlocks),
-      schoolLogos: config.schoolLogos ? JSON.parse(config.schoolLogos) : [],
-      projectImages: config.projectImages ? JSON.parse(config.projectImages) : [],
-      companyLogos: config.companyLogos ? JSON.parse(config.companyLogos) : [],
-      contactHeading: config.contactHeading ?? null,
-      contactText: config.contactText ?? null,
-      contactLinks: parseBlocks(c.contactLinks ?? config.contactLinks),
-      technicalSkills: parseBlocks(c.technicalSkills ?? config.technicalSkills),
-      achievements: parseBlocks(c.achievements ?? config.achievements),
-    }, { status: 200 });
+    return NextResponse.json(
+      {
+        profileImage: config.profileImage ?? null,
+        heroName: config.heroName ?? null,
+        heroTagline: config.heroTagline ?? null,
+        heroPhone: config.heroPhone ?? null,
+        heroEmail: config.heroEmail ?? null,
+        heroPortfolioLabel: config.heroPortfolioLabel ?? null,
+        heroPortfolioUrl: config.heroPortfolioUrl ?? null,
+        introText: c.introText ?? null,
+        aboutMainContent: c.aboutMainContent ?? null,
+        educationBlocks: parseBlocks(c.educationBlocks),
+        experienceBlocks: parseBlocks(c.experienceBlocks),
+        projectBlocks: parseBlocks(c.projectBlocks),
+        schoolLogos: config.schoolLogos ? JSON.parse(config.schoolLogos) : [],
+        projectImages: config.projectImages ? JSON.parse(config.projectImages) : [],
+        companyLogos: config.companyLogos ? JSON.parse(config.companyLogos) : [],
+        contactHeading: config.contactHeading ?? null,
+        contactText: config.contactText ?? null,
+        contactLinks: parseBlocks(c.contactLinks ?? config.contactLinks),
+        technicalSkills: parseBlocks(c.technicalSkills ?? config.technicalSkills),
+        achievements: parseBlocks(c.achievements ?? config.achievements),
+      },
+      { status: 200, headers: CACHE_60 }
+    );
   } catch (error) {
     console.error("Error fetching about config:", error);
     // 如果表不存在，返回空配置而不是錯誤
     if (error instanceof Error && error.message.includes("does not exist")) {
-      return NextResponse.json({
-        profileImage: null,
-        heroName: null,
-        heroTagline: null,
-        heroPhone: null,
-        heroEmail: null,
-        heroPortfolioLabel: null,
-        heroPortfolioUrl: null,
-        introText: null,
-        aboutMainContent: null,
-        educationBlocks: [],
-        experienceBlocks: [],
-        projectBlocks: [],
-        schoolLogos: [],
-        projectImages: [],
-        companyLogos: [],
-        contactHeading: null,
-        contactText: null,
-        contactLinks: [],
-        technicalSkills: [],
-        achievements: [],
-      }, { status: 200 });
+      return NextResponse.json(
+        {
+          profileImage: null,
+          heroName: null,
+          heroTagline: null,
+          heroPhone: null,
+          heroEmail: null,
+          heroPortfolioLabel: null,
+          heroPortfolioUrl: null,
+          introText: null,
+          aboutMainContent: null,
+          educationBlocks: [],
+          experienceBlocks: [],
+          projectBlocks: [],
+          schoolLogos: [],
+          projectImages: [],
+          companyLogos: [],
+          contactHeading: null,
+          contactText: null,
+          contactLinks: [],
+          technicalSkills: [],
+          achievements: [],
+        },
+        { status: 200, headers: CACHE_60 }
+      );
     }
     return NextResponse.json(
       { 
@@ -101,14 +108,8 @@ export async function GET() {
 // POST/PUT: 更新 about 配置
 export async function POST(request: NextRequest) {
   try {
-    // 檢查是否已登入
-    const session = await getServerSession(authOptions);
-    if (!session) {
-      return NextResponse.json(
-        { error: "Unauthorized" },
-        { status: 401 }
-      );
-    }
+    const auth = await requireSession();
+    if ("unauthorized" in auth) return auth.unauthorized;
 
     const body = await request.json();
     const {

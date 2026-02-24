@@ -1,17 +1,34 @@
 "use client";
 
 import { useState, useEffect } from "react";
+import { api } from "@/lib/api";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
-import { Mail, Linkedin, Github } from "lucide-react";
+import { Mail, Linkedin, Github, CheckCircle2, AlertCircle } from "lucide-react";
 import Link from "next/link";
 import { siteConfig } from "@/config/site";
+import { PublicBreadcrumbs } from "@/components/public-breadcrumbs";
 
 const defaultIntro = "I'm open to new opportunities, collaborations, or a chat about tech.";
 const defaultFormNote = "Use the form below, or email me directly at";
 const formNoteSuffix = "Messages from the form go to the same address.";
+
+const LIMITS = { name: 100, email: 254, subject: 200, message: 5000 } as const;
+const EMAIL_REGEX = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+
+function validateContact(name: string, email: string, subject: string, message: string): string | null {
+  if (!name.trim()) return "Name is required.";
+  if (name.length > LIMITS.name) return `Name must be at most ${LIMITS.name} characters.`;
+  if (!email.trim()) return "Email is required.";
+  if (!EMAIL_REGEX.test(email)) return "Please enter a valid email address.";
+  if (email.length > LIMITS.email) return "Email is too long.";
+  if (subject.length > LIMITS.subject) return `Subject must be at most ${LIMITS.subject} characters.`;
+  if (!message.trim()) return "Message is required.";
+  if (message.length > LIMITS.message) return `Message must be at most ${LIMITS.message} characters.`;
+  return null;
+}
 
 export default function ContactPage() {
   const [status, setStatus] = useState<"idle" | "sending" | "success" | "error">("idle");
@@ -33,7 +50,6 @@ export default function ContactPage() {
 
   async function handleSubmit(e: React.FormEvent<HTMLFormElement>) {
     e.preventDefault();
-    setStatus("sending");
     setErrorMessage("");
 
     const form = e.currentTarget;
@@ -43,17 +59,25 @@ export default function ContactPage() {
     const subject = (formData.get("subject") as string)?.trim() || "";
     const message = (formData.get("message") as string)?.trim() || "";
 
-    try {
-      const res = await fetch("/api/contact", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ name, email, subject, message }),
-      });
-      const data = await res.json().catch(() => ({}));
+    const validationError = validateContact(name, email, subject, message);
+    if (validationError) {
+      setStatus("error");
+      setErrorMessage(validationError);
+      return;
+    }
 
-      if (!res.ok) {
+    setStatus("sending");
+    try {
+      const { data, response, error } = await api.post<{ success?: boolean }>("/api/contact", {
+        name,
+        email,
+        subject,
+        message,
+      });
+
+      if (!response.ok || error) {
         setStatus("error");
-        setErrorMessage(data.error || "Failed to send. Please try again.");
+        setErrorMessage(error || (data as { error?: string })?.error || "Failed to send. Please try again.");
         return;
       }
       setStatus("success");
@@ -68,6 +92,7 @@ export default function ContactPage() {
     <div className="min-h-screen bg-gradient-to-br from-slate-50 via-white to-slate-100">
       <section className="container mx-auto px-4 py-16 md:py-24">
         <div className="mx-auto max-w-2xl">
+          <PublicBreadcrumbs items={[{ label: "Home", href: "/" }, { label: "Contact" }]} />
           <h1 className="mb-4 text-4xl font-bold text-slate-900">Contact</h1>
           <p className="mb-2 text-slate-600">
             {intro}
@@ -124,6 +149,7 @@ export default function ContactPage() {
                     name="name"
                     type="text"
                     required
+                    maxLength={LIMITS.name}
                     placeholder="Your name"
                     className="bg-white"
                     disabled={status === "sending"}
@@ -138,6 +164,7 @@ export default function ContactPage() {
                     name="email"
                     type="email"
                     required
+                    maxLength={LIMITS.email}
                     placeholder="you@example.com"
                     className="bg-white"
                     disabled={status === "sending"}
@@ -151,6 +178,7 @@ export default function ContactPage() {
                     id="subject"
                     name="subject"
                     type="text"
+                    maxLength={LIMITS.subject}
                     placeholder="e.g. Collaboration inquiry"
                     className="bg-white"
                     disabled={status === "sending"}
@@ -164,6 +192,7 @@ export default function ContactPage() {
                     id="message"
                     name="message"
                     required
+                    maxLength={LIMITS.message}
                     rows={5}
                     placeholder="Your message..."
                     className="bg-white resize-none"
@@ -171,17 +200,35 @@ export default function ContactPage() {
                   />
                 </div>
                 {(status === "success" || status === "error") && (
-                  <p
+                  <div
+                    id="contact-form-status"
                     role="status"
                     aria-live="polite"
-                    className={`text-sm ${status === "success" ? "text-green-600" : "text-red-600"}`}
+                    className={`flex items-center gap-3 rounded-lg border p-4 text-sm ${
+                      status === "success"
+                        ? "border-green-200 bg-green-50 text-green-800"
+                        : "border-red-200 bg-red-50 text-red-800"
+                    }`}
                   >
-                    {status === "success"
-                      ? "Message sent. I'll get back to you soon."
-                      : errorMessage}
-                  </p>
+                    {status === "success" ? (
+                      <CheckCircle2 className="h-5 w-5 shrink-0 text-green-600" />
+                    ) : (
+                      <AlertCircle className="h-5 w-5 shrink-0 text-red-600" />
+                    )}
+                    <span>
+                      {status === "success"
+                        ? "Message sent. I'll get back to you soon."
+                        : errorMessage}
+                    </span>
+                  </div>
                 )}
-                <Button type="submit" disabled={status === "sending"}>
+                <Button
+                  type="submit"
+                  disabled={status === "sending"}
+                  className="min-h-[44px]"
+                  aria-busy={status === "sending"}
+                  aria-describedby={status === "error" ? "contact-form-status" : undefined}
+                >
                   {status === "sending" ? "Sending..." : "Send"}
                 </Button>
               </form>

@@ -6,6 +6,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { Trash2, ExternalLink, GripVertical } from "lucide-react";
+import { FieldHelp } from "@/components/ui/field-help";
 import Link from "next/link";
 import { useToast } from "@/contexts/toast-context";
 import {
@@ -41,7 +42,7 @@ function SortablePageItem({
     <li
       ref={setNodeRef}
       style={style}
-      className={`flex flex-wrap items-center gap-2 border-b border-slate-100 pb-3 last:border-0 ${isDragging ? "opacity-60 z-10" : ""}`}
+      className={`flex flex-wrap items-center gap-2 border-b border-slate-100 pb-3 last:border-0 ${isDragging ? "z-20 opacity-95 shadow-lg rounded-md bg-white border border-slate-200" : ""}`}
     >
       <button type="button" className="cursor-grab active:cursor-grabbing touch-none p-1 text-slate-400 hover:text-slate-600" {...attributes} {...listeners} aria-label="Drag to reorder">
         <GripVertical className="h-4 w-4" />
@@ -257,9 +258,13 @@ export default function CustomPagesPage() {
           <CardTitle className="text-lg">Add new page</CardTitle>
         </CardHeader>
         <CardContent className="space-y-3">
+          <div className="flex flex-wrap items-center gap-2">
+            <span className="text-sm font-medium text-slate-700">Slug</span>
+            <FieldHelp text="URL path: slug 'portfolio' becomes /page/portfolio. Use lowercase letters, numbers, and hyphens only. No spaces." />
+          </div>
           <div className="flex flex-wrap gap-3">
             <Input
-              placeholder="Slug (e.g. portfolio)"
+              placeholder="e.g. portfolio"
               value={form.slug}
               onChange={(e) => setForm((f) => ({ ...f, slug: e.target.value }))}
               className="w-40"

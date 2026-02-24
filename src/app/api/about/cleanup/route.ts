@@ -1,6 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
-import { getServerSession } from "next-auth";
-import { authOptions } from "@/lib/auth";
+import { requireSession } from "@/lib/auth";
 import { readdir, unlink } from "fs/promises";
 import { existsSync } from "fs";
 import path from "path";
@@ -8,14 +7,8 @@ import { prisma } from "@/lib/prisma";
 
 export async function POST(_request: NextRequest) {
   try {
-    // 檢查登入狀態
-    const session = await getServerSession(authOptions);
-    if (!session) {
-      return NextResponse.json(
-        { error: "Unauthorized" },
-        { status: 401 }
-      );
-    }
+    const auth = await requireSession();
+    if ("unauthorized" in auth) return auth.unauthorized;
 
     // 1. 從資料庫獲取所有使用的圖片 URL
     const config = await prisma.aboutConfig.findFirst();

@@ -1,14 +1,18 @@
 import Link from "next/link";
+import { redirect } from "next/navigation";
 import { prisma } from "@/lib/prisma";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { FileText, Layout, BarChart3, Image as ImageIcon, PlusCircle } from "lucide-react";
+import { FileText, Layout, BarChart3, Image as ImageIcon, PlusCircle, ExternalLink, CheckCircle2, Circle } from "lucide-react";
+import { DashboardNextSteps } from "@/components/dashboard-next-steps";
 
 export const dynamic = "force-dynamic";
 
 export default async function DashboardHomePage() {
-  const [draftCount, recentPosts, siteRow] = await Promise.all([
+  const [draftCount, publishedCount, totalPosts, recentPosts, siteRow, customPagesCount] = await Promise.all([
     prisma.post.count({ where: { published: false } }),
+    prisma.post.count({ where: { published: true } }),
+    prisma.post.count(),
     prisma.post.findMany({
       take: 5,
       orderBy: { updatedAt: "desc" },
@@ -17,47 +21,67 @@ export default async function DashboardHomePage() {
     prisma.siteConfig
       .findUnique({ where: { id: 1 }, select: { setupCompleted: true } })
       .catch(() => null),
+    prisma.customPage.count(),
   ]);
+
+  const siteUrl = process.env.NEXT_PUBLIC_SITE_URL || process.env.NEXTAUTH_URL || "";
+  const setupCompleted = (siteRow as { setupCompleted?: boolean } | null)?.setupCompleted ?? false;
+
+  if (!setupCompleted) {
+    redirect("/dashboard/setup");
+  }
 
   const formatDate = (d: Date) =>
     new Date(d).toLocaleDateString("en-GB", { day: "numeric", month: "short", year: "numeric" });
-
-  const setupCompleted = (siteRow as { setupCompleted?: boolean } | null)?.setupCompleted ?? false;
 
   return (
     <div className="space-y-8">
       <h2 className="text-3xl font-bold text-slate-900">Dashboard</h2>
 
-      {!setupCompleted && (
-        <Card className="border-amber-200 bg-amber-50">
-          <CardHeader>
-            <CardTitle className="text-lg">First-time setup</CardTitle>
-            <p className="text-sm font-normal text-slate-700">
-              Migrations run automatically on container start. Complete the setup wizard to configure site name, logo, navigation, and footer.
-            </p>
-          </CardHeader>
-          <CardContent className="flex flex-wrap gap-2">
-            <Link href="/dashboard/setup">
-              <Button>Start setup wizard</Button>
-            </Link>
-            <Link href="/dashboard/content/site">
-              <Button variant="outline">Site settings (skip wizard)</Button>
-            </Link>
-          </CardContent>
-        </Card>
-      )}
+      <DashboardNextSteps
+        hasPosts={totalPosts > 0}
+        hasCustomPages={customPagesCount > 0}
+        siteUrl={siteUrl}
+      />
 
       <section>
         <h3 className="mb-3 text-sm font-medium uppercase tracking-wider text-slate-500">
           At a glance
         </h3>
         <div className="flex flex-wrap gap-4">
-          <Card className="min-w-[140px]">
+          <Card className="min-w-[120px]">
             <CardContent className="pt-4">
-              <p className="text-2xl font-bold text-slate-900">{draftCount}</p>
+              <p className="text-2xl font-bold text-slate-900">{totalPosts}</p>
+              <p className="text-sm text-slate-600">Total posts</p>
+            </CardContent>
+          </Card>
+          <Card className="min-w-[120px]">
+            <CardContent className="pt-4">
+              <p className="text-2xl font-bold text-emerald-700">{publishedCount}</p>
+              <p className="text-sm text-slate-600">Published</p>
+            </CardContent>
+          </Card>
+          <Card className="min-w-[120px]">
+            <CardContent className="pt-4">
+              <p className="text-2xl font-bold text-amber-700">{draftCount}</p>
               <p className="text-sm text-slate-600">Drafts</p>
             </CardContent>
           </Card>
+          {siteUrl && (
+            <Card className="min-w-[120px]">
+              <CardContent className="pt-4">
+                <a
+                  href={siteUrl}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="inline-flex items-center gap-1.5 text-sm font-medium text-slate-700 hover:text-slate-900"
+                >
+                  <ExternalLink className="h-4 w-4" />
+                  View site
+                </a>
+              </CardContent>
+            </Card>
+          )}
         </div>
       </section>
 
@@ -103,7 +127,15 @@ export default async function DashboardHomePage() {
           </CardHeader>
           <CardContent>
             {recentPosts.length === 0 ? (
-              <p className="text-slate-500">No posts yet.</p>
+              <div className="rounded-lg border border-dashed border-slate-200 bg-slate-50/50 p-6 text-center">
+                <p className="text-slate-600 mb-3">No posts yet. Write your first one to show on your site.</p>
+                <Link href="/dashboard/posts/new">
+                  <Button className="gap-2">
+                    <PlusCircle className="h-4 w-4" />
+                    Write first post
+                  </Button>
+                </Link>
+              </div>
             ) : (
               <ul className="space-y-2">
                 {recentPosts.map((post) => (

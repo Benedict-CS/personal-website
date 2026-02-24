@@ -16,11 +16,11 @@ export function Footer({ siteConfig: siteConfigProp }: { siteConfig?: SiteConfig
     <footer className="relative z-20 mt-auto border-t border-slate-200 bg-slate-50/80">
       <div className="container mx-auto max-w-6xl px-4 py-6 sm:px-6 lg:px-8">
         <div className="flex flex-col items-center gap-4 sm:flex-row sm:justify-between sm:items-center">
-          <div className="flex items-center gap-6 text-slate-600 shrink-0">
+          <div className="flex items-center gap-2 sm:gap-6 text-slate-600 shrink-0">
             {email ? (
               <Link
                 href="/contact"
-                className="hover:text-slate-900 transition-colors duration-200 inline-flex"
+                className="inline-flex items-center justify-center min-w-[44px] min-h-[44px] rounded-md hover:text-slate-900 transition-colors duration-200 focus:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
                 title="Contact"
               >
                 <Mail className="h-5 w-5" />
@@ -31,7 +31,7 @@ export function Footer({ siteConfig: siteConfigProp }: { siteConfig?: SiteConfig
                 href={linkedin}
                 target="_blank"
                 rel="noopener noreferrer"
-                className="hover:text-slate-900 transition-colors duration-200"
+                className="inline-flex items-center justify-center min-w-[44px] min-h-[44px] rounded-md hover:text-slate-900 transition-colors duration-200 focus:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
                 title="LinkedIn"
               >
                 <Linkedin className="h-5 w-5" />
@@ -42,7 +42,7 @@ export function Footer({ siteConfig: siteConfigProp }: { siteConfig?: SiteConfig
                 href={github}
                 target="_blank"
                 rel="noopener noreferrer"
-                className="hover:text-slate-900 transition-colors duration-200"
+                className="inline-flex items-center justify-center min-w-[44px] min-h-[44px] rounded-md hover:text-slate-900 transition-colors duration-200 focus:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
                 title="GitHub"
               >
                 <Github className="h-5 w-5" />
@@ -52,7 +52,7 @@ export function Footer({ siteConfig: siteConfigProp }: { siteConfig?: SiteConfig
               href="/feed.xml"
               target="_blank"
               rel="noopener noreferrer"
-              className="flex items-center gap-1.5 hover:text-slate-900 transition-colors duration-200"
+              className="flex items-center gap-1.5 min-h-[44px] px-2 rounded-md hover:text-slate-900 transition-colors duration-200 focus:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
               title="Subscribe via RSS"
             >
               <Rss className="h-5 w-5" />

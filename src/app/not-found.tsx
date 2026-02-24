@@ -5,9 +5,10 @@ import { Search, Home, BookOpen, User, Mail } from "lucide-react";
 
 export default function NotFound() {
   return (
-    <div className="flex min-h-[70vh] flex-col items-center justify-center px-4">
+    <div className="flex min-h-[70vh] flex-col items-center justify-center px-4 container-narrow">
+      <p className="mb-2 text-sm font-medium uppercase tracking-wider text-slate-500">Page not found</p>
       <h1 className="mb-2 text-6xl font-bold text-slate-900">404</h1>
-      <p className="mb-8 text-slate-600">This page could not be found.</p>
+      <p className="mb-8 text-slate-600 max-w-md text-center">The page you’re looking for doesn’t exist or was moved.</p>
       <div className="flex flex-wrap justify-center gap-3">
         <Button asChild className="gap-2">
           <Link href="/">

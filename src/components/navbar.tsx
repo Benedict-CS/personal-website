@@ -34,8 +34,8 @@ export function Navbar({ siteConfig }: { siteConfig?: SiteConfigForRender | null
   const publicLinks = (
     <>
       {navItems.map((item) => (
-        <Link key={item.href + item.label} href={item.href} onClick={() => setMobileOpen(false)}>
-          <Button variant="ghost" size="sm" className="text-slate-700 hover:text-slate-900 text-xs sm:text-sm w-full sm:w-auto justify-center sm:justify-start">
+        <Link key={item.href + item.label} href={item.href} onClick={() => setMobileOpen(false)} className="block">
+          <Button variant="ghost" size="sm" className="text-slate-700 hover:text-slate-900 text-xs sm:text-sm w-full sm:w-auto justify-center sm:justify-start min-h-[44px] sm:min-h-0 py-3 sm:py-0 rounded-md">
             {item.label}
           </Button>
         </Link>
@@ -104,18 +104,18 @@ export function Navbar({ siteConfig }: { siteConfig?: SiteConfigForRender | null
       </div>
       {mobileOpen && (
         <div className="sm:hidden border-t border-slate-200 bg-slate-50/98 backdrop-blur-sm dashboard-content-in">
-          <div className="container mx-auto max-w-6xl px-4 py-3 flex flex-col gap-1">
+          <div className="container mx-auto max-w-6xl px-4 py-3 flex flex-col gap-0.5">
             {!isDashboard && publicLinks}
             {isLoggedIn && (
               <>
                 {!isDashboard && (
-                  <Link href="/dashboard" onClick={() => setMobileOpen(false)}>
-                    <Button variant="ghost" size="sm" className="text-slate-700 w-full justify-center">Dashboard</Button>
+                  <Link href="/dashboard" onClick={() => setMobileOpen(false)} className="block">
+                    <Button variant="ghost" size="sm" className="text-slate-700 w-full justify-center min-h-[44px] py-3 rounded-md">Dashboard</Button>
                   </Link>
                 )}
                 {isDashboard && (
-                  <a href="/" target="_blank" rel="noopener noreferrer" onClick={() => setMobileOpen(false)}>
-                    <Button variant="ghost" size="sm" className="text-slate-600 w-full justify-center gap-1">
+                  <a href="/" target="_blank" rel="noopener noreferrer" onClick={() => setMobileOpen(false)} className="block">
+                    <Button variant="ghost" size="sm" className="text-slate-600 w-full justify-center gap-1 min-h-[44px] py-3 rounded-md">
                       <ExternalLink className="h-3.5 w-3.5" /> View site
                     </Button>
                   </a>
@@ -123,7 +123,7 @@ export function Navbar({ siteConfig }: { siteConfig?: SiteConfigForRender | null
                 <Button
                 variant="outline"
                 size="sm"
-                className="w-full justify-center"
+                className="w-full justify-center min-h-[44px] py-3 rounded-md"
                 onClick={() => {
                   setMobileOpen(false);
                   signOut({ redirect: false }).then(() => {

@@ -1,11 +1,11 @@
 import { NextResponse } from "next/server";
-import { getServerSession } from "next-auth";
-import { authOptions } from "@/lib/auth";
+import { requireSession } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
+import type { NavItem, SiteConfigResponse } from "@/types/site";
 
 const DEFAULT_LINKS = { email: "", github: "", linkedin: "" };
 
-export type NavItem = { label: string; href: string };
+export type { NavItem, SiteConfigResponse } from "@/types/site";
 
 export const DEFAULT_NAV_ITEMS: NavItem[] = [
   { label: "Home", href: "/" },
@@ -14,22 +14,7 @@ export const DEFAULT_NAV_ITEMS: NavItem[] = [
   { label: "Contact", href: "/contact" },
 ];
 
-export type SiteConfigResponse = {
-  siteName: string;
-  logoUrl: string | null;
-  faviconUrl: string | null;
-  metaTitle: string;
-  metaDescription: string | null;
-  authorName: string | null;
-  links: { email?: string; github?: string; linkedin?: string };
-  navItems: NavItem[];
-  footerText: string | null;
-  ogImageUrl: string | null;
-  setupCompleted: boolean;
-  templateId: string;
-  themeMode: "light" | "dark" | "system";
-  autoAddCustomPagesToNav: boolean;
-};
+const CACHE_60 = { "Cache-Control": "public, s-maxage=60, stale-while-revalidate=120" };
 
 const defaultResponse: SiteConfigResponse = {
   siteName: "My Site",
@@ -90,32 +75,33 @@ export async function GET() {
     } catch {
       // New columns not yet migrated
     }
-    return NextResponse.json({
-      siteName: row.siteName,
-      logoUrl: row.logoUrl,
-      faviconUrl: row.faviconUrl,
-      metaTitle: row.metaTitle,
-      metaDescription: row.metaDescription,
-      authorName: row.authorName,
-      links: { ...DEFAULT_LINKS, ...links },
-      navItems,
-      footerText: row.footerText ?? null,
-      ogImageUrl: row.ogImageUrl ?? null,
-      setupCompleted,
-      templateId,
-      themeMode,
-      autoAddCustomPagesToNav,
-    } satisfies SiteConfigResponse);
+    return NextResponse.json(
+      {
+        siteName: row.siteName,
+        logoUrl: row.logoUrl,
+        faviconUrl: row.faviconUrl,
+        metaTitle: row.metaTitle,
+        metaDescription: row.metaDescription,
+        authorName: row.authorName,
+        links: { ...DEFAULT_LINKS, ...links },
+        navItems,
+        footerText: row.footerText ?? null,
+        ogImageUrl: row.ogImageUrl ?? null,
+        setupCompleted,
+        templateId,
+        themeMode,
+        autoAddCustomPagesToNav,
+      } satisfies SiteConfigResponse,
+      { headers: CACHE_60 }
+    );
   } catch {
-    return NextResponse.json(defaultResponse);
+    return NextResponse.json(defaultResponse, { headers: CACHE_60 });
   }
 }
 
 export async function PATCH(request: Request) {
-  const session = await getServerSession(authOptions);
-  if (!session) {
-    return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
-  }
+  const auth = await requireSession();
+  if ("unauthorized" in auth) return auth.unauthorized;
   const body = await request.json();
   const {
     siteName,

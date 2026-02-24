@@ -1,6 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
-import { getServerSession } from "next-auth";
-import { authOptions } from "@/lib/auth";
+import { requireSession } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 
 export async function GET(
@@ -10,14 +9,8 @@ export async function GET(
   try {
     const { id } = await params;
 
-    // Check authentication status
-    const session = await getServerSession(authOptions);
-    if (!session) {
-      return NextResponse.json(
-        { error: "Unauthorized" },
-        { status: 401 }
-      );
-    }
+    const auth = await requireSession();
+    if ("unauthorized" in auth) return auth.unauthorized;
 
     const post = await prisma.post.findUnique({
       where: {
@@ -50,16 +43,10 @@ export async function PATCH(
   { params }: { params: Promise<{ id: string }> }
 ) {
   try {
-    const { id } = await params;
+    const auth = await requireSession();
+    if ("unauthorized" in auth) return auth.unauthorized;
 
-    // Check authentication status
-    const session = await getServerSession(authOptions);
-    if (!session) {
-      return NextResponse.json(
-        { error: "Unauthorized" },
-        { status: 401 }
-      );
-    }
+    const { id } = await params;
 
     // Parse request body
     const body = await request.json();
@@ -318,14 +305,8 @@ export async function DELETE(
   try {
     const { id } = await params;
 
-    // Check authentication status
-    const session = await getServerSession(authOptions);
-    if (!session) {
-      return NextResponse.json(
-        { error: "Unauthorized" },
-        { status: 401 }
-      );
-    }
+    const auth = await requireSession();
+    if ("unauthorized" in auth) return auth.unauthorized;
 
     // Delete post
     await prisma.post.delete({

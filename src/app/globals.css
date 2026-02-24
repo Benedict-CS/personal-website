@@ -123,6 +123,9 @@
   select:focus-visible {
     @apply outline-none ring-2 ring-ring ring-offset-2 ring-offset-background;
   }
+  select {
+    @apply cursor-pointer;
+  }
 }
 
 /* Skip link: hidden until focused (accessibility) */
@@ -195,6 +198,27 @@
 }
 .container-narrow {
   @apply container mx-auto max-w-6xl px-4 sm:px-6 lg:px-8;
+}
+
+/* Optimal reading width and line height for article body */
+.prose-reading {
+  max-width: 65ch;
+  line-height: 1.75;
+}
+.prose-reading .prose {
+  @apply max-w-none;
+}
+
+/* Respect reduced motion preference */
+@media (prefers-reduced-motion: reduce) {
+  .main-fade-in,
+  .dashboard-content-in,
+  .card-interactive,
+  .btn-interactive,
+  .search-panel-in {
+    animation: none !important;
+    transition-duration: 0.01ms !important;
+  }
 }
 
 /* Search panel slide/fade in */
