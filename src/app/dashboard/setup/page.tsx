@@ -32,11 +32,11 @@ const defaults: SiteConfigResponse = {
 };
 
 const STEPS = [
-  { id: 1, title: "Site name & meta" },
-  { id: 2, title: "Logo & favicon" },
-  { id: 3, title: "Navigation" },
-  { id: 4, title: "Footer" },
-  { id: 5, title: "Complete" },
+  { id: 1, title: "Your site name and browser tab title" },
+  { id: 2, title: "Logo and small icon (favicon)" },
+  { id: 3, title: "Top menu links" },
+  { id: 4, title: "Footer: email and social links" },
+  { id: 5, title: "You're done" },
 ] as const;
 
 export default function SetupWizardPage() {
@@ -92,7 +92,7 @@ export default function SetupWizardPage() {
     <div className="max-w-2xl mx-auto space-y-8">
       <div>
         <h2 className="text-2xl font-bold text-slate-900">First-time setup</h2>
-        <p className="text-slate-600 mt-1">Complete these steps to configure your site. You can change anything later in Site settings.</p>
+        <p className="text-slate-600 mt-1">A few steps to get your site ready. You can change any of this later in Content → Site settings.</p>
       </div>
 
       <div className="flex gap-2 flex-wrap">
@@ -117,7 +117,7 @@ export default function SetupWizardPage() {
           {step === 1 && (
             <>
               <div className="space-y-2">
-                <Label htmlFor="siteName">Site name (navbar)</Label>
+                <Label htmlFor="siteName">Site name (what appears in the top bar)</Label>
                 <Input
                   id="siteName"
                   value={config.siteName}
@@ -126,7 +126,7 @@ export default function SetupWizardPage() {
                 />
               </div>
               <div className="space-y-2">
-                <Label htmlFor="metaTitle">Default page title (browser tab)</Label>
+                <Label htmlFor="metaTitle">Browser tab title (what appears in the tab)</Label>
                 <Input
                   id="metaTitle"
                   value={config.metaTitle}
@@ -140,7 +140,7 @@ export default function SetupWizardPage() {
           {step === 2 && (
             <>
               <div className="space-y-2">
-                <Label>Logo image</Label>
+                <Label>Logo (shown in the top bar next to your site name)</Label>
                 <div className="flex gap-2 flex-wrap">
                   <Input
                     value={config.logoUrl ?? ""}
@@ -154,7 +154,7 @@ export default function SetupWizardPage() {
                 </div>
               </div>
               <div className="space-y-2">
-                <Label>Favicon (browser tab icon)</Label>
+                <Label>Small icon in the browser tab (favicon)</Label>
                 <div className="flex gap-2 flex-wrap">
                   <Input
                     value={config.faviconUrl ?? ""}
@@ -172,11 +172,12 @@ export default function SetupWizardPage() {
 
           {step === 3 && (
             <div className="space-y-3">
+              <p className="text-sm text-slate-600">Add the links that appear in the top menu. Drag the handle to change the order.</p>
               <NavItemsEditor
                 items={config.navItems}
                 onChange={(navItems) => setConfig((c) => ({ ...c, navItems }))}
                 addLabel="Add link"
-                helpText="Menu links shown in the header. Drag the handle to reorder. Label is the text, Link is the URL (e.g. /about, /blog)."
+                helpText="Label = text in the menu. Link = address (e.g. /about for About page, /blog for the blog)."
               />
             </div>
           )}
@@ -204,7 +205,7 @@ export default function SetupWizardPage() {
 
           {step === 5 && (
             <div className="space-y-4">
-              <p className="text-slate-600">Review: Site name <strong>{config.siteName}</strong>, {config.navItems.length} nav items. All settings will be saved and you can edit them anytime in <Link href="/dashboard/content/site" className="text-blue-600 underline">Site settings</Link>.</p>
+              <p className="text-slate-600">Your site name is <strong>{config.siteName}</strong> and you have {config.navItems.length} menu links. Everything will be saved; you can change it anytime in <Link href="/dashboard/content/site" className="text-blue-600 underline">Content → Site settings</Link>.</p>
               {error && <p className="text-red-600 text-sm">{error}</p>}
             </div>
           )}

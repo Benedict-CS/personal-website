@@ -7,6 +7,25 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import Link from "next/link";
+import { GripVertical } from "lucide-react";
+import {
+  DndContext,
+  closestCenter,
+  KeyboardSensor,
+  PointerSensor,
+  useSensor,
+  useSensors,
+  type DragEndEvent,
+} from "@dnd-kit/core";
+import { arrayMove, SortableContext, sortableKeyboardCoordinates, useSortable, verticalListSortingStrategy } from "@dnd-kit/sortable";
+import { CSS } from "@dnd-kit/utilities";
+
+const HOME_SECTION_IDS = ["hero", "latestPosts", "skills"] as const;
+const SECTION_LABELS: Record<string, string> = {
+  hero: "Hero (title + buttons)",
+  latestPosts: "Latest Articles",
+  skills: "Technical Skills",
+};
 
 type HomeContent = {
   heroTitle?: string;
@@ -18,6 +37,8 @@ type HomeContent = {
   ctaSecondaryHref?: string;
   ctaContactText?: string;
   ctaContactHref?: string;
+  sectionOrder?: string[];
+  sectionVisibility?: Record<string, boolean>;
 };
 
 const defaults: HomeContent = {
@@ -30,7 +51,90 @@ const defaults: HomeContent = {
   ctaSecondaryHref: "/about",
   ctaContactText: "Get in Touch",
   ctaContactHref: "/contact",
+  sectionOrder: [...HOME_SECTION_IDS],
+  sectionVisibility: {},
 };
+
+function SortableSectionRow({
+  id,
+  label,
+  visible,
+  onToggle,
+}: {
+  id: string;
+  label: string;
+  visible: boolean;
+  onToggle: (v: boolean) => void;
+}) {
+  const { attributes, listeners, setNodeRef, transform, transition, isDragging } = useSortable({ id });
+  const style = { transform: CSS.Transform.toString(transform), transition };
+  return (
+    <div
+      ref={setNodeRef}
+      style={style}
+      className={`flex items-center gap-3 py-2 ${isDragging ? "z-20 opacity-95 shadow-md rounded bg-white border" : ""}`}
+    >
+      <button type="button" className="cursor-grab active:cursor-grabbing touch-none p-1 text-slate-400 hover:text-slate-600" {...attributes} {...listeners} aria-label="Drag to reorder">
+        <GripVertical className="h-4 w-4" />
+      </button>
+      <label className="flex items-center gap-2 cursor-pointer flex-1">
+        <input type="checkbox" checked={visible} onChange={(e) => onToggle(e.target.checked)} className="rounded border-slate-300" />
+        <span className="text-sm font-medium text-slate-800">{label}</span>
+      </label>
+    </div>
+  );
+}
+
+function HomeSectionsCard({
+  sectionOrder,
+  sectionVisibility,
+  onOrderChange,
+  onVisibilityChange,
+}: {
+  sectionOrder: string[];
+  sectionVisibility: Record<string, boolean>;
+  onOrderChange: (order: string[]) => void;
+  onVisibilityChange: (id: string, visible: boolean) => void;
+}) {
+  const sensors = useSensors(
+    useSensor(PointerSensor, { activationConstraint: { distance: 8 } }),
+    useSensor(KeyboardSensor, { coordinateGetter: sortableKeyboardCoordinates })
+  );
+  const handleDragEnd = (event: DragEndEvent) => {
+    const { active, over } = event;
+    if (over && active.id !== over.id) {
+      const oldIndex = sectionOrder.indexOf(active.id as string);
+      const newIndex = sectionOrder.indexOf(over.id as string);
+      if (oldIndex !== -1 && newIndex !== -1) onOrderChange(arrayMove(sectionOrder, oldIndex, newIndex));
+    }
+  };
+  const visible = (id: string) => sectionVisibility[id] !== false;
+  return (
+    <Card>
+      <CardHeader>
+        <CardTitle>Home page sections</CardTitle>
+        <p className="text-sm text-slate-600">Choose which sections to show and in what order. Drag to reorder.</p>
+      </CardHeader>
+      <CardContent>
+        <DndContext sensors={sensors} collisionDetection={closestCenter} onDragEnd={handleDragEnd}>
+          <SortableContext items={sectionOrder} strategy={verticalListSortingStrategy}>
+            <div className="space-y-0">
+              {sectionOrder.map((id) => (
+                <SortableSectionRow
+                  key={id}
+                  id={id}
+                  label={SECTION_LABELS[id] ?? id}
+                  visible={visible(id)}
+                  onToggle={(v) => onVisibilityChange(id, v)}
+                />
+              ))}
+            </div>
+          </SortableContext>
+        </DndContext>
+      </CardContent>
+    </Card>
+  );
+}
 
 export default function EditHomePage() {
   const [content, setContent] = useState<HomeContent>(defaults);
@@ -58,6 +162,15 @@ export default function EditHomePage() {
       .finally(() => setLoading(false));
   }, []);
 
+  const sectionOrder = Array.isArray(content.sectionOrder) && content.sectionOrder.length > 0
+    ? content.sectionOrder.filter((id) => HOME_SECTION_IDS.includes(id as (typeof HOME_SECTION_IDS)[number]))
+    : [...HOME_SECTION_IDS];
+  const sectionVisibility = content.sectionVisibility ?? {};
+
+  const setSectionOrder = (order: string[]) => setContent((c) => ({ ...c, sectionOrder: order }));
+  const setSectionVisible = (id: string, visible: boolean) =>
+    setContent((c) => ({ ...c, sectionVisibility: { ...(c.sectionVisibility ?? {}), [id]: visible } }));
+
   const save = async () => {
     const skills = skillsText
       .split(/[\n,]+/)
@@ -66,6 +179,8 @@ export default function EditHomePage() {
     const payload = {
       ...content,
       skills,
+      sectionOrder: sectionOrder.length > 0 ? sectionOrder : [...HOME_SECTION_IDS],
+      sectionVisibility: sectionVisibility,
     };
     setSaving(true);
     setMessage(null);
@@ -193,6 +308,13 @@ export default function EditHomePage() {
           />
         </CardContent>
       </Card>
+
+      <HomeSectionsCard
+        sectionOrder={sectionOrder}
+        sectionVisibility={sectionVisibility}
+        onOrderChange={setSectionOrder}
+        onVisibilityChange={setSectionVisible}
+      />
 
       <Button onClick={save} disabled={saving}>
         {saving ? "Saving..." : "Save Home Page"}

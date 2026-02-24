@@ -10,17 +10,20 @@ export const dynamic = "force-dynamic";
 
 export const metadata = { title: "Posts" };
 
+const POSTS_PER_PAGE = 20;
+
 type PostsPageProps = {
-  searchParams: Promise<{ status?: string; sort?: string; order?: string; q?: string }>;
+  searchParams: Promise<{ status?: string; sort?: string; order?: string; q?: string; page?: string }>;
 };
 
 const SORT_KEYS = ["updatedAt", "createdAt", "title"] as const;
 const ORDER_KEYS = ["asc", "desc"] as const;
 
 export default async function PostsPage({ searchParams }: PostsPageProps) {
-  const { status, sort: sortParam, order: orderParam, q } = await searchParams;
+  const { status, sort: sortParam, order: orderParam, q, page: pageParam } = await searchParams;
   const statusFilter = status === "published" || status === "draft" ? status : null;
   const search = typeof q === "string" ? q.trim() : "";
+  const page = Math.max(1, parseInt(String(pageParam), 10) || 1);
   const sort = SORT_KEYS.includes(sortParam as (typeof SORT_KEYS)[number])
     ? (sortParam as (typeof SORT_KEYS)[number])
     : "updatedAt";
@@ -47,11 +50,17 @@ export default async function PostsPage({ searchParams }: PostsPageProps) {
       : {}),
   };
 
-  const posts = await prisma.post.findMany({
-    where,
-    include: { tags: true },
-    orderBy,
-  });
+  const [posts, total] = await Promise.all([
+    prisma.post.findMany({
+      where,
+      include: { tags: true },
+      orderBy,
+      take: POSTS_PER_PAGE,
+      skip: (page - 1) * POSTS_PER_PAGE,
+    }),
+    prisma.post.count({ where }),
+  ]);
+  const totalPages = Math.max(1, Math.ceil(total / POSTS_PER_PAGE));
 
   const serialized = posts.map((p) => ({
     id: p.id,
@@ -66,7 +75,7 @@ export default async function PostsPage({ searchParams }: PostsPageProps) {
   return (
     <div className="space-y-6">
       <div className="flex flex-wrap items-center justify-between gap-4">
-        <h2 className="text-3xl font-bold text-slate-900">All Posts</h2>
+        <h2 className="text-3xl font-bold text-slate-900">All Posts {total > POSTS_PER_PAGE ? `(${total} total)` : ""}</h2>
         <div className="flex items-center gap-4">
           <Suspense fallback={<div className="h-9 w-56 rounded bg-slate-100" />}>
             <PostsSearch defaultValue={search} />
@@ -98,7 +107,46 @@ export default async function PostsPage({ searchParams }: PostsPageProps) {
           )}
         </div>
       ) : (
-        <PostsTableClient posts={serialized} sort={sort} order={order} />
+        <>
+          <PostsTableClient posts={serialized} sort={sort} order={order} />
+          {totalPages > 1 && (
+            <div className="flex flex-wrap items-center justify-center gap-2 pt-4">
+              {page > 1 ? (
+                <Link
+                  href={`/dashboard/posts?${new URLSearchParams({
+                    ...(statusFilter && { status: statusFilter }),
+                    sort,
+                    order,
+                    ...(search && { q: search }),
+                    page: String(page - 1),
+                  }).toString()}`}
+                >
+                  <Button variant="outline" size="sm">
+                    Previous
+                  </Button>
+                </Link>
+              ) : null}
+              <span className="text-sm text-slate-600 px-2">
+                Page {page} of {totalPages}
+              </span>
+              {page < totalPages ? (
+                <Link
+                  href={`/dashboard/posts?${new URLSearchParams({
+                    ...(statusFilter && { status: statusFilter }),
+                    sort,
+                    order,
+                    ...(search && { q: search }),
+                    page: String(page + 1),
+                  }).toString()}`}
+                >
+                  <Button variant="outline" size="sm">
+                    Next
+                  </Button>
+                </Link>
+              ) : null}
+            </div>
+          )}
+        </>
       )}
     </div>
   );

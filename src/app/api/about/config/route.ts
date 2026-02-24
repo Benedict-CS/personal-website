@@ -62,6 +62,8 @@ export async function GET() {
         contactLinks: parseBlocks(c.contactLinks ?? config.contactLinks),
         technicalSkills: parseBlocks(c.technicalSkills ?? config.technicalSkills),
         achievements: parseBlocks(c.achievements ?? config.achievements),
+        sectionOrder: (config as { sectionOrder?: string }).sectionOrder ? JSON.parse((config as { sectionOrder: string }).sectionOrder) : ["education", "experience", "projects", "skills", "achievements"],
+        sectionVisibility: (config as { sectionVisibility?: string }).sectionVisibility ? JSON.parse((config as { sectionVisibility: string }).sectionVisibility) : {},
       },
       { status: 200, headers: CACHE_60 }
     );
@@ -91,6 +93,8 @@ export async function GET() {
           contactLinks: [],
           technicalSkills: [],
           achievements: [],
+          sectionOrder: ["education", "experience", "projects", "skills", "achievements"],
+          sectionVisibility: {},
         },
         { status: 200, headers: CACHE_60 }
       );
@@ -133,6 +137,8 @@ export async function POST(request: NextRequest) {
       contactLinks,
       technicalSkills,
       achievements,
+      sectionOrder,
+      sectionVisibility,
     } = body;
 
     let config = await prisma.aboutConfig.findFirst();
@@ -161,6 +167,8 @@ export async function POST(request: NextRequest) {
           contactLinks: contactLinks ? JSON.stringify(contactLinks) : "[]",
           technicalSkills: technicalSkills ? JSON.stringify(technicalSkills) : "[]",
           achievements: achievements ? JSON.stringify(achievements) : "[]",
+          sectionOrder: typeof sectionOrder !== "undefined" ? JSON.stringify(sectionOrder) : '["education","experience","projects","skills","achievements"]',
+          sectionVisibility: typeof sectionVisibility !== "undefined" ? JSON.stringify(sectionVisibility) : "{}",
         },
       });
     } else {
@@ -187,6 +195,8 @@ export async function POST(request: NextRequest) {
           contactLinks: contactLinks !== undefined ? JSON.stringify(contactLinks) : (config.contactLinks ?? "[]"),
           technicalSkills: technicalSkills !== undefined ? JSON.stringify(technicalSkills) : (config.technicalSkills ?? "[]"),
           achievements: achievements !== undefined ? JSON.stringify(achievements) : (config.achievements ?? "[]"),
+          ...(sectionOrder !== undefined && { sectionOrder: JSON.stringify(sectionOrder) }),
+          ...(sectionVisibility !== undefined && { sectionVisibility: JSON.stringify(sectionVisibility) }),
         },
       });
     }
@@ -214,6 +224,8 @@ export async function POST(request: NextRequest) {
       contactLinks: parse(out.contactLinks ?? config.contactLinks),
       technicalSkills: parse(out.technicalSkills ?? config.technicalSkills),
       achievements: parse(out.achievements ?? config.achievements),
+      sectionOrder: (config as { sectionOrder?: string }).sectionOrder ? JSON.parse((config as { sectionOrder: string }).sectionOrder) : ["education", "experience", "projects", "skills", "achievements"],
+      sectionVisibility: (config as { sectionVisibility?: string }).sectionVisibility ? JSON.parse((config as { sectionVisibility: string }).sectionVisibility) : {},
     }, { status: 200 });
   } catch (error) {
     console.error("Error updating about config:", error);

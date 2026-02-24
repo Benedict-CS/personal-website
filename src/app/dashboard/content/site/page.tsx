@@ -98,6 +98,68 @@ export default function SiteSettingsPage() {
     setMediaPickerFor(null);
   };
 
+  const applyTemplate = async (preset: "personal" | "portfolio" | "blog") => {
+    const templates = {
+      personal: {
+        navItems: [
+          { label: "Home", href: "/" },
+          { label: "About", href: "/about" },
+          { label: "Blog", href: "/blog" },
+          { label: "Contact", href: "/contact" },
+        ],
+        templateId: "default" as const,
+        sectionOrder: ["hero", "latestPosts", "skills"],
+      },
+      portfolio: {
+        navItems: [
+          { label: "Home", href: "/" },
+          { label: "Portfolio", href: "/page/portfolio" },
+          { label: "About", href: "/about" },
+          { label: "Blog", href: "/blog" },
+          { label: "Contact", href: "/contact" },
+        ],
+        templateId: "card" as const,
+        sectionOrder: ["hero", "latestPosts", "skills"],
+      },
+      blog: {
+        navItems: [
+          { label: "Home", href: "/" },
+          { label: "Blog", href: "/blog" },
+          { label: "About", href: "/about" },
+          { label: "Contact", href: "/contact" },
+        ],
+        templateId: "minimal" as const,
+        sectionOrder: ["hero", "latestPosts", "skills"],
+      },
+    };
+    const t = templates[preset];
+    setSaving(true);
+    setMessage(null);
+    try {
+      await fetch("/api/site-config", {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ ...config, navItems: t.navItems, templateId: t.templateId }),
+      });
+      const homeRes = await fetch("/api/site-content?page=home");
+      const currentHome = homeRes.ok ? await homeRes.json().catch(() => ({})) : {};
+      const homeContent = typeof currentHome === "object" && currentHome !== null
+        ? { ...currentHome, sectionOrder: t.sectionOrder, sectionVisibility: {} }
+        : { sectionOrder: t.sectionOrder, sectionVisibility: {} };
+      await fetch("/api/site-content", {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ page: "home", content: homeContent }),
+      });
+      setConfig((c) => ({ ...c, navItems: t.navItems, templateId: t.templateId }));
+      setMessage({ type: "success", text: `Applied "${preset}" template. Nav and home sections updated.` });
+    } catch {
+      setMessage({ type: "error", text: "Failed to apply template." });
+    } finally {
+      setSaving(false);
+    }
+  };
+
   if (loading) return <p className="text-slate-600">Loading...</p>;
 
   return (
@@ -106,6 +168,24 @@ export default function SiteSettingsPage() {
         <h2 className="text-3xl font-bold text-slate-900">Site settings</h2>
         <p className="mt-1 text-slate-600">Site name, favicon, logo, meta, navigation, footer, and OG image. All visible on the site.</p>
       </div>
+
+      <Card>
+        <CardHeader>
+          <CardTitle>Templates</CardTitle>
+          <p className="text-sm text-slate-600">One-click apply: set navigation and layout style. You can still edit everything after.</p>
+        </CardHeader>
+        <CardContent className="flex flex-wrap gap-2">
+          <Button variant="outline" onClick={() => applyTemplate("personal")} disabled={saving}>
+            Personal
+          </Button>
+          <Button variant="outline" onClick={() => applyTemplate("portfolio")} disabled={saving}>
+            Portfolio
+          </Button>
+          <Button variant="outline" onClick={() => applyTemplate("blog")} disabled={saving}>
+            Blog
+          </Button>
+        </CardContent>
+      </Card>
 
       {!config.setupCompleted && (
         <Card className="border-amber-200 bg-amber-50">

@@ -86,6 +86,8 @@ async function getAboutConfig() {
         contactLinks: [] as { label: string; url: string }[],
         technicalSkills: [] as { category: string; items: string[] }[],
         achievements: [] as { title: string; organization: string; year: string }[],
+        sectionOrder: ["education", "experience", "projects", "skills", "achievements"],
+        sectionVisibility: {} as Record<string, boolean>,
       };
     }
     const c = config as {
@@ -105,6 +107,8 @@ async function getAboutConfig() {
       contactLinks?: string | null;
       technicalSkills?: string | null;
       achievements?: string | null;
+      sectionOrder?: string;
+      sectionVisibility?: string;
     };
     const parseJson = (s: string | null | undefined, fallback: unknown): unknown => {
       if (s == null || s === "") return fallback;
@@ -131,6 +135,8 @@ async function getAboutConfig() {
       contactLinks: (parseJson(c.contactLinks ?? (config as { contactLinks?: string }).contactLinks, []) as { label: string; url: string }[]),
       technicalSkills: (parseJson(c.technicalSkills ?? (config as { technicalSkills?: string }).technicalSkills, []) as { category: string; items: string[] }[]),
       achievements: (parseJson(c.achievements ?? (config as { achievements?: string }).achievements, []) as { title: string; organization: string; year: string }[]),
+      sectionOrder: (parseJson(c.sectionOrder, ["education", "experience", "projects", "skills", "achievements"]) as string[]).filter((id) => ["education", "experience", "projects", "skills", "achievements"].includes(id)),
+      sectionVisibility: (parseJson(c.sectionVisibility, {}) as Record<string, boolean>),
     };
   } catch (error) {
     console.error("Error loading about config:", error);
@@ -155,6 +161,8 @@ async function getAboutConfig() {
       contactLinks: [] as { label: string; url: string }[],
       technicalSkills: [] as { category: string; items: string[] }[],
       achievements: [] as { title: string; organization: string; year: string }[],
+      sectionOrder: ["education", "experience", "projects", "skills", "achievements"],
+      sectionVisibility: {} as Record<string, boolean>,
     };
   }
 }
@@ -228,7 +236,9 @@ function getCompanyLogo(companyLogos: CompanyLogo[], companyName: string): strin
 
 export default async function AboutPage() {
   const config = await getAboutConfig();
-  const { profileImage, heroName, heroTagline, introText, aboutMainContent, educationBlocks, experienceBlocks, projectBlocks, schoolLogos, projectImages, companyLogos, technicalSkills, achievements } = config;
+  const { profileImage, heroName, heroTagline, introText, aboutMainContent, educationBlocks, experienceBlocks, projectBlocks, schoolLogos, projectImages, companyLogos, technicalSkills, achievements, sectionOrder, sectionVisibility } = config;
+  const aboutSectionOrder = sectionOrder?.length ? sectionOrder : ["education", "experience", "projects", "skills", "achievements"];
+  const aboutVisible = (id: string) => sectionVisibility?.[id] !== false;
   const useStructuredBlocks = educationBlocks.length > 0 || experienceBlocks.length > 0 || projectBlocks.length > 0;
 
   // 調試：輸出配置信息（僅在開發環境）
@@ -372,7 +382,7 @@ export default async function AboutPage() {
         {/* Structured blocks from dashboard (Education, Experience, Projects) - template: title, logo, org, date, content */}
         {useStructuredBlocks && (
           <>
-            {educationBlocks.length > 0 && (
+            {aboutVisible("education") && educationBlocks.length > 0 && (
               <Card className="shadow-lg">
                 <CardHeader>
                   <CardTitle className="flex items-center gap-2 text-slate-900">
@@ -424,7 +434,7 @@ export default async function AboutPage() {
                 </CardContent>
               </Card>
             )}
-            {experienceBlocks.length > 0 && (
+            {aboutVisible("experience") && experienceBlocks.length > 0 && (
               <Card className="shadow-lg">
                 <CardHeader>
                   <CardTitle className="flex items-center gap-2 text-slate-900">
@@ -471,7 +481,7 @@ export default async function AboutPage() {
                 </CardContent>
               </Card>
             )}
-            {projectBlocks.length > 0 && (
+            {aboutVisible("projects") && projectBlocks.length > 0 && (
               <Card className="shadow-lg">
                 <CardHeader>
                   <CardTitle className="flex items-center gap-2 text-slate-900">
@@ -511,7 +521,7 @@ export default async function AboutPage() {
             )}
 
             {/* Technical Skills — from config or default when empty */}
-            {(() => {
+            {aboutVisible("skills") && (() => {
               const skills = technicalSkills.length > 0 ? technicalSkills : [
                 { category: "Cloud Native & K8s", items: ["Kubernetes (K8s)", "Docker", "Helm", "Cilium (Service Mesh)", "Karmada", "Harbor", "Linux Containers (LXC)"] },
                 { category: "CI/CD & GitOps", items: ["Jenkins", "GitLab CI/CD", "GitHub Actions", "ArgoCD", "Flux CD", "GitOps Workflow", "Git"] },
@@ -547,7 +557,7 @@ export default async function AboutPage() {
             })()}
 
             {/* Achievements — from config or default when empty */}
-            {(() => {
+            {aboutVisible("achievements") && (() => {
               const list = achievements.length > 0 ? achievements : [
                 { title: "National Makerthon: Good Health and Well‑Being - 1st Place", organization: "Ministry of Education 2022", year: "2022" },
                 { title: "Vision Get Wild XR Social Welfare Potential Award", organization: "Meta XR Hub Taiwan 2023", year: "2023" },

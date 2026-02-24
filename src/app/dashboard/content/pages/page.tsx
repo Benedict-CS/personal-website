@@ -5,10 +5,11 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
-import { Trash2, ExternalLink, GripVertical } from "lucide-react";
+import { Trash2, ExternalLink, GripVertical, ImageIcon, Link2 } from "lucide-react";
 import { FieldHelp } from "@/components/ui/field-help";
 import Link from "next/link";
 import { useToast } from "@/contexts/toast-context";
+import { InsertMediaModal } from "@/components/insert-media-modal";
 import {
   DndContext,
   closestCenter,
@@ -79,6 +80,7 @@ export default function CustomPagesPage() {
   const [togglingId, setTogglingId] = useState<string | null>(null);
   const [form, setForm] = useState({ slug: "", title: "", content: "" });
   const [formContent, setFormContent] = useState("");
+  const [insertMediaFor, setInsertMediaFor] = useState<"image" | "button" | null>(null);
 
   const sensors = useSensors(
     useSensor(PointerSensor, { activationConstraint: { distance: 8 } }),
@@ -336,6 +338,17 @@ export default function CustomPagesPage() {
                   className="flex-1 min-w-[200px]"
                 />
               </div>
+              <div className="flex flex-wrap items-center gap-2 mb-1">
+                <span className="text-sm text-slate-600">Content (Markdown):</span>
+                <Button type="button" variant="outline" size="sm" className="gap-1" onClick={() => setInsertMediaFor("image")} title="Insert image from Media">
+                  <ImageIcon className="h-4 w-4" />
+                  Insert image
+                </Button>
+                <Button type="button" variant="outline" size="sm" className="gap-1" onClick={() => setInsertMediaFor("button")} title="Insert link button from Media (or use any URL)">
+                  <Link2 className="h-4 w-4" />
+                  Insert button
+                </Button>
+              </div>
               <Textarea
                 placeholder="Content (Markdown)"
                 value={formContent}
@@ -343,12 +356,27 @@ export default function CustomPagesPage() {
                 rows={12}
                 className="resize-y font-mono text-sm"
               />
-              <div className="flex gap-2">
+              <div className="flex flex-wrap items-center gap-2">
                 <Button
                   onClick={() => update(editingId, form.slug, form.title, formContent)}
                   disabled={saving}
                 >
                   {saving ? "Saving..." : "Save"}
+                </Button>
+                <Button
+                  type="button"
+                  variant="outline"
+                  onClick={() => {
+                    const base = typeof window !== "undefined" ? window.location.origin : "";
+                    const slug = (form.slug || "").trim().replace(/^\/+|\/+$/g, "") || "page";
+                    window.open(`${base}/page/${slug}`, "_blank", "noopener");
+                  }}
+                  disabled={!form.slug?.trim()}
+                  className="gap-1"
+                  title="Open this page on the public site in a new tab. Save first if you changed the slug."
+                >
+                  <ExternalLink className="h-4 w-4" />
+                  Preview
                 </Button>
                 <Button variant="outline" onClick={() => setEditingId(null)}>
                   Cancel
@@ -358,6 +386,19 @@ export default function CustomPagesPage() {
           </Card>
         );
       })()}
+
+      <InsertMediaModal
+        open={insertMediaFor !== null}
+        onClose={() => setInsertMediaFor(null)}
+        onSelect={(url, name) => {
+          if (insertMediaFor === "image") {
+            setFormContent((prev) => prev + `\n![${name}](${url})\n`);
+          } else if (insertMediaFor === "button") {
+            setFormContent((prev) => prev + `\n[Button](${url})\n`);
+          }
+          setInsertMediaFor(null);
+        }}
+      />
     </div>
   );
 }

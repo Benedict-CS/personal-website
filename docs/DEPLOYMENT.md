@@ -1,205 +1,175 @@
-# 部署指南 (Deployment Guide)
+# Deployment Guide
 
-**自動部署（CI/CD）**：push 到 `main` 可自動部署到伺服器，設定方式見 [docs/CI_CD.md](CI_CD.md)。
+This document covers running the app with Docker Compose, optional reverse proxy (Nginx Proxy Manager) for SSL, and CI/CD. **CI (build on PR) is set up and working; CD (auto-deploy on push to main) is optional and can be configured later** when your server and SSH keys are ready.
 
-## 架構概覽
+---
+
+## Architecture overview
 
 ```
 Internet
    ↓
-Nginx Proxy Manager (主機: 80/443)
+[Optional] Nginx Proxy Manager (ports 80/443)
    ↓
-Next.js App (Docker: localhost:3000)
+Next.js App (Docker, port 3000)
    ↓
-PostgreSQL + RustFS (Docker)
+PostgreSQL + RustFS (Docker, internal)
 ```
 
-## 步驟 1: 安裝 Nginx Proxy Manager
+---
 
-### 方法 A: 使用 Docker Compose（推薦）
+## Deploying with Docker Compose
 
-在主機上創建一個獨立的 `nginx-proxy-manager` 目錄：
+1. Clone the repo and configure `.env` (see [GETTING_STARTED.md](GETTING_STARTED.md) and [ENVIRONMENT.md](ENVIRONMENT.md)).
+2. From the project root:
+   ```bash
+   docker compose up -d --build
+   ```
+3. Run migrations inside the app container:
+   ```bash
+   docker compose exec app npx prisma migrate deploy
+   ```
+   or use `./scripts/migrate.sh`.
+4. Open `http://your-server-ip:3000` (or your domain if you already point it to the server).
+
+For production, set `NEXTAUTH_URL` and `NEXT_PUBLIC_SITE_URL` in `.env` to your public HTTPS URL (e.g. `https://yourdomain.com`).
+
+---
+
+## Optional: Nginx Proxy Manager (SSL and reverse proxy)
+
+To serve the site over HTTPS with a domain:
+
+### 1. Install Nginx Proxy Manager
+
+Example with Docker Compose in a separate directory:
 
 ```bash
 mkdir -p ~/nginx-proxy-manager
 cd ~/nginx-proxy-manager
 ```
 
-創建 `docker-compose.yml`：
+Create `docker-compose.yml`:
 
 ```yaml
-version: '3.8'
 services:
   nginx-proxy-manager:
-    image: 'jc21/nginx-proxy-manager:latest'
+    image: jc21/nginx-proxy-manager:latest
     restart: unless-stopped
     ports:
-      - '80:80'      # HTTP
-      - '443:443'    # HTTPS
-      - '81:81'      # Admin UI
+      - "80:80"
+      - "443:443"
+      - "81:81"   # Admin UI
     volumes:
       - ./data:/data
       - ./letsencrypt:/etc/letsencrypt
 ```
 
-啟動 Nginx Proxy Manager：
+Run:
 
 ```bash
 docker compose up -d
 ```
 
-### 方法 B: 使用 Docker 指令
+### 2. First-time NPM setup
+
+- Open `http://your-server-ip:81` (or your domain:81 if already routed).
+- Default login: `admin@example.com` / `changeme` (change on first login).
+
+### 3. Add a proxy host for your site
+
+1. In NPM: **Proxy Hosts** → **Add Proxy Host**.
+2. **Details:**
+   - **Domain Names:** your domain (e.g. `yourdomain.com`)
+   - **Scheme:** `http`
+   - **Forward Hostname / IP:** `localhost` or `127.0.0.1`
+   - **Forward Port:** `3000`
+   - Enable **Block Common Exploits** (and **Websockets** if needed).
+3. **SSL:**
+   - Request a new Let's Encrypt certificate.
+   - Enable **Force SSL**, **HTTP/2**, **HSTS**.
+   - Enter your email for Let's Encrypt.
+4. Save. Wait for the certificate to be issued.
+
+### 4. App configuration
+
+Ensure `.env` on the server has:
+
+- `NEXTAUTH_URL=https://yourdomain.com`
+- `NEXT_PUBLIC_SITE_URL=https://yourdomain.com`
+
+Restart the app container after changing env:
 
 ```bash
-docker run -d \
-  --name nginx-proxy-manager \
-  --restart unless-stopped \
-  -p 80:80 \
-  -p 443:443 \
-  -p 81:81 \
-  -v ~/nginx-proxy-manager/data:/data \
-  -v ~/nginx-proxy-manager/letsencrypt:/etc/letsencrypt \
-  jc21/nginx-proxy-manager:latest
+docker compose up -d --force-recreate app
 ```
 
-## 步驟 2: 初始設定 Nginx Proxy Manager
+---
 
-1. **訪問管理介面**：
-   - 打開瀏覽器：`http://你的VM-IP:81`
-   - 或使用 Cloudflare Tunnel：`https://你的網域:81`
+## CI (continuous integration)
 
-2. **預設登入資訊**：
-   - Email: `admin@example.com`
-   - Password: `changeme`
-   - **首次登入後會要求修改密碼**
+**Status: configured and working.**
 
-## 步驟 3: 配置反向代理
+- **Workflow:** `.github/workflows/ci.yml`
+- **Triggers:** Pull requests targeting `main`, or manual dispatch.
+- **Steps:** Install deps (`npm ci`), Prisma generate, lint, build. No deploy.
 
-在 Nginx Proxy Manager 管理介面中：
+This ensures every PR can build before merge.
 
-1. 點擊 **"Proxy Hosts"** → **"Add Proxy Host"**
+---
 
-2. **Details 標籤**：
-   - **Domain Names**: 輸入你的網域（例如：`benedicttiong.com`）
-   - **Scheme**: `http`
-   - **Forward Hostname / IP**: `localhost` 或 `127.0.0.1`
-   - **Forward Port**: `3000`
-   - ✅ **Block Common Exploits**
-   - ✅ **Websockets Support**（如果需要）
+## CD (continuous deployment)
 
-3. **SSL 標籤**：
-   - ✅ **SSL Certificate**: 選擇 **"Request a new SSL Certificate"**
-   - ✅ **Force SSL**
-   - ✅ **HTTP/2 Support**
-   - ✅ **HSTS Enabled**
-   - ✅ **HSTS Subdomains**
-   - **Email Address for Let's Encrypt**: 輸入你的 Email
+**Status: optional; configure when your server and SSH are ready.** (If your runner or server only has a private IP, GitHub cannot SSH to it from the cloud; see “Private IP / self-hosted runner” below.)
 
-4. 點擊 **"Save"**
+When CD is enabled, a **push to `main`** triggers:
 
-5. **等待 SSL 憑證申請**（通常需要 1-2 分鐘）
+1. Build (same as CI).
+2. SSH to the deploy server.
+3. Run `cd $DEPLOY_PATH && CI=1 ./scripts/manual-deploy.sh` (pull, build, migrate, restart).
 
-## 步驟 4: 確認 Next.js App 配置
+### GitHub Secrets required for CD
 
-確保 `docker-compose.yml` 中的 app 服務正確映射端口：
+In the repo: **Settings → Secrets and variables → Actions**, add:
 
-```yaml
-app:
-  ports:
-    - "3000:3000"  # 只映射到 localhost，不暴露到外網
-```
+| Secret | Required | Description |
+|--------|----------|-------------|
+| `DEPLOY_HOST` | Yes | Deploy target hostname or **public IP** (GitHub cannot reach private IPs) |
+| `DEPLOY_USER` | Yes | SSH username (e.g. `ubuntu`, `deploy`) |
+| `SSH_PRIVATE_KEY` | Yes | Full private key content (including BEGIN/END lines) for SSH login |
+| `DEPLOY_PATH` | No | Project path on server; default `~/personal-website` |
 
-確保環境變數正確：
+### SSH key setup
 
-```yaml
-environment:
-  - NEXTAUTH_URL=https://benedicttiong.com  # 使用 HTTPS 網域
-  - NEXT_PUBLIC_SITE_URL=https://benedicttiong.com
-```
-
-## 步驟 5: 啟動應用程式
-
-```bash
-cd ~/personal-website
-docker compose up -d --build
-```
-
-## 步驟 6: 驗證部署
-
-1. **檢查服務狀態**：
+1. Generate a key for deploy only:
    ```bash
-   docker compose ps
+   ssh-keygen -t ed25519 -C "github-deploy" -f ~/.ssh/deploy_key -N ""
    ```
+2. Put the **public** key in `DEPLOY_USER`’s `~/.ssh/authorized_keys` on the server.
+3. Put the **private** key contents into the GitHub secret `SSH_PRIVATE_KEY`.
 
-2. **檢查日誌**：
-   ```bash
-   docker compose logs app
-   ```
+### What `manual-deploy.sh` does
 
-3. **訪問網站**：
-   - 打開瀏覽器訪問：`https://benedicttiong.com`
-   - 應該能看到你的網站，並且有 SSL 憑證（綠色鎖頭）
+With `CI=1` it runs non-interactively:
 
-## 進階配置
+- `git fetch origin main` and `git reset --hard origin/main`
+- `docker compose build`
+- `docker compose exec app npx prisma migrate deploy`
+- Restart app (e.g. `docker compose up -d`)
 
-### 多個子網域
+So a push to `main` updates the live site without logging into the server.
 
-如果需要多個子網域（例如 `blog.benedicttiong.com`），在 Nginx Proxy Manager 中：
+### Private IP or no public SSH
 
-1. 創建新的 Proxy Host
-2. 設定不同的 Domain Names
-3. 都指向 `localhost:3000`（或不同的端口）
+If the deploy target has only a private IP (e.g. 10.x, 192.168.x), GitHub Actions in the cloud cannot SSH to it. Options:
 
-### 靜態資源快取
+1. **Self-hosted runner:** Install a [GitHub Actions self-hosted runner](https://docs.github.com/en/actions/guides/adding-self-hosted-runners) on a machine that can reach your server (or on the server itself). Run the deploy job on that runner and execute `./scripts/manual-deploy.sh` locally (or via SSH to the private IP from the runner). Do not use `DEPLOY_HOST` with a private IP from the cloud.
+2. **Disable CD:** Do not set the deploy secrets, or remove/disable `.github/workflows/deploy.yml`. Deploy by hand: SSH to the server and run `./scripts/manual-deploy.sh`.
 
-在 Nginx Proxy Manager 的 **Advanced** 標籤中，可以添加自定義 Nginx 配置：
+---
 
-```nginx
-# 快取靜態資源
-location ~* \.(jpg|jpeg|png|gif|ico|css|js|svg|woff|woff2)$ {
-    expires 1y;
-    add_header Cache-Control "public, immutable";
-}
-```
+## Troubleshooting
 
-### 限制後台訪問
-
-如果你只想讓 `/dashboard` 路由只能從特定 IP 訪問，可以在 **Advanced** 標籤中添加：
-
-```nginx
-location /dashboard {
-    allow 你的IP;
-    deny all;
-    proxy_pass http://localhost:3000;
-}
-```
-
-## 故障排除
-
-### 502 Bad Gateway
-
-- 檢查 Next.js app 是否正常運行：`docker compose ps`
-- 檢查 app 日誌：`docker compose logs app`
-- 確認端口映射正確：`netstat -tlnp | grep 3000`
-
-### SSL 憑證申請失敗
-
-- 確認網域的 DNS 已正確指向你的 VM IP
-- 確認 80 端口可以從外網訪問（Let's Encrypt 需要）
-- 檢查防火牆設定
-
-### 無法訪問管理介面 (81 端口)
-
-- 確認防火牆允許 81 端口
-- 或使用 Cloudflare Tunnel 訪問
-
-## 安全建議
-
-1. **修改 Nginx Proxy Manager 預設密碼**
-2. **定期更新 Docker 映像**：
-   ```bash
-   docker compose pull
-   docker compose up -d
-   ```
-3. **備份配置**：定期備份 `~/nginx-proxy-manager/data` 目錄
-4. **監控日誌**：定期檢查 Nginx Proxy Manager 和應用程式的日誌
+- **502 Bad Gateway:** Check that the Next.js app is running (`docker compose ps`) and listening on 3000; check app logs (`docker compose logs app`).
+- **SSL errors:** Ensure DNS for your domain points to the server and that ports 80 and 443 are reachable (e.g. Let's Encrypt needs port 80 for validation).
+- **CD fails (SSH):** Verify `DEPLOY_HOST` is a public hostname/IP, and that the key in `SSH_PRIVATE_KEY` matches the public key in `authorized_keys` for `DEPLOY_USER`.

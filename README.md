@@ -1,224 +1,136 @@
 # Benedict's Personal Website
 
-Benedict 的個人網站 (Personal Website)
+A full-stack personal website and blog with a **no-code-friendly dashboard**: public site (Home, About, Blog, Contact, custom pages) and an admin backend for content management. Built with Next.js 16 (App Router), React 19, PostgreSQL, and S3-compatible object storage (RustFS).
 
-## 專案簡介
+---
 
-這是一個使用 Next.js 建立的個人網站專案，包含前端展示頁面與後台管理系統。
+## Features
 
-## 技術架構
+- **Public site**: Home, About, Blog, Contact, custom Markdown pages, RSS, sitemap, search.
+- **Dashboard** (no code required): Site settings (name, logo, nav, footer, meta, OG image), first-time setup wizard, Home/About/Contact/Custom pages editing, posts CRUD, media library, tags, analytics, CV upload.
+- **Auth**: NextAuth.js (credentials); session expiry and re-login flow.
+- **Content**: Posts (Markdown, tags, categories, draft/publish, version history, preview links), custom pages (slug-based), editable About (education/experience/projects/skills/achievements), configurable home sections (order and visibility).
+- **Media**: S3-compatible storage (RustFS); upload from dashboard, insert into posts/pages.
+- **CI**: GitHub Actions (lint, build, Prisma generate). CD (auto-deploy on push to main) is optional and documented; configure when your server and SSH are ready.
 
-### Frontend
-- **Next.js 16.1.4** (App Router)
-- **React 19**
-- **Tailwind CSS 4**
+---
 
-### UI Library
-- **Shadcn/ui** - 基於 Radix UI 的組件庫
+## Tech Stack
 
-### Backend & Database
-- **PostgreSQL 15** - 透過 Prisma ORM 管理，儲存部落格文章和標籤
-- **Prisma 5.22.0** - 資料庫 ORM（鎖定版本）
-- **RustFS** - S3-compatible 高性能物件儲存，用於儲存文章圖片（比 MinIO 快 2.3 倍）
+| Layer | Technology | Why |
+|-------|------------|-----|
+| Framework | Next.js 16 (App Router) | SSR, API routes, static generation, good DX. |
+| UI | React 19, Tailwind CSS 4, shadcn/ui (Radix) | Consistent, accessible components; easy theming. |
+| Database | PostgreSQL 15, Prisma 5 | Relational data (posts, tags, config, custom pages, analytics). |
+| Object storage | RustFS (S3-compatible) | Fast, single-service, Apache 2.0; replaced MinIO. |
+| Auth | NextAuth.js v4 | Credentials provider, session, middleware protection. |
+| Deployment | Docker Compose | App + Postgres + RustFS; optional Nginx Proxy Manager for SSL. |
 
-### Authentication
-- **NextAuth.js v4** - Credentials Provider，使用環境變數密碼登入
+---
 
-### Infrastructure
-- **Docker & Docker Compose** - 容器化部署
-- **Nginx Proxy Manager** - 反向代理與 SSL 管理（可選）
+## Quick Start
 
-### 架構圖
+**Prerequisites:** Docker and Docker Compose, Git.
 
-```
-┌─────────────────┐
-│   Web Browser   │
-└────────┬────────┘
-         │
-         ↓
-┌─────────────────┐      ┌──────────────┐
-│ Nginx Proxy     │      │  Next.js App │
-│ Manager (可選)  │──────→│  (Port 3000) │
-└─────────────────┘      └──────┬───────┘
-                                 │
-                    ┌────────────┼────────────┐
-                    ↓            ↓            ↓
-            ┌─────────────┐ ┌──────────┐ ┌──────────┐
-            │ PostgreSQL  │ │  RustFS  │ │  Public  │
-            │  (Port 5432)│ │(Port 9000)│ │  (CV)   │
-            └─────────────┘ └──────────┘ └──────────┘
-```
-
-## 功能列表
-
-### 已完成功能
-- ✅ **後台登入系統**：使用 NextAuth.js 實作簡易密碼登入
-- ✅ **文章管理 (CRUD)**：
-  - 建立新文章
-  - 編輯文章
-  - 刪除文章
-  - 文章列表顯示
-  - 發布狀態管理 (Published/Draft)
-- ✅ **前台部落格展示**：
-  - 部落格首頁（顯示已發布文章）
-  - 文章內頁（根據 slug 顯示）
-  - 響應式設計
-- ✅ **圖片上傳系統**：支援本地儲存 (Local Filesystem)，自動重新命名防衝突
-- ✅ **進階編輯器**：支援 Markdown 即時預覽 (Preview Mode) 與圖片拖曳/上傳
-- ✅ **Markdown 渲染引擎**：使用 `react-markdown` + `rehype-highlight`
-- ✅ **程式碼優化**：支援 Syntax Highlighting (Atom One Dark 風格) 與一鍵複製 (Copy Button)
-
-## 環境變數 (.env)
-
-**預設即可運行**：`docker-compose.yml` 已內建資料庫、RustFS、後台密碼等預設值，直接 `docker compose up` 即可。
-
-若需自訂，在專案根目錄建立 `.env`，可覆寫：
-
-```env
-ADMIN_PASSWORD=你的密碼
-
-# NextAuth 加密金鑰（預設 change-me-in-production，生產請改）
-NEXTAUTH_SECRET=請用 openssl rand -base64 32 生成
-
-# 網站 URL（預設 https://benedict.winlab.tw）
-NEXTAUTH_URL=https://你的網域
-NEXT_PUBLIC_SITE_URL=https://你的網域
-```
-
-資料庫與 S3 帳密已寫在 `docker-compose.yml`，無須在 `.env` 重複設定。
-
-## 常用指令
-
-### 啟動開發伺服器
 ```bash
-npm run dev -- -H 0.0.0.0
+git clone <your-repo-url> personal-website
+cd personal-website
+cp .env.example .env
+# Edit .env: set ADMIN_PASSWORD, NEXTAUTH_SECRET, NEXTAUTH_URL, NEXT_PUBLIC_SITE_URL, POSTGRES_PASSWORD, RUSTFS, S3 keys, etc. See docs/ENVIRONMENT.md.
+docker compose up -d --build
+# Run migrations inside the app container:
+docker compose exec app npx prisma migrate deploy
+# Open http://localhost:3000 and log in at /dashboard with ADMIN_PASSWORD.
 ```
 
-### 資料庫管理
-```bash
-npx prisma studio
-```
+- **Detailed setup (new project, env, first run):** [docs/GETTING_STARTED.md](docs/GETTING_STARTED.md)  
+- **All environment variables:** [docs/ENVIRONMENT.md](docs/ENVIRONMENT.md)  
+- **Architecture and design:** [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md)  
+- **Deployment and CI/CD:** [docs/DEPLOYMENT.md](docs/DEPLOYMENT.md)  
+- **Maintenance (backups, updates):** [docs/MAINTENANCE.md](docs/MAINTENANCE.md)  
+- **Dashboard user guide (no-code):** [docs/DASHBOARD_USER_GUIDE.md](docs/DASHBOARD_USER_GUIDE.md)
 
-### 建置專案
-```bash
-npm run build
-```
+---
 
-### 啟動生產環境
-```bash
-npm start
-```
-
-## 專案結構
+## Project Structure
 
 ```
 personal-website/
-├── src/                    # 原始碼
-│   ├── app/               # Next.js App Router
-│   │   ├── api/          # API Routes
-│   │   ├── dashboard/    # 後台管理頁面
-│   │   ├── blog/         # 部落格頁面
-│   │   └── ...
-│   ├── components/        # React 組件
-│   └── lib/              # 工具函數
-├── prisma/                # Prisma 設定與遷移
-├── public/                # 靜態檔案（CV 等）
-├── docs/                  # 文件
-├── scripts/               # 部署、備份、建置腳本
-├── docker-compose.yml     # Docker Compose 設定
-├── Dockerfile             # Docker 建置檔案
-└── ...
+├── src/
+│   ├── app/                 # Next.js App Router
+│   │   ├── api/             # API routes (posts, media, site-config, auth, etc.)
+│   │   ├── dashboard/       # Admin UI (protected)
+│   │   ├── blog/            # Public blog
+│   │   ├── about/           # Public about page
+│   │   ├── contact/         # Public contact + form
+│   │   └── page/            # Custom pages (e.g. /page/portfolio)
+│   ├── components/          # Shared React components
+│   ├── lib/                 # DB, auth, S3, site config, utils
+│   └── contexts/            # React contexts (toast, leave-guard, breadcrumb)
+├── prisma/
+│   ├── schema.prisma        # Data model
+│   └── migrations/         # SQL migrations
+├── public/                  # Static assets (CV, etc.)
+├── docs/                    # Documentation (English, user-facing)
+├── scripts/                 # Deploy, migrate, backup, init
+├── docker-compose.yml       # App + Postgres + RustFS
+├── Dockerfile               # Next.js standalone build
+└── .github/workflows/       # CI (and optional CD)
 ```
 
-**資料目錄**（執行後產生）：
-- `postgres-data/` - PostgreSQL 資料庫檔案
-- `rustfs-data/` - RustFS 物件儲存檔案
-- `rustfs-logs/` - RustFS 日誌檔案
+---
 
-## 後台管理
+## Common Commands
 
-### 登入
+| Task | Command |
+|------|--------|
+| Development | `npm run dev` (or `npm run dev -- -H 0.0.0.0` for LAN access) |
+| Build | `npm run build` |
+| Start (production) | `npm start` |
+| Run migrations | `docker compose exec app npx prisma migrate deploy` (or `./scripts/migrate.sh`) |
+| DB GUI | `docker compose exec app npx prisma studio` |
+| Tests | `npm test` |
 
-- **URL**: `/dashboard`
-- **密碼**: 環境變數 `ADMIN_PASSWORD`（預設：`benedict123`）
-- **功能**：
-  - Posts - 文章管理（建立、編輯、刪除）
-  - CV - CV 檔案上傳
-  - Media - 媒體檔案管理
+---
 
-### 資料庫管理
+## Environment Variables (summary)
 
-使用 Prisma ORM 管理 PostgreSQL，所有資料庫操作透過 Prisma 進行。
+Required for a working stack (see [docs/ENVIRONMENT.md](docs/ENVIRONMENT.md) for full reference):
 
-**重要**：請在 **app 容器內** 執行 Prisma 指令，勿在 host 直接執行 `npx prisma migrate deploy`。  
-生產環境的 `DATABASE_URL` 由 docker-compose 提供；在 host 執行會找不到 `DATABASE_URL` 或無法連線 DB。
+- **Database:** `DATABASE_URL`, `POSTGRES_USER`, `POSTGRES_PASSWORD`, `POSTGRES_DB`
+- **RustFS:** `RUSTFS_ROOT_USER`, `RUSTFS_ROOT_PASSWORD`; **S3:** `S3_ACCESS_KEY`, `S3_SECRET_KEY`, `S3_BUCKET` (app uses `S3_ENDPOINT` from compose)
+- **Auth:** `ADMIN_PASSWORD`, `NEXTAUTH_SECRET`, `NEXTAUTH_URL`, `NEXT_PUBLIC_SITE_URL`
+- **Contact form:** Either Resend (`RESEND_API_KEY`, `RESEND_FROM_EMAIL`) or SMTP; `CONTACT_EMAIL` for recipient
 
-```bash
-# 執行遷移（推薦：使用腳本）
-./scripts/migrate.sh
+Optional: `ANALYTICS_SECRET`, `ANALYTICS_EXCLUDED_IPS`, `SENTRY_DSN`, etc.
 
-# 或手動在容器內執行
-sudo docker compose up -d
-sudo docker compose exec app npx prisma migrate deploy
+---
 
-# 查看遷移狀態
-sudo docker compose exec app npx prisma migrate status
+## CI/CD
 
-# 開啟 Prisma Studio（資料庫 GUI）
-sudo docker compose exec app npx prisma studio
-```
+- **CI:** On pull requests (and manual trigger), GitHub Actions runs install, lint, Prisma generate, and build. See [docs/DEPLOYMENT.md](docs/DEPLOYMENT.md).
+- **CD:** Optional. When configured (GitHub Secrets: `DEPLOY_HOST`, `DEPLOY_USER`, `SSH_PRIVATE_KEY`, optional `DEPLOY_PATH`), push to `main` triggers SSH to the server and runs `./scripts/manual-deploy.sh`. CD is documented but can be set up later if your server or SSH is not ready.
 
-## 快速開始
+---
 
-### 完整部署流程
+## Documentation Index
 
-詳細的部署步驟請參考 [docs/SETUP.md](docs/SETUP.md)
+All user-facing documentation is in English:
 
-**快速部署**：
+| Document | Description |
+|----------|-------------|
+| [GETTING_STARTED.md](docs/GETTING_STARTED.md) | New project setup, step-by-step, first run. |
+| [ENVIRONMENT.md](docs/ENVIRONMENT.md) | Every `.env` variable explained. |
+| [ARCHITECTURE.md](docs/ARCHITECTURE.md) | System design, components, data flow, dashboard design. |
+| [DEPLOYMENT.md](docs/DEPLOYMENT.md) | Docker deploy, Nginx/SSL, CI/CD. |
+| [MAINTENANCE.md](docs/MAINTENANCE.md) | Backups, updates, monitoring. |
+| [DASHBOARD_USER_GUIDE.md](docs/DASHBOARD_USER_GUIDE.md) | How to use the dashboard without writing code. |
+| [BUILDING_MY_PERSONAL_WEBSITE.md](docs/BUILDING_MY_PERSONAL_WEBSITE.md) | Blog-style post: from zero to production (system design, tools, maintenance). |
 
-```bash
-# 1. 克隆專案
-git clone <your-repo-url> personal-website
-cd personal-website
+Other files in `docs/` (e.g. BUILD_GUIDE, BACKUP_AND_MIGRATION, CI_CD_GUIDE) are referenced where relevant; internal or fix-specific notes are kept for development reference only.
 
-# 2. 啟動服務
-sudo docker compose up -d --build
+---
 
-# 3. 初始化資料庫（須在 app 容器內執行）
-./scripts/migrate.sh
-# 或：sudo docker compose exec app npx prisma migrate deploy
+## License
 
-# 4. 訪問網站
-# http://your-server-ip:3000
-```
-
-### 建置與部署腳本
-
-- **手動部署**（拉碼、建置、遷移、重啟）：`./scripts/manual-deploy.sh`
-- **僅執行遷移**：`./scripts/migrate.sh`（會先確保服務已啟動）
-- **快速建置**（小修改）：`./scripts/quick-build.sh`
-- **乾淨建置**（重大變更）：`./scripts/clean-build.sh`
-
-詳細說明請參考 [docs/BUILD_GUIDE.md](docs/BUILD_GUIDE.md)
-
-### 故障排除
-
-- **網站出現 500 / "Application error: a server-side exception"**  
-  多半是資料庫尚未執行最新遷移（例如新增 `pinned` 等欄位）。請在專案目錄執行：
-  ```bash
-  ./scripts/migrate.sh
-  ```
-  或 `sudo docker compose exec app npx prisma migrate deploy`，再重新整理頁面。
-
-- **`npx prisma migrate deploy` 報錯 "Environment variable not found: DATABASE_URL"**  
-  請勿在 host 直接執行。改在 app 容器內執行：`./scripts/migrate.sh` 或 `sudo docker compose exec app npx prisma migrate deploy`。
-
-## 文件
-
-- **[SETUP.md](docs/SETUP.md)** - 完整部署指南（從零開始）
-- **[DEPLOYMENT.md](docs/DEPLOYMENT.md)** - Nginx Proxy Manager 設定與 SSL
-- **[DATA_MANAGEMENT.md](docs/DATA_MANAGEMENT.md)** - 資料備份、搬家指南
-- **[DEV_NOTES.md](docs/DEV_NOTES.md)** - 開發筆記與技術決策
-- **[BUILD_GUIDE.md](docs/BUILD_GUIDE.md)** - 建置方式選擇與故障排除
-
-**Cron 排程**：腳本已移至 `scripts/`。若伺服器已安裝過 crontab，更新程式後請重新安裝：`crontab scripts/crontab.example`。
+[MIT](LICENSE) — you may use, copy, modify, and distribute this project under the terms of the MIT License. See [LICENSE](LICENSE) for the full text.

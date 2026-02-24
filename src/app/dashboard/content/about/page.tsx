@@ -149,12 +149,16 @@ export default function AboutPage() {
   const [isCleaning, setIsCleaning] = useState(false);
   const [savingIntro, setSavingIntro] = useState(false);
   const [savingHero, setSavingHero] = useState(false);
+  const [savingSections, setSavingSections] = useState(false);
   const [uploadStatus, setUploadStatus] = useState<{
     type: "success" | "error" | null;
     message: string;
   }>({ type: null, message: "" });
   const [mediaPickerTarget, setMediaPickerTarget] = useState<{ block: "education" | "experience"; index: number } | null>(null);
   const [lastSavedSnapshot, setLastSavedSnapshot] = useState<AboutSavedSnapshot | null>(null);
+  const ABOUT_SECTION_IDS = ["education", "experience", "projects", "skills", "achievements"];
+  const [sectionOrder, setSectionOrder] = useState<string[]>(ABOUT_SECTION_IDS);
+  const [sectionVisibility, setSectionVisibility] = useState<Record<string, boolean>>({});
 
   // 載入配置
   useEffect(() => {
@@ -182,6 +186,8 @@ export default function AboutPage() {
           setCompanyLogos(Array.isArray(config.companyLogos) ? config.companyLogos : []);
           setTechnicalSkills(Array.isArray(config.technicalSkills) && config.technicalSkills.length > 0 ? config.technicalSkills : DEFAULT_TECHNICAL_SKILLS);
           setAchievements(Array.isArray(config.achievements) && config.achievements.length > 0 ? config.achievements : DEFAULT_ACHIEVEMENTS);
+          setSectionOrder(Array.isArray(config.sectionOrder) && config.sectionOrder.length > 0 ? config.sectionOrder : ABOUT_SECTION_IDS);
+          setSectionVisibility(config.sectionVisibility && typeof config.sectionVisibility === "object" ? config.sectionVisibility : {});
         } else {
           setTechnicalSkills(DEFAULT_TECHNICAL_SKILLS);
           setAchievements(DEFAULT_ACHIEVEMENTS);
@@ -262,6 +268,8 @@ export default function AboutPage() {
     companyLogos?: CompanyLogo[];
     technicalSkills?: TechnicalSkillSection[];
     achievements?: AchievementEntry[];
+    sectionOrder?: string[];
+    sectionVisibility?: Record<string, boolean>;
   }) => {
     try {
       const response = await fetch("/api/about/config", {
@@ -308,6 +316,8 @@ export default function AboutPage() {
       }
       if (updated.technicalSkills) setTechnicalSkills(updated.technicalSkills);
       if (updated.achievements) setAchievements(updated.achievements);
+      if (updated.sectionOrder) setSectionOrder(updated.sectionOrder);
+      if (updated.sectionVisibility) setSectionVisibility(updated.sectionVisibility);
       
       return updated;
     } catch (error) {
@@ -518,6 +528,44 @@ export default function AboutPage() {
       <p className="text-slate-600 text-sm">
         Blocks below match the order on the public About page. Edit each block and save. If the form is pre-filled with the same content as the site, click Save to store it in the database.
       </p>
+
+      <Card>
+        <CardHeader>
+          <CardTitle className="text-lg">About page sections</CardTitle>
+          <p className="text-sm text-slate-600">Choose which sections to show on the public About page. Uncheck to hide a section.</p>
+        </CardHeader>
+        <CardContent className="space-y-2">
+          {ABOUT_SECTION_IDS.map((id) => (
+            <label key={id} className="flex items-center gap-2 cursor-pointer">
+              <input
+                type="checkbox"
+                checked={sectionVisibility[id] !== false}
+                onChange={(e) => setSectionVisibility((v) => ({ ...v, [id]: e.target.checked }))}
+                className="rounded border-slate-300"
+              />
+              <span className="text-sm font-medium text-slate-800 capitalize">{id}</span>
+            </label>
+          ))}
+          <Button
+            size="sm"
+            className="mt-2"
+            disabled={savingSections}
+            onClick={async () => {
+              setSavingSections(true);
+              try {
+                await updateConfig({ sectionOrder, sectionVisibility });
+                toast("Section visibility saved.", "success");
+              } catch {
+                toast("Failed to save.", "error");
+              } finally {
+                setSavingSections(false);
+              }
+            }}
+          >
+            {savingSections ? "Saving..." : "Save section visibility"}
+          </Button>
+        </CardContent>
+      </Card>
 
       {uploadStatus.type && (
         <div

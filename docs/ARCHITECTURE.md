@@ -1,156 +1,147 @@
-# 系統架構 (System Architecture)
+# System Architecture
 
-## 整體架構
+This document describes the high-level architecture, design decisions, and data flow of the personal website and its dashboard.
 
-```
-┌─────────────────────────────────────────────────────────┐
-│                    Internet                              │
-└────────────────────┬────────────────────────────────────┘
-                     │
-                     ↓
-        ┌────────────────────────┐
-        │  Nginx Proxy Manager   │  (可選，用於 SSL)
-        │   Port 80/443          │
-        └────────────┬───────────┘
-                     │
-                     ↓
-        ┌────────────────────────┐
-        │   Next.js Application  │
-        │   Port 3000            │
-        │   (Docker Container)   │
-        └─────┬──────────────────┘
-              │
-    ┌─────────┼─────────┐
-    ↓         ↓         ↓
-┌────────┐ ┌──────────┐ ┌────────┐
-│Postgres│ │ RustFS   │ │ Public │
-│ :5432  │ │ :9000    │ │  (CV)  │
-└────────┘ └──────────┘ └────────┘
-```
+---
 
-## 服務說明
+## High-level architecture
 
-### 1. Next.js Application
-- **容器名稱**: `personal-website-app`
-- **端口**: `3000`
-- **功能**: 
-  - 前端頁面渲染
-  - API 路由處理
-  - 後台管理系統
-- **資料持久化**: 
-  - `./public:/app/public` (CV 檔案)
+The system consists of a single Next.js application (SSR + API routes), a PostgreSQL database, and an S3-compatible object store (RustFS). Optionally, a reverse proxy (e.g. Nginx Proxy Manager) sits in front for SSL and routing.
 
-### 2. PostgreSQL Database
-- **容器名稱**: `personal-website-postgres`
-- **端口**: `5432` (內部)
-- **資料庫**: `blog`
-- **用戶**: `ben`
-- **資料持久化**: 
-  - `./postgres-data:/var/lib/postgresql/data`
-
-### 3. RustFS Object Storage
-- **容器名稱**: `personal-website-rustfs`
-- **端口**: 
-  - `9000` - S3 API (對外)
-  - `9001` - Console (對外，管理界面)
-- **功能**: S3-compatible 高性能物件儲存（比 MinIO 快 2.3 倍）
-- **資料持久化**: 
-  - `./rustfs-data` (物件資料)
-  - `./rustfs-logs` (日誌)
-- **Bucket**: `uploads`
-- **預設帳號**: `rustfsadmin` / `rustfsadmin`
-- **文檔**: [RustFS 官網](https://rustfs.com) | [GitHub](https://github.com/rustfs/rustfs)
-
-## 資料流程
-
-### 文章建立流程
-```
-User → Dashboard → API (/api/posts) → Prisma → PostgreSQL
+```mermaid
+flowchart LR
+  subgraph Client
+    Browser[Web Browser]
+  end
+  subgraph Optional
+    NPM[Nginx Proxy Manager]
+  end
+  subgraph Server
+    App[Next.js App :3000]
+    Postgres[(PostgreSQL :5432)]
+    RustFS[RustFS :9000/9001]
+  end
+  Browser --> NPM
+  NPM --> App
+  Browser --> App
+  App --> Postgres
+  App --> RustFS
 ```
 
-### 圖片上傳流程
+*Insert diagram: High-level deployment (Browser → optional NPM → Next.js; Next.js → Postgres + RustFS).*
+
+---
+
+## Component overview
+
+| Component | Role | Technology |
+|-----------|------|------------|
+| **Next.js app** | SSR pages, API routes, dashboard UI, auth (NextAuth) | Next.js 16 (App Router), React 19 |
+| **PostgreSQL** | Persistent data: posts, tags, site config, custom pages, About config, analytics, versions | Prisma ORM, Prisma Migrate |
+| **RustFS** | Binary storage for media (images, uploads) | S3 API; app uses AWS SDK |
+| **Reverse proxy** | TLS termination, host-based routing (optional) | Nginx Proxy Manager or any HTTP reverse proxy |
+
+---
+
+## Data flow
+
+### Public site (read path)
+
+- **Home:** App reads `SitePageContent` (page = `home`) and `SiteConfig` from DB, fetches latest posts from `Post`, renders sections (hero, latest posts, skills) according to `sectionOrder` and `sectionVisibility`.
+- **Blog:** App reads `Post` (published) and `Tag`, renders list and post pages; Markdown is rendered with rehype/remark (highlight, math, etc.).
+- **About:** App reads `AboutConfig` (profile, blocks, skills, achievements) and `sectionOrder` / `sectionVisibility`, renders sections in order.
+- **Contact:** App reads contact config; form POST goes to `/api/contact`, which sends email via Resend or SMTP.
+- **Custom pages:** App reads `CustomPage` by slug, renders Markdown at `/page/[slug]`.
+
+### Dashboard (authenticated write path)
+
+- **Auth:** User submits password at `/auth/signin`; NextAuth credentials provider checks `ADMIN_PASSWORD` (env), creates session. Middleware protects `/dashboard/*` and relevant API routes.
+- **Posts:** CRUD via `/api/posts`, `/api/posts/[id]`; version history in `PostVersion`; preview tokens for draft sharing.
+- **Media:** Upload to S3 (RustFS) via `/api/upload`; listing and delete via `/api/media`; serving via `/api/media/serve/[filename]`.
+- **Site config:** Single row in `SiteConfig` (id = 1); PATCH via `/api/site-config`. Drives nav, footer, meta, template, theme.
+- **Home / Contact content:** Stored in `SitePageContent` (page = `home` | `contact`); PATCH via `/api/site-content`.
+- **About:** Stored in `AboutConfig` (single row); PATCH via `/api/about/config`. Section order/visibility in `sectionOrder` / `sectionVisibility` columns.
+- **Custom pages:** CRUD and reorder via `/api/custom-pages` and slug-specific routes.
+
+```mermaid
+sequenceDiagram
+  participant U as User
+  participant D as Dashboard
+  participant API as Next.js API
+  participant DB as PostgreSQL
+  participant S3 as RustFS
+  U->>D: Edit post / upload image
+  D->>API: POST /api/posts or /api/upload
+  API->>API: requireSession()
+  alt Posts
+    API->>DB: Prisma (create/update)
+  else Media
+    API->>S3: PutObject / ListObjects
+  end
+  API->>D: JSON response
 ```
-User → Dashboard → API (/api/upload) → S3 Client → RustFS
+
+*Insert diagram: Dashboard → API (auth) → DB or S3.*
+
+---
+
+## Database schema (summary)
+
+- **Post:** id, title, slug, content, description, published, pinned, category, order, previewToken, timestamps; relation to Tag (many-to-many).
+- **Tag:** id, name, slug; relation to Post.
+- **PostVersion:** version history for posts (title, slug, content, tags, versionNumber).
+- **SiteConfig:** singleton (id = 1); siteName, logoUrl, faviconUrl, metaTitle, metaDescription, authorName, links (JSON), navItems (JSON), footerText, ogImageUrl, setupCompleted, templateId, themeMode, autoAddCustomPagesToNav.
+- **SitePageContent:** keyed by `page` (`home` | `contact`); `content` JSON (e.g. hero, CTAs, sectionOrder, sectionVisibility for home).
+- **CustomPage:** id, slug, title, content (Markdown), order, published.
+- **AboutConfig:** singleton; profileImage, hero fields, introText, educationBlocks / experienceBlocks / projectBlocks (JSON), technicalSkills, achievements, sectionOrder, sectionVisibility, contactLinks, etc.
+- **Analytics:** page views (path, IP, country, etc.) for dashboard analytics.
+
+---
+
+## Why the dashboard is designed this way
+
+1. **Single-tenant, single admin:** One site, one credentials user. No multi-user or RBAC; keeps auth and UI simple while still allowing full content control.
+2. **No-code first:** Setup wizard, inline help (FieldHelp), drag-and-drop nav and section order, templates (Personal / Portfolio / Blog), and Markdown with “Insert image” / “Insert button” let non-developers manage content. Technical users can still edit raw Markdown and use the same APIs.
+3. **Configuration as data:** Site config, home content, About, and custom pages are stored in the DB (or JSON columns), not in code. Changing nav, sections, or copy does not require a deploy.
+4. **Separation of concerns:** Public site is read-heavy and cache-friendly; dashboard and API are protected and write to DB/S3. Clear split between “what visitors see” and “what the admin edits.”
+5. **Extensibility:** Custom pages (Markdown + slug), section order/visibility, and templates allow layout and content variety without new routes or components for every new page.
+
+---
+
+## Security
+
+- **Auth:** NextAuth session; middleware denies unauthenticated access to `/dashboard/*` and write APIs. Session expiry and re-login flow are implemented.
+- **Secrets:** Passwords and keys live in environment variables (or secrets manager in production); never committed.
+- **Input:** API routes validate and sanitize input; Prisma parameterizes queries.
+- **Proxy:** In production, the app is behind a reverse proxy; TLS and WAF (e.g. Cloudflare) can be added at the edge.
+
+---
+
+## Deployment topology (Docker Compose)
+
+```mermaid
+flowchart TB
+  subgraph Host
+    App[app container]
+    Postgres[postgres container]
+    RustFS[rustfs container]
+    App --> Postgres
+    App --> RustFS
+  end
+  Internet[Internet] --> Host
 ```
 
-### CV 上傳流程
-```
-User → Dashboard → API (/api/cv/upload) → File System → ./public/cv.pdf
-```
+- **app:** Builds from Dockerfile (Next.js standalone); receives `DATABASE_URL`, S3 env, NextAuth env from Compose (from `.env`).
+- **postgres:** Data in `./postgres-data`.
+- **rustfs:** Data in `./rustfs-data`, logs in `./rustfs-logs`. Bucket `uploads` created on first upload if missing.
 
-## 資料儲存
+Migrations are run inside the app container so the same `DATABASE_URL` is used at runtime and during migrations.
 
-### 資料庫 (PostgreSQL)
-- **位置**: `./postgres-data/`
-- **內容**: 
-  - `Post` 表 - 文章資料
-  - `Tag` 表 - 標籤資料
-  - `_PostToTag` 表 - 文章-標籤關聯
+---
 
-### 物件儲存 (RustFS)
-- **位置**: `./rustfs-data/` (物件資料)
-- **內容**: 文章中的圖片檔案
-- **訪問**: 透過 `/api/media/serve/[filename]` API
+## Scaling and maintenance
 
-### 靜態檔案 (Public)
-- **位置**: `./public/`
-- **內容**: 
-  - `cv.pdf` - CV 檔案
-  - 其他靜態資源（SVG 圖示等）
-- **訪問**: 直接透過 URL（如 `/cv.pdf`）
-
-## 安全架構
-
-### 認證流程
-```
-User → /dashboard → Middleware → NextAuth → Session
-```
-
-### 保護的路由
-- `/dashboard/*` - 需要登入
-- `/api/posts/*` - 需要登入
-- `/api/cv/*` - 需要登入
-- `/api/media/cleanup` - 需要登入
-
-### 公開路由
-- `/` - 首頁
-- `/blog` - 部落格列表
-- `/blog/[slug]` - 文章頁面
-- `/about` - 關於頁面
-- `/cv.pdf` - CV 下載
-
-## 網路架構
-
-### 容器網路
-- 所有容器在同一個 Docker 網路中
-- 容器間透過服務名稱通訊：
-  - `postgres:5432`
-  - `rustfs:9000`
-
-### 對外端口
-- `3000` - Next.js App（可選，如果不用 Nginx）
-- `9000` - RustFS S3 API（可選，通常不需要對外）
-- `9001` - RustFS Console（可選，管理用）
-
-## 擴展性
-
-### 水平擴展
-- Next.js App 可以運行多個實例（需要共享 session）
-- PostgreSQL 可以設定主從複製
-- RustFS 支援分散式模式（多節點部署）
-
-### 垂直擴展
-- 增加容器資源限制
-- 優化資料庫查詢
-- 使用 CDN 加速靜態資源
-
-## 監控與日誌
-
-### 日誌位置
-- 應用日誌: `sudo docker compose logs app`
-- 資料庫日誌: `sudo docker compose logs postgres`
-- RustFS 日誌: `sudo docker compose logs rustfs` 或 `./rustfs-logs/`
-
-### 健康檢查
-- 所有服務都有健康檢查設定
-- 使用 `docker compose ps` 查看狀態
+- **Vertical:** Increase container resources; tune Postgres and RustFS as needed.
+- **Horizontal:** Running multiple app instances would require shared session store (e.g. Redis) for NextAuth; not implemented by default.
+- **Backups:** Postgres (pg_dump) and RustFS data (object backup or rclone); see [MAINTENANCE.md](MAINTENANCE.md).
+- **Updates:** Rebuild app image, run new migrations, restart containers; see [DEPLOYMENT.md](DEPLOYMENT.md) and [MAINTENANCE.md](MAINTENANCE.md).

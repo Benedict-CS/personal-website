@@ -1,91 +1,59 @@
-# 文件目錄 (Documentation)
+# Documentation Index
 
-本目錄包含專案的完整文件。
-
-## 📚 文件列表
-
-### 🚀 [SETUP.md](./SETUP.md) - 完整部署指南
-**從零開始的完整部署流程**
-
-- 前置需求
-- 克隆專案
-- 環境變數設定
-- 啟動服務
-- 初始化資料庫
-- 驗證部署
-- 故障排除
-
-**適合**：第一次部署、新伺服器設定
+This folder contains all project documentation. **User-facing docs are in English.**
 
 ---
 
-### 🌐 [DEPLOYMENT.md](./DEPLOYMENT.md) - 生產環境部署
-**Nginx Proxy Manager 設定與 SSL 配置**
+## User-facing documentation (English)
 
-- 安裝 Nginx Proxy Manager
-- 設定反向代理
-- 申請 SSL 憑證
-- 進階配置
+Start here if you are setting up, deploying, or using the site.
 
-**適合**：需要網域和 HTTPS 的生產環境
-
----
-
-### 💾 [DATA_MANAGEMENT.md](./DATA_MANAGEMENT.md) - 資料管理與搬家
-**資料備份、還原、遷移完整指南**
-
-- 資料儲存位置
-- 備份方法
-- 遷移到其他伺服器
-- PostgreSQL 單獨搬家
-- RustFS 單獨搬家
-- 驗證搬家成功
-
-**適合**：資料備份、伺服器遷移、災難恢復
+| Document | Description |
+|----------|-------------|
+| [../README.md](../README.md) | Project overview, features, tech stack, quick start, common commands. |
+| [GETTING_STARTED.md](GETTING_STARTED.md) | Step-by-step setup: clone, `.env`, first run, migrations, troubleshooting. |
+| [ENVIRONMENT.md](ENVIRONMENT.md) | Every environment variable: required/optional, Docker/DB/RustFS/auth/contact/Sentry. |
+| [ARCHITECTURE.md](ARCHITECTURE.md) | System design: components, data flow, DB schema, why the dashboard is designed this way. |
+| [DEPLOYMENT.md](DEPLOYMENT.md) | Docker Compose deploy, Nginx Proxy Manager (SSL), CI (working), CD (optional). |
+| [MAINTENANCE.md](MAINTENANCE.md) | Backups (Postgres, RustFS), updates, monitoring, disk cleanup, security. |
+| [DASHBOARD_USER_GUIDE.md](DASHBOARD_USER_GUIDE.md) | How to use the dashboard: wizard, site settings, home/about/contact/posts/pages, media, analytics. |
+| [BUILDING_MY_PERSONAL_WEBSITE.md](BUILDING_MY_PERSONAL_WEBSITE.md) | **Blog-style post (interview material):** From zero to production—requirements, architecture, tools, dashboard design rationale, security, deployment, maintenance. |
 
 ---
 
-### 🛠️ [DEV_NOTES.md](./DEV_NOTES.md) - 開發筆記
-**技術決策與開發注意事項**
+## Quick navigation
 
-- Prisma 版本鎖定
-- Next.js 15 重要變更
-- 登入系統實作
-- 常見問題
+**I want to...**
 
-**適合**：開發者、維護者
-
----
-
-### 🔄 [MINIO_ALTERNATIVES.md](./MINIO_ALTERNATIVES.md) - 物件儲存方案
-**物件儲存方案比較與遷移指南**
-
-- MinIO 維護模式說明
-- 替代方案評估（RustFS、Alarik、Garage、SeaweedFS 等）
-- 遷移步驟與經驗
-- 最終選擇 RustFS 的原因
-
-**適合**：需要了解物件儲存選項和遷移過程的開發者
+- **Set up from scratch** → [GETTING_STARTED.md](GETTING_STARTED.md)
+- **Configure environment variables** → [ENVIRONMENT.md](ENVIRONMENT.md)
+- **Understand architecture and design** → [ARCHITECTURE.md](ARCHITECTURE.md) and [BUILDING_MY_PERSONAL_WEBSITE.md](BUILDING_MY_PERSONAL_WEBSITE.md)
+- **Deploy with Docker and optional SSL** → [DEPLOYMENT.md](DEPLOYMENT.md)
+- **Back up or update the system** → [MAINTENANCE.md](MAINTENANCE.md)
+- **Use the dashboard without code** → [DASHBOARD_USER_GUIDE.md](DASHBOARD_USER_GUIDE.md)
 
 ---
 
-## 📖 根目錄文件
+## Internal / reference docs
 
-### [../README.md](../README.md) - 專案總覽
-專案簡介、技術架構、快速開始
+The following files are development notes, fix logs, or legacy guides. They are **not** required for end users. You can move them to an `archive/` or `internal/` subfolder if you prefer to keep only user-facing docs in the main list.
 
-### [../BUILD_GUIDE.md](../BUILD_GUIDE.md) - 建置指南
-建置方式選擇、故障排除
+| File | Purpose |
+|------|---------|
+| BUILD_GUIDE.md | Build options and troubleshooting. |
+| SETUP.md | Older setup guide (superseded by GETTING_STARTED.md for new users). |
+| DATA_MANAGEMENT.md, BACKUP_AND_MIGRATION.md | Backup and migration details (overlap with MAINTENANCE.md). |
+| CI_CD.md, CI_CD_GUIDE.md, NEXT_STEPS_CRON_AND_CICD.md | CI/CD and cron notes (see DEPLOYMENT.md for current CI/CD). |
+| DEV_NOTES.md | Prisma, Next.js, auth implementation notes. |
+| MINIO_ALTERNATIVES.md | Why RustFS replaced MinIO; migration context. |
+| FIX_*.md, WHY_*.md | One-off fix or root-cause notes. |
+| NON_TECHNICAL_USER_GUIDE.md | Superseded by DASHBOARD_USER_GUIDE.md for user-facing content. |
+| blog.md | Older blog draft (e.g. Chinese); interview-style post is BUILDING_MY_PERSONAL_WEBSITE.md. |
+
+Other docs (e.g. CUSTOM_PAGES, EDITABLE_SITE_ROADMAP, MONITORING, RECOMMENDATIONS, VERSION_CONTROL) are optional reference; link to them from the main docs where relevant.
 
 ---
 
-## 🎯 快速導航
+## What else can be done
 
-**我想...**
-
-- **第一次部署** → [SETUP.md](./SETUP.md)
-- **設定網域和 SSL** → [DEPLOYMENT.md](./DEPLOYMENT.md)
-- **備份或搬家資料** → [DATA_MANAGEMENT.md](./DATA_MANAGEMENT.md)
-- **了解技術細節** → [DEV_NOTES.md](./DEV_NOTES.md)
-- **物件儲存方案** → [MINIO_ALTERNATIVES.md](./MINIO_ALTERNATIVES.md)
-- **快速建置** → [../BUILD_GUIDE.md](../BUILD_GUIDE.md)
+See **[WHATS_NEXT.md](WHATS_NEXT.md)** for a checklist of optional improvements: CI (run tests, fix typo), more unit/e2e tests, archiving internal docs, CD when ready, backup cron, rate limiting, security headers, diagram placeholders, and roadmap items (block editor, monitoring, i18n).
