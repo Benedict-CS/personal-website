@@ -39,6 +39,12 @@ export default async function BlogPreviewPage({ searchParams }: PreviewPageProps
     notFound();
   }
 
+  // Optional: preview link expiry (previewTokenExpiresAt)
+  const expiresAt = (post as { previewTokenExpiresAt?: Date | null }).previewTokenExpiresAt;
+  if (expiresAt && new Date() > new Date(expiresAt)) {
+    notFound();
+  }
+
   const formatDate = (date: Date) =>
     new Date(date).toLocaleDateString("en-US", {
       year: "numeric",

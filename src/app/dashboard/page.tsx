@@ -3,13 +3,13 @@ import { redirect } from "next/navigation";
 import { prisma } from "@/lib/prisma";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { FileText, Layout, BarChart3, Image as ImageIcon, PlusCircle, ExternalLink, CheckCircle2, Circle } from "lucide-react";
-import { DashboardNextSteps } from "@/components/dashboard-next-steps";
+import { DashboardBackupTrigger } from "@/components/dashboard-backup-trigger";
+import { Layout, BarChart3, Image as ImageIcon, PlusCircle, ExternalLink } from "lucide-react";
 
 export const dynamic = "force-dynamic";
 
 export default async function DashboardHomePage() {
-  const [draftCount, publishedCount, totalPosts, recentPosts, siteRow, customPagesCount] = await Promise.all([
+  const [draftCount, publishedCount, totalPosts, recentPosts, siteRow] = await Promise.all([
     prisma.post.count({ where: { published: false } }),
     prisma.post.count({ where: { published: true } }),
     prisma.post.count(),
@@ -21,7 +21,6 @@ export default async function DashboardHomePage() {
     prisma.siteConfig
       .findUnique({ where: { id: 1 }, select: { setupCompleted: true } })
       .catch(() => null),
-    prisma.customPage.count(),
   ]);
 
   const siteUrl = process.env.NEXT_PUBLIC_SITE_URL || process.env.NEXTAUTH_URL || "";
@@ -37,12 +36,6 @@ export default async function DashboardHomePage() {
   return (
     <div className="space-y-8">
       <h2 className="text-3xl font-bold text-slate-900">Dashboard</h2>
-
-      <DashboardNextSteps
-        hasPosts={totalPosts > 0}
-        hasCustomPages={customPagesCount > 0}
-        siteUrl={siteUrl}
-      />
 
       <section>
         <h3 className="mb-3 text-sm font-medium uppercase tracking-wider text-slate-500">
@@ -82,6 +75,13 @@ export default async function DashboardHomePage() {
               </CardContent>
             </Card>
           )}
+          <Card className="min-w-[120px]">
+            <CardContent className="pt-4">
+              <p className="text-sm font-mono text-slate-700">{process.version}</p>
+              <p className="text-sm text-slate-600">Node</p>
+            </CardContent>
+          </Card>
+          <DashboardBackupTrigger />
         </div>
       </section>
 

@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
+import { revalidatePath } from "next/cache";
 import { requireSession } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 
@@ -78,6 +79,8 @@ export async function PATCH(
           tags: true,
         },
       });
+      revalidatePath("/blog");
+      revalidatePath(`/blog/${currentPost.slug}`);
       return NextResponse.json(updatedPost, { status: 200 });
     }
 
@@ -144,6 +147,8 @@ export async function PATCH(
           tags: true,
         },
       });
+      revalidatePath("/blog");
+      revalidatePath(`/blog/${currentPost.slug}`);
       return NextResponse.json(updatedPost, { status: 200 });
     }
 
@@ -288,6 +293,8 @@ export async function PATCH(
       },
     });
 
+    revalidatePath("/blog");
+    revalidatePath(`/blog/${post.slug}`);
     return NextResponse.json(post, { status: 200 });
   } catch (error) {
     console.error("Error updating post:", error);
@@ -308,12 +315,14 @@ export async function DELETE(
     const auth = await requireSession();
     if ("unauthorized" in auth) return auth.unauthorized;
 
-    // Delete post
+    const existing = await prisma.post.findUnique({ where: { id }, select: { slug: true } });
     await prisma.post.delete({
-      where: {
-        id: id,
-      },
+      where: { id },
     });
+    if (existing) {
+      revalidatePath("/blog");
+      revalidatePath(`/blog/${existing.slug}`);
+    }
 
     return NextResponse.json({ message: "Post deleted successfully" }, { status: 200 });
   } catch (error) {

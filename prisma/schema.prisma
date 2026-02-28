@@ -19,6 +19,8 @@ model Post {
   category     String?       // Category path, e.g. "LeetCode/Array", "System Design"
   order        Int           @default(0) // Order within category for manual sorting
   previewToken String?       @unique // Secret token for read-only draft preview link
+  previewTokenExpiresAt DateTime? // When preview link expires (optional)
+  publishedAt  DateTime?     // Scheduled publish time; when <= now, post is treated as published
   createdAt    DateTime      @default(now())
   updatedAt    DateTime      @updatedAt
   tags         Tag[]

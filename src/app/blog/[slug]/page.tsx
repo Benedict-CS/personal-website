@@ -22,8 +22,7 @@ import { calculateReadingTime, formatReadingTime } from "@/lib/reading-time";
 import { siteConfig } from "@/config/site";
 import { getSiteConfigForRender } from "@/lib/site-config";
 
-// Force dynamic rendering to avoid build-time database connection
-export const dynamic = 'force-dynamic';
+export const revalidate = 60;
 
 export async function generateMetadata({
   params,
@@ -107,42 +106,37 @@ export default async function BlogPostPage({
     notFound();
   }
 
-  // 查詢上一篇和下一篇文章
-  const [prevPost, nextPost] = await Promise.all([
-    // 上一篇：createdAt 比當前文章小，按 createdAt 降序取第一個
+  // Prev/next and related (by tag)
+  const tagIds = post.tags.map((t) => t.id);
+  const [prevPost, nextPost, relatedPosts] = await Promise.all([
     prisma.post.findFirst({
       where: {
         published: true,
-        createdAt: {
-          lt: post.createdAt,
-        },
+        createdAt: { lt: post.createdAt },
       },
-      orderBy: {
-        createdAt: "desc",
-      },
-      select: {
-        id: true,
-        title: true,
-        slug: true,
-      },
+      orderBy: { createdAt: "desc" },
+      select: { id: true, title: true, slug: true },
     }),
-    // 下一篇：createdAt 比當前文章大，按 createdAt 升序取第一個
     prisma.post.findFirst({
       where: {
         published: true,
-        createdAt: {
-          gt: post.createdAt,
-        },
+        createdAt: { gt: post.createdAt },
       },
-      orderBy: {
-        createdAt: "asc",
-      },
-      select: {
-        id: true,
-        title: true,
-        slug: true,
-      },
+      orderBy: { createdAt: "asc" },
+      select: { id: true, title: true, slug: true },
     }),
+    tagIds.length > 0
+      ? prisma.post.findMany({
+          where: {
+            published: true,
+            id: { not: post.id },
+            tags: { some: { id: { in: tagIds } } },
+          },
+          orderBy: { updatedAt: "desc" },
+          take: 5,
+          select: { id: true, title: true, slug: true },
+        })
+      : Promise.resolve([]),
   ]);
 
   const formatDate = (date: Date) => {
@@ -254,6 +248,25 @@ export default async function BlogPostPage({
                   <MarkdownRenderer content={post.content} postId={post.id} editable={!!session} />
                 </div>
                 <HighlightScroll highlight={highlight} occurrence={occurrence} contentSelector="[data-post-content]" />
+
+                {/* Related posts (by tag) */}
+                {relatedPosts.length > 0 && (
+                  <div className="border-t border-slate-200 pt-6">
+                    <h3 className="mb-3 text-sm font-medium uppercase tracking-wider text-slate-500">Related</h3>
+                    <ul className="space-y-2">
+                      {relatedPosts.map((r) => (
+                        <li key={r.id}>
+                          <Link
+                            href={`/blog/${r.slug}`}
+                            className="text-slate-700 hover:text-slate-900 hover:underline"
+                          >
+                            {r.title}
+                          </Link>
+                        </li>
+                      ))}
+                    </ul>
+                  </div>
+                )}
 
                 {/* 上一篇/下一篇導覽 */}
                 <div className="border-t border-slate-200 pt-6">

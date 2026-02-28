@@ -404,7 +404,14 @@ export default function SiteSettingsPage() {
         </CardContent>
       </Card>
 
-      {message && <p className={message.type === "success" ? "text-green-600" : "text-red-600"}>{message.text}</p>}
+      {message && (
+        <p className={message.type === "success" ? "text-green-600" : "text-red-600"}>
+          {message.text}
+          {message.type === "success" && typeof process.env.NEXT_PUBLIC_SITE_URL === "string" && (
+            <> — <a href={process.env.NEXT_PUBLIC_SITE_URL} target="_blank" rel="noopener noreferrer" className="underline">View on site</a></>
+          )}
+        </p>
+      )}
       <Button onClick={save} disabled={saving}>
         {saving ? "Saving..." : "Save"}
       </Button>

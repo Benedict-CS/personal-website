@@ -56,4 +56,5 @@ Other docs (e.g. CUSTOM_PAGES, EDITABLE_SITE_ROADMAP, MONITORING, RECOMMENDATION
 
 ## What else can be done
 
-See **[WHATS_NEXT.md](WHATS_NEXT.md)** for a checklist of optional improvements: CI (run tests, fix typo), more unit/e2e tests, archiving internal docs, CD when ready, backup cron, rate limiting, security headers, diagram placeholders, and roadmap items (block editor, monitoring, i18n).
+- **[WHATS_NEXT.md](WHATS_NEXT.md)** — CI, tests, docs, CD, backup, security, roadmap.
+- **[IDEAS_AND_OPTIMIZATIONS.md](IDEAS_AND_OPTIMIZATIONS.md)** — Backlog of **new features**, **management/ops**, **performance**, **UI/UX** (dashboard + public site), **security**, and **quick wins**. Use it when you want to add practical functionality or polish.

@@ -253,7 +253,7 @@ export default function EditPostPage({
     return () => clearTimeout(timer);
   }, [content, title, slug, description, tags, published, pinned, publishedDate, category, id, isSubmitting]);
 
-  // Ctrl/Cmd+S to save
+  // Ctrl/Cmd+S to save; Ctrl/Cmd+Enter to publish (set published and save)
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
       if ((e.ctrlKey || e.metaKey) && e.key === "s") {
@@ -262,10 +262,18 @@ export default function EditPostPage({
           formRef.current?.requestSubmit();
         }
       }
+      if ((e.ctrlKey || e.metaKey) && e.key === "Enter") {
+        e.preventDefault();
+        if (!isSubmitting && !isDeleting && !published) {
+          setPublished(true);
+          setDirty(true);
+          setTimeout(() => formRef.current?.requestSubmit(), 0);
+        }
+      }
     };
     window.addEventListener("keydown", handleKeyDown);
     return () => window.removeEventListener("keydown", handleKeyDown);
-  }, [isSubmitting, isDeleting]);
+  }, [isSubmitting, isDeleting, published]);
 
   // Mark form as dirty when user edits (ensures "Unsaved changes" shows)
   const markDirty = () => {
@@ -935,7 +943,12 @@ export default function EditPostPage({
               <div className="sticky bottom-0 -mx-6 -mb-6 mt-6 flex items-center justify-between gap-4 border-t border-slate-200 bg-slate-50 px-6 py-4 shadow-[0_-4px_6px_-1px_rgba(0,0,0,0.05)]">
                 <div className="text-sm font-medium">
                   {savedMessage && (
-                    <span className="text-green-700">{savedMessage}</span>
+                    <span className="text-green-700">
+                      {savedMessage}
+                      {savedMessage === "Saved" && slug && (
+                        <> — <a href={`/blog/${slug}`} target="_blank" rel="noopener noreferrer" className="underline hover:text-green-800">View on site</a></>
+                      )}
+                    </span>
                   )}
                   {dirty && !savedMessage && (
                     <span className="text-amber-700">You have unsaved changes — save or cancel to leave.</span>

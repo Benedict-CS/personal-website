@@ -6,10 +6,10 @@ A full-stack personal website and blog with a **no-code-friendly dashboard**: pu
 
 ## Features
 
-- **Public site**: Home, About, Blog, Contact, custom Markdown pages, RSS, sitemap, search.
+- **Public site**: Home, About, Blog, Contact, custom Markdown pages, RSS (and per-tag at `/feed/tag/[tag]`), sitemap, search, related posts by tag, reading progress, skip-to-content, print-friendly styles.
 - **Dashboard** (no code required): Site settings (name, logo, nav, footer, meta, OG image), first-time setup wizard, Home/About/Contact/Custom pages editing, posts CRUD, media library, tags, analytics, CV upload.
 - **Auth**: NextAuth.js (credentials); session expiry and re-login flow.
-- **Content**: Posts (Markdown, tags, categories, draft/publish, version history, preview links), custom pages (slug-based), editable About (education/experience/projects/skills/achievements), configurable home sections (order and visibility).
+- **Content**: Posts (Markdown, tags, categories, draft/publish, version history, preview links with optional expiry), custom pages (slug-based), editable About (education/experience/projects/skills/achievements), configurable home sections (order and visibility). Blog list and post pages use ISR (`revalidate = 60`); cache is invalidated on post create/update/delete.
 - **Media**: S3-compatible storage (RustFS); upload from dashboard, insert into posts/pages.
 - **CI**: GitHub Actions (lint, build, Prisma generate). CD (auto-deploy on push to main) is optional and documented; configure when your server and SSH are ready.
 

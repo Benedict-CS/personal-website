@@ -4,7 +4,7 @@ import { siteConfig } from "@/config/site";
 import { getSiteConfigForRender } from "@/lib/site-config";
 import BlogPageClient from "./page-client";
 
-export const dynamic = "force-dynamic";
+export const revalidate = 60;
 
 export async function generateMetadata(): Promise<Metadata> {
   const config = await getSiteConfigForRender();
