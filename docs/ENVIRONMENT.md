@@ -42,6 +42,17 @@ or the project script:
 ./scripts/migrate.sh
 ```
 
+### Connection pooling (high traffic)
+
+Under high concurrency, you may hit PostgreSQL connection limits. Two options:
+
+1. **Prisma connection limit** — Add `?connection_limit=10` (or another number) to `DATABASE_URL`, e.g.  
+   `postgresql://user:pass@host:5432/blog?connection_limit=10`. This caps how many connections the app opens to Postgres.
+
+2. **PgBouncer** — Run [PgBouncer](https://www.pgbouncer.org/) in front of Postgres and point the app’s `DATABASE_URL` at PgBouncer (e.g. port 6432). Use **transaction** or **session** mode; run migrations with a direct Postgres URL (not through PgBouncer). Document the PgBouncer connection string and the direct Postgres URL for migrations in your runbook.
+
+No code changes are required; only `DATABASE_URL` (and optionally infrastructure) change.
+
 ---
 
 ## RustFS (S3-compatible storage)
@@ -67,6 +78,15 @@ The app container receives `S3_ENDPOINT=http://rustfs:9000` and `S3_REGION=us-ea
 | `NEXTAUTH_URL` | Canonical URL of the site (no trailing slash). | `https://benedict.winlab.tw` |
 | `NEXT_PUBLIC_SITE_URL` | Same as `NEXTAUTH_URL`; used in client-side links and sitemap. | Same value |
 
+### Login CAPTCHA (optional)
+
+After a few failed login attempts, the sign-in page requires a [Cloudflare Turnstile](https://developers.cloudflare.com/turnstile/) challenge. If these are not set, CAPTCHA is skipped (rate limit and lockout still apply).
+
+| Variable | Description | Example |
+|----------|-------------|---------|
+| `NEXT_PUBLIC_TURNSTILE_SITE_KEY` | Turnstile site key (public). | From Cloudflare dashboard |
+| `TURNSTILE_SECRET_KEY` | Turnstile secret key (server-side verification). | From Cloudflare dashboard |
+
 ---
 
 ## Contact form
@@ -80,6 +100,10 @@ The contact form can use **Resend** (recommended) or **SMTP**. Set the variables
 | `RESEND_API_KEY` | API key from [resend.com](https://resend.com). | `re_xxxxxxxx...` |
 | `RESEND_FROM_EMAIL` | Sender address (must be verified in Resend). | `onboarding@resend.dev` or your domain |
 | `CONTACT_EMAIL` | Recipient address for form submissions. | `you@example.com` |
+| `CONTACT_CC` | Optional. CC addresses (comma-separated). | `team@example.com` |
+| `CONTACT_BCC` | Optional. BCC addresses (comma-separated). | `archive@example.com` |
+
+Emails are sent with **Reply-To** set to the submitter’s email so you can reply directly.
 
 ### Option B: SMTP (e.g. Gmail)
 
@@ -93,6 +117,30 @@ For Gmail you must use an [App Password](https://support.google.com/accounts/ans
 | `SMTP_PASS` | SMTP password (app password for Gmail). | 16-character app password |
 | `SMTP_FROM` | From header. | `Contact Form <you@gmail.com>` |
 | `CONTACT_EMAIL` | Recipient for form submissions. | `you@example.com` |
+| `CONTACT_CC` | Optional. CC addresses (comma-separated). | `team@example.com` |
+| `CONTACT_BCC` | Optional. BCC addresses (comma-separated). | `archive@example.com` |
+
+---
+
+## Blog comments (Giscus)
+
+Comments under blog posts use [Giscus](https://giscus.app) (GitHub Discussions). If these variables are not set, the comment block is hidden.
+
+**Setup:**
+
+1. **Enable Discussions** on your repo (you already did this).
+2. **Install the [Giscus app](https://github.com/apps/giscus)** on the repo so visitors can post comments via GitHub.
+3. Open **[giscus.app](https://giscus.app)** → enter `Benedict-CS/personal-website` → choose **Discussion mapping**: “pathname” → choose **Category** (e.g. “Announcements” or create “Comments”) → copy the generated IDs.
+4. Add to `.env`:
+
+| Variable | Description | Example |
+|----------|-------------|---------|
+| `NEXT_PUBLIC_GISCUS_REPO` | `owner/repo` | `Benedict-CS/personal-website` |
+| `NEXT_PUBLIC_GISCUS_REPO_ID` | From giscus.app | `R_kgDO...` |
+| `NEXT_PUBLIC_GISCUS_CATEGORY` | Category name | `Announcements` or `Comments` |
+| `NEXT_PUBLIC_GISCUS_CATEGORY_ID` | From giscus.app | `DIC_kwDO...` |
+
+Restart the app (or rebuild) after changing these. Comments will appear at the bottom of each blog post.
 
 ---
 

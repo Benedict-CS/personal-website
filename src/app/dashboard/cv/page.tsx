@@ -18,7 +18,7 @@ export default function CVPage() {
   }>({ type: null, message: "" });
   const [cvExists, setCvExists] = useState(false);
 
-  // 檢查 CV 是否存在
+  // Check if CV exists
   useEffect(() => {
     const checkCVExists = async () => {
       try {
@@ -80,7 +80,7 @@ export default function CVPage() {
       setFile(null);
       setCvExists(true);
       
-      // 重置 file input
+      // Reset file input
       const fileInput = document.getElementById("cv-file") as HTMLInputElement;
       if (fileInput) {
         fileInput.value = "";

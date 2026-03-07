@@ -13,10 +13,10 @@ export async function GET(request: NextRequest) {
     const fullContent = request.nextUrl.searchParams.get("full") === "1";
     const baseUrl = siteConfig.url;
 
-    // 查詢最新的 20 篇已發布文章
+    const now = new Date();
     const posts = await prisma.post.findMany({
       where: {
-        published: true,
+        OR: [{ published: true }, { publishedAt: { lte: now } }],
       },
       orderBy: {
         createdAt: "desc",
@@ -33,12 +33,12 @@ export async function GET(request: NextRequest) {
       },
     });
 
-    // 格式化日期為 RSS 標準格式 (RFC 822)
+    // Format date per RSS RFC 822
     const formatRSSDate = (date: Date): string => {
       return new Date(date).toUTCString();
     };
 
-    // 生成描述（優先使用 description 欄位，否則使用內容前 200 字）
+    // Description: description field or first 200 chars of content
     const generateDescription = (content: string, description: string | null): string => {
       if (description) {
         return description;

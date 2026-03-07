@@ -3,6 +3,8 @@ import { revalidatePath } from "next/cache";
 import { requireSession } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 import { Prisma } from "@prisma/client";
+import { auditLog } from "@/lib/audit";
+import { getClientIP } from "@/lib/rate-limit";
 
 export async function GET(request: NextRequest) {
   try {
@@ -11,9 +13,18 @@ export async function GET(request: NextRequest) {
     const search = searchParams.get("search");
     const tag = searchParams.get("tag");
 
-    const where: Record<string, unknown> = {};
+    const now = new Date();
+    const where: Prisma.PostWhereInput = {};
     if (published !== null) {
-      where.published = published === "true";
+      if (published === "true") {
+        // Show posts that are published OR have publishedAt <= now (scheduled publish)
+        where.OR = [
+          { published: true },
+          { publishedAt: { lte: now } },
+        ];
+      } else {
+        where.published = false;
+      }
     }
     if (tag) {
       where.tags = {
@@ -32,7 +43,7 @@ export async function GET(request: NextRequest) {
       try {
         const q =
           publishedOnly
-            ? Prisma.sql`SELECT id FROM "Post" WHERE published = true AND search_vector @@ plainto_tsquery('english', ${searchTerm}) ORDER BY ts_rank(search_vector, plainto_tsquery('english', ${searchTerm})) DESC`
+            ? Prisma.sql`SELECT id FROM "Post" WHERE (published = true OR ("publishedAt" IS NOT NULL AND "publishedAt" <= now())) AND search_vector @@ plainto_tsquery('english', ${searchTerm}) ORDER BY ts_rank(search_vector, plainto_tsquery('english', ${searchTerm})) DESC`
             : Prisma.sql`SELECT id FROM "Post" WHERE search_vector @@ plainto_tsquery('english', ${searchTerm}) ORDER BY ts_rank(search_vector, plainto_tsquery('english', ${searchTerm})) DESC`;
         const rows = await prisma.$queryRaw<{ id: string }[]>(q);
         ftsIds = rows.map((r) => r.id);
@@ -42,7 +53,6 @@ export async function GET(request: NextRequest) {
 
       const tagMatchPosts = await prisma.post.findMany({
         where: {
-          ...(publishedOnly ? { published: true } : {}),
           ...where,
           tags: { some: { name: { contains: search.trim(), mode: "insensitive" } } },
         },
@@ -52,16 +62,15 @@ export async function GET(request: NextRequest) {
 
       const mergedIds = [...new Set([...ftsIds, ...tagMatchIds])];
       if (mergedIds.length === 0 && ftsIds.length === 0 && tagMatchIds.length === 0) {
-        const fallbackWhere = {
-          ...where,
-          ...(publishedOnly ? { published: true } : {}),
-          OR: [
-            { title: { contains: search.trim(), mode: "insensitive" as const } },
-            { content: { contains: search.trim(), mode: "insensitive" as const } },
-            { description: { contains: search.trim(), mode: "insensitive" as const } },
-            { tags: { some: { name: { contains: search.trim(), mode: "insensitive" as const } } } },
-          ],
-        };
+        const searchOr = [
+          { title: { contains: search.trim(), mode: "insensitive" as const } },
+          { content: { contains: search.trim(), mode: "insensitive" as const } },
+          { description: { contains: search.trim(), mode: "insensitive" as const } },
+          { tags: { some: { name: { contains: search.trim(), mode: "insensitive" as const } } } },
+        ];
+        const fallbackWhere: Prisma.PostWhereInput = Object.keys(where).length
+          ? { AND: [where, { OR: searchOr }] }
+          : { OR: searchOr };
         const posts = await prisma.post.findMany({
           where: fallbackWhere,
           include: { tags: true },
@@ -107,11 +116,9 @@ export async function POST(request: NextRequest) {
     const auth = await requireSession();
     if ("unauthorized" in auth) return auth.unauthorized;
 
-    // 解析 request body
     const body = await request.json();
     const { title, slug, content, description, published, tags, category } = body;
 
-    // 驗證必要欄位
     if (!title || !slug || !content) {
       return NextResponse.json(
         { error: "Missing required fields: title, slug, content" },
@@ -119,18 +126,14 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    // 處理 tags：將逗號分隔的字串轉換為 connectOrCreate 陣列
     const tagConnections = tags
       ? tags
           .split(",")
           .map((tag: string) => tag.trim())
           .filter((tag: string) => tag.length > 0)
           .map((tagName: string) => {
-            // 去除標籤名稱前後的引號（單引號和雙引號）
             let cleanedTagName = tagName.trim();
-            // 去除開頭的引號
             cleanedTagName = cleanedTagName.replace(/^["']+/, "");
-            // 去除結尾的引號
             cleanedTagName = cleanedTagName.replace(/["']+$/, "");
             const tagSlug = cleanedTagName
               .toLowerCase()
@@ -145,7 +148,6 @@ export async function POST(request: NextRequest) {
           })
       : [];
 
-    // 建立新文章
     // @ts-ignore - category and description fields added via migration
     const post = await prisma.post.create({
       data: {
@@ -167,6 +169,13 @@ export async function POST(request: NextRequest) {
     });
 
     revalidatePath("/blog");
+    await auditLog({
+      action: "post.create",
+      resourceType: "post",
+      resourceId: post.id,
+      details: post.slug,
+      ip: getClientIP(request),
+    });
     return NextResponse.json(post, { status: 201 });
   } catch (error) {
     console.error("Error creating post:", error);

@@ -303,15 +303,106 @@
 }
 
 .prose img {
-  @apply rounded-lg my-4 max-w-full;
+  @apply rounded-lg max-w-full;
+  margin-top: 0;
+  margin-bottom: 0;
 }
 
-/* Tighten gap when a paragraph immediately follows an image (caption) */
-.prose .image-block:has(+ p) {
-  margin-bottom: 0.25rem;
+/* Keep image + caption tight: no gap below image, minimal gap before caption */
+.prose .image-block {
+  margin-top: 0.5rem;
+  margin-bottom: 0;
+  display: block;
+}
+/* Whatever follows an image (caption or other) sits close */
+.prose .image-block + * {
+  margin-top: 0.2rem !important;
 }
 .prose .image-block + p {
-  margin-top: 0;
+  margin-bottom: 0.5rem;
+}
+
+/* HTML figure/figcaption: image and caption tight */
+.prose figure {
+  margin: 0.5rem 0 0;
+}
+.prose figure img {
+  margin: 0;
+  display: block;
+}
+.prose figcaption {
+  margin-top: 0.2rem;
+  margin-bottom: 0.5rem;
+  font-size: 0.875rem;
+  color: var(--tw-prose-body, #475569);
+}
+.prose figure p {
+  margin-top: 0.2rem;
+  margin-bottom: 0.5rem;
+}
+
+/* Custom flex-container / item: image and caption as close as possible */
+.prose .flex-container .item .image-block,
+.prose .flex-container .item4 .image-block,
+.prose .flex-container .item5 .image-block,
+.prose .flex-container .item6 .image-block,
+.prose .flex-container .item7 .image-block,
+.prose .flex-container .item2 .image-block {
+  margin: 0 !important;
+  padding: 0 !important;
+  display: block !important;
+}
+/* Remove placeholder min-height inside grid items (stops extra gap below image) */
+.prose .flex-container .item .image-block [class*="min-h"],
+.prose .flex-container .item4 .image-block [class*="min-h"],
+.prose .flex-container .item5 .image-block [class*="min-h"],
+.prose .flex-container .item6 .image-block [class*="min-h"],
+.prose .flex-container .item7 .image-block [class*="min-h"],
+.prose .flex-container .item2 .image-block [class*="min-h"] {
+  min-height: 0 !important;
+}
+.prose .flex-container .item .image-block button,
+.prose .flex-container .item4 .image-block button,
+.prose .flex-container .item5 .image-block button,
+.prose .flex-container .item6 .image-block button,
+.prose .flex-container .item7 .image-block button,
+.prose .flex-container .item2 .image-block button {
+  margin: 0 !important;
+  padding: 0 !important;
+  display: block !important;
+}
+.prose .flex-container .item p,
+.prose .flex-container .item4 p,
+.prose .flex-container .item5 p,
+.prose .flex-container .item6 p,
+.prose .flex-container .item7 p,
+.prose .flex-container .item2 p {
+  margin: 0 !important;
+  padding-top: 0.2rem !important;
+  padding-bottom: 0.25rem !important;
+}
+/* Zero gap between image and caption inside .item */
+.prose .flex-container .item > * + *,
+.prose .flex-container .item4 > * + *,
+.prose .flex-container .item5 > * + *,
+.prose .flex-container .item6 > * + *,
+.prose .flex-container .item7 > * + *,
+.prose .flex-container .item2 > * + * {
+  margin-top: 0 !important;
+}
+/* Collapse empty paragraphs inside grid items (markdown often adds one between image and caption) */
+.prose .flex-container .item p:empty,
+.prose .flex-container .item4 p:empty,
+.prose .flex-container .item5 p:empty,
+.prose .flex-container .item6 p:empty,
+.prose .flex-container .item7 p:empty,
+.prose .flex-container .item2 p:empty {
+  margin: 0 !important;
+  padding: 0 !important;
+  min-height: 0 !important;
+  height: 0 !important;
+  overflow: hidden !important;
+  line-height: 0 !important;
 }
 
 .prose strong {
@@ -347,7 +438,7 @@
   @apply border border-slate-300 px-4 py-2 text-slate-700;
 }
 
-/* Override highlight.js - 強制所有 hljs 相關背景透明，只使用 pre 的淺色背景 */
+/* Override highlight.js: transparent hljs background, use pre background only */
 pre .hljs,
 pre code.hljs,
 .prose pre .hljs,
@@ -360,7 +451,7 @@ code.hljs {
   padding: 0 !important;
 }
 
-/* 確保所有子元素和巢狀元素背景透明 */
+/* Ensure nested hljs elements stay transparent */
 pre .hljs *,
 pre code.hljs *,
 .prose pre .hljs *,
@@ -371,7 +462,7 @@ code.hljs * {
   background: transparent !important;
 }
 
-/* 針對 highlight.js 為不同語言添加的 class 也強制透明背景 */
+/* Force transparent background for language-specific hljs classes */
 pre code[class*="language-"],
 .prose pre code[class*="language-"],
 pre .hljs[class*="language-"],

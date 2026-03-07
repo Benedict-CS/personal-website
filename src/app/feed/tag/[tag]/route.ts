@@ -24,9 +24,10 @@ export async function GET(
       return NextResponse.json({ error: "Tag not found" }, { status: 404 });
     }
 
+    const now = new Date();
     const posts = await prisma.post.findMany({
       where: {
-        published: true,
+        OR: [{ published: true }, { publishedAt: { lte: now } }],
         tags: { some: { id: tag.id } },
       },
       orderBy: { createdAt: "desc" },

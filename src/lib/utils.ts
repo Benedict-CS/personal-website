@@ -55,3 +55,20 @@ export function stripMarkdown(content: string): string {
 
   return text;
 }
+
+const SLUG_PATTERN = /^[a-z0-9]+(?:-[a-z0-9]+)*$/;
+
+/** Slug format: lowercase, letters, numbers, hyphens only. No spaces or underscores. */
+export function validateSlug(slug: string): { valid: boolean; message?: string } {
+  const t = slug.trim();
+  if (!t) return { valid: false, message: "Slug is required" };
+  if (!SLUG_PATTERN.test(t)) {
+    return { valid: false, message: "Use only lowercase letters, numbers, and hyphens (e.g. my-post-1)" };
+  }
+  return { valid: true };
+}
+
+/** Normalize slug for storage: lowercase, replace spaces/special chars with hyphens. */
+export function normalizeSlug(slug: string): string {
+  return slug.trim().toLowerCase().replace(/\s+/g, "-").replace(/[^a-z0-9-]/g, "").replace(/^-+|-+$/g, "");
+}

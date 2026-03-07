@@ -2,6 +2,8 @@ import { NextRequest, NextResponse } from "next/server";
 import { revalidatePath } from "next/cache";
 import { requireSession } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
+import { auditLog } from "@/lib/audit";
+import { getClientIP } from "@/lib/rate-limit";
 
 export async function GET(
   request: NextRequest,
@@ -51,7 +53,7 @@ export async function PATCH(
 
     // Parse request body
     const body = await request.json();
-    const { title, slug, content, description, published, pinned, tags, createdAt, category, autosave } = body;
+    const { title, slug, content, description, published, pinned, tags, createdAt, category, autosave, publishedAt } = body;
 
     // Get current post content
     const currentPost = await prisma.post.findUnique({
@@ -283,6 +285,9 @@ export async function PATCH(
         // @ts-ignore
         category: category !== undefined ? category : undefined,
         ...(createdAt && { createdAt: new Date(createdAt) }),
+        ...(publishedAt !== undefined && publishedAt !== null && publishedAt !== ""
+          ? { publishedAt: new Date(publishedAt) }
+          : { publishedAt: null }),
         tags: {
           set: [],
           connectOrCreate: tagConnections,
@@ -295,6 +300,13 @@ export async function PATCH(
 
     revalidatePath("/blog");
     revalidatePath(`/blog/${post.slug}`);
+    await auditLog({
+      action: "post.update",
+      resourceType: "post",
+      resourceId: post.id,
+      details: post.slug,
+      ip: getClientIP(request),
+    });
     return NextResponse.json(post, { status: 200 });
   } catch (error) {
     console.error("Error updating post:", error);
@@ -323,7 +335,13 @@ export async function DELETE(
       revalidatePath("/blog");
       revalidatePath(`/blog/${existing.slug}`);
     }
-
+    await auditLog({
+      action: "post.delete",
+      resourceType: "post",
+      resourceId: id,
+      details: existing?.slug ?? undefined,
+      ip: getClientIP(request),
+    });
     return NextResponse.json({ message: "Post deleted successfully" }, { status: 200 });
   } catch (error) {
     console.error("Error deleting post:", error);

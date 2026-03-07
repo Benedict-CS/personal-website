@@ -22,7 +22,7 @@ export async function PATCH(
       );
     }
 
-    // 取得文章
+    // Fetch post
     const post = await prisma.post.findUnique({
       where: { id },
     });
@@ -34,14 +34,14 @@ export async function PATCH(
       );
     }
 
-    // 找到所有 checkbox（包含表格內和列表的）
+    // Find all checkboxes (tables and lists)
     const checkboxRegex = /\[([xX ])\]/g;
     let matches = 0;
     let updatedContent = post.content;
 
     updatedContent = post.content.replace(checkboxRegex, (match, checkMark) => {
       if (matches === checkboxIndex) {
-        // 找到目標 checkbox，toggle 狀態
+        // Toggle target checkbox
         matches++;
         return checked ? "[x]" : "[ ]";
       }
@@ -49,7 +49,7 @@ export async function PATCH(
       return match;
     });
 
-    // 更新文章（不創建版本，checkbox toggle 不算內容變更）
+    // Update post (no version; checkbox toggle is not content change)
     const updatedPost = await prisma.post.update({
       where: { id },
       data: {

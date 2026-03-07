@@ -1,18 +1,16 @@
-import { NextResponse } from "next/server";
+import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 
 /**
  * GET /api/tags
- * Returns tags that have at least one published post (for blog filter UI).
+ * Returns tags: by default only those with published posts (for blog filter).
+ * ?all=1 returns all tags (for dashboard tag merge UI).
  */
-export async function GET() {
+export async function GET(request: NextRequest) {
   try {
+    const all = request.nextUrl.searchParams.get("all") === "1";
     const tags = await prisma.tag.findMany({
-      where: {
-        posts: {
-          some: { published: true },
-        },
-      },
+      where: all ? undefined : { posts: { some: { published: true } } },
       select: { id: true, name: true, slug: true },
       orderBy: { name: "asc" },
     });

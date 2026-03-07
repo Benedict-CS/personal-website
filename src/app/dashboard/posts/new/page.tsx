@@ -13,6 +13,7 @@ import {
   CardTitle,
 } from "@/components/ui/card";
 import { InsertMediaModal } from "@/components/insert-media-modal";
+import { validateSlug } from "@/lib/utils";
 
 // Dynamic import MDEditor to avoid SSR issues
 const MDEditor = dynamic(
@@ -33,19 +34,21 @@ export default function NewPostPage() {
   const [isUploading, setIsUploading] = useState(false);
   const [showInsertMedia, setShowInsertMedia] = useState(false);
   const [dragOver, setDragOver] = useState(false);
+  const [slugError, setSlugError] = useState<string | null>(null);
+  const [titleError, setTitleError] = useState<string | null>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
-  // 自動生成 slug
+  // Auto-generate slug from title
   const handleTitleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const newTitle = e.target.value;
     setTitle(newTitle);
-    // 將標題轉換為 URL 友善格式
+    // Title to URL-friendly slug
     const generatedSlug = newTitle
       .toLowerCase()
       .trim()
-      .replace(/[^\w\s-]/g, "") // 移除特殊字元
-      .replace(/[\s_-]+/g, "-") // 將空格和底線轉換為連字號
-      .replace(/^-+|-+$/g, ""); // 移除開頭和結尾的連字號
+      .replace(/[^\w\s-]/g, "")
+      .replace(/[\s_-]+/g, "-")
+      .replace(/^-+|-+$/g, "");
     setSlug(generatedSlug);
   };
 
@@ -117,6 +120,11 @@ export default function NewPostPage() {
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+    const titleErr = title.trim() ? null : "Title is required";
+    const slugRes = validateSlug(slug);
+    setTitleError(titleErr);
+    setSlugError(slugRes.valid ? null : slugRes.message ?? null);
+    if (titleErr || !slugRes.valid) return;
     setIsSubmitting(true);
 
     try {
@@ -141,7 +149,7 @@ export default function NewPostPage() {
         throw new Error(error.error || "Failed to create post");
       }
 
-      // 成功後跳轉回文章列表頁
+      // Redirect to posts list on success
       router.push("/dashboard/posts");
     } catch (error) {
       alert(error instanceof Error ? error.message : "Failed to create post");
@@ -167,9 +175,12 @@ export default function NewPostPage() {
                   type="text"
                   placeholder="Enter post title"
                   value={title}
-                  onChange={handleTitleChange}
+                  onChange={(e) => { setTitleError(null); handleTitleChange(e); }}
+                  onBlur={() => setTitleError(title.trim() ? null : "Title is required")}
                   required
+                  className={titleError ? "border-red-500" : ""}
                 />
+                {titleError && <p className="text-xs text-red-600">{titleError}</p>}
               </div>
 
               <div className="space-y-2">
@@ -181,9 +192,15 @@ export default function NewPostPage() {
                   type="text"
                   placeholder="post-url-slug"
                   value={slug}
-                  onChange={(e) => setSlug(e.target.value)}
+                  onChange={(e) => { setSlugError(null); setSlug(e.target.value); }}
+                  onBlur={() => {
+                    const r = validateSlug(slug);
+                    setSlugError(r.valid ? null : r.message ?? null);
+                  }}
                   required
+                  className={slugError ? "border-red-500" : ""}
                 />
+                {slugError && <p className="text-xs text-red-600">{slugError}</p>}
               </div>
 
               <div className="space-y-2">

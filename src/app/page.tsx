@@ -61,9 +61,10 @@ const defaultHomeContent: HomeContent = {
 };
 
 export default async function Home() {
+  const now = new Date();
   const [latestPosts, homeRow, siteConfig] = await Promise.all([
     prisma.post.findMany({
-      where: { published: true },
+      where: { OR: [{ published: true }, { publishedAt: { lte: now } }] },
       include: { tags: true },
       orderBy: [{ pinned: "desc" }, { createdAt: "desc" }],
       take: 3,
@@ -109,7 +110,7 @@ export default async function Home() {
         : "min-h-screen bg-gradient-to-br from-slate-50 via-white to-slate-100";
 
   const heroSection = (
-    <section key="hero" className={`container mx-auto max-w-6xl px-4 ${templateId === "minimal" ? "py-12 md:py-16" : "py-20 md:py-28 lg:py-32"}`}>
+    <section key="hero" className={`container mx-auto max-w-6xl px-6 ${templateId === "minimal" ? "py-12 md:py-16" : "py-20 md:py-28 lg:py-32"}`}>
       <div className="mx-auto max-w-4xl text-center">
         <h1 className="mb-6 text-4xl font-bold tracking-tight text-slate-900 sm:text-5xl md:text-6xl lg:text-7xl">
           {homeContent.heroTitle ?? defaultHomeContent.heroTitle}
@@ -139,7 +140,7 @@ export default async function Home() {
   );
 
   const latestPostsSection = (
-    <section key="latestPosts" className="container mx-auto max-w-6xl px-4 py-16">
+    <section key="latestPosts" className="container mx-auto max-w-6xl px-6 py-16">
       <div className="w-full">
         <h2 className="mb-8 text-3xl font-bold text-slate-900">Latest Articles</h2>
         {latestPosts.length === 0 ? (
@@ -189,7 +190,7 @@ export default async function Home() {
   );
 
   const skillsSection = (
-    <section key="skills" className="container mx-auto max-w-6xl px-4 py-16">
+    <section key="skills" className="container mx-auto max-w-6xl px-6 py-16">
       <div className="mx-auto max-w-4xl">
         <h2 className="mb-8 text-center text-3xl font-bold text-slate-900">Technical Skills</h2>
         <div className="flex flex-wrap justify-center gap-3">

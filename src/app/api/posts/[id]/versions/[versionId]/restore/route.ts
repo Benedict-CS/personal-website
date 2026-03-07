@@ -2,7 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { requireSession } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 
-// 恢復到指定版本
+// Restore post to a given version
 export async function POST(
   request: NextRequest,
   {
@@ -17,20 +17,20 @@ export async function POST(
 
     const { id, versionId } = await params;
 
-    // 取得要恢復的版本
+    // Fetch the version to restore
     let version;
     try {
       version = await prisma.postVersion.findUnique({
         where: {
           id: versionId,
-          postId: id, // 確保版本屬於該文章
+          postId: id,
         },
       });
     } catch (error: unknown) {
       const err = error as { code?: string; message?: string };
       if (err.code === "P2021" || err.message?.includes("does not exist")) {
         return NextResponse.json(
-          { error: "版本控制功能尚未啟用。請先執行資料庫遷移：npx prisma migrate deploy" },
+          { error: "Version history is not enabled. Run: npx prisma migrate deploy" },
           { status: 503 }
         );
       }
@@ -44,7 +44,7 @@ export async function POST(
       );
     }
 
-    // 先保存當前版本（如果與要恢復的版本不同）
+    // Save current version first if different
     const currentPost = await prisma.post.findUnique({
       where: { id: id },
       include: { tags: true },
@@ -61,7 +61,7 @@ export async function POST(
       currentPost.tags.map((t) => t.name).sort()
     );
 
-    // 檢查是否有變更
+    // Check if there are changes
     const hasChanges =
       currentPost.title !== version.title ||
       currentPost.content !== version.content ||
@@ -70,7 +70,7 @@ export async function POST(
       currentTagsJson !== version.tags;
 
     if (hasChanges) {
-      // 保存當前版本
+      // Save current version
       const maxVersion = await prisma.postVersion.findFirst({
         where: { postId: id },
         orderBy: { versionNumber: "desc" },
@@ -92,10 +92,10 @@ export async function POST(
       });
     }
 
-    // 解析版本中的標籤
+    // Parse tags from version
     const versionTags = JSON.parse(version.tags) as string[];
 
-    // 處理標籤連接
+    // Connect tags
     const tagConnections = versionTags.map((tagName: string) => {
       const tagSlug = tagName
         .toLowerCase()
@@ -109,7 +109,7 @@ export async function POST(
       };
     });
 
-    // 恢復文章到指定版本
+    // Restore post to version
     const restoredPost = await prisma.post.update({
       where: {
         id: id,

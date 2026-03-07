@@ -10,14 +10,14 @@ export async function GET(
   try {
     const { filename } = await params;
 
-    // 安全檢查：只允許特定格式的文件
+    // Allow only specific file extensions
     const allowedExtensions = [".jpg", ".jpeg", ".png", ".gif", ".webp"];
     const ext = path.extname(filename).toLowerCase();
     if (!allowedExtensions.includes(ext)) {
       return new NextResponse("Invalid file type", { status: 400 });
     }
 
-    // 防止路徑遍歷攻擊
+    // Prevent path traversal
     if (filename.includes("..") || filename.includes("/") || filename.includes("\\")) {
       return new NextResponse("Invalid filename", { status: 400 });
     }
@@ -30,7 +30,7 @@ export async function GET(
 
     const fileBuffer = await readFile(filePath);
 
-    // 根據文件擴展名確定 Content-Type
+    // Set Content-Type by extension
     const contentTypeMap: Record<string, string> = {
       ".jpg": "image/jpeg",
       ".jpeg": "image/jpeg",

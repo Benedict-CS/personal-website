@@ -1,20 +1,23 @@
 "use client";
 
 import { useState, useEffect } from "react";
+import { usePathname } from "next/navigation";
 import { BreadcrumbProvider } from "@/contexts/breadcrumb-context";
 import { LeaveGuardProvider } from "@/contexts/leave-guard-context";
 import { DashboardNav } from "./dashboard-nav";
 import { DashboardBreadcrumbs } from "./dashboard-breadcrumbs";
 import { DashboardCommandPalette } from "./dashboard-command-palette";
 import { SessionExpiryBanner } from "@/components/session-expiry-banner";
-import { PanelLeftClose, PanelLeftOpen } from "lucide-react";
+import { PanelLeftClose, PanelLeftOpen, Menu } from "lucide-react";
 import { Button } from "@/components/ui/button";
 
 const STORAGE_KEY = "dashboard-sidebar-collapsed";
 
 export function DashboardShell({ children }: { children: React.ReactNode }) {
+  const pathname = usePathname();
   const [collapsed, setCollapsed] = useState(false);
   const [mounted, setMounted] = useState(false);
+  const [mobileOpen, setMobileOpen] = useState(false);
 
   useEffect(() => {
     setMounted(true);
@@ -29,6 +32,10 @@ export function DashboardShell({ children }: { children: React.ReactNode }) {
       // ignore
     }
   }, [mounted]);
+
+  useEffect(() => {
+    setMobileOpen(false);
+  }, [pathname]);
 
   const toggle = () => {
     setCollapsed((prev) => {
@@ -50,9 +57,39 @@ export function DashboardShell({ children }: { children: React.ReactNode }) {
     <BreadcrumbProvider>
     <>
     <DashboardCommandPalette />
+    {/* Mobile menu button: visible only on small screens */}
+    <div className="fixed left-4 top-20 z-30 md:hidden">
+      <Button
+        type="button"
+        variant="outline"
+        size="icon"
+        onClick={() => setMobileOpen((o) => !o)}
+        aria-label="Open menu"
+      >
+        <Menu className="h-5 w-5" />
+      </Button>
+    </div>
+    {/* Mobile drawer overlay */}
+    {mobileOpen && (
+      <div
+        className="fixed inset-0 z-20 bg-slate-900/20 md:hidden"
+        aria-hidden
+        onClick={() => setMobileOpen(false)}
+      />
+    )}
+    {/* Mobile drawer */}
+    <aside
+      className={`fixed left-0 top-16 z-20 h-[calc(100vh-4rem)] w-64 border-r border-slate-200 bg-slate-50 shadow-xl transition-transform duration-200 ease-out md:hidden ${
+        mobileOpen ? "translate-x-0" : "-translate-x-full"
+      }`}
+    >
+      <div className="flex flex-col p-4 overflow-y-auto">
+        <DashboardNav collapsed={false} />
+      </div>
+    </aside>
     <div className="flex flex-1 min-h-0">
       <aside
-        className={`fixed left-0 top-16 h-[calc(100vh-4rem)] border-r border-slate-200 bg-slate-50 z-10 transition-[width] duration-200 ease-out ${sidebarWidth} flex flex-col overflow-hidden`}
+        className={`hidden md:flex fixed left-0 top-16 h-[calc(100vh-4rem)] border-r border-slate-200 bg-slate-50 z-10 transition-[width] duration-200 ease-out ${sidebarWidth} flex-col overflow-hidden`}
       >
         <div className={`flex flex-col flex-1 min-h-0 ${collapsed ? "p-2" : "p-6"} overflow-y-auto`}>
           <div className={`flex items-center shrink-0 ${collapsed ? "justify-center" : "justify-between"} mb-4`}>
@@ -79,7 +116,7 @@ export function DashboardShell({ children }: { children: React.ReactNode }) {
         </div>
       </aside>
       <main
-        className={`${mainMargin} flex-1 min-h-0 bg-slate-50 transition-[margin] duration-200 ease-out`}
+        className={`flex-1 min-h-0 bg-slate-50 pl-14 md:pl-0 ${collapsed ? "md:ml-16" : "md:ml-64"} transition-[margin] duration-200 ease-out`}
         style={{ ["--dashboard-sidebar-width" as string]: collapsed ? "4rem" : "16rem" }}
       >
         <div className="flex flex-1 flex-col min-h-0">

@@ -3,12 +3,29 @@ import { redirect } from "next/navigation";
 import { prisma } from "@/lib/prisma";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { DashboardBackupTrigger } from "@/components/dashboard-backup-trigger";
+import { DashboardExportImport } from "@/components/dashboard-export-import";
 import { Layout, BarChart3, Image as ImageIcon, PlusCircle, ExternalLink } from "lucide-react";
+import { Prisma } from "@prisma/client";
 
 export const dynamic = "force-dynamic";
 
+function formatBytes(bytes: number): string {
+  if (bytes < 1024) return `${bytes} B`;
+  if (bytes < 1024 * 1024) return `${(bytes / 1024).toFixed(1)} KB`;
+  return `${(bytes / (1024 * 1024)).toFixed(1)} MB`;
+}
+
 export default async function DashboardHomePage() {
+  let dbSizeBytes: number | null = null;
+  try {
+    const result = await prisma.$queryRaw<[{ pg_database_size: bigint }]>(
+      Prisma.sql`SELECT pg_database_size(current_database()) AS pg_database_size`
+    );
+    if (result[0]) dbSizeBytes = Number(result[0].pg_database_size);
+  } catch {
+    // ignore
+  }
+
   const [draftCount, publishedCount, totalPosts, recentPosts, siteRow] = await Promise.all([
     prisma.post.count({ where: { published: false } }),
     prisma.post.count({ where: { published: true } }),
@@ -81,7 +98,15 @@ export default async function DashboardHomePage() {
               <p className="text-sm text-slate-600">Node</p>
             </CardContent>
           </Card>
-          <DashboardBackupTrigger />
+          {dbSizeBytes != null && (
+            <Card className="min-w-[120px]">
+              <CardContent className="pt-4">
+                <p className="text-sm font-mono text-slate-700">{formatBytes(dbSizeBytes)}</p>
+                <p className="text-sm text-slate-600">DB size</p>
+              </CardContent>
+            </Card>
+          )}
+          <DashboardExportImport />
         </div>
       </section>
 

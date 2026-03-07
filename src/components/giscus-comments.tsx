@@ -1,34 +1,61 @@
 "use client";
 
-import { useEffect, useRef } from "react";
+import { useEffect, useRef, useState } from "react";
 
 /**
- * Giscus comments (GitHub Discussions). Renders only when env vars are set.
- * Set in .env: NEXT_PUBLIC_GISCUS_REPO, NEXT_PUBLIC_GISCUS_REPO_ID,
- * NEXT_PUBLIC_GISCUS_CATEGORY, NEXT_PUBLIC_GISCUS_CATEGORY_ID.
+ * Giscus comments (GitHub Discussions). Loads config from /api/giscus-config so
+ * Docker runtime env works; falls back to NEXT_PUBLIC_* when available at build time.
+ * Set in .env: NEXT_PUBLIC_GISCUS_* or GISCUS_* (for Docker runtime).
  * See https://giscus.app/
  */
 export function GiscusComments({ mapping = "pathname" }: { mapping?: "pathname" | "url" | "title" | "og:title" }) {
   const containerRef = useRef<HTMLDivElement>(null);
-  const repo = process.env.NEXT_PUBLIC_GISCUS_REPO;
-  const repoId = process.env.NEXT_PUBLIC_GISCUS_REPO_ID;
-  const category = process.env.NEXT_PUBLIC_GISCUS_CATEGORY;
-  const categoryId = process.env.NEXT_PUBLIC_GISCUS_CATEGORY_ID;
+  const [config, setConfig] = useState<{
+    repo: string;
+    repoId: string;
+    category: string;
+    categoryId: string;
+  } | null>(null);
+
+  // Prefer build-time env; otherwise fetch from API (for Docker runtime)
+  useEffect(() => {
+    const repo = process.env.NEXT_PUBLIC_GISCUS_REPO;
+    const repoId = process.env.NEXT_PUBLIC_GISCUS_REPO_ID;
+    const category = process.env.NEXT_PUBLIC_GISCUS_CATEGORY;
+    const categoryId = process.env.NEXT_PUBLIC_GISCUS_CATEGORY_ID;
+    if (repo && repoId && category && categoryId) {
+      setConfig({ repo, repoId, category, categoryId });
+      return;
+    }
+    fetch("/api/giscus-config")
+      .then((r) => r.json())
+      .then((data) => {
+        if (data.enabled && data.repo && data.repoId && data.category && data.categoryId) {
+          setConfig({
+            repo: data.repo,
+            repoId: data.repoId,
+            category: data.category,
+            categoryId: data.categoryId,
+          });
+        }
+      })
+      .catch(() => {});
+  }, []);
 
   useEffect(() => {
-    if (!repo || !repoId || !category || !categoryId || !containerRef.current) return;
+    if (!config || !containerRef.current) return;
 
     const script = document.createElement("script");
     script.src = "https://giscus.app/client.js";
-    script.setAttribute("data-repo", repo);
-    script.setAttribute("data-repo-id", repoId);
-    script.setAttribute("data-category", category);
-    script.setAttribute("data-category-id", categoryId);
+    script.setAttribute("data-repo", config.repo);
+    script.setAttribute("data-repo-id", config.repoId);
+    script.setAttribute("data-category", config.category);
+    script.setAttribute("data-category-id", config.categoryId);
     script.setAttribute("data-mapping", mapping);
     script.setAttribute("data-reactions-enabled", "1");
     script.setAttribute("data-emit-metadata", "0");
-    script.setAttribute("data-input-position", "top");
-    script.setAttribute("data-theme", "preferred_color_scheme");
+    script.setAttribute("data-input-position", "bottom");
+    script.setAttribute("data-theme", "light");
     script.setAttribute("data-lang", "en");
     script.async = true;
     script.crossOrigin = "anonymous";
@@ -37,9 +64,16 @@ export function GiscusComments({ mapping = "pathname" }: { mapping?: "pathname" 
     return () => {
       containerRef.current?.querySelector("script[src*='giscus']")?.remove();
     };
-  }, [repo, repoId, category, categoryId, mapping]);
+  }, [config, mapping]);
 
-  if (!repo || !repoId || !category || !categoryId) return null;
-
-  return <div ref={containerRef} className="mt-10 border-t border-slate-200 pt-8" aria-label="Comments" />;
+  return (
+    <div className="mt-10 border-t border-slate-200 pt-8" aria-label="Comments">
+      <div ref={containerRef} />
+      {config && (
+        <p className="mt-2 text-xs text-slate-500">
+          Leave a comment via GitHub (Giscus). Sign in with GitHub to post.
+        </p>
+      )}
+    </div>
+  );
 }

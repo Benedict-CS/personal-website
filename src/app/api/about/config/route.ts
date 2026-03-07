@@ -4,12 +4,11 @@ import { prisma } from "@/lib/prisma";
 
 const CACHE_60 = { "Cache-Control": "public, s-maxage=60, stale-while-revalidate=120" };
 
-// GET: 獲取 about 配置
+// GET: fetch about config
 export async function GET() {
   try {
     let config = await prisma.aboutConfig.findFirst({ orderBy: { updatedAt: "desc" } });
 
-    // 如果沒有配置，創建一個預設的
     if (!config) {
       config = await prisma.aboutConfig.create({
         data: {
@@ -69,7 +68,6 @@ export async function GET() {
     );
   } catch (error) {
     console.error("Error fetching about config:", error);
-    // 如果表不存在，返回空配置而不是錯誤
     if (error instanceof Error && error.message.includes("does not exist")) {
       return NextResponse.json(
         {
@@ -109,7 +107,7 @@ export async function GET() {
   }
 }
 
-// POST/PUT: 更新 about 配置
+// POST/PUT: update about config
 export async function POST(request: NextRequest) {
   try {
     const auth = await requireSession();

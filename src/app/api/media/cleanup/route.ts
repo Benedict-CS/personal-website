@@ -53,7 +53,7 @@ export async function POST(_request: NextRequest) {
       const isReferenced = inPosts || usedKeys.has(fileName) || isAboutAsset;
 
       if (!isReferenced) {
-        // 4. 如果沒有被引用，則從 RustFS 刪除
+        // 4. Delete from RustFS if not referenced
         try {
           await deleteFromS3(fileName);
           deletedFiles.push(fileName);

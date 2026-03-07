@@ -8,6 +8,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { Trash2, ExternalLink, GripVertical, ImageIcon, Link2 } from "lucide-react";
 import { FieldHelp } from "@/components/ui/field-help";
 import Link from "next/link";
+import { validateSlug } from "@/lib/utils";
 import { useToast } from "@/contexts/toast-context";
 import { InsertMediaModal } from "@/components/insert-media-modal";
 import {
@@ -80,6 +81,8 @@ export default function CustomPagesPage() {
   const [togglingId, setTogglingId] = useState<string | null>(null);
   const [form, setForm] = useState({ slug: "", title: "", content: "" });
   const [formContent, setFormContent] = useState("");
+  const [formSlugError, setFormSlugError] = useState<string | null>(null);
+  const [formTitleError, setFormTitleError] = useState<string | null>(null);
   const [insertMediaFor, setInsertMediaFor] = useState<"image" | "button" | null>(null);
 
   const sensors = useSensors(
@@ -112,13 +115,60 @@ export default function CustomPagesPage() {
     }
   };
 
+  const PAGE_TEMPLATES = [
+    {
+      id: "portfolio",
+      name: "Portfolio",
+      slug: "portfolio",
+      title: "Portfolio",
+      content: `## Projects
+
+### Project one
+Brief description. [Learn more](#) or add an image.
+
+### Project two
+Another project. Use Markdown and images from Media.
+
+### Project three
+Add more sections as needed.
+`,
+    },
+    {
+      id: "services",
+      name: "Services",
+      slug: "services",
+      title: "Services",
+      content: `## What I offer
+
+### Service one
+Description and pricing or contact CTA.
+
+### Service two
+Another service.
+
+### Get in touch
+Link to your [Contact](/contact) page.
+`,
+    },
+  ] as const;
+
   useEffect(() => {
     load();
   }, []);
 
+  const applyTemplate = (t: (typeof PAGE_TEMPLATES)[number]) => {
+    setForm({ slug: t.slug, title: t.title, content: t.content });
+    setFormContent(t.content);
+    toast(`Applied "${t.name}" template. Edit and click Create page.`, "success");
+  };
+
   const create = async () => {
-    if (!form.slug.trim() || !form.title.trim()) {
-      toast("Slug and title are required.", "error");
+    const titleErr = form.title.trim() ? null : "Title is required";
+    const slugRes = validateSlug(form.slug);
+    setFormTitleError(titleErr);
+    setFormSlugError(slugRes.valid ? null : slugRes.message ?? null);
+    if (titleErr || !slugRes.valid) {
+      toast(titleErr || slugRes.message || "Slug and title are required.", "error");
       return;
     }
     setSaving(true);
@@ -265,18 +315,29 @@ export default function CustomPagesPage() {
             <FieldHelp text="URL path: slug 'portfolio' becomes /page/portfolio. Use lowercase letters, numbers, and hyphens only. No spaces." />
           </div>
           <div className="flex flex-wrap gap-3">
-            <Input
-              placeholder="e.g. portfolio"
-              value={form.slug}
-              onChange={(e) => setForm((f) => ({ ...f, slug: e.target.value }))}
-              className="w-40"
-            />
-            <Input
-              placeholder="Title (e.g. Portfolio)"
-              value={form.title}
-              onChange={(e) => setForm((f) => ({ ...f, title: e.target.value }))}
-              className="flex-1 min-w-[200px]"
-            />
+            <div className="space-y-1">
+              <Input
+                placeholder="e.g. portfolio"
+                value={form.slug}
+                onChange={(e) => { setFormSlugError(null); setForm((f) => ({ ...f, slug: e.target.value })); }}
+                onBlur={() => {
+                  const r = validateSlug(form.slug);
+                  setFormSlugError(r.valid ? null : r.message ?? null);
+                }}
+                className={`w-40 ${formSlugError ? "border-red-500" : ""}`}
+              />
+              {formSlugError && <p className="text-xs text-red-600">{formSlugError}</p>}
+            </div>
+            <div className="space-y-1 flex-1 min-w-[200px]">
+              <Input
+                placeholder="Title (e.g. Portfolio)"
+                value={form.title}
+                onChange={(e) => { setFormTitleError(null); setForm((f) => ({ ...f, title: e.target.value })); }}
+                onBlur={() => setFormTitleError(form.title.trim() ? null : "Title is required")}
+                className={formTitleError ? "border-red-500" : ""}
+              />
+              {formTitleError && <p className="text-xs text-red-600">{formTitleError}</p>}
+            </div>
           </div>
           <Textarea
             placeholder="Content (Markdown, optional at first)"
@@ -285,9 +346,17 @@ export default function CustomPagesPage() {
             rows={3}
             className="resize-y"
           />
-          <Button onClick={create} disabled={saving}>
-            {saving ? "Creating..." : "Create page"}
-          </Button>
+          <div className="flex flex-wrap items-center gap-2">
+            <Button onClick={create} disabled={saving}>
+              {saving ? "Creating..." : "Create page"}
+            </Button>
+            <span className="text-slate-500 text-sm">or from template:</span>
+            {PAGE_TEMPLATES.map((t) => (
+              <Button key={t.id} variant="outline" size="sm" onClick={() => applyTemplate(t)}>
+                {t.name}
+              </Button>
+            ))}
+          </div>
         </CardContent>
       </Card>
 
@@ -325,18 +394,29 @@ export default function CustomPagesPage() {
             </CardHeader>
             <CardContent className="space-y-3">
               <div className="flex flex-wrap gap-3">
-                <Input
-                  placeholder="Slug"
-                  value={form.slug}
-                  onChange={(e) => setForm((f) => ({ ...f, slug: e.target.value }))}
-                  className="w-40"
-                />
-                <Input
-                  placeholder="Title"
-                  value={form.title}
-                  onChange={(e) => setForm((f) => ({ ...f, title: e.target.value }))}
-                  className="flex-1 min-w-[200px]"
-                />
+                <div className="space-y-1">
+                  <Input
+                    placeholder="Slug"
+                    value={form.slug}
+                    onChange={(e) => { setFormSlugError(null); setForm((f) => ({ ...f, slug: e.target.value })); }}
+                    onBlur={() => {
+                      const r = validateSlug(form.slug);
+                      setFormSlugError(r.valid ? null : r.message ?? null);
+                    }}
+                    className={`w-40 ${formSlugError ? "border-red-500" : ""}`}
+                  />
+                  {formSlugError && <p className="text-xs text-red-600">{formSlugError}</p>}
+                </div>
+                <div className="space-y-1 flex-1 min-w-[200px]">
+                  <Input
+                    placeholder="Title"
+                    value={form.title}
+                    onChange={(e) => { setFormTitleError(null); setForm((f) => ({ ...f, title: e.target.value })); }}
+                    onBlur={() => setFormTitleError(form.title.trim() ? null : "Title is required")}
+                    className={formTitleError ? "border-red-500" : ""}
+                  />
+                  {formTitleError && <p className="text-xs text-red-600">{formTitleError}</p>}
+                </div>
               </div>
               <div className="flex flex-wrap items-center gap-2 mb-1">
                 <span className="text-sm text-slate-600">Content (Markdown):</span>

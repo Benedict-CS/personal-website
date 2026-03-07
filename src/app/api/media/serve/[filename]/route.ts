@@ -20,14 +20,14 @@ export async function GET(
       return new NextResponse("File not found", { status: 404 });
     }
 
-    // 將 stream 轉換為 buffer
+    // Stream to buffer
     const chunks: Uint8Array[] = [];
     for await (const chunk of response.Body as AsyncIterable<Uint8Array>) {
       chunks.push(chunk);
     }
     const buffer = Buffer.concat(chunks);
 
-    // 取得 Content-Type
+    // Get Content-Type
     const contentType = response.ContentType || "application/octet-stream";
 
     return new NextResponse(buffer, {

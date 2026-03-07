@@ -8,7 +8,10 @@ import {
   assertNotLocked,
   recordFailedAttempt,
   clearAttempts,
+  getAttemptCount,
+  CAPTCHA_REQUIRED_AFTER,
 } from "@/lib/login-rate-limit";
+import { verifyTurnstileToken } from "@/lib/verify-turnstile";
 import { isPrivateUrl } from "@/lib/is-private-url";
 
 type ReqLike = { headers?: Headers | Record<string, string | string[] | undefined> };
@@ -32,18 +35,20 @@ export const authOptions: NextAuthOptions = {
     CredentialsProvider({
       name: "Credentials",
       credentials: {
-        password: {
-          label: "Password",
-          type: "password",
-        },
+        password: { label: "Password", type: "password" },
+        captchaToken: { label: "CAPTCHA", type: "text" },
       },
       async authorize(credentials, req: ReqLike) {
-        if (!credentials?.password) {
-          return null;
-        }
+        if (!credentials?.password) return null;
 
         const ip = getClientIP(req?.headers);
         assertNotLocked(ip);
+
+        const needCaptcha = getAttemptCount(ip) >= CAPTCHA_REQUIRED_AFTER;
+        if (needCaptcha) {
+          const ok = await verifyTurnstileToken(credentials.captchaToken, ip);
+          if (!ok) return null; // CAPTCHA missing or invalid
+        }
 
         if (credentials.password === process.env.ADMIN_PASSWORD) {
           clearAttempts(ip);

@@ -29,7 +29,7 @@ export default async function ArchivePage() {
     ],
   });
 
-  // 按年份分組
+  // Group by year
   const postsByYear = posts.reduce((acc, post) => {
     const year = new Date(post.createdAt).getFullYear();
     if (!acc[year]) {
@@ -39,7 +39,7 @@ export default async function ArchivePage() {
     return acc;
   }, {} as Record<number, typeof posts>);
 
-  // 按年份降序排列
+  // Sort years descending
   const years = Object.keys(postsByYear)
     .map(Number)
     .sort((a, b) => b - a);

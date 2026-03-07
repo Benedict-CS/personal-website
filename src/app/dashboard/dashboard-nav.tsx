@@ -3,7 +3,7 @@
 import { useState } from "react";
 import { usePathname } from "next/navigation";
 import { LeaveGuardLink } from "@/components/leave-guard-link";
-import { FileText, Image as ImageIcon, Tags, StickyNote, Layout, BarChart3, Home, ChevronDown, ChevronRight } from "lucide-react";
+import { FileText, Image as ImageIcon, Tags, StickyNote, Layout, BarChart3, Home, ChevronDown, ChevronRight, ScrollText } from "lucide-react";
 
 const contentSubItems = [
   { href: "/dashboard/content/site", label: "Site settings" },
@@ -27,6 +27,7 @@ const navItems: Array<{
   { href: "/dashboard/content", label: "Content", icon: Layout, exact: false, hasChildren: true },
   { href: "/dashboard/media", label: "Media", icon: ImageIcon, exact: false },
   { href: "/dashboard/tags", label: "Tags", icon: Tags, exact: false },
+  { href: "/dashboard/audit", label: "Audit", icon: ScrollText, exact: false },
 ];
 
 interface DashboardNavProps {

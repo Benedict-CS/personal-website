@@ -1,31 +1,42 @@
-import { S3Client, PutObjectCommand, ListObjectsV2Command, DeleteObjectCommand, CreateBucketCommand, HeadBucketCommand } from "@aws-sdk/client-s3";
+import {
+  S3Client,
+  PutObjectCommand,
+  ListObjectsV2Command,
+  DeleteObjectCommand,
+  CreateBucketCommand,
+  HeadBucketCommand,
+  CreateMultipartUploadCommand,
+  UploadPartCommand,
+  CompleteMultipartUploadCommand,
+  AbortMultipartUploadCommand,
+} from "@aws-sdk/client-s3";
 
-// S3 Client 設定（目前使用 RustFS，支援任何 S3-compatible 服務）
+// S3 client config (RustFS or any S3-compatible service)
 // RustFS: https://rustfs.com - 2.3x faster than MinIO
 export const s3Client = new S3Client({
   endpoint: process.env.S3_ENDPOINT || "http://localhost:9000",
   region: process.env.S3_REGION || "us-east-1",
-  forcePathStyle: true, // S3-compatible 服務通常需要 path-style
+  forcePathStyle: true,
   credentials: {
     accessKeyId: process.env.S3_ACCESS_KEY || "rustfsadmin",
     secretAccessKey: process.env.S3_SECRET_KEY || "rustfsadmin",
   },
 });
 
-// Bucket 名稱
+// Bucket name
 export const S3_BUCKET = process.env.S3_BUCKET || "uploads";
 
-// 確保 Bucket 存在
+// Ensure bucket exists
 export async function ensureBucketExists() {
   try {
-    // 檢查 Bucket 是否存在
+    // Check if bucket exists
     await s3Client.send(
       new HeadBucketCommand({
         Bucket: S3_BUCKET,
       })
     );
   } catch (error: unknown) {
-    // 如果 Bucket 不存在，嘗試建立
+    // Create if missing
     const err = error as { name?: string; $metadata?: { httpStatusCode?: number } };
     if (err.name === "NotFound" || err.$metadata?.httpStatusCode === 404) {
       try {
@@ -36,7 +47,7 @@ export async function ensureBucketExists() {
         );
         console.log(`Bucket "${S3_BUCKET}" created successfully`);
       } catch (createError) {
-        // 忽略建立錯誤（可能已經被其他請求建立了）
+        // Ignore create errors (may already exist)
         console.warn(`Failed to create bucket "${S3_BUCKET}":`, createError);
       }
     } else {
@@ -45,24 +56,73 @@ export async function ensureBucketExists() {
   }
 }
 
-// 上傳檔案到 S3
-export async function uploadToS3(fileName: string, buffer: Buffer, contentType: string): Promise<string> {
-  await ensureBucketExists();
+const MULTIPART_THRESHOLD_BYTES = 5 * 1024 * 1024; // 5 MB; use multipart for larger files
+const MULTIPART_PART_SIZE = 5 * 1024 * 1024; // 5 MB minimum part size for S3
 
-  await s3Client.send(
-    new PutObjectCommand({
+/** Multipart upload for large files (e.g. > 5MB). More reliable for big uploads. */
+async function uploadToS3Multipart(fileName: string, buffer: Buffer, contentType: string): Promise<void> {
+  const { UploadId } = await s3Client.send(
+    new CreateMultipartUploadCommand({
       Bucket: S3_BUCKET,
       Key: fileName,
-      Body: buffer,
       ContentType: contentType,
     })
   );
+  if (!UploadId) throw new Error("CreateMultipartUpload did not return UploadId");
+  try {
+    const parts: { PartNumber: number; ETag: string }[] = [];
+    let partNumber = 1;
+    for (let offset = 0; offset < buffer.length; offset += MULTIPART_PART_SIZE) {
+      const chunk = buffer.subarray(offset, Math.min(offset + MULTIPART_PART_SIZE, buffer.length));
+      const { ETag } = await s3Client.send(
+        new UploadPartCommand({
+          Bucket: S3_BUCKET,
+          Key: fileName,
+          UploadId,
+          PartNumber: partNumber,
+          Body: chunk,
+        })
+      );
+      if (ETag) parts.push({ PartNumber: partNumber, ETag });
+      partNumber++;
+    }
+    await s3Client.send(
+      new CompleteMultipartUploadCommand({
+        Bucket: S3_BUCKET,
+        Key: fileName,
+        UploadId,
+        MultipartUpload: { Parts: parts },
+      })
+    );
+  } catch (err) {
+    await s3Client.send(
+      new AbortMultipartUploadCommand({ Bucket: S3_BUCKET, Key: fileName, UploadId })
+    ).catch(() => {});
+    throw err;
+  }
+}
 
-  // 回傳 API 路由（透過 Next.js API 提供檔案，確保安全）
+// Upload file to S3 (single PUT for small files, multipart for large)
+export async function uploadToS3(fileName: string, buffer: Buffer, contentType: string): Promise<string> {
+  await ensureBucketExists();
+
+  if (buffer.length >= MULTIPART_THRESHOLD_BYTES) {
+    await uploadToS3Multipart(fileName, buffer, contentType);
+  } else {
+    await s3Client.send(
+      new PutObjectCommand({
+        Bucket: S3_BUCKET,
+        Key: fileName,
+        Body: buffer,
+        ContentType: contentType,
+      })
+    );
+  }
+
   return `/api/media/serve/${fileName}`;
 }
 
-// 列出所有檔案
+// List all objects
 export async function listS3Objects() {
   await ensureBucketExists();
 
@@ -74,7 +134,7 @@ export async function listS3Objects() {
   return response.Contents || [];
 }
 
-// 刪除檔案
+// Delete object
 export async function deleteFromS3(fileName: string) {
   await ensureBucketExists();
 

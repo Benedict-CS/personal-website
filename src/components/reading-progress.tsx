@@ -22,10 +22,10 @@ export function ReadingProgress() {
       }
     };
 
-    // 初始計算
+    // Initial calculation
     updateProgress();
 
-    // 監聽滾動事件
+    // Scroll listener
     window.addEventListener("scroll", updateProgress);
     window.addEventListener("resize", updateProgress);
 

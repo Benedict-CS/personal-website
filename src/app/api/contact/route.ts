@@ -5,6 +5,8 @@ import { siteConfig } from "@/config/site";
 import { checkRateLimit, getClientIP } from "@/lib/rate-limit";
 
 const RECIPIENT = process.env.CONTACT_EMAIL || siteConfig.author.email;
+const CC = process.env.CONTACT_CC ? process.env.CONTACT_CC.split(",").map((e) => e.trim()).filter(Boolean) : undefined;
+const BCC = process.env.CONTACT_BCC ? process.env.CONTACT_BCC.split(",").map((e) => e.trim()).filter(Boolean) : undefined;
 
 // Option 1: Resend (API key) — https://resend.com
 const resend = process.env.RESEND_API_KEY
@@ -55,6 +57,8 @@ export async function POST(request: NextRequest) {
         from,
         to: RECIPIENT,
         replyTo: email,
+        cc: CC,
+        bcc: BCC,
         subject: subjectLine,
         text: textBody,
       });
@@ -75,6 +79,8 @@ export async function POST(request: NextRequest) {
         from,
         to: RECIPIENT,
         replyTo: email,
+        cc: CC,
+        bcc: BCC,
         subject: subjectLine,
         text: textBody,
       });

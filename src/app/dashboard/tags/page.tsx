@@ -1,10 +1,10 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import Link from "next/link";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { Loader2, CheckCircle2, XCircle, AlertCircle } from "lucide-react";
+import { Loader2, CheckCircle2, XCircle, AlertCircle, Merge } from "lucide-react";
 
 interface CleanedTag {
   id: string;
@@ -19,10 +19,26 @@ interface CleanupResult {
   message: string;
 }
 
+interface TagRow {
+  id: string;
+  name: string;
+  slug: string;
+}
+
 export default function TagsPage() {
   const [isCleaning, setIsCleaning] = useState(false);
   const [result, setResult] = useState<CleanupResult | null>(null);
   const [error, setError] = useState<string | null>(null);
+  const [allTags, setAllTags] = useState<TagRow[]>([]);
+  const [mergeLoading, setMergeLoading] = useState<string | null>(null);
+  const [mergeMessage, setMergeMessage] = useState<{ type: "success" | "error"; text: string } | null>(null);
+
+  useEffect(() => {
+    fetch("/api/tags?all=1")
+      .then((r) => r.json())
+      .then((data) => setAllTags(Array.isArray(data) ? data : []))
+      .catch(() => setAllTags([]));
+  }, []);
 
   const handleCleanup = async () => {
     if (!confirm("Are you sure you want to clean up all tags with quotes? This will modify tag names in the database.")) {
@@ -53,6 +69,27 @@ export default function TagsPage() {
     }
   };
 
+  const handleMerge = async (fromTagId: string, toTagId: string) => {
+    if (!confirm("Move all posts from the first tag into the second, then delete the first tag. Continue?")) return;
+    setMergeLoading(fromTagId);
+    setMergeMessage(null);
+    try {
+      const res = await fetch("/api/tags/merge", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ fromTagId, toTagId }),
+      });
+      const data = await res.json().catch(() => ({}));
+      if (!res.ok) throw new Error(data.error || "Merge failed");
+      setMergeMessage({ type: "success", text: data.message ?? "Tags merged." });
+      setAllTags((prev) => prev.filter((t) => t.id !== fromTagId));
+    } catch (e) {
+      setMergeMessage({ type: "error", text: e instanceof Error ? e.message : "Merge failed" });
+    } finally {
+      setMergeLoading(null);
+    }
+  };
+
   return (
     <div className="container mx-auto max-w-4xl px-4 py-8 space-y-6">
       <p className="text-sm text-slate-600">
@@ -61,6 +98,51 @@ export default function TagsPage() {
           Go to Posts
         </Link>
       </p>
+
+      {allTags.length > 0 && (
+        <Card>
+          <CardHeader>
+            <CardTitle className="flex items-center gap-2">
+              <Merge className="h-5 w-5" />
+              Merge tags
+            </CardTitle>
+          </CardHeader>
+          <CardContent>
+            <p className="text-sm text-slate-600 mb-4">
+              Merge one tag into another: all posts get the target tag, then the source tag is removed.
+            </p>
+            {mergeMessage && (
+              <p className={`text-sm mb-3 ${mergeMessage.type === "success" ? "text-green-700" : "text-red-700"}`}>
+                {mergeMessage.text}
+              </p>
+            )}
+            <ul className="space-y-2">
+              {allTags.map((tag) => (
+                <li key={tag.id} className="flex flex-wrap items-center gap-2">
+                  <span className="font-medium text-slate-800">{tag.name}</span>
+                  <span className="text-slate-400">→</span>
+                  <select
+                    className="rounded border border-slate-300 bg-white px-2 py-1 text-sm"
+                    disabled={mergeLoading !== null || allTags.length < 2}
+                    onChange={(e) => {
+                      const toId = e.target.value;
+                      if (toId && toId !== tag.id) handleMerge(tag.id, toId);
+                      e.target.value = "";
+                    }}
+                  >
+                    <option value="">Merge into...</option>
+                    {allTags.filter((t) => t.id !== tag.id).map((t) => (
+                      <option key={t.id} value={t.id}>{t.name}</option>
+                    ))}
+                  </select>
+                  {mergeLoading === tag.id && <Loader2 className="h-4 w-4 animate-spin text-slate-500" />}
+                </li>
+              ))}
+            </ul>
+          </CardContent>
+        </Card>
+      )}
+
       <Card>
         <CardHeader>
           <CardTitle>Tag Management - Clean Up Quotes</CardTitle>

@@ -10,7 +10,7 @@ export async function POST(_request: NextRequest) {
     const auth = await requireSession();
     if ("unauthorized" in auth) return auth.unauthorized;
 
-    // 1. 從資料庫獲取所有使用的圖片 URL
+    // 1. Get all image URLs in use from DB
     const config = await prisma.aboutConfig.findFirst();
     if (!config) {
       return NextResponse.json({
@@ -43,7 +43,7 @@ export async function POST(_request: NextRequest) {
       console.error("Error parsing About config JSON:", e);
     }
 
-    // 2. 讀取 public/about 目錄中的所有文件
+    // 2. Read all files in public/about
     const aboutDir = path.join(process.cwd(), "public", "about");
     if (!existsSync(aboutDir)) {
       return NextResponse.json({
@@ -59,10 +59,10 @@ export async function POST(_request: NextRequest) {
       return [".jpg", ".jpeg", ".png", ".gif", ".webp"].includes(ext);
     });
 
-    // 3. 找出未使用的文件
+    // 3. Find unused files
     const unusedFiles = imageFiles.filter((file) => !usedFiles.has(file));
 
-    // 4. 刪除未使用的文件
+    // 4. Delete unused files
     const deletedFiles: string[] = [];
     const errors: string[] = [];
 

@@ -36,7 +36,8 @@ export function DashboardBackupTrigger() {
           {loading ? <Loader2 className="h-4 w-4 animate-spin" /> : <Archive className="h-4 w-4" />}
           {loading ? "Running…" : "Backup"}
         </Button>
-        {message && <p className="mt-2 text-xs text-slate-500 line-clamp-2">{message}</p>}
+        <p className="mt-1 text-xs text-slate-500">Run script on server (MAINTENANCE.md)</p>
+        {message && <p className="mt-2 text-xs text-slate-600 line-clamp-3">{message}</p>}
       </CardContent>
     </Card>
   );

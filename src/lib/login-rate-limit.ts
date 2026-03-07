@@ -43,6 +43,15 @@ export function getLockRemainingMs(ip: string): number {
   return entry.lockedUntil - Date.now();
 }
 
+/** Number of failed attempts (before lock) for this IP. Used to require CAPTCHA after N failures. */
+export const CAPTCHA_REQUIRED_AFTER = 2;
+
+export function getAttemptCount(ip: string): number {
+  const entry = store.get(ip);
+  if (!entry || entry.lockedUntil > Date.now()) return 0;
+  return entry.count;
+}
+
 /** Throws if IP is locked. Message format: TooManyAttempts:${minutesLeft} */
 export function assertNotLocked(ip: string): void {
   const remaining = getLockRemainingMs(ip);

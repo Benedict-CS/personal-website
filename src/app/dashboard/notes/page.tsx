@@ -42,7 +42,7 @@ export default function NotesPage() {
           const data = await response.json();
           setNotes(data);
           setFilteredNotes(data);
-          // 預設展開所有分類路徑
+          // Expand all category paths by default
           const allPaths = new Set<string>();
           data.forEach((n: Note) => {
             if (n.category) {
@@ -68,7 +68,7 @@ export default function NotesPage() {
     fetchNotes();
   }, []);
 
-  // 搜尋過濾
+  // Search filter
   useEffect(() => {
     if (!searchQuery.trim()) {
       setFilteredNotes(notes);
@@ -132,12 +132,12 @@ export default function NotesPage() {
         setEditingNoteId(null);
         setEditingCategory("");
         
-        // 重新整理以更新分組
+        // Refresh to update grouping
         const refreshResponse = await fetch("/api/posts?published=false");
         if (refreshResponse.ok) {
           const data = await refreshResponse.json();
           setNotes(data);
-          // 保持已展開的分類
+          // Preserve expanded state
           const allPaths = new Set<string>();
           data.forEach((n: Note) => {
             if (n.category) {
@@ -162,7 +162,7 @@ export default function NotesPage() {
     }
   };
 
-  // 建立階層式分類結構（使用過濾後的筆記）
+  // Build category tree from filtered notes
   const buildCategoryTree = () => {
     const root = new Map<string, CategoryNode>();
 
@@ -179,7 +179,7 @@ export default function NotesPage() {
         }
         root.get("Uncategorized")!.notes.push(note);
       } else {
-        // 解析階層路徑 (e.g., "LeetCode/HashMap" -> ["LeetCode", "HashMap"])
+        // Parse path (e.g. "LeetCode/HashMap" -> ["LeetCode", "HashMap"])
         const parts = note.category.split("/").filter((p) => p.trim());
         let currentLevel = root;
         let currentPath = "";
@@ -198,12 +198,12 @@ export default function NotesPage() {
 
           const node = currentLevel.get(part)!;
 
-          // 如果是最後一層，將 note 放入此節點
+          // Leaf: add note to this node
           if (index === parts.length - 1) {
             node.notes.push(note);
           }
 
-          // 移動到下一層
+          // Go to next level
           currentLevel = node.children;
         });
       }
@@ -212,7 +212,7 @@ export default function NotesPage() {
     return root;
   };
 
-  // 計算節點內所有 notes 總數（包含子節點）
+  // Count notes in node (including children)
   const countNotesInNode = (node: CategoryNode): number => {
     let count = node.notes.length;
     node.children.forEach((child) => {
@@ -221,7 +221,7 @@ export default function NotesPage() {
     return count;
   };
 
-  // 遞歸渲染分類節點
+  // Render category node recursively
   const renderCategoryNode = (node: CategoryNode, level: number): React.ReactNode => {
     const isExpanded = expandedCategories.has(node.path);
     const totalNotes = countNotesInNode(node);
@@ -247,7 +247,7 @@ export default function NotesPage() {
 
         {isExpanded && (
           <div className="space-y-4">
-            {/* 顯示此層級的 notes */}
+            {/* Notes at this level */}
             {node.notes.length > 0 && (
               <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3 ml-7">
                 {node.notes.map((note) => (
@@ -352,7 +352,7 @@ export default function NotesPage() {
               </div>
             )}
 
-            {/* 遞歸顯示子分類 */}
+            {/* Child categories */}
             {hasChildren && (
               <div className="space-y-4">
                 {Array.from(node.children.keys())
@@ -371,7 +371,7 @@ export default function NotesPage() {
 
   const categoryTree = buildCategoryTree();
 
-  // 排序：Uncategorized 放最後
+  // Sort: Uncategorized last
   const sortedRootCategories = Array.from(categoryTree.keys()).sort((a, b) => {
     if (a === "Uncategorized") return 1;
     if (b === "Uncategorized") return -1;
@@ -404,7 +404,7 @@ export default function NotesPage() {
         </Link>
       </div>
 
-      {/* 搜尋框 */}
+      {/* Search */}
       <div className="relative">
         <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-400" />
         <Input
@@ -424,7 +424,7 @@ export default function NotesPage() {
         )}
       </div>
 
-      {/* 搜尋結果統計 */}
+      {/* Search result count */}
       {searchQuery && (
         <div className="text-sm text-slate-600">
           Found {filteredNotes.length} {filteredNotes.length === 1 ? "note" : "notes"}

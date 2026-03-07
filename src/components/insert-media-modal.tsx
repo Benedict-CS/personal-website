@@ -127,6 +127,7 @@ export function InsertMediaModal({
                         src={file.url}
                         alt={file.name}
                         fill
+                        unoptimized
                         className="object-cover"
                         sizes="120px"
                       />

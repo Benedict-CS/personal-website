@@ -125,6 +125,20 @@ model SitePageContent {
   updatedAt DateTime @updatedAt
 }
 
+// Simple audit: who did what when (action, resourceType, resourceId, details, ip)
+model AuditLog {
+  id           String   @id @default(uuid())
+  action       String   // e.g. "post.create", "post.update", "post.delete", "site_config.update"
+  resourceType String   // e.g. "post", "custom_page", "site_config"
+  resourceId   String?  // e.g. post id, page id
+  details      String?  // optional JSON or short text
+  ip           String?
+  createdAt    DateTime @default(now())
+
+  @@index([createdAt])
+  @@index([action])
+}
+
 // Analytics: page views for dashboard stats (exclude own IP via ANALYTICS_EXCLUDED_IPS)
 model PageView {
   id             String   @id @default(uuid())

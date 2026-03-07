@@ -1,5 +1,11 @@
 # Monitoring & Health
 
+## Logging
+
+- **App and services:** Use `docker compose logs -f app`, `docker compose logs -f postgres`, and `docker compose logs -f rustfs` to inspect stdout/stderr. In production, consider sending these to a log aggregator (e.g. Loki, Datadog, or your host’s log pipeline).
+- **What to log:** The app logs errors and, in development, Prisma queries. For more visibility, ensure errors are logged (Sentry captures them when `SENTRY_DSN` is set) and optionally add request logging in your reverse proxy (e.g. Nginx access/error logs).
+- **Where:** By default logs go to Docker’s logging driver; configure log rotation and retention in Docker or your orchestrator so disks do not fill up.
+
 ## Health check
 
 The app exposes:

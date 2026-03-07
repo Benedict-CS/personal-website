@@ -24,6 +24,16 @@ import { getSiteConfigForRender } from "@/lib/site-config";
 
 export const revalidate = 60;
 
+function publishedWhere() {
+  const now = new Date();
+  return {
+    OR: [
+      { published: true },
+      { publishedAt: { lte: now } },
+    ],
+  };
+}
+
 export async function generateMetadata({
   params,
 }: {
@@ -33,7 +43,7 @@ export async function generateMetadata({
   const post = await prisma.post.findFirst({
     where: {
       slug: slug,
-      published: true,
+      ...publishedWhere(),
     },
     include: {
       tags: true,
@@ -95,7 +105,7 @@ export default async function BlogPostPage({
   const post = await prisma.post.findFirst({
     where: {
       slug: slug,
-      published: true,
+      ...publishedWhere(),
     },
     include: {
       tags: true,
@@ -111,7 +121,7 @@ export default async function BlogPostPage({
   const [prevPost, nextPost, relatedPosts] = await Promise.all([
     prisma.post.findFirst({
       where: {
-        published: true,
+        ...publishedWhere(),
         createdAt: { lt: post.createdAt },
       },
       orderBy: { createdAt: "desc" },
@@ -119,7 +129,7 @@ export default async function BlogPostPage({
     }),
     prisma.post.findFirst({
       where: {
-        published: true,
+        ...publishedWhere(),
         createdAt: { gt: post.createdAt },
       },
       orderBy: { createdAt: "asc" },
@@ -128,7 +138,7 @@ export default async function BlogPostPage({
     tagIds.length > 0
       ? prisma.post.findMany({
           where: {
-            published: true,
+            ...publishedWhere(),
             id: { not: post.id },
             tags: { some: { id: { in: tagIds } } },
           },
@@ -194,7 +204,7 @@ export default async function BlogPostPage({
       <div className="container mx-auto max-w-[90rem] px-4 py-12">
       <PublicBreadcrumbs items={[{ label: "Home", href: "/" }, { label: "Blog", href: "/blog" }, { label: post.title }]} />
       <div className="grid grid-cols-1 gap-10 lg:grid-cols-[1fr_250px]">
-        {/* 主要內容區 */}
+        {/* Main content */}
         <div className="min-w-0">
           <Card>
             <CardContent className="pt-6">
@@ -268,7 +278,7 @@ export default async function BlogPostPage({
                   </div>
                 )}
 
-                {/* 上一篇/下一篇導覽 */}
+                {/* Prev/Next navigation */}
                 <div className="border-t border-slate-200 pt-6">
                   <div className="flex flex-col gap-4 sm:flex-row sm:justify-between">
                     {prevPost ? (
@@ -317,7 +327,7 @@ export default async function BlogPostPage({
           </Card>
         </div>
 
-        {/* 目錄側邊欄 */}
+        {/* TOC sidebar */}
         <aside className="lg:sticky lg:top-20 lg:self-start">
           <TableOfContents content={post.content} />
         </aside>

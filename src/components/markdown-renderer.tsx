@@ -1,9 +1,11 @@
 "use client";
 
 import React, { useState, useEffect } from "react";
+import Image from "next/image";
 import ReactMarkdown from "react-markdown";
 import rehypeHighlight from "rehype-highlight";
 import rehypeRaw from "rehype-raw";
+import rehypeSanitize from "rehype-sanitize";
 import rehypeSlug from "rehype-slug";
 import rehypeKatex from "rehype-katex";
 import remarkGfm from "remark-gfm";
@@ -14,28 +16,33 @@ import type { Components } from "react-markdown";
 import { cn } from "@/lib/utils";
 import "highlight.js/styles/atom-one-light.css";
 
-function ImageWithPlaceholder({
+/** Renders image with next/image, unoptimized to preserve original format (no WebP). */
+function MarkdownImage({
   src,
   alt,
   className,
-  ...props
-}: React.ComponentProps<"img">) {
+}: {
+  src: string;
+  alt?: string;
+  className?: string;
+}) {
   const [loaded, setLoaded] = useState(false);
   return (
-    <span className="relative block min-h-[120px]">
+    <span className={cn("relative block w-full", className)} style={{ paddingBottom: "56.25%" }}>
       {!loaded && (
         <span
-          className="absolute inset-0 block animate-pulse rounded bg-slate-200 min-h-[120px]"
+          className="absolute inset-0 block animate-pulse rounded bg-slate-200"
           aria-hidden
         />
       )}
-      {/* eslint-disable-next-line @next/next/no-img-element */}
-      <img
+      <Image
         src={src}
         alt={alt ?? ""}
-        className={cn(className, "relative transition-opacity duration-200", !loaded && "opacity-0")}
+        fill
+        unoptimized
+        className={cn("object-contain transition-opacity duration-200", !loaded && "opacity-0")}
         onLoad={() => setLoaded(true)}
-        {...props}
+        sizes="(max-width: 768px) 100vw, 800px"
       />
     </span>
   );
@@ -44,8 +51,8 @@ import "katex/dist/katex.min.css";
 
 interface MarkdownRendererProps {
   content: string;
-  postId?: string; // 用於保存 checkbox 狀態
-  editable?: boolean; // 是否允許編輯 checkbox
+  postId?: string; // Used to persist checkbox state
+  editable?: boolean; // Whether checkbox can be toggled (saved to DB)
 }
 
 export function MarkdownRenderer({ content, postId, editable = false }: MarkdownRendererProps) {
@@ -55,22 +62,21 @@ export function MarkdownRenderer({ content, postId, editable = false }: Markdown
   const [lightboxSrc, setLightboxSrc] = useState<string | null>(null);
   const checkboxCounterRef = React.useRef(0);
 
-  // 當 content 變化時重置
+  // Reset when content changes
   useEffect(() => {
     setCurrentContent(content);
     setCheckboxStates({});
-    checkboxCounterRef.current = 0; // 重置計數器
+    checkboxCounterRef.current = 0;
   }, [content]);
 
-  // 處理 checkbox toggle（保存到 DB）
+  // Handle checkbox toggle (persist to DB when editable)
   const handleCheckboxToggle = async (checkboxIndex: number, checked: boolean) => {
-    // 先更新本地狀態（即時反饋）
+    // Update local state first (immediate feedback)
     setCheckboxStates((prev) => ({
       ...prev,
       [checkboxIndex]: checked,
     }));
 
-    // 如果有 postId 且允許編輯，保存到 DB
     if (postId && editable) {
       try {
         const response = await fetch(`/api/posts/${postId}/checkbox`, {
@@ -86,11 +92,11 @@ export function MarkdownRenderer({ content, postId, editable = false }: Markdown
 
         if (response.ok) {
           const data = await response.json();
-          setCurrentContent(data.content); // 更新內容以保持同步
+          setCurrentContent(data.content);
         }
       } catch (error) {
         console.error("Failed to save checkbox:", error);
-        // 失敗時恢復狀態
+        // Revert on failure
         setCheckboxStates((prev) => ({
           ...prev,
           [checkboxIndex]: !checked,
@@ -100,7 +106,7 @@ export function MarkdownRenderer({ content, postId, editable = false }: Markdown
   };
 
 
-  // 動態注入樣式來強制覆蓋 highlight.js - 讓背景透明
+  // Inject styles to override highlight.js background (keep pre background only)
   useEffect(() => {
     const styleId = "hljs-override";
     let styleEl = document.getElementById(styleId) as HTMLStyleElement;
@@ -111,7 +117,6 @@ export function MarkdownRenderer({ content, postId, editable = false }: Markdown
       document.head.appendChild(styleEl);
     }
 
-    // 讓 .hljs 背景完全透明，只使用 pre 的背景色
     styleEl.textContent = `
       pre code.hljs,
       pre .hljs {
@@ -142,7 +147,7 @@ export function MarkdownRenderer({ content, postId, editable = false }: Markdown
     };
   }, [lightboxSrc]);
 
-  // Orphan <li> (e.g. inside <span>) get bullet so published view matches edit preview
+  // Orphan li (e.g. inside span) get bullet so published view matches edit preview
   useEffect(() => {
     const styleId = "markdown-renderer-orphan-li";
     let styleEl = document.getElementById(styleId) as HTMLStyleElement;
@@ -162,11 +167,9 @@ export function MarkdownRenderer({ content, postId, editable = false }: Markdown
 
   const handleCopyCode = async (code: string, codeId: string) => {
     try {
-      // 優先使用 Clipboard API
       if (navigator.clipboard && navigator.clipboard.writeText) {
         await navigator.clipboard.writeText(code);
       } else {
-        // Fallback: 使用傳統方法
         const textArea = document.createElement("textarea");
         textArea.value = code;
         textArea.style.position = "fixed";
@@ -188,7 +191,6 @@ export function MarkdownRenderer({ content, postId, editable = false }: Markdown
       }, 2000);
     } catch (error) {
       console.error("Failed to copy code:", error);
-      // 如果都失敗，嘗試 fallback
       try {
         const textArea = document.createElement("textarea");
         textArea.value = code;
@@ -210,17 +212,12 @@ export function MarkdownRenderer({ content, postId, editable = false }: Markdown
     }
   };
 
-  // 在每次渲染開始時重置計數器
   checkboxCounterRef.current = 0;
 
   const components: Components = {
     pre: ({ children, ...props }) => {
-      // 處理 code block 類型
       let codeString = "";
-
-      // 提取程式碼內容
       if (children) {
-        // 處理單一 ReactElement
         if (React.isValidElement(children)) {
           const codeBlock = children as React.ReactElement<{ children?: React.ReactNode }>;
           const blockChildren = codeBlock.props?.children;
@@ -254,7 +251,6 @@ export function MarkdownRenderer({ content, postId, editable = false }: Markdown
             }
           }
         } else if (Array.isArray(children)) {
-          // 處理陣列
           codeString = children
             .map((child: React.ReactNode) => {
               if (typeof child === "string") return child;
@@ -344,22 +340,53 @@ export function MarkdownRenderer({ content, postId, editable = false }: Markdown
       if (!srcStr) return null;
       const fullSrc = srcStr.startsWith("http") || srcStr.startsWith("/") ? srcStr : `/${srcStr}`;
       return (
-        <span className="image-block block my-2">
+        <span className="image-block block mt-2 mb-0 relative w-full min-h-[120px]">
           <button
             type="button"
             onClick={() => setLightboxSrc(fullSrc)}
-            className="inline-block max-w-full cursor-zoom-in focus:outline-none focus:ring-2 focus:ring-slate-400 focus:ring-offset-2 rounded overflow-hidden"
+            className="inline-block w-full cursor-zoom-in focus:outline-none focus:ring-2 focus:ring-slate-400 focus:ring-offset-2 rounded overflow-hidden relative min-h-[120px]"
             title="Click to enlarge"
           >
-            <ImageWithPlaceholder
-              src={fullSrc}
-              alt={alt ?? ""}
-              className="max-w-full h-auto block"
-              loading="lazy"
-              {...props}
-            />
+            <MarkdownImage src={fullSrc} alt={alt ?? ""} className="block" />
           </button>
         </span>
+      );
+    },
+    // YouTube / Vimeo links: render as responsive embed; other links stay normal
+    a: ({ href, children, ...props }) => {
+      const url = typeof href === "string" ? href : "";
+      let embedUrl: string | null = null;
+      let title = "Video";
+      if (url.includes("youtube.com/watch?v=") || url.includes("youtu.be/")) {
+        const m = url.match(/(?:v=|\/)([a-zA-Z0-9_-]{11})(?:[?&]|$)/);
+        if (m) {
+          embedUrl = `https://www.youtube.com/embed/${m[1]}`;
+          title = "YouTube video";
+        }
+      } else if (url.includes("vimeo.com/") && !url.includes("/video/")) {
+        const m = url.match(/vimeo\.com\/(\d+)(?:\/|$)/);
+        if (m) {
+          embedUrl = `https://player.vimeo.com/video/${m[1]}`;
+          title = "Vimeo video";
+        }
+      }
+      if (embedUrl) {
+        return (
+          <div className="my-4 rounded-lg overflow-hidden bg-slate-900" style={{ aspectRatio: "16/9", maxWidth: "100%" }}>
+            <iframe
+              src={embedUrl}
+              title={title}
+              allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share"
+              allowFullScreen
+              className="w-full h-full"
+            />
+          </div>
+        );
+      }
+      return (
+        <a href={href} target="_blank" rel="noopener noreferrer" {...props}>
+          {children}
+        </a>
       );
     },
     table: ({ children, ...props }) => {
@@ -405,7 +432,7 @@ export function MarkdownRenderer({ content, postId, editable = false }: Markdown
       return (
         <ul
           {...props}
-          className="list-disc list-outside ml-6 my-4 space-y-2"
+          className="list-disc list-outside ml-6 mt-0.5 mb-2 space-y-1"
         >
           {children}
         </ul>
@@ -415,7 +442,7 @@ export function MarkdownRenderer({ content, postId, editable = false }: Markdown
       return (
         <ol
           {...props}
-          className="list-decimal list-outside ml-6 my-4 space-y-2"
+          className="list-decimal list-outside ml-6 mt-0.5 mb-2 space-y-1"
         >
           {children}
         </ol>
@@ -432,7 +459,6 @@ export function MarkdownRenderer({ content, postId, editable = false }: Markdown
       );
     },
     td: ({ children, ...props }) => {
-      // 提取第一個文字節點檢查 checkbox
       let firstText = "";
       if (typeof children === 'string') {
         firstText = children;
@@ -443,27 +469,22 @@ export function MarkdownRenderer({ content, postId, editable = false }: Markdown
         }
       }
 
-      // 檢查是否以 [ ] 或 [x] 開頭
       const checkboxMatch = firstText.match(/^\s*\[([xX ])\]\s*/);
       
       if (checkboxMatch) {
         const isChecked = checkboxMatch[1].toLowerCase() === 'x';
         const checkboxIndex = checkboxCounterRef.current++;
         const currentState = checkboxStates[checkboxIndex] ?? isChecked;
-
-        // 移除 checkbox 標記，保留剩餘內容
         let remainingContent: React.ReactNode = children;
         let isAloneCheckbox = false;
 
         if (typeof children === 'string') {
           const cleaned = children.replace(/^\s*\[([xX ])\]\s*/, '');
           remainingContent = cleaned;
-          // 如果移除後為空，表示只有 checkbox（居中顯示）
           if (!cleaned.trim()) {
             isAloneCheckbox = true;
           }
         } else if (Array.isArray(children)) {
-          // 移除第一個元素的 checkbox 部分
           const firstChild = children[0];
           if (typeof firstChild === 'string') {
             const updated = firstChild.replace(/^\s*\[([xX ])\]\s*/, '');
@@ -471,7 +492,6 @@ export function MarkdownRenderer({ content, postId, editable = false }: Markdown
           }
         }
 
-        // 如果只有單獨的 checkbox（居中）
         if (isAloneCheckbox) {
           return (
             <td
@@ -490,7 +510,6 @@ export function MarkdownRenderer({ content, postId, editable = false }: Markdown
           );
         }
 
-        // Checkbox + 剩餘內容（link、emoji 等）
         return (
           <td
             {...props}
@@ -527,7 +546,7 @@ export function MarkdownRenderer({ content, postId, editable = false }: Markdown
       <div className="prose prose-lg max-w-none overflow-hidden markdown-renderer">
         <ReactMarkdown
           remarkPlugins={[remarkGfm, remarkMath]}
-          rehypePlugins={[rehypeRaw, rehypeSlug, rehypeKatex, rehypeHighlight]}
+          rehypePlugins={[rehypeRaw, rehypeSanitize, rehypeSlug, rehypeKatex, rehypeHighlight]}
           components={components}
         >
           {content}

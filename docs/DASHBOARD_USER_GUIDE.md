@@ -97,6 +97,27 @@ Create and manage **custom pages** (e.g. Portfolio, Services) that appear at `/p
 - **Edit:** Open a post to edit. **Preview** opens the public blog post (or draft preview) in a new tab. **Version History** lets you view or restore earlier versions. For drafts you can generate a **Share draft link** for read-only preview.
 - **Publish / Unpublish:** Change status from the list or inside the post.
 
+### Videos (YouTube, Vimeo) in Markdown
+
+You can embed demo videos in post or custom page content in two ways:
+
+1. **Link as embed (easiest)**  
+   In your Markdown, add a normal link to a YouTube or Vimeo video. The renderer will show it as an embedded player (16:9) instead of a plain link.
+
+   - YouTube: `[Watch demo](https://www.youtube.com/watch?v=VIDEO_ID)` or `[Watch](https://youtu.be/VIDEO_ID)`
+   - Vimeo: `[Watch on Vimeo](https://vimeo.com/123456789)`
+
+2. **Raw HTML iframe**  
+   Because the site uses **rehype-raw**, you can paste the embed code from YouTube or Vimeo (the **Share → Embed** iframe snippet). For example:
+
+   ```html
+   <div class="my-4" style="aspect-ratio: 16/9; max-width: 100%;">
+     <iframe src="https://www.youtube.com/embed/VIDEO_ID" title="YouTube" allowfullscreen class="w-full h-full rounded-lg"></iframe>
+   </div>
+   ```
+
+Use the link form when you only need a single video; use the iframe when you want to customise size or options.
+
 ---
 
 ## Media

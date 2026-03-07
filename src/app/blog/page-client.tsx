@@ -104,7 +104,7 @@ export default function BlogPageClient() {
     return plainText.substring(0, maxLength).trim() + "...";
   };
 
-  // 按年份分組（用於 Archive 視圖）
+  // Group by year (for Archive view)
   const postsByYear = useMemo(() => {
     const grouped: Record<number, Post[]> = {};
     posts.forEach((post) => {
@@ -182,7 +182,7 @@ export default function BlogPageClient() {
         </p>
       )}
 
-      {/* 文章列表 */}
+      {/* Post list */}
       {isLoading ? (
         <div className="space-y-12 animate-pulse">
           {[1, 2].map((block) => (

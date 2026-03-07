@@ -17,6 +17,7 @@ import { InsertMediaModal } from "@/components/insert-media-modal";
 import { MarkdownRenderer } from "@/components/markdown-renderer";
 import { useBreadcrumb } from "@/contexts/breadcrumb-context";
 import { useLeaveGuard } from "@/contexts/leave-guard-context";
+import { validateSlug } from "@/lib/utils";
 
 // Dynamic import MDEditor to avoid SSR issues
 const MDEditor = dynamic(
@@ -43,7 +44,8 @@ export default function EditPostPage({
   const [published, setPublished] = useState(false);
   const [pinned, setPinned] = useState(false);
   const [publishedDate, setPublishedDate] = useState("");
-  const [category, setCategory] = useState(""); // 發布日期（createdAt）
+  const [scheduledPublishAt, setScheduledPublishAt] = useState("");
+  const [category, setCategory] = useState("");
   const [isLoading, setIsLoading] = useState(true);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [isDeleting, setIsDeleting] = useState(false);
@@ -70,6 +72,8 @@ export default function EditPostPage({
   const [restoreConfirmId, setRestoreConfirmId] = useState<string | null>(null);
   const [showInsertMedia, setShowInsertMedia] = useState(false);
   const [dragOver, setDragOver] = useState(false);
+  const [slugError, setSlugError] = useState<string | null>(null);
+  const [titleError, setTitleError] = useState<string | null>(null);
   const [previewToken, setPreviewToken] = useState<string | null>(null);
   const [isGeneratingPreview, setIsGeneratingPreview] = useState(false);
   const [isRevokingPreview, setIsRevokingPreview] = useState(false);
@@ -86,13 +90,14 @@ export default function EditPostPage({
     published: boolean;
     pinned: boolean;
     publishedDate: string;
+    scheduledPublishAt: string;
     category: string;
   } | null>(null);
   const lastAutosavedContentRef = useRef<string | null>(null);
   const lastAutosavedMetaRef = useRef<{ title: string; slug: string; description: string; tags: string } | null>(null);
   const autosaveTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
-  // 載入文章資料
+  // Load post data
   useEffect(() => {
     const fetchPost = async () => {
       try {
@@ -114,6 +119,11 @@ export default function EditPostPage({
           const date = new Date(post.createdAt);
           setPublishedDate(date.toISOString().split("T")[0]);
         }
+        if (post.publishedAt) {
+          setScheduledPublishAt(new Date(post.publishedAt).toISOString().slice(0, 16));
+        } else {
+          setScheduledPublishAt("");
+        }
         setBreadcrumbOverride({ label: postTitle });
         lastAutosavedMetaRef.current = {
           title: post.title || "",
@@ -122,6 +132,7 @@ export default function EditPostPage({
           tags: post.tags?.map((t: { name: string }) => t.name).join(", ") || "",
         };
         const pd = post.createdAt ? new Date(post.createdAt).toISOString().split("T")[0] : "";
+        const spa = post.publishedAt ? new Date(post.publishedAt).toISOString().slice(0, 16) : "";
         initialRef.current = {
           title: post.title || "",
           slug: post.slug || "",
@@ -131,6 +142,7 @@ export default function EditPostPage({
           published: post.published || false,
           pinned: post.pinned || false,
           publishedDate: pd,
+          scheduledPublishAt: spa,
           category: post.category || "",
         };
         lastAutosavedContentRef.current = post.content || "";
@@ -179,9 +191,10 @@ export default function EditPostPage({
       published !== init.published ||
       pinned !== init.pinned ||
       publishedDate !== init.publishedDate ||
+      scheduledPublishAt !== init.scheduledPublishAt ||
       category !== init.category;
     setDirty(isDirty);
-  }, [title, slug, content, description, tags, published, pinned, publishedDate, category]);
+  }, [title, slug, content, description, tags, published, pinned, publishedDate, scheduledPublishAt, category]);
 
   // Unsaved changes: beforeunload
   useEffect(() => {
@@ -241,6 +254,7 @@ export default function EditPostPage({
             published !== initialRef.current?.published ||
               pinned !== initialRef.current?.pinned ||
               publishedDate !== initialRef.current?.publishedDate ||
+              scheduledPublishAt !== initialRef.current?.scheduledPublishAt ||
               category !== initialRef.current?.category
           );
           setSavedMessage("Draft saved");
@@ -251,7 +265,7 @@ export default function EditPostPage({
       }
     }, 5000);
     return () => clearTimeout(timer);
-  }, [content, title, slug, description, tags, published, pinned, publishedDate, category, id, isSubmitting]);
+  }, [content, title, slug, description, tags, published, pinned, publishedDate, scheduledPublishAt, category, id, isSubmitting]);
 
   // Ctrl/Cmd+S to save; Ctrl/Cmd+Enter to publish (set published and save)
   useEffect(() => {
@@ -280,7 +294,7 @@ export default function EditPostPage({
     if (!isLoading) setDirty(true);
   };
 
-  // 自動生成 slug
+  // Auto-generate slug from title
   const handleTitleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     markDirty();
     const newTitle = e.target.value;
@@ -415,6 +429,7 @@ export default function EditPostPage({
           published,
           pinned,
           createdAt: publishedDate ? new Date(publishedDate).toISOString() : undefined,
+          publishedAt: scheduledPublishAt ? new Date(scheduledPublishAt).toISOString() : null,
           category: category || null,
         }),
       });
@@ -435,6 +450,7 @@ export default function EditPostPage({
           published,
           pinned,
           publishedDate,
+          scheduledPublishAt,
           category,
         };
       }
@@ -505,7 +521,7 @@ export default function EditPostPage({
         throw new Error(error.error || "Restore failed");
       }
 
-      // 重新載入文章資料
+      // Reload post data
       const postResponse = await fetch(`/api/posts/${id}`);
       if (postResponse.ok) {
         const post = await postResponse.json();
@@ -531,11 +547,12 @@ export default function EditPostPage({
             published: post.published || false,
             pinned: post.pinned || false,
             publishedDate: post.createdAt ? new Date(post.createdAt).toISOString().split("T")[0] : "",
+            scheduledPublishAt: "",
             category: post.category || "",
           };
         }
         lastAutosavedContentRef.current = post.content || "";
-        setPreviewToken(post.previewToken || null);
+        setPreviewToken(post.previewToken ?? null);
         setBreadcrumbOverride({ label: post.title || "" });
         lastAutosavedMetaRef.current = {
           title: post.title || "",
@@ -710,9 +727,12 @@ export default function EditPostPage({
                   type="text"
                   placeholder="Enter post title"
                   value={title}
-                  onChange={handleTitleChange}
+                  onChange={(e) => { setTitleError(null); handleTitleChange(e); }}
+                  onBlur={() => setTitleError(title.trim() ? null : "Title is required")}
                   required
+                  className={titleError ? "border-red-500" : ""}
                 />
+                {titleError && <p className="text-xs text-red-600">{titleError}</p>}
               </div>
 
               <div className="space-y-2">
@@ -724,9 +744,15 @@ export default function EditPostPage({
                   type="text"
                   placeholder="post-url-slug"
                   value={slug}
-                  onChange={(e) => { markDirty(); setSlug(e.target.value); }}
+                  onChange={(e) => { markDirty(); setSlugError(null); setSlug(e.target.value); }}
+                  onBlur={() => {
+                    const r = validateSlug(slug);
+                    setSlugError(r.valid ? null : r.message ?? null);
+                  }}
                   required
+                  className={slugError ? "border-red-500" : ""}
                 />
+                {slugError && <p className="text-xs text-red-600">{slugError}</p>}
               </div>
 
               {!focusMode && (
@@ -775,6 +801,21 @@ export default function EditPostPage({
                     />
                     <p className="text-xs text-slate-500">
                       Modify published date (shown in article list and detail page)
+                    </p>
+                  </div>
+
+                  <div className="space-y-2">
+                    <label htmlFor="scheduledPublishAt" className="text-sm font-medium text-slate-700">
+                      Schedule publish at (optional)
+                    </label>
+                    <Input
+                      id="scheduledPublishAt"
+                      type="datetime-local"
+                      value={scheduledPublishAt}
+                      onChange={(e) => { markDirty(); setScheduledPublishAt(e.target.value); }}
+                    />
+                    <p className="text-xs text-slate-500">
+                      When set and in the past, the post is shown as published even if &quot;Publish immediately&quot; is off
                     </p>
                   </div>
 
@@ -1020,7 +1061,7 @@ export default function EditPostPage({
                 onConfirm={() => handleRestore(restoreConfirmId)}
               />
             )}
-            {/* 版本歷史對話框 */}
+            {/* Version history dialog */}
             {showVersions && (
               <div
                 className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4"
@@ -1062,7 +1103,7 @@ export default function EditPostPage({
                               <div className="flex items-center justify-between">
                                 <div>
                                   <div className="font-medium text-slate-900">
-                                    版本 #{version.versionNumber}
+                                    Version #{version.versionNumber}
                                   </div>
                                   <div className="text-sm text-slate-500">
                                     {new Date(version.createdAt).toLocaleString("en-US")}

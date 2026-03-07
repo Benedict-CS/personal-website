@@ -31,6 +31,24 @@ This document covers backups, updates, and operational checks for the personal w
   ```
 - **Restore:** Stop RustFS, replace `rustfs-data` with the restored copy, then start again.
 
+### One-command backup script (DB + public + RustFS)
+
+Use the project script to back up the database, `public/about`, `public/cv.pdf`, and `rustfs-data` into a timestamped tarball under `backups/`:
+
+```bash
+./scripts/backup-data.sh
+```
+
+- **Cron:** To run daily (e.g. at 2:00 AM), add a crontab entry (run as the user that can run `docker compose` and read project files):
+  ```bash
+  0 2 * * * cd /path/to/personal-website && ./scripts/backup-data.sh
+  ```
+- The script keeps the latest 10 backups and deletes older ones. Copy `backups/*.tar.gz` off the server (e.g. to another host or object storage) for disaster recovery.
+
+### After important content changes (Dashboard Export)
+
+When you make important changes (e.g. new posts, updated pages, site config), use **Dashboard → Export** to download a JSON backup of posts, pages, and config. Store this file alongside your DB/backup tarballs so you have a point-in-time export that can be re-imported if needed.
+
 ### Application and config
 
 - **What to back up:** `.env` (secrets; store securely), any customizations under `public/` (e.g. CV), and your repo (code is in Git).

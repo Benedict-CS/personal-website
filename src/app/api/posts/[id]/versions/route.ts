@@ -2,7 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { requireSession } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 
-// 取得文章的所有版本歷史
+// List all versions for a post
 export async function GET(
   request: NextRequest,
   { params }: { params: Promise<{ id: string }> }
@@ -13,7 +13,7 @@ export async function GET(
 
     const { id } = await params;
 
-    // 取得所有版本，按版本號降序排列
+    // Fetch versions, newest first
     try {
       const versions = await prisma.postVersion.findMany({
         where: {
@@ -26,7 +26,7 @@ export async function GET(
 
       return NextResponse.json(versions, { status: 200 });
     } catch (error: unknown) {
-      // 如果表不存在，返回空陣列而不是錯誤
+      // Table may not exist yet
       const err = error as { code?: string; message?: string };
       if (err.code === "P2021" || err.message?.includes("does not exist")) {
         console.warn("PostVersion table does not exist. Run migration to enable version control.");

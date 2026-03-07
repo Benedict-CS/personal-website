@@ -3,10 +3,10 @@ import { listS3Objects } from "@/lib/s3";
 
 export async function GET() {
   try {
-    // 從 RustFS (S3) 列出所有檔案
+    // List all objects from RustFS (S3)
     const objects = await listS3Objects();
 
-    // 轉換為 API 格式（排除 cv.pdf，由 CV 頁面管理）
+    // Map to API format (exclude cv.pdf, managed by CV page)
     const fileList = objects
       .filter((obj) => obj.Key && obj.Key !== "cv.pdf")
       .map((obj) => ({
@@ -16,7 +16,7 @@ export async function GET() {
         url: `/api/media/serve/${obj.Key}`,
       }));
 
-    // 按建立時間排序（最新的在前）
+    // Sort by creation time, newest first
     fileList.sort((a, b) => {
       return new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime();
     });

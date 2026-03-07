@@ -7,29 +7,29 @@ interface TocItem {
   id: string;
   text: string;
   level: number;
-  parentId?: string; // 用於追蹤 h3 屬於哪個 h2
+  parentId?: string; // Which h2 this h3 belongs to
 }
 
 interface TableOfContentsProps {
   content: string;
 }
 
-// 生成 slug，與 rehype-slug 的邏輯一致
+// Generate slug consistent with rehype-slug
 function generateSlug(text: string): string {
   return text
     .toLowerCase()
     .trim()
-    .replace(/[^\w\s-]/g, "") // 移除特殊字元
-    .replace(/[\s_-]+/g, "-") // 將空格和底線轉換為連字號
-    .replace(/^-+|-+$/g, ""); // 移除開頭和結尾的連字號
+    .replace(/[^\w\s-]/g, "")
+    .replace(/[\s_-]+/g, "-")
+    .replace(/^-+|-+$/g, "");
 }
 
 export function TableOfContents({ content }: TableOfContentsProps) {
   const [headings, setHeadings] = useState<TocItem[]>([]);
   const [activeId, setActiveId] = useState<string>("");
-  const [expandedH2, setExpandedH2] = useState<string>(""); // 當前展開的 h2
+  const [expandedH2, setExpandedH2] = useState<string>("");
 
-  // 從 DOM 直接讀取渲染後的標題（等待 markdown 渲染完成）
+  // Read headings from DOM after markdown has rendered
   useEffect(() => {
     const timer = setTimeout(() => {
       const articleElement = document.querySelector("article") || document.body;
@@ -44,7 +44,7 @@ export function TableOfContents({ content }: TableOfContentsProps) {
         const text = element.textContent || "";
         const id = element.id;
 
-        // 追蹤 h3 屬於哪個 h2
+        // Track which h2 each h3 belongs to
         if (level === 2) {
           lastH2Id = id;
         }
@@ -63,7 +63,7 @@ export function TableOfContents({ content }: TableOfContentsProps) {
     return () => clearTimeout(timer);
   }, [content]);
 
-  // 監聽滾動，高亮當前標題
+  // Scroll listener to highlight current heading
   useEffect(() => {
     if (headings.length === 0) return;
 
@@ -73,9 +73,9 @@ export function TableOfContents({ content }: TableOfContentsProps) {
         return element ? { id: h.id, offsetTop: element.offsetTop } : null;
       }).filter(Boolean) as { id: string; offsetTop: number }[];
 
-      const scrollPosition = window.scrollY + 100; // 加上一些偏移
+      const scrollPosition = window.scrollY + 100;
 
-      // 找到當前應該高亮的標題
+      // Find heading to highlight
       let currentId = "";
       for (let i = headingElements.length - 1; i >= 0; i--) {
         if (scrollPosition >= headingElements[i].offsetTop) {
@@ -86,24 +86,24 @@ export function TableOfContents({ content }: TableOfContentsProps) {
 
       setActiveId(currentId || headings[0]?.id || "");
 
-      // 根據 activeId 決定展開哪個 h2
+      // Expand h2 based on activeId
       const activeHeading = headings.find(h => h.id === currentId);
       if (activeHeading) {
         if (activeHeading.level === 2) {
-          // 如果 active 是 h2，展開它
+          // If active is h2, expand it
           setExpandedH2(activeHeading.id);
         } else if (activeHeading.level === 3 && activeHeading.parentId) {
-          // 如果 active 是 h3，展開它的父 h2
+          // If active is h3, expand its parent h2
           setExpandedH2(activeHeading.parentId);
         } else if (activeHeading.level === 1) {
-          // 如果 active 是 h1，收起所有
+          // If active is h1, collapse all
           setExpandedH2("");
         }
       }
     };
 
     window.addEventListener("scroll", handleScroll);
-    handleScroll(); // 初始執行一次
+    handleScroll();
 
     return () => window.removeEventListener("scroll", handleScroll);
   }, [headings]);
@@ -121,7 +121,7 @@ export function TableOfContents({ content }: TableOfContentsProps) {
           </h2>
           <nav className="space-y-1">
             {headings.map((heading) => {
-              // h3 只在其父 h2 展開時才顯示
+              // Show h3 only when parent h2 is expanded
               if (heading.level === 3) {
                 if (heading.parentId !== expandedH2) {
                   return null;
@@ -147,7 +147,7 @@ export function TableOfContents({ content }: TableOfContentsProps) {
                     e.preventDefault();
                     const element = document.getElementById(heading.id);
                     if (element) {
-                      const offsetTop = element.offsetTop - 80; // 考慮 navbar 高度
+                      const offsetTop = element.offsetTop - 80;
                       window.scrollTo({
                         top: offsetTop,
                         behavior: "smooth",

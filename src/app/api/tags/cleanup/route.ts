@@ -7,24 +7,18 @@ export async function POST(_request: NextRequest) {
     const auth = await requireSession();
     if ("unauthorized" in auth) return auth.unauthorized;
 
-    // 取得所有標籤
     const allTags = await prisma.tag.findMany();
 
     const cleanedTags: Array<{ id: string; oldName: string; newName: string }> = [];
     const errors: string[] = [];
 
     for (const tag of allTags) {
-      // 檢查標籤名稱是否包含引號
-      // 去除開頭和結尾的引號（單引號 ' 和雙引號 "）
       let cleanedName = tag.name.trim();
-      // 去除開頭的引號
       cleanedName = cleanedName.replace(/^["']+/, "");
-      // 去除結尾的引號
       cleanedName = cleanedName.replace(/["']+$/, "");
       
       if (cleanedName !== tag.name) {
         try {
-          // 計算新的 slug
           const newSlug = cleanedName
             .toLowerCase()
             .trim()
@@ -32,14 +26,11 @@ export async function POST(_request: NextRequest) {
             .replace(/[\s_-]+/g, "-")
             .replace(/^-+|-+$/g, "");
 
-          // 檢查新 slug 是否已存在（可能是另一個標籤）
           const existingTag = await prisma.tag.findUnique({
             where: { slug: newSlug },
           });
 
           if (existingTag && existingTag.id !== tag.id) {
-            // 如果新 slug 已存在且是不同的標籤，需要合併
-            // 先將所有使用舊標籤的文章連接到新標籤
             const postsWithOldTag = await prisma.post.findMany({
               where: {
                 tags: {
@@ -50,7 +41,6 @@ export async function POST(_request: NextRequest) {
               },
             });
 
-            // 更新所有文章，將舊標籤替換為新標籤
             for (const post of postsWithOldTag) {
               await prisma.post.update({
                 where: { id: post.id },
@@ -63,7 +53,6 @@ export async function POST(_request: NextRequest) {
               });
             }
 
-            // 刪除舊標籤
             await prisma.tag.delete({
               where: { id: tag.id },
             });
@@ -71,10 +60,9 @@ export async function POST(_request: NextRequest) {
             cleanedTags.push({
               id: tag.id,
               oldName: tag.name,
-              newName: existingTag.name, // 使用已存在標籤的名稱
+              newName: existingTag.name,
             });
           } else {
-            // 更新標籤名稱和 slug
             await prisma.tag.update({
               where: { id: tag.id },
               data: {

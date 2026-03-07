@@ -16,7 +16,7 @@ export function ShareButtons({ title, url, description }: ShareButtonsProps) {
   const shareText = description ? `${title} - ${description}` : title;
   const fullUrl = typeof window !== "undefined" ? window.location.origin + url : url;
 
-  // Web Share API (行動裝置)
+  // Web Share API (mobile)
   const handleWebShare = async () => {
     if (navigator.share) {
       try {
@@ -26,31 +26,31 @@ export function ShareButtons({ title, url, description }: ShareButtonsProps) {
           url: fullUrl,
         });
       } catch (error) {
-        // 用戶取消分享或發生錯誤
+        // User cancelled or error
         console.log("Share cancelled or error:", error);
       }
     }
   };
 
-  // Twitter 分享
+  // Twitter
   const handleTwitterShare = () => {
     const twitterUrl = `https://twitter.com/intent/tweet?text=${encodeURIComponent(shareText)}&url=${encodeURIComponent(fullUrl)}`;
     window.open(twitterUrl, "_blank", "width=550,height=420");
   };
 
-  // Facebook 分享
+  // Facebook
   const handleFacebookShare = () => {
     const facebookUrl = `https://www.facebook.com/sharer/sharer.php?u=${encodeURIComponent(fullUrl)}`;
     window.open(facebookUrl, "_blank", "width=550,height=420");
   };
 
-  // LinkedIn 分享
+  // LinkedIn
   const handleLinkedInShare = () => {
     const linkedInUrl = `https://www.linkedin.com/sharing/share-offsite/?url=${encodeURIComponent(fullUrl)}`;
     window.open(linkedInUrl, "_blank", "width=550,height=420");
   };
 
-  // 複製連結
+  // Copy link
   const handleCopyLink = async () => {
     try {
       await navigator.clipboard.writeText(fullUrl);
@@ -58,7 +58,7 @@ export function ShareButtons({ title, url, description }: ShareButtonsProps) {
       setTimeout(() => setCopied(false), 2000);
     } catch (error) {
       console.error("Failed to copy:", error);
-      // Fallback: 使用舊方法
+      // Fallback
       const textArea = document.createElement("textarea");
       textArea.value = fullUrl;
       document.body.appendChild(textArea);
@@ -76,7 +76,7 @@ export function ShareButtons({ title, url, description }: ShareButtonsProps) {
     <div className="flex flex-wrap items-center gap-2 py-4 border-t border-b border-slate-200 my-6">
       <span className="text-sm font-medium text-slate-700 mr-2">Share:</span>
       
-      {/* Web Share (行動裝置) */}
+      {/* Web Share (mobile) */}
       {isWebShareSupported && (
         <Button
           variant="outline"
@@ -125,7 +125,7 @@ export function ShareButtons({ title, url, description }: ShareButtonsProps) {
         <span className="hidden sm:inline">LinkedIn</span>
       </Button>
 
-      {/* 複製連結 */}
+      {/* Copy link */}
       <Button
         variant="outline"
         size="sm"

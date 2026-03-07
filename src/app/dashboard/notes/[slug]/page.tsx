@@ -23,13 +23,13 @@ interface NotePageProps {
 export default async function NoteViewPage({ params }: NotePageProps) {
   const { slug } = await params;
 
-  // 檢查登入狀態
+  // Check auth
   const session = await getServerSession(authOptions);
   if (!session) {
     redirect("/auth/signin");
   }
 
-  // 只能查看 unpublished 的文章（筆記）
+  // Only unpublished posts (notes)
   const note = await prisma.post.findFirst({
     where: {
       slug: slug,
@@ -44,11 +44,11 @@ export default async function NoteViewPage({ params }: NotePageProps) {
     notFound();
   }
 
-  // 找同分類的上一篇/下一篇（按創建時間排序，可連續瀏覽）
+  // Prev/next in same category by creation time
   // @ts-ignore - category field will be available after migration
   const category = note.category || null;
   
-  // 找同分類的所有筆記（按創建時間排序），用於導航
+  // All notes in category for navigation
   // @ts-ignore
   const allNotesInCategory = await prisma.post.findMany({
     where: {
@@ -57,7 +57,7 @@ export default async function NoteViewPage({ params }: NotePageProps) {
       category: category,
     },
     orderBy: {
-      createdAt: "asc", // 按時間正序排列
+      createdAt: "asc",
     },
     select: {
       id: true,
@@ -66,13 +66,13 @@ export default async function NoteViewPage({ params }: NotePageProps) {
     },
   });
 
-  // 找到當前筆記在列表中的位置
+  // Current note index in list
   const currentIndex = allNotesInCategory.findIndex((n) => n.id === note.id);
   
-  // 上一篇：當前位置的前一個
+  // Prev: previous in list
   const prevNote = currentIndex > 0 ? allNotesInCategory[currentIndex - 1] : null;
   
-  // 下一篇：當前位置的後一個
+  // Next: next in list
   const nextNote = currentIndex < allNotesInCategory.length - 1 ? allNotesInCategory[currentIndex + 1] : null;
 
   const formatDate = (date: Date) => {
