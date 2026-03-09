@@ -135,7 +135,6 @@ export default async function TagPage({
                 </CardHeader>
                 <CardContent>
                   <p className="text-sm text-slate-600 line-clamp-3 leading-relaxed">
-                    {/* @ts-ignore */}
                     {post.description || truncateContent(post.content)}
                   </p>
                 </CardContent>

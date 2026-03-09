@@ -1,9 +1,9 @@
-import { NextRequest, NextResponse } from "next/server";
+import { NextResponse } from "next/server";
 import { requireSession } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 import { listS3Objects, deleteFromS3 } from "@/lib/s3";
 
-export async function POST(_request: NextRequest) {
+export async function POST() {
   try {
     const auth = await requireSession();
     if ("unauthorized" in auth) return auth.unauthorized;

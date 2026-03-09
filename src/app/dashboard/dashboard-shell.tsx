@@ -1,7 +1,6 @@
 "use client";
 
-import { useState, useEffect } from "react";
-import { usePathname } from "next/navigation";
+import { useState } from "react";
 import { BreadcrumbProvider } from "@/contexts/breadcrumb-context";
 import { LeaveGuardProvider } from "@/contexts/leave-guard-context";
 import { DashboardNav } from "./dashboard-nav";
@@ -14,28 +13,15 @@ import { Button } from "@/components/ui/button";
 const STORAGE_KEY = "dashboard-sidebar-collapsed";
 
 export function DashboardShell({ children }: { children: React.ReactNode }) {
-  const pathname = usePathname();
-  const [collapsed, setCollapsed] = useState(false);
-  const [mounted, setMounted] = useState(false);
-  const [mobileOpen, setMobileOpen] = useState(false);
-
-  useEffect(() => {
-    setMounted(true);
-  }, []);
-
-  useEffect(() => {
-    if (!mounted) return;
+  const [collapsed, setCollapsed] = useState(() => {
+    if (typeof window === "undefined") return false;
     try {
-      const stored = localStorage.getItem(STORAGE_KEY);
-      if (stored !== null) setCollapsed(stored === "true");
+      return localStorage.getItem(STORAGE_KEY) === "true";
     } catch {
-      // ignore
+      return false;
     }
-  }, [mounted]);
-
-  useEffect(() => {
-    setMobileOpen(false);
-  }, [pathname]);
+  });
+  const [mobileOpen, setMobileOpen] = useState(false);
 
   const toggle = () => {
     setCollapsed((prev) => {
@@ -50,8 +36,6 @@ export function DashboardShell({ children }: { children: React.ReactNode }) {
   };
 
   const sidebarWidth = collapsed ? "w-16" : "w-64";
-  const mainMargin = collapsed ? "ml-16" : "ml-64";
-
   return (
     <LeaveGuardProvider>
     <BreadcrumbProvider>

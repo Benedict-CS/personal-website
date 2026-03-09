@@ -20,7 +20,7 @@ jest.mock("@/lib/auth", () => ({
   requireSession: jest.fn(),
 }));
 
-const { requireSession } = require("@/lib/auth");
+import { requireSession } from "@/lib/auth";
 
 function createGetRequest(page?: string) {
   const url = new URL("http://localhost/api/site-content");

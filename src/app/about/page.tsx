@@ -5,7 +5,6 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Mail, Linkedin, Github, GraduationCap, Briefcase, Award, Trophy, Download, Code, Network } from "lucide-react";
-import { siteConfig } from "@/config/site";
 import { getSiteConfigForRender } from "@/lib/site-config";
 import { prisma } from "@/lib/prisma";
 import { AboutHighlightScroll } from "@/components/about-highlight-scroll";
@@ -63,7 +62,7 @@ export interface AboutBlockEntry {
 
 async function getAboutConfig() {
   try {
-    let config = await prisma.aboutConfig.findFirst();
+    const config = await prisma.aboutConfig.findFirst();
     if (!config) {
       return {
         profileImage: null,
@@ -223,8 +222,7 @@ function getCompanyLogo(companyLogos: CompanyLogo[], companyName: string): strin
 
 export default async function AboutPage() {
   const config = await getAboutConfig();
-  const { profileImage, heroName, heroTagline, introText, aboutMainContent, educationBlocks, experienceBlocks, projectBlocks, schoolLogos, projectImages, companyLogos, technicalSkills, achievements, sectionOrder, sectionVisibility } = config;
-  const aboutSectionOrder = sectionOrder?.length ? sectionOrder : ["education", "experience", "projects", "skills", "achievements"];
+  const { profileImage, heroName, heroTagline, introText, aboutMainContent, educationBlocks, experienceBlocks, projectBlocks, schoolLogos, projectImages, companyLogos, technicalSkills, achievements, sectionVisibility } = config;
   const aboutVisible = (id: string) => sectionVisibility?.[id] !== false;
   const useStructuredBlocks = educationBlocks.length > 0 || experienceBlocks.length > 0 || projectBlocks.length > 0;
 

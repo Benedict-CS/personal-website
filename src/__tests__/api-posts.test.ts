@@ -19,8 +19,14 @@ jest.mock("@/lib/prisma", () => ({
 jest.mock("@/lib/auth", () => ({
   requireSession: jest.fn(),
 }));
+jest.mock("next/cache", () => ({
+  revalidatePath: jest.fn(),
+}));
+jest.mock("@/lib/audit", () => ({
+  auditLog: jest.fn(),
+}));
 
-const { requireSession } = require("@/lib/auth");
+import { requireSession } from "@/lib/auth";
 
 function createGetRequest(searchParams?: Record<string, string>) {
   const url = new URL("http://localhost/api/posts");
@@ -72,7 +78,9 @@ describe("GET /api/posts", () => {
     await GET(req);
     expect(mockFindMany).toHaveBeenCalledWith(
       expect.objectContaining({
-        where: expect.objectContaining({ published: true }),
+        where: expect.objectContaining({
+          OR: expect.arrayContaining([{ published: true }]),
+        }),
       })
     );
   });

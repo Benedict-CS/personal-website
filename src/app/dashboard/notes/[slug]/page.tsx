@@ -45,15 +45,12 @@ export default async function NoteViewPage({ params }: NotePageProps) {
   }
 
   // Prev/next in same category by creation time
-  // @ts-ignore - category field will be available after migration
   const category = note.category || null;
   
   // All notes in category for navigation
-  // @ts-ignore
   const allNotesInCategory = await prisma.post.findMany({
     where: {
       published: false,
-      // @ts-ignore
       category: category,
     },
     orderBy: {

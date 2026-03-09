@@ -1,6 +1,5 @@
 import type { Metadata } from "next";
 import { Suspense } from "react";
-import { siteConfig } from "@/config/site";
 import { getSiteConfigForRender } from "@/lib/site-config";
 import BlogPageClient from "./page-client";
 

@@ -13,6 +13,7 @@ interface Note {
   title: string;
   slug: string;
   content: string;
+  description?: string | null;
   category: string | null;
   updatedAt: string;
   tags: Array<{ id: string; name: string }>;
@@ -329,7 +330,6 @@ export default function NotesPage() {
                     </CardHeader>
                     <CardContent className="flex-1 flex flex-col justify-between">
                       <p className="text-sm text-slate-600 line-clamp-3 mb-4">
-                        {/* @ts-ignore */}
                         {note.description || `${note.content.substring(0, 150)}...`}
                       </p>
                       <div className="flex gap-2">
@@ -439,7 +439,7 @@ export default function NotesPage() {
         </div>
       ) : filteredNotes.length === 0 && searchQuery ? (
         <div className="rounded-lg border border-slate-200 bg-white p-12 text-center">
-          <p className="text-slate-500">No notes found matching "{searchQuery}"</p>
+          <p className="text-slate-500">No notes found matching &quot;{searchQuery}&quot;</p>
         </div>
       ) : (
         <div className="space-y-6">

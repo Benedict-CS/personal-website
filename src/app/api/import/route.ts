@@ -4,27 +4,9 @@ import { prisma } from "@/lib/prisma";
 import { auditLog } from "@/lib/audit";
 import { getClientIP } from "@/lib/rate-limit";
 
-type ExportPost = {
-  title: string;
-  slug: string;
-  content: string;
-  description?: string | null;
-  published?: boolean;
-  pinned?: boolean;
-  tags?: string[];
-};
-
-type ExportPage = {
-  slug: string;
-  title: string;
-  content?: string;
-  order?: number;
-  published?: boolean;
-};
-
 /**
  * POST /api/import — import posts (and optionally custom pages) from JSON (auth required).
- * Body: { posts?: ExportPost[], customPages?: ExportPage[] }
+ * Body: { posts?: unknown[], customPages?: unknown[] }
  * Creates posts and pages; tags are connectOrCreate by name.
  */
 export async function POST(request: NextRequest) {

@@ -10,22 +10,20 @@ const WARN_WHEN_REMAINING_SECONDS = 5 * 60; // 5 min
 
 export function SessionExpiryBanner() {
   const { data: session, status } = useSession();
-  const [remaining, setRemaining] = useState<number | null>(null);
+  const [nowSec, setNowSec] = useState(() => Math.floor(Date.now() / 1000));
   const expiresAt = (session as { expiresAt?: number } | null)?.expiresAt;
 
   useEffect(() => {
-    if (status !== "authenticated" || typeof expiresAt !== "number") {
-      setRemaining(null);
-      return;
-    }
-    const tick = () => {
-      const now = Math.floor(Date.now() / 1000);
-      setRemaining(Math.max(0, expiresAt - now));
-    };
-    tick();
-    const interval = setInterval(tick, 30 * 1000); // every 30s
+    const interval = setInterval(() => {
+      setNowSec(Math.floor(Date.now() / 1000));
+    }, 30 * 1000);
     return () => clearInterval(interval);
-  }, [status, expiresAt]);
+  }, []);
+
+  const remaining =
+    status === "authenticated" && typeof expiresAt === "number"
+      ? Math.max(0, expiresAt - nowSec)
+      : null;
 
   if (remaining === null || remaining > WARN_WHEN_REMAINING_SECONDS || remaining <= 0) return null;
 

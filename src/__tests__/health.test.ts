@@ -9,7 +9,7 @@ jest.mock("@/lib/prisma", () => ({
   },
 }));
 
-const { prisma } = require("@/lib/prisma");
+import { prisma } from "@/lib/prisma";
 
 describe("runHealthCheck", () => {
   beforeEach(() => {

@@ -58,15 +58,11 @@ interface MarkdownRendererProps {
 export function MarkdownRenderer({ content, postId, editable = false }: MarkdownRendererProps) {
   const [copiedCode, setCopiedCode] = useState<string | null>(null);
   const [checkboxStates, setCheckboxStates] = useState<Record<number, boolean>>({});
-  const [currentContent, setCurrentContent] = useState(content);
   const [lightboxSrc, setLightboxSrc] = useState<string | null>(null);
-  const checkboxCounterRef = React.useRef(0);
 
   // Reset when content changes
   useEffect(() => {
-    setCurrentContent(content);
     setCheckboxStates({});
-    checkboxCounterRef.current = 0;
   }, [content]);
 
   // Handle checkbox toggle (persist to DB when editable)
@@ -91,8 +87,7 @@ export function MarkdownRenderer({ content, postId, editable = false }: Markdown
         });
 
         if (response.ok) {
-          const data = await response.json();
-          setCurrentContent(data.content);
+          await response.json();
         }
       } catch (error) {
         console.error("Failed to save checkbox:", error);
@@ -212,7 +207,7 @@ export function MarkdownRenderer({ content, postId, editable = false }: Markdown
     }
   };
 
-  checkboxCounterRef.current = 0;
+  let checkboxCounter = 0;
 
   const components: Components = {
     pre: ({ children, ...props }) => {
@@ -335,7 +330,7 @@ export function MarkdownRenderer({ content, postId, editable = false }: Markdown
         </code>
       );
     },
-    img: ({ src, alt, ...props }) => {
+    img: ({ src, alt }) => {
       const srcStr = typeof src === "string" ? src : null;
       if (!srcStr) return null;
       const fullSrc = srcStr.startsWith("http") || srcStr.startsWith("/") ? srcStr : `/${srcStr}`;
@@ -473,7 +468,7 @@ export function MarkdownRenderer({ content, postId, editable = false }: Markdown
       
       if (checkboxMatch) {
         const isChecked = checkboxMatch[1].toLowerCase() === 'x';
-        const checkboxIndex = checkboxCounterRef.current++;
+        const checkboxIndex = checkboxCounter++;
         const currentState = checkboxStates[checkboxIndex] ?? isChecked;
         let remainingContent: React.ReactNode = children;
         let isAloneCheckbox = false;

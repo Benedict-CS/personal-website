@@ -14,7 +14,6 @@ import {
 } from "@/components/ui/card";
 import { ConfirmDialog } from "@/components/ui/confirm-dialog";
 import { InsertMediaModal } from "@/components/insert-media-modal";
-import { MarkdownRenderer } from "@/components/markdown-renderer";
 import { useBreadcrumb } from "@/contexts/breadcrumb-context";
 import { useLeaveGuard } from "@/contexts/leave-guard-context";
 import { validateSlug } from "@/lib/utils";
@@ -95,7 +94,6 @@ export default function EditPostPage({
   } | null>(null);
   const lastAutosavedContentRef = useRef<string | null>(null);
   const lastAutosavedMetaRef = useRef<{ title: string; slug: string; description: string; tags: string } | null>(null);
-  const autosaveTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   // Load post data
   useEffect(() => {
@@ -160,7 +158,7 @@ export default function EditPostPage({
     if (id) {
       fetchPost();
     }
-  }, [id, router]);
+  }, [id, router, setBreadcrumbOverride]);
 
   useEffect(() => {
     return () => setBreadcrumbOverride(null);
@@ -219,7 +217,6 @@ export default function EditPostPage({
   // Autosave content + title/slug/description/tags (debounced 5s)
   useEffect(() => {
     const contentChanged = content !== lastAutosavedContentRef.current;
-    const meta = { title, slug, description, tags };
     const metaChanged = !lastAutosavedMetaRef.current ||
       lastAutosavedMetaRef.current.title !== title ||
       lastAutosavedMetaRef.current.slug !== slug ||

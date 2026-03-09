@@ -10,23 +10,28 @@ import { useEffect, useRef, useState } from "react";
  */
 export function GiscusComments({ mapping = "pathname" }: { mapping?: "pathname" | "url" | "title" | "og:title" }) {
   const containerRef = useRef<HTMLDivElement>(null);
+  const envConfig =
+    process.env.NEXT_PUBLIC_GISCUS_REPO &&
+    process.env.NEXT_PUBLIC_GISCUS_REPO_ID &&
+    process.env.NEXT_PUBLIC_GISCUS_CATEGORY &&
+    process.env.NEXT_PUBLIC_GISCUS_CATEGORY_ID
+      ? {
+          repo: process.env.NEXT_PUBLIC_GISCUS_REPO,
+          repoId: process.env.NEXT_PUBLIC_GISCUS_REPO_ID,
+          category: process.env.NEXT_PUBLIC_GISCUS_CATEGORY,
+          categoryId: process.env.NEXT_PUBLIC_GISCUS_CATEGORY_ID,
+        }
+      : null;
   const [config, setConfig] = useState<{
     repo: string;
     repoId: string;
     category: string;
     categoryId: string;
-  } | null>(null);
+  } | null>(envConfig);
 
   // Prefer build-time env; otherwise fetch from API (for Docker runtime)
   useEffect(() => {
-    const repo = process.env.NEXT_PUBLIC_GISCUS_REPO;
-    const repoId = process.env.NEXT_PUBLIC_GISCUS_REPO_ID;
-    const category = process.env.NEXT_PUBLIC_GISCUS_CATEGORY;
-    const categoryId = process.env.NEXT_PUBLIC_GISCUS_CATEGORY_ID;
-    if (repo && repoId && category && categoryId) {
-      setConfig({ repo, repoId, category, categoryId });
-      return;
-    }
+    if (config) return;
     fetch("/api/giscus-config")
       .then((r) => r.json())
       .then((data) => {
@@ -40,10 +45,11 @@ export function GiscusComments({ mapping = "pathname" }: { mapping?: "pathname" 
         }
       })
       .catch(() => {});
-  }, []);
+  }, [config]);
 
   useEffect(() => {
     if (!config || !containerRef.current) return;
+    const container = containerRef.current;
 
     const script = document.createElement("script");
     script.src = "https://giscus.app/client.js";
@@ -60,9 +66,9 @@ export function GiscusComments({ mapping = "pathname" }: { mapping?: "pathname" 
     script.async = true;
     script.crossOrigin = "anonymous";
 
-    containerRef.current.appendChild(script);
+    container.appendChild(script);
     return () => {
-      containerRef.current?.querySelector("script[src*='giscus']")?.remove();
+      container.querySelector("script[src*='giscus']")?.remove();
     };
   }, [config, mapping]);
 

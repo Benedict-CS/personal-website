@@ -26,7 +26,6 @@ export async function GET(request: NextRequest) {
         title: true,
         slug: true,
         content: true,
-        // @ts-ignore - description field added via migration
         description: true,
         createdAt: true,
         updatedAt: true,
@@ -57,7 +56,6 @@ export async function GET(request: NextRequest) {
         const link = `${baseUrl}/blog/${post.slug}`;
         const pubDate = formatRSSDate(post.createdAt);
         const updatedDate = formatRSSDate(post.updatedAt);
-        // @ts-ignore - description field
         const description = generateDescription(post.content, post.description);
         const contentEncoded = fullContent
           ? `\n      <content:encoded><![CDATA[${escapeCdata(post.content)}]]></content:encoded>`

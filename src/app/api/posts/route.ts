@@ -148,16 +148,13 @@ export async function POST(request: NextRequest) {
           })
       : [];
 
-    // @ts-ignore - category and description fields added via migration
     const post = await prisma.post.create({
       data: {
         title,
         slug,
         content,
-        // @ts-ignore
         description: description || null,
         published: published ?? false,
-        // @ts-ignore
         category: category || null,
         tags: {
           connectOrCreate: tagConnections,

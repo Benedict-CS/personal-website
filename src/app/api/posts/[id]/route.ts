@@ -70,11 +70,9 @@ export async function PATCH(
 
     // If only updating category (quick edit), update and return
     if (category !== undefined && !title && !slug && !content) {
-      // @ts-ignore
       const updatedPost = await prisma.post.update({
         where: { id },
         data: {
-          // @ts-ignore
           category: category,
         },
         include: {
@@ -269,7 +267,6 @@ export async function PATCH(
     }
 
     // Update post (including createdAt, description, category)
-    // @ts-ignore - description and category fields added via migration
     const post = await prisma.post.update({
       where: {
         id: id,
@@ -278,11 +275,9 @@ export async function PATCH(
         title,
         slug,
         content,
-        // @ts-ignore
         description: description !== undefined ? description : undefined,
         published: published ?? false,
         pinned: pinned ?? false,
-        // @ts-ignore
         category: category !== undefined ? category : undefined,
         ...(createdAt && { createdAt: new Date(createdAt) }),
         ...(publishedAt !== undefined && publishedAt !== null && publishedAt !== ""

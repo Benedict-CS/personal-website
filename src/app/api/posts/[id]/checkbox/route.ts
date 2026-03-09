@@ -35,11 +35,11 @@ export async function PATCH(
     }
 
     // Find all checkboxes (tables and lists)
-    const checkboxRegex = /\[([xX ])\]/g;
+    const checkboxRegex = /\[(?:[xX ])\]/g;
     let matches = 0;
     let updatedContent = post.content;
 
-    updatedContent = post.content.replace(checkboxRegex, (match, checkMark) => {
+    updatedContent = post.content.replace(checkboxRegex, (match) => {
       if (matches === checkboxIndex) {
         // Toggle target checkbox
         matches++;

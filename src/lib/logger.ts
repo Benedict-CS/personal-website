@@ -16,17 +16,17 @@ function formatMessage(level: LogLevel, message: string, meta?: Record<string, u
 }
 
 export function logInfo(message: string, meta?: Record<string, unknown>): void {
-  // eslint-disable-next-line no-console
+   
   console.log(formatMessage("info", message, meta));
 }
 
 export function logWarn(message: string, meta?: Record<string, unknown>): void {
-  // eslint-disable-next-line no-console
+   
   console.warn(formatMessage("warn", message, meta));
 }
 
 export function logError(message: string, meta?: Record<string, unknown>): void {
-  // eslint-disable-next-line no-console
+   
   console.error(formatMessage("error", message, meta));
 }
 

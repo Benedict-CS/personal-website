@@ -1,11 +1,11 @@
 "use client";
 
-import { useState, useEffect, useRef } from "react";
+import { useState, useEffect } from "react";
 import Image from "next/image";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
-import { Upload, CheckCircle2, XCircle, Trash2, Download, FileText, Trash, ExternalLink, Info, GraduationCap, Briefcase, Code, ChevronUp, ChevronDown } from "lucide-react";
+import { CheckCircle2, XCircle, Trash2, FileText, Trash, ExternalLink, Info, GraduationCap, Briefcase, Code, ChevronUp, ChevronDown } from "lucide-react";
 import Link from "next/link";
 import { Textarea } from "@/components/ui/textarea";
 import { useToast } from "@/contexts/toast-context";
@@ -98,6 +98,8 @@ const DEFAULT_ACHIEVEMENTS: AchievementEntry[] = [
   { title: "5G Mobileheroes - Shortlisted", organization: "Industrial Development Administration 2021", year: "2021" },
 ];
 
+const ABOUT_SECTION_IDS = ["education", "experience", "projects", "skills", "achievements"] as const;
+
 type AboutSavedSnapshot = {
   hero: { heroName: string; heroTagline: string };
   intro: string;
@@ -139,7 +141,7 @@ export default function AboutEditor() {
   const [experienceBlocks, setExperienceBlocks] = useState<AboutBlockEntry[]>([]);
   const [projectBlocks, setProjectBlocks] = useState<AboutBlockEntry[]>([]);
   const [schoolLogos, setSchoolLogos] = useState<SchoolLogo[]>([]);
-  const [projectImages, setProjectImages] = useState<ProjectImage[]>([]);
+  const [, setProjectImages] = useState<ProjectImage[]>([]);
   const [companyLogos, setCompanyLogos] = useState<CompanyLogo[]>([]);
   const [technicalSkills, setTechnicalSkills] = useState<TechnicalSkillSection[]>(DEFAULT_TECHNICAL_SKILLS);
   const [achievements, setAchievements] = useState<AchievementEntry[]>(DEFAULT_ACHIEVEMENTS);
@@ -157,8 +159,7 @@ export default function AboutEditor() {
   }>({ type: null, message: "" });
   const [mediaPickerTarget, setMediaPickerTarget] = useState<{ block: "education" | "experience"; index: number } | null>(null);
   const [lastSavedSnapshot, setLastSavedSnapshot] = useState<AboutSavedSnapshot | null>(null);
-  const ABOUT_SECTION_IDS = ["education", "experience", "projects", "skills", "achievements"];
-  const [sectionOrder, setSectionOrder] = useState<string[]>(ABOUT_SECTION_IDS);
+  const [sectionOrder, setSectionOrder] = useState<string[]>([...ABOUT_SECTION_IDS]);
   const [sectionVisibility, setSectionVisibility] = useState<Record<string, boolean>>({});
 
   // Load config
@@ -466,21 +467,6 @@ export default function AboutEditor() {
       toast("Failed to save Achievements.", "error");
     } finally {
       setSavingAchievements(false);
-    }
-  };
-
-  const saveMainContent = async () => {
-    setSavingIntro(true);
-    try {
-      await updateConfig({ aboutMainContent: aboutMainContent || null });
-      setLastSavedSnapshot((prev) => prev ? { ...prev, aboutMainContent } : null);
-      setUploadStatus({ type: "success", message: "Main content saved." });
-      toast("Main content saved.", "success");
-    } catch {
-      setUploadStatus({ type: "error", message: "Failed to save." });
-      toast("Failed to save.", "error");
-    } finally {
-      setSavingIntro(false);
     }
   };
 

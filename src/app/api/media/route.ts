@@ -1,8 +1,12 @@
 import { NextResponse } from "next/server";
 import { listS3Objects } from "@/lib/s3";
+import { requireSession } from "@/lib/auth";
 
 export async function GET() {
   try {
+    const auth = await requireSession();
+    if ("unauthorized" in auth) return auth.unauthorized;
+
     // List all objects from RustFS (S3)
     const objects = await listS3Objects();
 

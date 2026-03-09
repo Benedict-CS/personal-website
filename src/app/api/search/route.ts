@@ -234,7 +234,11 @@ export async function GET(request: NextRequest) {
     });
 
     return NextResponse.json({
-      posts: posts.map(({ content: _, ...rest }) => rest),
+      posts: posts.map((post) => {
+        const { content, ...rest } = post;
+        void content;
+        return rest;
+      }),
       pages,
     });
   } catch (e) {

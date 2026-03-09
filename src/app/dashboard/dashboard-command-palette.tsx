@@ -49,12 +49,6 @@ export function DashboardCommandPalette() {
       )
     : ACTIONS;
 
-  const openPalette = useCallback(() => {
-    setOpen(true);
-    setQuery("");
-    setSelected(0);
-  }, []);
-
   const closePalette = useCallback(() => {
     setOpen(false);
   }, []);

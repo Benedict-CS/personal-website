@@ -10,7 +10,7 @@ import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { InsertMediaModal } from "@/components/insert-media-modal";
 import { ImageIcon, ArrowRight, ArrowLeft, Check } from "lucide-react";
-import type { SiteConfigResponse, NavItem } from "@/types/site";
+import type { SiteConfigResponse } from "@/types/site";
 import { DEFAULT_NAV_ITEMS } from "@/app/api/site-config/route";
 import { NavItemsEditor } from "@/components/nav-items-editor";
 

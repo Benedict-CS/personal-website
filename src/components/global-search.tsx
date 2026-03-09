@@ -40,34 +40,37 @@ export function GlobalSearch() {
   const debounceRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   useEffect(() => {
-    if (open) {
-      inputRef.current?.focus();
-      setQuery("");
-      setPendingQuery("");
-      setResult({ posts: [], pages: [] });
-    }
+    if (open) inputRef.current?.focus();
   }, [open]);
-
-  useEffect(() => {
-    if (!pendingQuery.trim()) {
-      setResult({ posts: [], pages: [] });
-      return;
-    }
-    setLoading(true);
-    fetch(`/api/search?q=${encodeURIComponent(pendingQuery.trim())}`)
-      .then((res) => (res.ok ? res.json() : { posts: [], pages: [] }))
-      .then((data: SearchResult) => setResult({ posts: data.posts || [], pages: data.pages || [] }))
-      .catch(() => setResult({ posts: [], pages: [] }))
-      .finally(() => setLoading(false));
-  }, [pendingQuery]);
 
   const handleInputChange = useCallback((value: string) => {
     setQuery(value);
     if (debounceRef.current) clearTimeout(debounceRef.current);
     debounceRef.current = setTimeout(() => {
-      setPendingQuery(value);
+      const term = value.trim();
+      setPendingQuery(term);
+      if (!term) {
+        setResult({ posts: [], pages: [] });
+        setLoading(false);
+        debounceRef.current = null;
+        return;
+      }
+      setLoading(true);
+      fetch(`/api/search?q=${encodeURIComponent(term)}`)
+        .then((res) => (res.ok ? res.json() : { posts: [], pages: [] }))
+        .then((data: SearchResult) => setResult({ posts: data.posts || [], pages: data.pages || [] }))
+        .catch(() => setResult({ posts: [], pages: [] }))
+        .finally(() => setLoading(false));
       debounceRef.current = null;
     }, DEBOUNCE_MS);
+  }, []);
+
+  const openPanel = useCallback(() => {
+    setQuery("");
+    setPendingQuery("");
+    setResult({ posts: [], pages: [] });
+    setLoading(false);
+    setOpen(true);
   }, []);
 
   const close = useCallback(() => {
@@ -111,7 +114,7 @@ export function GlobalSearch() {
         variant="ghost"
         size="sm"
         className="text-slate-700 hover:text-slate-900 text-xs sm:text-sm"
-        onClick={() => setOpen(!open)}
+        onClick={() => (open ? close() : openPanel())}
         aria-label="Search site"
       >
         <Search className="h-4 w-4" />

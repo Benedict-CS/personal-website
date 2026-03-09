@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect } from "react";
+import Link from "next/link";
 
 /**
  * Root-level error boundary. Renders when an error is not caught by error.tsx.
@@ -44,7 +45,7 @@ export default function GlobalError({
             >
               Try again
             </button>
-            <a
+            <Link
               href="/"
               style={{
                 padding: "0.5rem 1rem",
@@ -56,8 +57,8 @@ export default function GlobalError({
               }}
             >
               Home
-            </a>
-            <a
+            </Link>
+            <Link
               href="/blog"
               style={{
                 padding: "0.5rem 1rem",
@@ -69,7 +70,7 @@ export default function GlobalError({
               }}
             >
               Blog
-            </a>
+            </Link>
           </div>
         </div>
       </body>
