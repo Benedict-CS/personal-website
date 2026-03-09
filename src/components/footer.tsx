@@ -9,8 +9,16 @@ export function Footer({ siteConfig: siteConfigProp }: { siteConfig?: SiteConfig
   const name = siteConfigProp?.authorName ?? siteConfigProp?.siteName ?? siteConfig.name;
   const footerLine = siteConfigProp?.footerText?.trim() || "All rights reserved.";
   const email = links?.email ?? siteConfig.links.email;
+  const emailHref = email
+    ? email.startsWith("mailto:")
+      ? email
+      : email.includes("@")
+        ? `mailto:${email}`
+        : email
+    : null;
   const linkedin = links?.linkedin ?? siteConfig.links.linkedin;
   const github = links?.github ?? siteConfig.links.github;
+  const rss = links?.rss?.trim() || "/feed.xml";
 
   return (
     <footer className="relative z-20 mt-auto border-t border-slate-200 bg-slate-50/80">
@@ -19,7 +27,8 @@ export function Footer({ siteConfig: siteConfigProp }: { siteConfig?: SiteConfig
           <div className="flex items-center gap-2 sm:gap-6 text-slate-600 shrink-0">
             {email ? (
               <Link
-                href="/contact"
+                href={emailHref || "/contact"}
+                data-editor-button="footer.email"
                 className="inline-flex items-center justify-center min-w-[44px] min-h-[44px] rounded-md hover:text-slate-900 transition-colors duration-200 focus:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
                 title="Contact"
               >
@@ -31,6 +40,7 @@ export function Footer({ siteConfig: siteConfigProp }: { siteConfig?: SiteConfig
                 href={linkedin}
                 target="_blank"
                 rel="noopener noreferrer"
+                data-editor-button="footer.linkedin"
                 className="inline-flex items-center justify-center min-w-[44px] min-h-[44px] rounded-md hover:text-slate-900 transition-colors duration-200 focus:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
                 title="LinkedIn"
               >
@@ -42,6 +52,7 @@ export function Footer({ siteConfig: siteConfigProp }: { siteConfig?: SiteConfig
                 href={github}
                 target="_blank"
                 rel="noopener noreferrer"
+                data-editor-button="footer.github"
                 className="inline-flex items-center justify-center min-w-[44px] min-h-[44px] rounded-md hover:text-slate-900 transition-colors duration-200 focus:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
                 title="GitHub"
               >
@@ -49,18 +60,19 @@ export function Footer({ siteConfig: siteConfigProp }: { siteConfig?: SiteConfig
               </Link>
             ) : null}
             <Link
-              href="/feed.xml"
+              href={rss}
               target="_blank"
               rel="noopener noreferrer"
+              data-editor-button="footer.rss"
               className="flex items-center gap-1.5 min-h-[44px] px-2 rounded-md hover:text-slate-900 transition-colors duration-200 focus:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
               title="Subscribe via RSS"
             >
               <Rss className="h-5 w-5" />
-              <span className="text-sm">RSS</span>
+              <span className="text-sm" data-editor-button-label>RSS</span>
             </Link>
           </div>
-          <p className="text-sm text-slate-500 text-center sm:text-right min-w-0">
-            © {year} {name}. {footerLine}
+          <p className="text-sm text-slate-500 text-center sm:text-right min-w-0" data-editor-site="footer.author">
+            © {year} <span data-editor-author-name>{name}</span>. <span data-editor-footer-text>{footerLine}</span>
           </p>
         </div>
       </div>

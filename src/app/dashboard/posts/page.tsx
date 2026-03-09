@@ -1,8 +1,7 @@
 import Link from "next/link";
-import { Suspense } from "react";
+import { redirect } from "next/navigation";
 import { prisma } from "@/lib/prisma";
 import { Button } from "@/components/ui/button";
-import { PostsFilterTabs } from "./posts-filter";
 import { PostsSearch } from "./posts-search";
 import { PostsTableClient } from "./posts-table-client";
 
@@ -21,7 +20,9 @@ const ORDER_KEYS = ["asc", "desc"] as const;
 
 export default async function PostsPage({ searchParams }: PostsPageProps) {
   const { status, sort: sortParam, order: orderParam, q, page: pageParam } = await searchParams;
-  const statusFilter = status === "published" || status === "draft" ? status : null;
+  if (status === "draft") {
+    redirect("/dashboard/notes");
+  }
   const search = typeof q === "string" ? q.trim() : "";
   const page = Math.max(1, parseInt(String(pageParam), 10) || 1);
   const sort = SORT_KEYS.includes(sortParam as (typeof SORT_KEYS)[number])
@@ -39,7 +40,7 @@ export default async function PostsPage({ searchParams }: PostsPageProps) {
         : { updatedAt: order };
 
   const where = {
-    ...(statusFilter ? { published: statusFilter === "published" } : {}),
+    published: true,
     ...(search
       ? {
           OR: [
@@ -75,14 +76,9 @@ export default async function PostsPage({ searchParams }: PostsPageProps) {
   return (
     <div className="space-y-6">
       <div className="flex flex-wrap items-center justify-between gap-4">
-        <h2 className="text-3xl font-bold text-slate-900">All Posts {total > POSTS_PER_PAGE ? `(${total} total)` : ""}</h2>
+        <h2 className="text-3xl font-bold text-slate-900">Published Posts {total > POSTS_PER_PAGE ? `(${total} total)` : ""}</h2>
         <div className="flex items-center gap-4">
-          <Suspense fallback={<div className="h-9 w-56 rounded bg-slate-100" />}>
-            <PostsSearch defaultValue={search} />
-          </Suspense>
-          <Suspense fallback={<div className="h-8 w-24 rounded bg-slate-100" />}>
-            <PostsFilterTabs />
-          </Suspense>
+          <PostsSearch defaultValue={search} />
           <Link href="/dashboard/posts/new">
             <Button>Create New</Button>
           </Link>
@@ -114,7 +110,6 @@ export default async function PostsPage({ searchParams }: PostsPageProps) {
               {page > 1 ? (
                 <Link
                   href={`/dashboard/posts?${new URLSearchParams({
-                    ...(statusFilter && { status: statusFilter }),
                     sort,
                     order,
                     ...(search && { q: search }),
@@ -132,7 +127,6 @@ export default async function PostsPage({ searchParams }: PostsPageProps) {
               {page < totalPages ? (
                 <Link
                   href={`/dashboard/posts?${new URLSearchParams({
-                    ...(statusFilter && { status: statusFilter }),
                     sort,
                     order,
                     ...(search && { q: search }),

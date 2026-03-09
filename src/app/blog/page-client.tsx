@@ -31,10 +31,12 @@ interface TagItem {
 }
 
 export default function BlogPageClient() {
+  const TAG_LIMIT = 10;
   const searchParams = useSearchParams();
   const router = useRouter();
   const [posts, setPosts] = useState<Post[]>([]);
   const [tags, setTags] = useState<TagItem[]>([]);
+  const [randomTags, setRandomTags] = useState<TagItem[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [tagsLoading, setTagsLoading] = useState(true);
   const activeTag = searchParams.get("tag") || null;
@@ -46,6 +48,11 @@ export default function BlogPageClient() {
         if (res.ok) {
           const data = await res.json();
           setTags(data);
+          const shuffled = [...data]
+            .map((tag: TagItem) => ({ tag, sort: Math.random() }))
+            .sort((a: { sort: number }, b: { sort: number }) => a.sort - b.sort)
+            .map((entry: { tag: TagItem }) => entry.tag);
+          setRandomTags(shuffled.slice(0, TAG_LIMIT));
         }
       } catch (error) {
         console.error("Failed to fetch tags:", error);
@@ -86,6 +93,14 @@ export default function BlogPageClient() {
     }
     router.push(`/blog?tag=${slug}`);
   };
+
+  const visibleTags = useMemo(() => {
+    const sample = randomTags.length > 0 ? randomTags : tags.slice(0, TAG_LIMIT);
+    if (!activeTag || sample.some((tag) => tag.slug === activeTag)) return sample;
+    const active = tags.find((tag) => tag.slug === activeTag);
+    if (!active) return sample;
+    return [...sample.slice(0, Math.max(0, TAG_LIMIT - 1)), active];
+  }, [activeTag, randomTags, tags]);
 
   const formatDate = (date: Date | string) => {
     const d = typeof date === "string" ? new Date(date) : date;
@@ -133,7 +148,7 @@ export default function BlogPageClient() {
 
       {/* Tag filter: All + tag buttons */}
       <div className="mb-6">
-        <p className="text-sm font-medium text-slate-700 mb-2">Filter by tag</p>
+        <p className="text-sm font-medium text-slate-700 mb-2">Filter by tag (random 10)</p>
         <div className="flex flex-wrap gap-2">
           <Button
             variant={activeTag === null ? "default" : "outline"}
@@ -146,7 +161,7 @@ export default function BlogPageClient() {
           {tagsLoading ? (
             <span className="text-sm text-slate-500 py-2">Loading tags…</span>
           ) : (
-            tags.map((tag) => (
+            visibleTags.map((tag) => (
               <Button
                 key={tag.id}
                 variant={activeTag === tag.slug ? "default" : "outline"}

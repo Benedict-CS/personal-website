@@ -12,7 +12,7 @@ export type SiteConfigForRender = {
   metaTitle: string;
   metaDescription: string | null;
   authorName: string | null;
-  links: { email?: string; github?: string; linkedin?: string };
+  links: { email?: string; github?: string; linkedin?: string; rss?: string };
   navItems: NavItem[];
   footerText: string | null;
   ogImageUrl: string | null;
@@ -30,7 +30,7 @@ export type SiteConfigResponse = {
   metaTitle: string;
   metaDescription: string | null;
   authorName: string | null;
-  links: { email?: string; github?: string; linkedin?: string };
+  links: { email?: string; github?: string; linkedin?: string; rss?: string };
   navItems: NavItem[];
   footerText: string | null;
   ogImageUrl: string | null;

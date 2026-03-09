@@ -11,6 +11,7 @@ import { AboutHighlightScroll } from "@/components/about-highlight-scroll";
 import { MarkdownRenderer } from "@/components/markdown-renderer";
 import { CountryFlag } from "@/components/country-flag";
 import { PublicBreadcrumbs } from "@/components/public-breadcrumbs";
+import { AboutSkillsAchievementsEditor } from "@/components/about-skills-achievements-editor";
 import { Suspense } from "react";
 
 export const revalidate = 30;
@@ -60,6 +61,14 @@ export interface AboutBlockEntry {
   content: string;
 }
 
+const DEFAULT_SECTION_TITLES = {
+  education: "Education",
+  experience: "Experience",
+  projects: "Projects",
+  skills: "Technical Skills",
+  achievements: "Achievements",
+};
+
 async function getAboutConfig() {
   try {
     const config = await prisma.aboutConfig.findFirst();
@@ -87,6 +96,7 @@ async function getAboutConfig() {
         achievements: [] as { title: string; organization: string; year: string }[],
         sectionOrder: ["education", "experience", "projects", "skills", "achievements"],
         sectionVisibility: {} as Record<string, boolean>,
+        sectionTitles: { ...DEFAULT_SECTION_TITLES },
       };
     }
     const c = config as {
@@ -113,6 +123,14 @@ async function getAboutConfig() {
       if (s == null || s === "") return fallback;
       try { return JSON.parse(s); } catch { return fallback; }
     };
+    const rawSectionVisibility = parseJson(c.sectionVisibility, {}) as Record<string, unknown>;
+    const sectionVisibility = Object.fromEntries(
+      Object.entries(rawSectionVisibility).filter(([key, value]) => key !== "__sectionTitles" && typeof value === "boolean")
+    ) as Record<string, boolean>;
+    const sectionTitles = {
+      ...DEFAULT_SECTION_TITLES,
+      ...((rawSectionVisibility["__sectionTitles"] as Record<string, string> | undefined) ?? {}),
+    };
     return {
       profileImage: config.profileImage,
       heroName: c.heroName ?? null,
@@ -135,7 +153,8 @@ async function getAboutConfig() {
       technicalSkills: (parseJson(c.technicalSkills ?? (config as { technicalSkills?: string }).technicalSkills, []) as { category: string; items: string[] }[]),
       achievements: (parseJson(c.achievements ?? (config as { achievements?: string }).achievements, []) as { title: string; organization: string; year: string }[]),
       sectionOrder: (parseJson(c.sectionOrder, ["education", "experience", "projects", "skills", "achievements"]) as string[]).filter((id) => ["education", "experience", "projects", "skills", "achievements"].includes(id)),
-      sectionVisibility: (parseJson(c.sectionVisibility, {}) as Record<string, boolean>),
+      sectionVisibility,
+      sectionTitles,
     };
   } catch (error) {
     console.error("Error loading about config:", error);
@@ -162,6 +181,7 @@ async function getAboutConfig() {
       achievements: [] as { title: string; organization: string; year: string }[],
       sectionOrder: ["education", "experience", "projects", "skills", "achievements"],
       sectionVisibility: {} as Record<string, boolean>,
+      sectionTitles: { ...DEFAULT_SECTION_TITLES },
     };
   }
 }
@@ -220,9 +240,62 @@ function getCompanyLogo(companyLogos: CompanyLogo[], companyName: string): strin
   return logo?.logo || null;
 }
 
+function getEducationLogoFallback(
+  schoolLogos: SchoolLogo[],
+  companyLogos: CompanyLogo[],
+  entry: AboutBlockEntry
+): string | null {
+  if (entry.logoUrl?.trim()) return entry.logoUrl.trim();
+  if (entry.logoUrl === "") return null;
+
+  const org = entry.organization?.trim() || "";
+  const title = entry.title?.trim() || "";
+  const bySchool =
+    (org ? getSchoolLogo(schoolLogos, org) : null) ||
+    (title ? getSchoolLogo(schoolLogos, title) : null);
+  if (bySchool) return bySchool;
+
+  // Legacy data sometimes stores school logos in companyLogos.
+  const byCompany =
+    (org ? getCompanyLogo(companyLogos, org) : null) ||
+    (title ? getCompanyLogo(companyLogos, title) : null);
+  return byCompany;
+}
+
+function inferCountryCodeFromOrganization(name: string): string | null {
+  const normalized = name.toLowerCase();
+  if (normalized.includes("taiwan")) return "TW";
+  if (normalized.includes("malaysia") || normalized.includes("malaysian")) return "MY";
+  if (normalized.includes("nycu")) return "TW";
+  if (normalized.includes("ntut")) return "TW";
+  if (normalized.includes("taipei tech")) return "TW";
+  if (normalized.includes("must")) return "TW";
+  if (normalized.includes("minghsin")) return "TW";
+  if (normalized.includes("nthu")) return "TW";
+  if (normalized.includes("ncku")) return "TW";
+  if (normalized.includes("united states") || normalized.includes("usa")) return "US";
+  if (normalized.includes("japan")) return "JP";
+  return null;
+}
+
+function normalizeBlockMarkdown(content: string): string {
+  const raw = (content || "").trim();
+  if (!raw) return raw;
+  const hasListSyntax = /^\s*[-*+]\s+/m.test(raw) || /^\s*\d+\.\s+/m.test(raw);
+  if (hasListSyntax) return raw;
+  const lines = raw
+    .split(/\r?\n/)
+    .map((line) => line.trim())
+    .filter(Boolean);
+  if (lines.length <= 1) return raw;
+  return lines.map((line) => `- ${line}`).join("\n");
+}
+
 export default async function AboutPage() {
   const config = await getAboutConfig();
-  const { profileImage, heroName, heroTagline, introText, aboutMainContent, educationBlocks, experienceBlocks, projectBlocks, schoolLogos, projectImages, companyLogos, technicalSkills, achievements, sectionVisibility } = config;
+  const { profileImage, heroName, heroTagline, heroPortfolioLabel, heroPortfolioUrl, introText, aboutMainContent, educationBlocks, experienceBlocks, projectBlocks, schoolLogos, projectImages, companyLogos, technicalSkills, achievements, sectionVisibility, sectionTitles } = config;
+  const downloadCvLabel = heroPortfolioLabel?.trim() || "Download CV (PDF)";
+  const downloadCvHref = heroPortfolioUrl?.trim() || "/api/media/serve/cv.pdf";
   const aboutVisible = (id: string) => sectionVisibility?.[id] !== false;
   const useStructuredBlocks = educationBlocks.length > 0 || experienceBlocks.length > 0 || projectBlocks.length > 0;
 
@@ -306,13 +379,14 @@ export default async function AboutPage() {
           <CardContent className="pt-8 pb-8">
             <div className="text-center">
               {profileImage ? (
-                <div className="mb-6 inline-block">
+                <div className="mb-6 inline-block" data-about-profile-image>
                   <div className="relative h-32 w-32 rounded-full overflow-hidden border-4 border-slate-200 shadow-md mx-auto">
                     <Image
                       src={profileImage}
                       alt={heroName?.trim() || "Profile"}
                       fill
                       unoptimized
+                      data-about-profile-img
                       className="object-cover"
                     />
                   </div>
@@ -322,30 +396,30 @@ export default async function AboutPage() {
                   {(heroName?.trim() || "B")[0]}
                 </div>
               )}
-              <h1 className="mb-2 text-4xl font-bold text-slate-900">
+              <h1 className="mb-2 text-4xl font-bold text-slate-900" data-about-edit="heroName">
                 {heroName?.trim() || "Your Name"}
               </h1>
               {(heroTagline?.trim()) ? (
-                <p className="mb-2 text-lg text-slate-600">
+                <p className="mb-2 text-lg text-slate-600" data-about-edit="heroTagline">
                   {heroTagline}
                 </p>
               ) : (
-                <p className="mb-2 text-lg text-slate-600">
+                <p className="mb-2 text-lg text-slate-600" data-about-edit="heroTagline">
                   Builder Owner | Product Creator
                 </p>
               )}
               <div className="flex justify-center gap-3 mt-6">
-                <Link href="/api/cv/download" download="site-owner-cv.pdf" prefetch={false}>
+                <a href={downloadCvHref} download="site-owner-cv.pdf" data-editor-button="about.downloadCv">
                   <Button variant="default" className="gap-2 shadow-md">
                     <Download className="h-4 w-4" />
-                    Download CV (PDF)
+                    <span data-editor-button-label>{downloadCvLabel}</span>
                   </Button>
-                </Link>
+                </a>
               </div>
             </div>
             {introText && introText.trim() && (
               <div className="mt-8 pt-6 border-t border-slate-200 text-left max-w-4xl mx-auto px-0">
-                <p className="text-slate-700 whitespace-pre-wrap leading-relaxed">{introText}</p>
+                <p className="text-slate-700 whitespace-pre-wrap leading-relaxed" data-about-edit="introText">{introText}</p>
               </div>
             )}
           </CardContent>
@@ -359,42 +433,59 @@ export default async function AboutPage() {
                 <CardHeader>
                   <CardTitle className="flex items-center gap-2 text-slate-900">
                     <GraduationCap className="h-5 w-5" />
-                    Education
+                    <span data-about-edit="sectionTitles.education">{sectionTitles.education}</span>
                   </CardTitle>
                 </CardHeader>
                 <CardContent>
                   <div className="space-y-4">
                     {educationBlocks.map((entry, i) => {
-                      const entryLogo = (entry.logoUrl && entry.logoUrl.trim()) ? entry.logoUrl : (entry.logoUrl === "" ? null : getSchoolLogo(schoolLogos, entry.organization));
+                      const entryLogo = getEducationLogoFallback(schoolLogos, companyLogos, entry);
+                      const countryCode =
+                        entry.countryCode?.trim() ||
+                        inferCountryCodeFromOrganization(entry.organization || "") ||
+                        inferCountryCodeFromOrganization(entry.title || "");
                       return (
                       <div key={i} className="border-l-4 border-blue-500 pl-3">
                         <div className="flex gap-2">
-                          {entryLogo && (
-                            <div className="relative h-16 w-16 flex-shrink-0">
-                              <Image src={entryLogo} alt="" fill unoptimized className="object-contain" />
+                          {entryLogo ? (
+                            <div
+                              className="relative h-16 w-16 flex-shrink-0"
+                              data-about-logo-key={`educationBlocks.${i}.logoUrl`}
+                              data-about-logo-kind="education"
+                            >
+                              <img src={entryLogo} alt="" className="h-full w-full object-contain" data-about-logo-img />
+                            </div>
+                          ) : (
+                            <div
+                              className="hidden h-16 w-16 flex-shrink-0 items-center justify-center rounded border-2 border-dashed border-slate-300 text-[11px] text-slate-500"
+                              data-about-logo-key={`educationBlocks.${i}.logoUrl`}
+                              data-about-logo-kind="education"
+                              data-about-logo-empty
+                            >
+                              + Logo
                             </div>
                           )}
                           <div className="flex-1 min-w-0 flex flex-wrap items-start justify-between gap-x-4 gap-y-0.5">
                             <div>
-                              <h3 className="font-semibold text-slate-900 text-lg mb-0.5">{entry.title}</h3>
+                              <h3 className="font-semibold text-slate-900 text-lg mb-0.5" data-about-edit={`educationBlocks.${i}.title`}>{entry.title}</h3>
                               {entry.organization && (
-                                <p className="text-base font-semibold text-slate-700 flex items-center gap-1.5 flex-wrap">
+                                <p className="text-base font-semibold text-slate-700 flex items-center gap-1.5 flex-wrap" data-about-edit={`educationBlocks.${i}.organization`}>
                                   <span>{entry.organization}</span>
-                                  {entry.countryCode?.trim() && (
-                                    <CountryFlag countryCode={entry.countryCode} />
+                                  {countryCode && (
+                                    <CountryFlag countryCode={countryCode} />
                                   )}
                                 </p>
                               )}
                             </div>
                             {entry.dateRange && (
-                              <Badge variant="secondary" className="shrink-0 text-slate-600 font-normal">{entry.dateRange}</Badge>
+                              <Badge variant="secondary" className="shrink-0 text-slate-600 font-normal" data-about-edit={`educationBlocks.${i}.dateRange`}>{entry.dateRange}</Badge>
                             )}
                           </div>
                         </div>
                         {entry.content && (
-                          <div className="mt-0.5">
+                          <div className="mt-0.5" data-about-edit={`educationBlocks.${i}.content`}>
                             <div className="prose prose-slate prose-sm max-w-none text-sm">
-                              <MarkdownRenderer content={entry.content} />
+                              <MarkdownRenderer content={normalizeBlockMarkdown(entry.content)} />
                             </div>
                           </div>
                         )}
@@ -410,7 +501,7 @@ export default async function AboutPage() {
                 <CardHeader>
                   <CardTitle className="flex items-center gap-2 text-slate-900">
                     <Briefcase className="h-5 w-5" />
-                    Experience
+                    <span data-about-edit="sectionTitles.experience">{sectionTitles.experience}</span>
                   </CardTitle>
                 </CardHeader>
                 <CardContent>
@@ -420,27 +511,40 @@ export default async function AboutPage() {
                       return (
                       <div key={i} className="border-l-4 border-green-500 pl-3">
                         <div className="flex gap-2">
-                          {entryLogo && (
-                            <div className="relative h-16 w-16 flex-shrink-0">
-                              <Image src={entryLogo} alt="" fill unoptimized className="object-contain" />
+                          {entryLogo ? (
+                            <div
+                              className="relative h-16 w-16 flex-shrink-0"
+                              data-about-logo-key={`experienceBlocks.${i}.logoUrl`}
+                              data-about-logo-kind="experience"
+                            >
+                              <img src={entryLogo} alt="" className="h-full w-full object-contain" data-about-logo-img />
+                            </div>
+                          ) : (
+                            <div
+                              className="hidden h-16 w-16 flex-shrink-0 items-center justify-center rounded border-2 border-dashed border-slate-300 text-[11px] text-slate-500"
+                              data-about-logo-key={`experienceBlocks.${i}.logoUrl`}
+                              data-about-logo-kind="experience"
+                              data-about-logo-empty
+                            >
+                              + Logo
                             </div>
                           )}
                           <div className="flex-1 min-w-0 flex flex-wrap items-start justify-between gap-x-4 gap-y-0.5">
                             <div>
-                              <h3 className="font-semibold text-slate-900 text-lg mb-0.5">{entry.title}</h3>
+                              <h3 className="font-semibold text-slate-900 text-lg mb-0.5" data-about-edit={`experienceBlocks.${i}.title`}>{entry.title}</h3>
                               {entry.organization && (
-                                <p className="text-base font-semibold text-slate-700">{entry.organization}</p>
+                                <p className="text-base font-semibold text-slate-700" data-about-edit={`experienceBlocks.${i}.organization`}>{entry.organization}</p>
                               )}
                             </div>
                             {entry.dateRange && (
-                              <Badge variant="secondary" className="shrink-0 text-slate-600 font-normal">{entry.dateRange}</Badge>
+                              <Badge variant="secondary" className="shrink-0 text-slate-600 font-normal" data-about-edit={`experienceBlocks.${i}.dateRange`}>{entry.dateRange}</Badge>
                             )}
                           </div>
                         </div>
                         {entry.content && (
-                          <div className="mt-0.5">
+                          <div className="mt-0.5" data-about-edit={`experienceBlocks.${i}.content`}>
                             <div className="prose prose-slate prose-sm max-w-none text-sm">
-                              <MarkdownRenderer content={entry.content} />
+                              <MarkdownRenderer content={normalizeBlockMarkdown(entry.content)} />
                             </div>
                           </div>
                         )}
@@ -456,7 +560,7 @@ export default async function AboutPage() {
                 <CardHeader>
                   <CardTitle className="flex items-center gap-2 text-slate-900">
                     <Code className="h-5 w-5" />
-                    Projects
+                    <span data-about-edit="sectionTitles.projects">{sectionTitles.projects}</span>
                   </CardTitle>
                 </CardHeader>
                 <CardContent>
@@ -466,19 +570,19 @@ export default async function AboutPage() {
                         <div className="flex-1 min-w-0">
                             <div className="flex flex-wrap items-start justify-between gap-x-4 gap-y-0.5">
                               <div>
-                                <h3 className="font-semibold text-slate-900 text-lg mb-0.5">{entry.title}</h3>
+                                <h3 className="font-semibold text-slate-900 text-lg mb-0.5" data-about-edit={`projectBlocks.${i}.title`}>{entry.title}</h3>
                                 {entry.organization && (
-                                  <p className="text-base font-semibold text-slate-700">{entry.organization}</p>
+                                  <p className="text-base font-semibold text-slate-700" data-about-edit={`projectBlocks.${i}.organization`}>{entry.organization}</p>
                                 )}
                               </div>
                               {entry.dateRange && (
-                                <Badge variant="secondary" className="shrink-0 text-slate-600 font-normal">{entry.dateRange}</Badge>
+                                <Badge variant="secondary" className="shrink-0 text-slate-600 font-normal" data-about-edit={`projectBlocks.${i}.dateRange`}>{entry.dateRange}</Badge>
                               )}
                             </div>
                             {entry.content && (
-                              <div className="mt-0.5">
+                              <div className="mt-0.5" data-about-edit={`projectBlocks.${i}.content`}>
                                 <div className="prose prose-slate prose-sm max-w-none text-sm">
-                                  <MarkdownRenderer content={entry.content} />
+                                  <MarkdownRenderer content={normalizeBlockMarkdown(entry.content)} />
                                 </div>
                               </div>
                             )}
@@ -490,74 +594,13 @@ export default async function AboutPage() {
               </Card>
             )}
 
-            {/* Technical Skills — from config or default when empty */}
-            {aboutVisible("skills") && (() => {
-              const skills = technicalSkills.length > 0 ? technicalSkills : [
-                { category: "Cloud Native & K8s", items: ["Kubernetes (K8s)", "Docker", "Helm", "Cilium (Service Mesh)", "Karmada", "Harbor", "Linux Containers (LXC)"] },
-                { category: "CI/CD & GitOps", items: ["Jenkins", "GitLab CI/CD", "GitHub Actions", "ArgoCD", "Flux CD", "GitOps Workflow", "Git"] },
-                { category: "Observability", items: ["Prometheus", "Grafana", "Thanos", "Monitoring & Logging"] },
-                { category: "Infrastructure & Networking", items: ["Google Cloud Platform (GCP)", "Proxmox VE", "Ansible", "Linux Networking", "SSL/TLS Management"] },
-              ];
-              return (
-                <Card className="shadow-lg">
-                  <CardHeader>
-                    <CardTitle className="flex items-center gap-2 text-slate-900">
-                      <Network className="h-5 w-5" />
-                      Technical Skills
-                    </CardTitle>
-                  </CardHeader>
-                  <CardContent>
-                    <div className="space-y-4">
-                      {skills.map((section, i) => (
-                        <div key={i}>
-                          <h3 className="mb-2 text-sm font-semibold text-slate-800">{section.category}</h3>
-                          <div className="flex flex-wrap gap-2">
-                            {section.items.map((skill) => (
-                              <Badge key={skill} variant="secondary" className="text-xs">
-                                {skill}
-                              </Badge>
-                            ))}
-                          </div>
-                        </div>
-                      ))}
-                    </div>
-                  </CardContent>
-                </Card>
-              );
-            })()}
-
-            {/* Achievements — from config or default when empty */}
-            {aboutVisible("achievements") && (() => {
-              const list = achievements.length > 0 ? achievements : [
-                { title: "National Makerthon: Good Health and Well‑Being - 1st Place", organization: "Ministry of Education 2022", year: "2022" },
-                { title: "Vision Get Wild XR Social Welfare Potential Award", organization: "Meta XR Hub Taiwan 2023", year: "2023" },
-                { title: "Intel® DevCup x OpenVINO™ Toolkit Competition - Shortlisted", organization: "Intel Corporation 2021", year: "2021" },
-                { title: "5G Mobileheroes - Shortlisted", organization: "Industrial Development Administration 2021", year: "2021" },
-              ];
-              return (
-                <Card className="shadow-lg">
-                  <CardHeader>
-                    <CardTitle className="flex items-center gap-2 text-slate-900">
-                      <Trophy className="h-5 w-5" />
-                      Achievements
-                    </CardTitle>
-                  </CardHeader>
-                  <CardContent>
-                    <div className="space-y-3">
-                      {list.map((a, i) => (
-                        <div key={i} className="flex items-start gap-3">
-                          <Award className="mt-0.5 h-4 w-4 text-slate-500 shrink-0" />
-                          <div>
-                            <p className="text-sm font-medium text-slate-800">{a.title}</p>
-                            <p className="text-xs text-slate-500">{a.organization}</p>
-                          </div>
-                        </div>
-                      ))}
-                    </div>
-                  </CardContent>
-                </Card>
-              );
-            })()}
+            {(aboutVisible("skills") || aboutVisible("achievements")) && (
+              <AboutSkillsAchievementsEditor
+                initialSkills={aboutVisible("skills") ? technicalSkills : []}
+                initialAchievements={aboutVisible("achievements") ? achievements : []}
+                initialSectionTitles={sectionTitles}
+              />
+            )}
 
           </>
         )}
@@ -592,17 +635,17 @@ export default async function AboutPage() {
                   )}
                   <div className="flex-1 min-w-0">
                     <div className="flex items-start justify-between gap-4 mb-0.5">
-                      <h3 className="font-semibold text-slate-900 text-lg flex-1">
+                      <h3 className="font-semibold text-slate-900 text-lg flex-1" data-about-edit="educationBlocks.0.title">
                         M.S. in Computer Science
                       </h3>
-                      <Badge variant="secondary" className="flex-shrink-0 whitespace-nowrap">
+                      <Badge variant="secondary" className="flex-shrink-0 whitespace-nowrap" data-about-edit="educationBlocks.0.dateRange">
                         Sep 2023 - Jan 2026
                       </Badge>
                     </div>
-                    <p className="text-sm text-slate-600 font-medium mb-0.5">
+                    <p className="text-sm text-slate-600 font-medium mb-0.5" data-about-edit="educationBlocks.0.organization">
                       National Yang Ming Chiao Tung University (NYCU), Taiwan
                     </p>
-                    <ul className="space-y-0.5 text-sm text-slate-700 -mt-0.5">
+                    <ul className="space-y-0.5 text-sm text-slate-700 -mt-0.5" data-about-edit="educationBlocks.0.content">
                       <li>• <strong>Thesis:</strong> A CI/CD Framework for Zero Downtime Deployment in Wi‑Fi Mesh Networks</li>
                       <li>• <strong>Research Focus:</strong> Network Function Virtualization (NFV), CI/CD, DevOps, Kubernetes, and Cloud‑Native Technologies</li>
                       <li>• <strong>Advisor:</strong> Prof. Chien‑Chao Tseng (Wireless Internet Laboratory, WinLab)</li>
@@ -619,17 +662,17 @@ export default async function AboutPage() {
                   )}
                   <div className="flex-1 min-w-0">
                     <div className="flex items-start justify-between gap-4 mb-0.5">
-                      <h3 className="font-semibold text-slate-900 text-lg flex-1">
+                      <h3 className="font-semibold text-slate-900 text-lg flex-1" data-about-edit="educationBlocks.1.title">
                         B.S. in Interaction Design (Media Design Division)
                       </h3>
-                      <Badge variant="secondary" className="flex-shrink-0 whitespace-nowrap">
+                      <Badge variant="secondary" className="flex-shrink-0 whitespace-nowrap" data-about-edit="educationBlocks.1.dateRange">
                         Sep 2019 - Jun 2023
                       </Badge>
                     </div>
-                    <p className="text-sm text-slate-600 font-medium mb-0.5">
+                    <p className="text-sm text-slate-600 font-medium mb-0.5" data-about-edit="educationBlocks.1.organization">
                       National Taipei University of Technology (NTUT), Taiwan
                     </p>
-                    <ul className="space-y-0.5 text-sm text-slate-700 -mt-0.5">
+                    <ul className="space-y-0.5 text-sm text-slate-700 -mt-0.5" data-about-edit="educationBlocks.1.content">
                       <li>• <strong>Award:</strong> Outstanding Overseas Chinese Graduate of the Year, Presidential Award (3 Semesters)</li>
                       <li>• <strong>Graduation Project:</strong> A Location‑Based AR System for Urban Exploration and Infrastructure Maintenance</li>
                       <li>• <strong>Research Focus:</strong> IoT, Embedded Systems, Full‑Stack Development, AR/VR, Human‑Computer Interaction (HCI)</li>

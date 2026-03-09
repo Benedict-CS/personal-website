@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import Link from "next/link";
 import {
   DndContext,
@@ -19,7 +19,7 @@ import {
   verticalListSortingStrategy,
 } from "@dnd-kit/sortable";
 import { CSS } from "@dnd-kit/utilities";
-import { GripVertical, Image as ImageIcon, Save, Send } from "lucide-react";
+import { GripVertical, Image as ImageIcon, Save, Send, Upload } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Card, CardContent } from "@/components/ui/card";
@@ -153,8 +153,10 @@ function EditableText({
 export function ImmersiveEditor({ target }: { target: EditorTarget }) {
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
+  const [cvUploading, setCvUploading] = useState(false);
   const [message, setMessage] = useState<string>("");
   const [mediaOpen, setMediaOpen] = useState(false);
+  const cvInputRef = useRef<HTMLInputElement | null>(null);
 
   const [home, setHome] = useState<HomeContent>(defaultHome);
   const [contact, setContact] = useState<ContactContent>(defaultContact);
@@ -256,16 +258,50 @@ export function ImmersiveEditor({ target }: { target: EditorTarget }) {
             slug: customPage.slug,
             title: customPage.title,
             content: customPage.content,
-            published: true,
+            published: customPage.published,
           }),
         });
         if (!res.ok) throw new Error("save failed");
       }
-      setMessage("Saved and published.");
+      setMessage(target.kind === "custom-page" ? "Saved custom page." : "Saved to live site.");
     } catch {
       setMessage("Save failed. Please try again.");
     } finally {
       setSaving(false);
+    }
+  }
+
+  async function handleCvUpload(event: React.ChangeEvent<HTMLInputElement>) {
+    const file = event.target.files?.[0];
+    if (!file) return;
+    const isPdf =
+      file.type === "application/pdf" ||
+      file.type === "application/x-pdf" ||
+      file.name.toLowerCase().endsWith(".pdf");
+    if (!isPdf) {
+      setMessage("Please upload a PDF file.");
+      event.target.value = "";
+      return;
+    }
+    setCvUploading(true);
+    setMessage("");
+    try {
+      const formData = new FormData();
+      formData.append("file", file);
+      const response = await fetch("/api/cv/upload", {
+        method: "POST",
+        body: formData,
+      });
+      if (!response.ok) {
+        const error = await response.json().catch(() => ({}));
+        throw new Error(error?.error || "CV upload failed");
+      }
+      setMessage("CV uploaded. Download CV now uses the new file.");
+    } catch (error) {
+      setMessage(error instanceof Error ? error.message : "CV upload failed");
+    } finally {
+      setCvUploading(false);
+      event.target.value = "";
     }
   }
 
@@ -291,9 +327,8 @@ export function ImmersiveEditor({ target }: { target: EditorTarget }) {
         : target.kind === "contact"
           ? "/contact"
           : `/page/${target.slug}`;
-
   return (
-    <div className="relative min-h-screen bg-gradient-to-br from-slate-50 via-white to-slate-100 pb-36">
+    <div className="relative min-h-screen bg-gradient-to-br from-slate-50 via-white to-slate-100 pb-36 pt-6">
       <div className="container mx-auto max-w-6xl px-6 py-10">
         {target.kind === "home" && (
           <DndContext sensors={sensors} collisionDetection={closestCenter} onDragEnd={onDragEnd}>
@@ -418,7 +453,7 @@ export function ImmersiveEditor({ target }: { target: EditorTarget }) {
             {!customPage ? (
               <Card>
                 <CardContent className="pt-6 text-slate-600">
-                  Page not found. Create it in <Link href="/dashboard/content/site" className="underline">Site settings</Link> or open another slug.
+                  Page not found. Create it in <Link href="/dashboard/content/pages" className="underline">Custom pages</Link> or open another slug.
                 </CardContent>
               </Card>
             ) : (
@@ -441,6 +476,18 @@ export function ImmersiveEditor({ target }: { target: EditorTarget }) {
                   >
                     {customPage.content}
                   </div>
+                  <label className="inline-flex items-center gap-2 text-sm text-slate-700">
+                    <input
+                      type="checkbox"
+                      checked={customPage.published}
+                      onChange={(event) =>
+                        setCustomPage((current) =>
+                          current ? { ...current, published: event.target.checked } : current
+                        )
+                      }
+                    />
+                    Published
+                  </label>
                 </CardContent>
               </Card>
             )}
@@ -448,21 +495,39 @@ export function ImmersiveEditor({ target }: { target: EditorTarget }) {
         )}
       </div>
 
-      <div className="fixed bottom-6 left-1/2 z-50 w-[min(92vw,840px)] -translate-x-1/2 rounded-xl border border-slate-200 bg-white/95 p-3 shadow-xl backdrop-blur">
-        <div className="flex flex-wrap items-center gap-2">
+      <div className="fixed bottom-4 right-4 z-50 rounded-xl border border-slate-200 bg-white/95 p-3 shadow-xl backdrop-blur">
+        <div className="flex items-center gap-2">
           <span className="rounded-full bg-slate-100 px-2.5 py-1 text-xs font-medium text-slate-700">
-            Visual Editor
+            Editor Mode
           </span>
-          <span className="text-xs text-slate-500">
-            Editing: <strong>{pagePath}</strong>
-          </span>
-          <a href={pagePath} target="_blank" rel="noopener noreferrer" className="ml-auto">
-            <Button variant="outline" size="sm">Open public page</Button>
-          </a>
+          {target.kind === "about" && (
+            <>
+              <input
+                ref={cvInputRef}
+                type="file"
+                accept="application/pdf"
+                className="hidden"
+                onChange={(event) => void handleCvUpload(event)}
+              />
+              <Button
+                size="sm"
+                variant="outline"
+                className="gap-1.5"
+                disabled={cvUploading}
+                onClick={() => cvInputRef.current?.click()}
+              >
+                <Upload className="h-4 w-4" />
+                {cvUploading ? "Uploading CV..." : "Upload CV"}
+              </Button>
+            </>
+          )}
           <Button onClick={() => void saveAndPublish()} disabled={saving} size="sm" className="gap-1.5" data-testid="floating-save-publish">
             {saving ? <Save className="h-4 w-4 animate-pulse" /> : <Send className="h-4 w-4" />}
-            {saving ? "Saving..." : "Save & Publish"}
+            {saving ? "Saving..." : "Save Changes"}
           </Button>
+          <a href={pagePath}>
+            <Button variant="outline" size="sm">Exit</Button>
+          </a>
         </div>
         {message && <p className="mt-2 text-xs text-slate-600">{message}</p>}
       </div>

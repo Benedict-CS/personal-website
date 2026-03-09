@@ -21,7 +21,7 @@ export function DashboardNextSteps({
   const steps = [
     { done: true, label: "Complete site setup (name, logo, navigation)", href: "/dashboard/setup" },
     { done: hasPosts, label: "Add your first post or page", href: "/dashboard/posts/new" },
-    { done: hasCustomPages, label: "Add a custom page (e.g. Portfolio, Services)", href: "/editor/page/portfolio" },
+    { done: hasCustomPages, label: "Add a custom page (e.g. Portfolio, Services)", href: "/dashboard/content/pages" },
     { done: false, label: "Edit public pages in Visual Editor", href: "/editor/home" },
   ];
 

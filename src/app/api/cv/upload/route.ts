@@ -4,6 +4,16 @@ import { uploadToS3 } from "@/lib/s3";
 
 const CV_S3_KEY = "cv.pdf";
 
+function isPdfFile(file: File): boolean {
+  const mime = (file.type || "").toLowerCase().trim();
+  const name = (file.name || "").toLowerCase().trim();
+  return (
+    mime === "application/pdf" ||
+    mime === "application/x-pdf" ||
+    name.endsWith(".pdf")
+  );
+}
+
 export async function POST(request: NextRequest) {
   try {
     const auth = await requireSession();
@@ -19,7 +29,7 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    if (file.type !== "application/pdf") {
+    if (!isPdfFile(file)) {
       return NextResponse.json(
         { error: "Invalid file type. Only PDF files are allowed." },
         { status: 400 }

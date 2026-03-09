@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, type ReactNode } from "react";
 import { api } from "@/lib/api";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -12,8 +12,12 @@ import { siteConfig } from "@/config/site";
 import { PublicBreadcrumbs } from "@/components/public-breadcrumbs";
 
 const defaultIntro = "I'm open to new opportunities, collaborations, or a chat about tech.";
-const defaultFormNote = "Use the form below, or email me directly at";
-const formNoteSuffix = "Messages from the form go to the same address.";
+const defaultFormNote = "Use the form below, or choose one of the contact buttons.";
+const defaultEmailLabel = "Email";
+const defaultLinkedinLabel = "LinkedIn";
+const defaultGithubLabel = "GitHub";
+const CONTACT_BUTTON_KEYS = ["email", "linkedin", "github"] as const;
+type ContactButtonKey = (typeof CONTACT_BUTTON_KEYS)[number];
 
 const LIMITS = { name: 100, email: 254, subject: 200, message: 5000 } as const;
 const EMAIL_REGEX = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
@@ -36,6 +40,18 @@ export default function ContactPage() {
   const [title, setTitle] = useState("Contact");
   const [intro, setIntro] = useState(defaultIntro);
   const [formNote, setFormNote] = useState(defaultFormNote);
+  const [contactEmail, setContactEmail] = useState(siteConfig.links.email);
+  const [linkedinUrl, setLinkedinUrl] = useState(siteConfig.links.linkedin);
+  const [githubUrl, setGithubUrl] = useState(siteConfig.links.github);
+  const [emailLabel, setEmailLabel] = useState(defaultEmailLabel);
+  const [linkedinLabel, setLinkedinLabel] = useState(defaultLinkedinLabel);
+  const [githubLabel, setGithubLabel] = useState(defaultGithubLabel);
+  const [buttonOrder, setButtonOrder] = useState<ContactButtonKey[]>(["email", "linkedin", "github"]);
+  const [buttonVisibility, setButtonVisibility] = useState<Record<ContactButtonKey, boolean>>({
+    email: true,
+    linkedin: true,
+    github: true,
+  });
 
   useEffect(() => {
     fetch("/api/site-content?page=contact")
@@ -45,10 +61,59 @@ export default function ContactPage() {
           if (data.title?.trim()) setTitle(data.title);
           if (data.intro?.trim()) setIntro(data.intro);
           if (data.formNote?.trim()) setFormNote(data.formNote);
+          if (data.email?.trim()) setContactEmail(data.email);
+          if (data.linkedin?.trim()) setLinkedinUrl(data.linkedin);
+          if (data.github?.trim()) setGithubUrl(data.github);
+          if (data.emailLabel?.trim()) setEmailLabel(data.emailLabel);
+          if (data.linkedinLabel?.trim()) setLinkedinLabel(data.linkedinLabel);
+          if (data.githubLabel?.trim()) setGithubLabel(data.githubLabel);
+          if (Array.isArray(data.buttonOrder)) {
+            const filtered = data.buttonOrder.filter((key: unknown): key is ContactButtonKey =>
+              CONTACT_BUTTON_KEYS.includes(String(key) as ContactButtonKey)
+            );
+            if (filtered.length > 0) {
+              const missing = CONTACT_BUTTON_KEYS.filter((key) => !filtered.includes(key));
+              setButtonOrder([...filtered, ...missing]);
+            }
+          }
+          if (data.buttonVisibility && typeof data.buttonVisibility === "object") {
+            setButtonVisibility((current) => ({
+              email: typeof data.buttonVisibility.email === "boolean" ? data.buttonVisibility.email : current.email,
+              linkedin: typeof data.buttonVisibility.linkedin === "boolean" ? data.buttonVisibility.linkedin : current.linkedin,
+              github: typeof data.buttonVisibility.github === "boolean" ? data.buttonVisibility.github : current.github,
+            }));
+          }
         }
       })
       .catch(() => {});
   }, []);
+
+  const emailValue = (contactEmail || "").replace(/^mailto:/i, "");
+  const emailHref = emailValue ? `mailto:${emailValue}` : `mailto:${siteConfig.links.email}`;
+  const linkedinHref = linkedinUrl || siteConfig.links.linkedin;
+  const githubHref = githubUrl || siteConfig.links.github;
+  const contactButtons: Record<ContactButtonKey, { href: string; label: string; targetBlank?: boolean; icon: ReactNode; editorKey: string }> = {
+    email: {
+      href: emailHref,
+      label: emailLabel || defaultEmailLabel,
+      icon: <Mail className="mr-2 h-4 w-4" />,
+      editorKey: "contact.email",
+    },
+    linkedin: {
+      href: linkedinHref,
+      label: linkedinLabel || defaultLinkedinLabel,
+      targetBlank: true,
+      icon: <Linkedin className="mr-2 h-4 w-4" />,
+      editorKey: "contact.linkedin",
+    },
+    github: {
+      href: githubHref,
+      label: githubLabel || defaultGithubLabel,
+      targetBlank: true,
+      icon: <Github className="mr-2 h-4 w-4" />,
+      editorKey: "contact.github",
+    },
+  };
 
   async function handleSubmit(e: React.FormEvent<HTMLFormElement>) {
     e.preventDefault();
@@ -99,41 +164,30 @@ export default function ContactPage() {
           <p className="mb-2 text-slate-600" data-inline-field="contact.intro">
             {intro}
           </p>
-          <p className="mb-10 text-sm text-slate-500" data-inline-field="contact.formNote">
-            {formNote}{" "}
-            <a href={`mailto:${siteConfig.links.email}`} className="text-slate-700 underline hover:text-slate-900">
-              {siteConfig.links.email}
-            </a>
-            . {formNoteSuffix}
+          <p className="mb-1 text-sm text-slate-500" data-inline-field="contact.formNote">
+            {formNote}
           </p>
-
-          <div className="mb-10 flex flex-wrap gap-3">
-            <Link href={`mailto:${siteConfig.links.email}`}>
-              <Button variant="outline" className="w-full sm:w-auto">
-                <Mail className="mr-2 h-4 w-4" />
-                Email
-              </Button>
-            </Link>
-            <Link
-              href={siteConfig.links.linkedin}
-              target="_blank"
-              rel="noopener noreferrer"
-            >
-              <Button variant="outline" className="w-full sm:w-auto">
-                <Linkedin className="mr-2 h-4 w-4" />
-                LinkedIn
-              </Button>
-            </Link>
-            <Link
-              href={siteConfig.links.github}
-              target="_blank"
-              rel="noopener noreferrer"
-            >
-              <Button variant="outline" className="w-full sm:w-auto">
-                <Github className="mr-2 h-4 w-4" />
-                GitHub
-              </Button>
-            </Link>
+          <div className="mb-10 flex flex-wrap gap-3" data-contact-buttons-container>
+            {buttonOrder
+              .filter((key) => buttonVisibility[key] !== false)
+              .map((key) => {
+                const button = contactButtons[key];
+                return (
+                  <Link
+                    key={key}
+                    href={button.href}
+                    target={button.targetBlank ? "_blank" : undefined}
+                    rel={button.targetBlank ? "noopener noreferrer" : undefined}
+                    data-editor-button={button.editorKey}
+                    data-contact-button={key}
+                  >
+                    <Button variant="outline" className="w-full sm:w-auto">
+                      {button.icon}
+                      <span data-editor-button-label>{button.label}</span>
+                    </Button>
+                  </Link>
+                );
+              })}
           </div>
 
           <Card className="shadow-lg">

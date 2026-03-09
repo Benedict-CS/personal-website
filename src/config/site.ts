@@ -16,6 +16,7 @@ export const siteConfig = {
     github: "https://github.com/your-org",
     linkedin: "https://www.linkedin.com/company/your-brand",
     email: "hello@example.com",
+    rss: "/feed.xml",
   },
   author: {
     name: "Site Administrator",

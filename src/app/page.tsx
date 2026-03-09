@@ -114,7 +114,11 @@ export default async function Home() {
         : "min-h-screen bg-gradient-to-br from-slate-50 via-white to-slate-100";
 
   const heroSection = (
-    <section key="hero" className={`container mx-auto max-w-6xl px-6 ${templateId === "minimal" ? "py-12 md:py-16" : "py-20 md:py-28 lg:py-32"}`}>
+    <section
+      key="hero"
+      data-home-section="hero"
+      className={`container mx-auto max-w-6xl px-6 ${templateId === "minimal" ? "py-12 md:py-16" : "py-20 md:py-28 lg:py-32"}`}
+    >
       <div className="mx-auto max-w-4xl text-center">
         <h1 className="mb-6 text-4xl font-bold tracking-tight text-slate-900 sm:text-5xl md:text-6xl lg:text-7xl">
           <span data-inline-field="home.heroTitle">{homeContent.heroTitle ?? defaultHomeContent.heroTitle}</span>
@@ -123,19 +127,25 @@ export default async function Home() {
           <span data-inline-field="home.heroSubtitle">{homeContent.heroSubtitle ?? defaultHomeContent.heroSubtitle}</span>
         </p>
         <div className="flex flex-col items-center justify-center gap-3 sm:flex-row sm:gap-4">
-          <Link href={homeContent.ctaPrimaryHref ?? "/blog"}>
+          <Link href={homeContent.ctaPrimaryHref ?? "/blog"} data-editor-button="home.ctaPrimary">
             <Button size="lg" className="w-full sm:w-auto btn-interactive">
-              <span data-inline-field="home.ctaPrimaryText">{homeContent.ctaPrimaryText ?? defaultHomeContent.ctaPrimaryText}</span>
+              <span data-inline-field="home.ctaPrimaryText" data-editor-button-label>
+                {homeContent.ctaPrimaryText ?? defaultHomeContent.ctaPrimaryText}
+              </span>
             </Button>
           </Link>
-          <Link href={homeContent.ctaSecondaryHref ?? "/about"}>
+          <Link href={homeContent.ctaSecondaryHref ?? "/about"} data-editor-button="home.ctaSecondary">
             <Button size="lg" variant="outline" className="w-full sm:w-auto btn-interactive">
-              <span data-inline-field="home.ctaSecondaryText">{homeContent.ctaSecondaryText ?? defaultHomeContent.ctaSecondaryText}</span>
+              <span data-inline-field="home.ctaSecondaryText" data-editor-button-label>
+                {homeContent.ctaSecondaryText ?? defaultHomeContent.ctaSecondaryText}
+              </span>
             </Button>
           </Link>
-          <Link href={homeContent.ctaContactHref ?? "/contact"}>
+          <Link href={homeContent.ctaContactHref ?? "/contact"} data-editor-button="home.ctaContact">
             <Button size="lg" variant="outline" className="w-full sm:w-auto btn-interactive">
-              <span data-inline-field="home.ctaContactText">{homeContent.ctaContactText ?? defaultHomeContent.ctaContactText}</span>
+              <span data-inline-field="home.ctaContactText" data-editor-button-label>
+                {homeContent.ctaContactText ?? defaultHomeContent.ctaContactText}
+              </span>
             </Button>
           </Link>
         </div>
@@ -144,7 +154,7 @@ export default async function Home() {
   );
 
   const latestPostsSection = (
-    <section key="latestPosts" className="container mx-auto max-w-6xl px-6 py-16">
+    <section key="latestPosts" data-home-section="latestPosts" className="container mx-auto max-w-6xl px-6 py-16">
       <div className="w-full">
         <h2 className="mb-8 text-3xl font-bold text-slate-900" data-inline-field="home.sectionTitleLatestPosts">
           {homeContent.sectionTitleLatestPosts ?? defaultHomeContent.sectionTitleLatestPosts}
@@ -195,15 +205,15 @@ export default async function Home() {
   );
 
   const skillsSection = (
-    <section key="skills" className="container mx-auto max-w-6xl px-6 py-16">
+    <section key="skills" data-home-section="skills" className="container mx-auto max-w-6xl px-6 py-16">
       <div className="mx-auto max-w-4xl">
         <h2 className="mb-8 text-center text-3xl font-bold text-slate-900" data-inline-field="home.sectionTitleSkills">
           {homeContent.sectionTitleSkills ?? defaultHomeContent.sectionTitleSkills}
         </h2>
-        <div className="flex flex-wrap justify-center gap-3">
-          {skills.map((skill) => (
-            <Badge key={skill} variant="secondary" className="px-4 py-2 text-sm font-medium text-slate-700">
-              {skill}
+        <div className="flex flex-wrap justify-center gap-3" data-home-skills-container>
+          {skills.map((skill, index) => (
+            <Badge key={`${skill}-${index}`} variant="secondary" className="px-4 py-2 text-sm font-medium text-slate-700">
+              <span data-inline-field={`home.skills.${index}`}>{skill}</span>
             </Badge>
           ))}
         </div>

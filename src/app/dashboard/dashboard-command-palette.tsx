@@ -3,17 +3,12 @@
 import { useState, useEffect, useCallback } from "react";
 import { useRouter } from "next/navigation";
 import {
-  Home,
+  PenSquare,
   BarChart3,
-  FileText,
   StickyNote,
-  Layout,
   Image as ImageIcon,
   Tags,
-  PlusCircle,
   ExternalLink,
-  Mail,
-  UserCircle2,
   Settings,
   Layers,
 } from "lucide-react";
@@ -28,13 +23,9 @@ type Action = {
 };
 
 const ACTIONS: Action[] = [
-  { id: "home", label: "Dashboard Home", keywords: ["home", "dashboard"], href: "/dashboard", icon: Home },
+  { id: "editor-home", label: "Open visual editor", keywords: ["editor", "home", "visual"], href: "/editor/home", icon: PenSquare },
+  { id: "editor-blog", label: "Blog editor", keywords: ["editor", "blog", "posts"], href: "/editor/blog", icon: PenSquare },
   { id: "analytics", label: "Analytics", keywords: ["analytics", "stats", "views"], href: "/dashboard/analytics", icon: BarChart3 },
-  { id: "posts", label: "Posts", keywords: ["posts", "blog"], href: "/dashboard/posts", icon: FileText },
-  { id: "new-post", label: "New post", keywords: ["new", "post", "write"], href: "/dashboard/posts/new", icon: PlusCircle },
-  { id: "content-home", label: "Home page editor", keywords: ["home", "page", "editor"], href: "/editor/home", icon: Layout },
-  { id: "content-about", label: "About page editor", keywords: ["about", "page", "editor"], href: "/editor/about", icon: UserCircle2 },
-  { id: "content-contact", label: "Contact page editor", keywords: ["contact", "page", "editor"], href: "/editor/contact", icon: Mail },
   { id: "content-site", label: "Site settings", keywords: ["site", "settings", "navigation"], href: "/dashboard/content/site", icon: Settings },
   { id: "content-custom-pages", label: "Custom pages", keywords: ["custom", "pages", "additional"], href: "/dashboard/content/pages", icon: Layers },
   { id: "notes", label: "Notes", keywords: ["notes"], href: "/dashboard/notes", icon: StickyNote },

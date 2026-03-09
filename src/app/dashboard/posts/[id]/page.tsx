@@ -798,6 +798,7 @@ export default function EditPostPage({
                     <Input
                       id="publishedDate"
                       type="date"
+                      lang="en-US"
                       value={publishedDate}
                       onChange={(e) => { markDirty(); setPublishedDate(e.target.value); }}
                     />
@@ -813,11 +814,15 @@ export default function EditPostPage({
                     <Input
                       id="scheduledPublishAt"
                       type="datetime-local"
+                      lang="en-US"
                       value={scheduledPublishAt}
                       onChange={(e) => { markDirty(); setScheduledPublishAt(e.target.value); }}
                     />
                     <p className="text-xs text-slate-500">
                       When set and in the past, the post is shown as published even if &quot;Publish immediately&quot; is off
+                    </p>
+                    <p className="text-xs text-slate-500">
+                      Format: YYYY-MM-DD HH:mm (24-hour clock)
                     </p>
                   </div>
 

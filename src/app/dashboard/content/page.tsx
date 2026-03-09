@@ -2,18 +2,18 @@
 
 import Link from "next/link";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { Home, FileText, Mail, Settings, Layers, UserCircle2 } from "lucide-react";
+import { Home, PenSquare, Mail, Settings, Layers, UserCircle2 } from "lucide-react";
 
 const coreItems = [
   { href: "/dashboard/content/site", label: "Site settings", icon: Settings, description: "Site name, logo, favicon, meta, navigation, footer text, OG image, template, setup" },
-  { href: "/dashboard/posts", label: "Posts", icon: FileText, description: "Blog articles, publish state, revisions, and post metadata" },
+  { href: "/editor/blog", label: "Blog editor", icon: PenSquare, description: "Manage published posts directly in editor flow" },
 ];
 
 const immersiveItems = [
   { href: "/editor/home", label: "Home editor", icon: Home, description: "True WYSIWYG page editing with inline text and media updates" },
   { href: "/editor/about", label: "About editor", icon: UserCircle2, description: "Edit the live About page directly on the real frontend layout" },
   { href: "/editor/contact", label: "Contact editor", icon: Mail, description: "Edit contact copy directly on the live page view" },
-  { href: "/dashboard/content/pages", label: "Custom pages", icon: Layers, description: "Manage additional pages; open each one in immersive editor flow" },
+  { href: "/dashboard/content/pages", label: "Custom pages", icon: Layers, description: "Manage additional pages and open each one in immersive editor flow" },
 ];
 
 export default function ContentIndexPage() {

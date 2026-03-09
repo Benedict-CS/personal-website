@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useEffect, useCallback } from "react";
-import { useRouter } from "next/navigation";
+import { useRouter, useSearchParams } from "next/navigation";
 import { signIn } from "next-auth/react";
 import Script from "next/script";
 import { Button } from "@/components/ui/button";
@@ -18,6 +18,7 @@ const SITE_KEY = process.env.NEXT_PUBLIC_TURNSTILE_SITE_KEY;
 
 export default function SignInPage() {
   const router = useRouter();
+  const searchParams = useSearchParams();
   const [password, setPassword] = useState("");
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -52,17 +53,19 @@ export default function SignInPage() {
       return;
     }
     setIsLoading(true);
+    const callbackUrl = searchParams.get("callbackUrl") || "/editor/home";
 
     try {
       const result = await signIn("credentials", {
         password,
         captchaToken: captchaRequired ? captchaToken ?? "" : undefined,
-        callbackUrl: "/dashboard",
+        callbackUrl,
         redirect: false,
       });
       if (result?.ok && result?.url) {
-        const path = new URL(result.url).pathname || "/dashboard";
-        router.push(path);
+        const nextUrl = new URL(result.url, window.location.origin);
+        const target = `${nextUrl.pathname}${nextUrl.search}${nextUrl.hash}` || "/editor/home";
+        router.push(target);
         return;
       }
       const err = result?.error;

@@ -187,6 +187,19 @@ export default function SiteSettingsPage() {
         </CardContent>
       </Card>
 
+      <Card>
+        <CardHeader>
+          <CardTitle>Custom pages</CardTitle>
+          <p className="text-sm font-normal text-slate-500">Custom pages are managed in a dedicated screen so they stay separate from core site settings.</p>
+        </CardHeader>
+        <CardContent className="flex items-center justify-between gap-3">
+          <p className="text-sm text-slate-600">Create, publish, reorder, and edit custom pages from one place.</p>
+          <Link href="/dashboard/content/pages">
+            <Button variant="outline">Open custom pages</Button>
+          </Link>
+        </CardContent>
+      </Card>
+
       {!config.setupCompleted && (
         <Card className="border-amber-200 bg-amber-50">
           <CardHeader>

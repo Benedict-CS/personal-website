@@ -3,7 +3,7 @@ import { requireSession } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 import type { NavItem, SiteConfigResponse } from "@/types/site";
 
-const DEFAULT_LINKS = { email: "", github: "", linkedin: "" };
+const DEFAULT_LINKS = { email: "", github: "", linkedin: "", rss: "" };
 
 export type { NavItem, SiteConfigResponse } from "@/types/site";
 
@@ -121,7 +121,7 @@ export async function PATCH(request: Request) {
     ? (navItems as unknown[]).filter((n): n is { label: string; href: string } =>
         n != null && typeof n === "object" && "label" in n && "href" in n
       )
-    : DEFAULT_NAV_ITEMS;
+    : undefined;
   const now = new Date();
   try {
     await prisma.siteConfig.upsert({
@@ -135,7 +135,7 @@ export async function PATCH(request: Request) {
         metaDescription: metaDescription ?? null,
         authorName: authorName ?? null,
         links: links && typeof links === "object" ? links : {},
-        navItems: safeNavItems,
+        navItems: safeNavItems && safeNavItems.length > 0 ? safeNavItems : DEFAULT_NAV_ITEMS,
         footerText: footerText ?? null,
         ogImageUrl: ogImageUrl ?? null,
         setupCompleted: setupCompleted === true,
@@ -152,7 +152,7 @@ export async function PATCH(request: Request) {
         ...(metaDescription !== undefined && { metaDescription: metaDescription || null }),
         ...(authorName !== undefined && { authorName: authorName || null }),
         ...(links && typeof links === "object" && { links }),
-        navItems: safeNavItems,
+        ...(safeNavItems && safeNavItems.length > 0 && { navItems: safeNavItems }),
         ...(footerText !== undefined && { footerText: footerText || null }),
         ...(ogImageUrl !== undefined && { ogImageUrl: ogImageUrl || null }),
         ...(setupCompleted !== undefined && { setupCompleted: setupCompleted === true }),

@@ -7,6 +7,7 @@ import { Providers } from "@/components/providers";
 import { ThemeApplier } from "@/components/theme-applier";
 import { AnalyticsBeacon } from "@/components/analytics-beacon";
 import { RssAutodiscovery } from "@/components/rss-autodiscovery";
+import { FloatingEditButton } from "@/components/floating-edit-button";
 import { siteConfig } from "@/config/site";
 import { getSiteConfigForRender } from "@/lib/site-config";
 
@@ -115,6 +116,7 @@ export default async function RootLayout({
           </a>
           <Navbar siteConfig={siteConfigForRender} />
           <main id="main-content" className="flex flex-1 flex-col min-h-0 main-fade-in">{children}</main>
+          <FloatingEditButton />
           <Footer siteConfig={siteConfigForRender} />
         </Providers>
       </body>
