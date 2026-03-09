@@ -30,17 +30,16 @@ export async function generateMetadata(): Promise<Metadata> {
     },
     description: config.metaDescription ?? siteConfig.description,
     keywords: [
-      "Benedict Tiong",
-      "Network Administrator",
-      "Full Stack Developer",
-      "Cloud Native",
-      "Kubernetes",
-      "CI/CD",
-      "DevOps",
+      "Website Builder",
+      "WYSIWYG",
+      "Page Builder",
+      "No-Code Website",
+      "Content Management",
+      "Headless CMS",
       "Next.js",
       "TypeScript",
-      "Proxmox",
-      "Linux",
+      "Prisma",
+      "Next.js",
     ],
     authors: [{ name: config.authorName ?? siteConfig.author.name, url: config.links?.linkedin }],
     creator: config.authorName ?? siteConfig.author.name,
@@ -61,7 +60,7 @@ export async function generateMetadata(): Promise<Metadata> {
       card: "summary_large_image",
       title: config.metaTitle || siteConfig.title,
       description: config.metaDescription ?? siteConfig.description,
-      creator: "@benedicttiong",
+      creator: "@sitebuilder",
       ...(config.ogImageUrl && {
         images: [
           config.ogImageUrl.startsWith("http") ? config.ogImageUrl : new URL(config.ogImageUrl, config.url).toString(),
@@ -104,7 +103,7 @@ export default async function RootLayout({
         className={`${geistSans.variable} ${geistMono.variable} antialiased flex min-h-screen flex-col`}
         data-template={siteConfigForRender.templateId ?? "default"}
       >
-        <ThemeApplier themeMode={siteConfigForRender.themeMode ?? "system"} />
+        <ThemeApplier themeMode={siteConfigForRender.themeMode ?? "light"} />
         <Providers>
           <RssAutodiscovery />
           <AnalyticsBeacon />

@@ -13,11 +13,11 @@ export async function generateMetadata(): Promise<Metadata> {
   return {
     title: "Blog",
     description:
-      "Read articles about Network Administration, Full Stack Development, Cloud Native Technologies, and more by Benedict Tiong.",
+      "Read articles about engineering, product, and website-building best practices.",
     openGraph: {
       title: "Blog",
       description:
-        "Read articles about Network Administration, Full Stack Development, Cloud Native Technologies, and more by Benedict Tiong.",
+        "Read articles about engineering, product, and website-building best practices.",
       url: `${config.url}/blog`,
       ...(ogUrl && { images: [ogUrl] }),
     },

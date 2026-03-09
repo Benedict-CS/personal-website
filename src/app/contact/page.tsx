@@ -33,6 +33,7 @@ function validateContact(name: string, email: string, subject: string, message: 
 export default function ContactPage() {
   const [status, setStatus] = useState<"idle" | "sending" | "success" | "error">("idle");
   const [errorMessage, setErrorMessage] = useState("");
+  const [title, setTitle] = useState("Contact");
   const [intro, setIntro] = useState(defaultIntro);
   const [formNote, setFormNote] = useState(defaultFormNote);
 
@@ -41,6 +42,7 @@ export default function ContactPage() {
       .then((r) => r.json())
       .then((data) => {
         if (data && typeof data === "object") {
+          if (data.title?.trim()) setTitle(data.title);
           if (data.intro?.trim()) setIntro(data.intro);
           if (data.formNote?.trim()) setFormNote(data.formNote);
         }
@@ -93,11 +95,11 @@ export default function ContactPage() {
       <section className="container mx-auto px-4 py-16 md:py-24">
         <div className="mx-auto max-w-2xl">
           <PublicBreadcrumbs items={[{ label: "Home", href: "/" }, { label: "Contact" }]} />
-          <h1 className="mb-4 text-4xl font-bold text-slate-900">Contact</h1>
-          <p className="mb-2 text-slate-600">
+          <h1 className="mb-4 text-4xl font-bold text-slate-900" data-inline-field="contact.title">{title}</h1>
+          <p className="mb-2 text-slate-600" data-inline-field="contact.intro">
             {intro}
           </p>
-          <p className="mb-10 text-sm text-slate-500">
+          <p className="mb-10 text-sm text-slate-500" data-inline-field="contact.formNote">
             {formNote}{" "}
             <a href={`mailto:${siteConfig.links.email}`} className="text-slate-700 underline hover:text-slate-900">
               {siteConfig.links.email}

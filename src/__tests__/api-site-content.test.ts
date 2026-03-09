@@ -21,6 +21,7 @@ jest.mock("@/lib/auth", () => ({
 }));
 
 import { requireSession } from "@/lib/auth";
+const mockRequireSession = requireSession as jest.MockedFunction<typeof requireSession>;
 
 function createGetRequest(page?: string) {
   const url = new URL("http://localhost/api/site-content");
@@ -80,7 +81,7 @@ describe("PATCH /api/site-content", () => {
   });
 
   it("returns 401 when not authenticated", async () => {
-    requireSession.mockResolvedValue({
+    mockRequireSession.mockResolvedValue({
       unauthorized: NextResponse.json({ error: "Unauthorized" }, { status: 401 }),
     });
     const req = new NextRequest("http://localhost/api/site-content", {
@@ -93,7 +94,7 @@ describe("PATCH /api/site-content", () => {
   });
 
   it("returns 400 when page is invalid", async () => {
-    requireSession.mockResolvedValue({ session: {} });
+    mockRequireSession.mockResolvedValue({ session: {} } as Awaited<ReturnType<typeof requireSession>>);
     const req = new NextRequest("http://localhost/api/site-content", {
       method: "PATCH",
       body: JSON.stringify({ page: "invalid", content: {} }),
@@ -104,7 +105,7 @@ describe("PATCH /api/site-content", () => {
   });
 
   it("returns 200 and upserts when valid", async () => {
-    requireSession.mockResolvedValue({ session: {} });
+    mockRequireSession.mockResolvedValue({ session: {} } as Awaited<ReturnType<typeof requireSession>>);
     mockUpsert.mockResolvedValue(undefined);
     const req = new NextRequest("http://localhost/api/site-content", {
       method: "PATCH",

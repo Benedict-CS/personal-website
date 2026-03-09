@@ -24,11 +24,11 @@ export async function generateMetadata(): Promise<Metadata> {
   return {
     title: "About Me",
     description:
-      "Learn more about Benedict Tiong - Master's student in Computer Science at NYCU, specializing in Network Architecture, Cloud Native Technologies, and Full Stack Development.",
+      "Learn more about the site owner, background, projects, and work experience.",
     openGraph: {
       title: "About Me",
       description:
-        "Learn more about Benedict Tiong - Master's student in Computer Science at NYCU, specializing in Network Architecture, Cloud Native Technologies, and Full Stack Development.",
+        "Learn more about the site owner, background, projects, and work experience.",
       url: `${config.url}/about`,
       ...(ogUrl && { images: [ogUrl] }),
     },
@@ -323,7 +323,7 @@ export default async function AboutPage() {
                 </div>
               )}
               <h1 className="mb-2 text-4xl font-bold text-slate-900">
-                {heroName?.trim() || "Benedict Ing Ngie Tiong"}
+                {heroName?.trim() || "Your Name"}
               </h1>
               {(heroTagline?.trim()) ? (
                 <p className="mb-2 text-lg text-slate-600">
@@ -331,11 +331,11 @@ export default async function AboutPage() {
                 </p>
               ) : (
                 <p className="mb-2 text-lg text-slate-600">
-                  Master&apos;s Student in Computer Science | Full Stack Developer
+                  Builder Owner | Product Creator
                 </p>
               )}
               <div className="flex justify-center gap-3 mt-6">
-                <Link href="/api/cv/download" download="Benedict_Tiong_CV.pdf" prefetch={false}>
+                <Link href="/api/cv/download" download="site-owner-cv.pdf" prefetch={false}>
                   <Button variant="default" className="gap-2 shadow-md">
                     <Download className="h-4 w-4" />
                     Download CV (PDF)
@@ -965,14 +965,14 @@ export default async function AboutPage() {
               a conversation about technology. Feel free to reach out!
             </p>
             <div className="flex flex-wrap gap-3">
-              <Link href="mailto:benedict.cs12@nycu.edu.tw">
+              <Link href="mailto:hello@example.com">
                 <Button variant="outline" className="w-full sm:w-auto">
                   <Mail className="mr-2 h-4 w-4" />
                   Email
                 </Button>
               </Link>
               <Link
-                href="https://www.linkedin.com/in/benedict-tiong"
+                href="https://www.linkedin.com/company/your-brand"
                 target="_blank"
                 rel="noopener noreferrer"
               >
@@ -982,7 +982,7 @@ export default async function AboutPage() {
                 </Button>
               </Link>
               <Link
-                href="https://github.com/Benedict-CS"
+                href="https://github.com/your-org"
                 target="_blank"
                 rel="noopener noreferrer"
               >

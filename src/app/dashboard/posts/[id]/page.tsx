@@ -14,6 +14,7 @@ import {
 } from "@/components/ui/card";
 import { ConfirmDialog } from "@/components/ui/confirm-dialog";
 import { InsertMediaModal } from "@/components/insert-media-modal";
+import { MarkdownTemplateInserter } from "@/components/markdown-template-inserter";
 import { useBreadcrumb } from "@/contexts/breadcrumb-context";
 import { useLeaveGuard } from "@/contexts/leave-guard-context";
 import { validateSlug } from "@/lib/utils";
@@ -316,6 +317,10 @@ export default function EditPostPage({
     } else {
       setContent((prev) => prev + (prev ? "\n\n" : "") + block + "\n\n");
     }
+  };
+
+  const insertTemplateBlock = (markdown: string) => {
+    insertImageBlock(markdown.trim() + "\n");
   };
 
   useEffect(() => {
@@ -886,6 +891,7 @@ export default function EditPostPage({
                     insertImageBlock("![Image](" + url + ")");
                   }}
                 />
+                <MarkdownTemplateInserter onInsert={insertTemplateBlock} compact />
                 <div data-color-mode="light">
                   <MDEditor
                     ref={editorRef}
@@ -984,7 +990,7 @@ export default function EditPostPage({
                     <span className="text-green-700">
                       {savedMessage}
                       {savedMessage === "Saved" && slug && (
-                        <> — <a href={`/blog/${slug}`} target="_blank" rel="noopener noreferrer" className="underline hover:text-green-800">View on site</a></>
+                        <> — <a href={`/blog/${slug}`} className="underline hover:text-green-800">View on site</a></>
                       )}
                     </span>
                   )}

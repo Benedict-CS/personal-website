@@ -27,7 +27,7 @@ const defaults: SiteConfigResponse = {
   ogImageUrl: null,
   setupCompleted: false,
   templateId: "default",
-  themeMode: "system",
+  themeMode: "light",
   autoAddCustomPagesToNav: true,
 };
 
@@ -122,7 +122,7 @@ export default function SetupWizardPage() {
                   id="siteName"
                   value={config.siteName}
                   onChange={(e) => setConfig((c) => ({ ...c, siteName: e.target.value }))}
-                  placeholder="e.g. Benedict"
+                  placeholder="e.g. Alex"
                 />
               </div>
               <div className="space-y-2">
@@ -205,7 +205,7 @@ export default function SetupWizardPage() {
 
           {step === 5 && (
             <div className="space-y-4">
-              <p className="text-slate-600">Your site name is <strong>{config.siteName}</strong> and you have {config.navItems.length} menu links. Everything will be saved; you can change it anytime in <Link href="/dashboard/content/site" className="text-blue-600 underline">Content → Site settings</Link>.</p>
+              <p className="text-slate-600">Your site name is <strong>{config.siteName}</strong> and you have {config.navItems.length} menu links. Everything will be saved; you can change it anytime in <Link href="/dashboard/content/site" className="text-blue-600 underline">Site settings</Link> or open the <Link href="/editor/home" className="text-blue-600 underline">visual editor</Link>.</p>
               {error && <p className="text-red-600 text-sm">{error}</p>}
             </div>
           )}

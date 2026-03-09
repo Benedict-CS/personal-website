@@ -94,7 +94,7 @@ const STATIC_PAGES: { path: string; title: string; searchableText: string }[] = 
     path: "/",
     title: "Home",
     searchableText:
-      "Home Benedict Hi Network Administrator Full Stack Developer Open Source Enthusiast Latest Posts Read My Blog Next.js TypeScript Proxmox Linux Networking Docker",
+      "Home Welcome Builder Owner Product Creator Technical Writer Latest Posts Read Blog Next.js TypeScript Docker",
   },
 ];
 

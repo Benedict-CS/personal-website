@@ -28,7 +28,7 @@ const defaults: SiteConfigResponse = {
   ogImageUrl: null,
   setupCompleted: false,
   templateId: "default",
-  themeMode: "system",
+  themeMode: "light",
   autoAddCustomPagesToNav: true,
 };
 
@@ -238,7 +238,7 @@ export default function SiteSettingsPage() {
               id="siteName"
               value={config.siteName}
               onChange={(e) => setConfig((c) => ({ ...c, siteName: e.target.value }))}
-              placeholder="e.g. Benedict"
+              placeholder="e.g. Alex"
             />
           </div>
           <div className="space-y-2">
@@ -297,7 +297,7 @@ export default function SiteSettingsPage() {
               id="authorName"
               value={config.authorName ?? ""}
               onChange={(e) => setConfig((c) => ({ ...c, authorName: e.target.value || null }))}
-              placeholder="e.g. Benedict Tiong"
+              placeholder="e.g. Alex Johnson"
             />
           </div>
         </CardContent>
@@ -309,7 +309,7 @@ export default function SiteSettingsPage() {
             <CardTitle>Navigation (navbar links)</CardTitle>
             <FieldHelp text="Label = text shown in the menu. Link = web address: use /about for About page, /blog for the blog. Start with / for pages on your site." />
           </div>
-          <p className="text-sm font-normal text-slate-500">Order and labels for Home, About, Blog, Contact. When enabled, custom pages are auto-added to the end of this list.</p>
+          <p className="text-sm font-normal text-slate-500">Core pages should stay explicit: Home, About, Blog (Posts), Contact. Custom pages are additional items and can be appended automatically.</p>
         </CardHeader>
         <CardContent className="space-y-3">
           <label className="flex items-center gap-2 cursor-pointer">
@@ -408,7 +408,7 @@ export default function SiteSettingsPage() {
         <p className={message.type === "success" ? "text-green-600" : "text-red-600"}>
           {message.text}
           {message.type === "success" && typeof process.env.NEXT_PUBLIC_SITE_URL === "string" && (
-            <> — <a href={process.env.NEXT_PUBLIC_SITE_URL} target="_blank" rel="noopener noreferrer" className="underline">View on site</a></>
+            <> — <a href={process.env.NEXT_PUBLIC_SITE_URL} className="underline">View on site</a></>
           )}
         </p>
       )}

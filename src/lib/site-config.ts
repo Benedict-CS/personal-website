@@ -25,7 +25,7 @@ const fallback: SiteConfigForRender = {
   ogImageUrl: siteConfig.ogImage ?? null,
   setupCompleted: false,
   templateId: "default",
-  themeMode: "system",
+  themeMode: "light",
   url: siteConfig.url,
 };
 
@@ -83,7 +83,7 @@ export async function getSiteConfigForRender(): Promise<SiteConfigForRender> {
       : DEFAULT_NAV;
     let setupCompleted = false;
     let templateId = "default";
-    let themeMode: "light" | "dark" | "system" = "system";
+    const themeMode = "light" as const;
     let autoAddCustomPagesToNav = true;
     try {
       const extra = await prisma.siteConfig.findUnique({
@@ -93,7 +93,6 @@ export async function getSiteConfigForRender(): Promise<SiteConfigForRender> {
       if (extra) {
         setupCompleted = extra.setupCompleted ?? false;
         templateId = extra.templateId ?? "default";
-        themeMode = (extra.themeMode === "light" || extra.themeMode === "dark" || extra.themeMode === "system") ? extra.themeMode : "system";
         autoAddCustomPagesToNav = extra.autoAddCustomPagesToNav ?? true;
       }
     } catch {

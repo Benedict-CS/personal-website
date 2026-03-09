@@ -4,7 +4,8 @@ import { prisma } from "@/lib/prisma";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { DashboardExportImport } from "@/components/dashboard-export-import";
-import { Layout, BarChart3, Image as ImageIcon, PlusCircle, ExternalLink } from "lucide-react";
+import { DashboardSystemStatus } from "@/components/dashboard-system-status";
+import { Layout, BarChart3, Image as ImageIcon, PlusCircle, ExternalLink, UserCircle2, Mail, Settings } from "lucide-react";
 import { Prisma } from "@prisma/client";
 
 export const dynamic = "force-dynamic";
@@ -26,7 +27,7 @@ export default async function DashboardHomePage() {
     // ignore
   }
 
-  const [draftCount, publishedCount, totalPosts, recentPosts, siteRow] = await Promise.all([
+  const [draftCount, publishedCount, totalPosts, recentPosts, siteRow, totalTags, totalCustomPages, totalPageViews] = await Promise.all([
     prisma.post.count({ where: { published: false } }),
     prisma.post.count({ where: { published: true } }),
     prisma.post.count(),
@@ -38,6 +39,9 @@ export default async function DashboardHomePage() {
     prisma.siteConfig
       .findUnique({ where: { id: 1 }, select: { setupCompleted: true } })
       .catch(() => null),
+    prisma.tag.count().catch(() => 0),
+    prisma.customPage.count().catch(() => 0),
+    prisma.pageView.count().catch(() => 0),
   ]);
 
   const siteUrl = process.env.NEXT_PUBLIC_SITE_URL || process.env.NEXTAUTH_URL || "";
@@ -82,8 +86,6 @@ export default async function DashboardHomePage() {
               <CardContent className="pt-4">
                 <a
                   href={siteUrl}
-                  target="_blank"
-                  rel="noopener noreferrer"
                   className="inline-flex items-center gap-1.5 text-sm font-medium text-slate-700 hover:text-slate-900"
                 >
                   <ExternalLink className="h-4 w-4" />
@@ -96,6 +98,24 @@ export default async function DashboardHomePage() {
             <CardContent className="pt-4">
               <p className="text-sm font-mono text-slate-700">{process.version}</p>
               <p className="text-sm text-slate-600">Node</p>
+            </CardContent>
+          </Card>
+          <Card className="min-w-[120px]">
+            <CardContent className="pt-4">
+              <p className="text-2xl font-bold text-slate-900">{totalTags}</p>
+              <p className="text-sm text-slate-600">Tags</p>
+            </CardContent>
+          </Card>
+          <Card className="min-w-[120px]">
+            <CardContent className="pt-4">
+              <p className="text-2xl font-bold text-slate-900">{totalCustomPages}</p>
+              <p className="text-sm text-slate-600">Custom pages</p>
+            </CardContent>
+          </Card>
+          <Card className="min-w-[120px]">
+            <CardContent className="pt-4">
+              <p className="text-2xl font-bold text-slate-900">{totalPageViews}</p>
+              <p className="text-sm text-slate-600">Total page views</p>
             </CardContent>
           </Card>
           {dbSizeBytes != null && (
@@ -112,6 +132,13 @@ export default async function DashboardHomePage() {
 
       <section>
         <h3 className="mb-3 text-sm font-medium uppercase tracking-wider text-slate-500">
+          Monitoring
+        </h3>
+        <DashboardSystemStatus />
+      </section>
+
+      <section>
+        <h3 className="mb-3 text-sm font-medium uppercase tracking-wider text-slate-500">
           Quick links
         </h3>
         <div className="flex flex-wrap gap-3">
@@ -121,10 +148,28 @@ export default async function DashboardHomePage() {
               New post
             </Button>
           </Link>
-          <Link href="/dashboard/content">
+          <Link href="/editor/home">
             <Button variant="outline" className="gap-2">
               <Layout className="h-4 w-4" />
-              Content
+              Home page
+            </Button>
+          </Link>
+          <Link href="/editor/about">
+            <Button variant="outline" className="gap-2">
+              <UserCircle2 className="h-4 w-4" />
+              About page
+            </Button>
+          </Link>
+          <Link href="/editor/contact">
+            <Button variant="outline" className="gap-2">
+              <Mail className="h-4 w-4" />
+              Contact page
+            </Button>
+          </Link>
+          <Link href="/dashboard/content/site">
+            <Button variant="outline" className="gap-2">
+              <Settings className="h-4 w-4" />
+              Site settings
             </Button>
           </Link>
           <Link href="/dashboard/analytics">

@@ -7,7 +7,7 @@ RUN npm ci
 
 # Stage 2: Builder
 FROM node:20-alpine AS builder
-RUN apk add --no-cache openssl
+RUN apk add --no-cache openssl bash
 WORKDIR /app
 
 # Copy dependencies from deps stage
@@ -30,7 +30,7 @@ RUN npm run build
 
 # Stage 3: Runner
 FROM node:20-alpine AS runner
-RUN apk add --no-cache openssl
+RUN apk add --no-cache bash openssl
 WORKDIR /app
 
 ENV NODE_ENV=production
@@ -67,5 +67,5 @@ EXPOSE 3000
 ENV PORT=3000
 ENV HOSTNAME="0.0.0.0"
 
-# Run migrations on startup, then start the app (so you never have to run migrate manually after deploy)
-CMD ["/bin/sh", "-c", "npx prisma migrate deploy && exec node server.js"]
+# Run migrations on startup with retries, then start the app.
+CMD ["/bin/sh", "-c", "attempt=1; until [ \"$attempt\" -gt 30 ]; do npx prisma migrate deploy && break; echo \"Prisma migrate deploy failed (attempt $attempt/30). Retrying in 2s...\"; attempt=$((attempt + 1)); sleep 2; done; if [ \"$attempt\" -gt 30 ]; then echo \"Prisma migrate deploy failed after 30 attempts.\"; exit 1; fi; exec node server.js"]

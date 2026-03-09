@@ -3,6 +3,12 @@ import { withSentryConfig } from "@sentry/nextjs";
 
 const nextConfig: NextConfig = {
   output: "standalone",
+  serverExternalPackages: [
+    "dockerode",
+    "@kubernetes/client-node",
+    "ssh2",
+    "docker-modem",
+  ],
   async headers() {
     const cspReportOnly = [
       "default-src 'self'",

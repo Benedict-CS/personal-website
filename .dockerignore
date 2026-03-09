@@ -54,7 +54,17 @@ backups
 
 # Docker / data
 postgres-data
+postgres-data/
+**/postgres-data/**
 minio-data
+minio-data/
+**/minio-data/**
+rustfs-data
+rustfs-data/
+**/rustfs-data/**
+rustfs-logs
+rustfs-logs/
+**/rustfs-logs/**
 *.db
 *.db-journal
 Dockerfile*

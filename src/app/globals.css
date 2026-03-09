@@ -79,35 +79,6 @@
   --sidebar-ring: oklch(0.704 0.04 256.788);
 }
 
-/* Dark theme (when data-theme="dark" on html) */
-[data-theme="dark"] {
-  --background: oklch(0.145 0.02 265.755);
-  --foreground: oklch(0.965 0.005 247.896);
-  --card: oklch(0.18 0.02 265.755);
-  --card-foreground: oklch(0.965 0.005 247.896);
-  --popover: oklch(0.18 0.02 265.755);
-  --popover-foreground: oklch(0.965 0.005 247.896);
-  --primary: oklch(0.65 0.15 265.755);
-  --primary-foreground: oklch(0.99 0 0);
-  --secondary: oklch(0.25 0.02 265.755);
-  --secondary-foreground: oklch(0.92 0.01 247.896);
-  --muted: oklch(0.25 0.02 265.755);
-  --muted-foreground: oklch(0.65 0.02 265.755);
-  --accent: oklch(0.35 0.05 265.755);
-  --accent-foreground: oklch(0.965 0.005 247.896);
-  --border: oklch(0.32 0.02 265.755);
-  --input: oklch(0.32 0.02 265.755);
-  --ring: oklch(0.55 0.08 265.755);
-  --sidebar: oklch(0.18 0.02 265.755);
-  --sidebar-foreground: oklch(0.965 0.005 247.896);
-  --sidebar-primary: oklch(0.65 0.15 265.755);
-  --sidebar-primary-foreground: oklch(0.99 0 0);
-  --sidebar-accent: oklch(0.28 0.02 265.755);
-  --sidebar-accent-foreground: oklch(0.965 0.005 247.896);
-  --sidebar-border: oklch(0.32 0.02 265.755);
-  --sidebar-ring: oklch(0.55 0.08 265.755);
-}
-
 @layer base {
   * {
     @apply border-border outline-ring/50;
@@ -336,6 +307,56 @@
   font-size: 0.875rem;
   color: var(--tw-prose-body, #475569);
 }
+
+/* Builder section wrapper classes (persisted in markdown) */
+.prose .preset-minimal {
+  border: 1px solid #e2e8f0;
+  background: transparent;
+}
+.prose .preset-card {
+  border: 1px solid #e2e8f0;
+  background: #ffffff;
+}
+.prose .preset-highlight {
+  border: 1px solid #bfdbfe;
+  background: #eff6ff;
+}
+.prose .spacing-compact {
+  padding: 0.5rem;
+}
+.prose .spacing-normal {
+  padding: 1rem;
+}
+.prose .spacing-spacious {
+  padding: 1.5rem;
+}
+.prose .radius-none {
+  border-radius: 0;
+}
+.prose .radius-sm {
+  border-radius: 0.25rem;
+}
+.prose .radius-md {
+  border-radius: 0.5rem;
+}
+.prose .radius-lg {
+  border-radius: 0.75rem;
+}
+.prose .shadow-none {
+  box-shadow: none;
+}
+.prose .shadow-sm {
+  box-shadow: 0 1px 2px rgb(15 23 42 / 0.08);
+}
+.prose .shadow-md {
+  box-shadow: 0 6px 16px rgb(15 23 42 / 0.12);
+}
+.prose .align-left {
+  text-align: left;
+}
+.prose .align-center {
+  text-align: center;
+}
 .prose figure p {
   margin-top: 0.2rem;
   margin-bottom: 0.5rem;
@@ -535,4 +556,24 @@ pre .hljs[class*="language-"],
   .border-t.border-slate-200.pt-6 {
     break-inside: avoid;
   }
+}
+
+/* Inline editor visual affordances */
+.editor-inline-target {
+  outline: 2px dashed transparent;
+  outline-offset: 2px;
+  transition: outline-color 0.12s ease;
+}
+.editor-inline-target:hover,
+.editor-inline-target:focus {
+  outline-color: rgb(59 130 246 / 0.7);
+  background: rgb(239 246 255 / 0.65);
+}
+.editor-image-target {
+  cursor: pointer;
+  outline: 2px dashed transparent;
+  outline-offset: 3px;
+}
+.editor-image-target:hover {
+  outline-color: rgb(59 130 246 / 0.75);
 }

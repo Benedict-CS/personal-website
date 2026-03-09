@@ -18,7 +18,7 @@ export type SiteConfigForRender = {
   ogImageUrl: string | null;
   setupCompleted: boolean;
   templateId: string;
-  themeMode: "light" | "dark" | "system";
+  themeMode: "light";
   url: string;
 };
 
@@ -36,6 +36,6 @@ export type SiteConfigResponse = {
   ogImageUrl: string | null;
   setupCompleted: boolean;
   templateId: string;
-  themeMode: "light" | "dark" | "system";
+  themeMode: "light";
   autoAddCustomPagesToNav: boolean;
 };

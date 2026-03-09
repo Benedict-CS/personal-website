@@ -7,7 +7,7 @@ import { CheckCircle2, Circle, ExternalLink } from "lucide-react";
 
 /**
  * Shown on dashboard home after setup is complete. Guides non-technical users
- * through the next actions: edit About, add first post, add a page, view site.
+ * through the next actions: open visual editor, add first post, publish, view site.
  */
 export function DashboardNextSteps({
   hasPosts,
@@ -21,8 +21,8 @@ export function DashboardNextSteps({
   const steps = [
     { done: true, label: "Complete site setup (name, logo, navigation)", href: "/dashboard/setup" },
     { done: hasPosts, label: "Add your first post or page", href: "/dashboard/posts/new" },
-    { done: hasCustomPages, label: "Add a custom page (e.g. Portfolio, Services)", href: "/dashboard/content/pages" },
-    { done: false, label: "Edit About & Contact content", href: "/dashboard/content" },
+    { done: hasCustomPages, label: "Add a custom page (e.g. Portfolio, Services)", href: "/editor/page/portfolio" },
+    { done: false, label: "Edit public pages in Visual Editor", href: "/editor/home" },
   ];
 
   return (
@@ -30,7 +30,7 @@ export function DashboardNextSteps({
       <CardHeader>
         <CardTitle className="text-base font-medium text-slate-800">Next steps</CardTitle>
         <p className="text-sm text-slate-600">
-          Do these in any order. No code needed — just fill in the forms and click Save.
+          Do these in any order. Edit directly on the live frontend and click Save & Publish.
         </p>
       </CardHeader>
       <CardContent className="space-y-2">
@@ -62,8 +62,6 @@ export function DashboardNextSteps({
           <div className="mt-4 pt-4 border-t border-slate-200">
             <a
               href={siteUrl}
-              target="_blank"
-              rel="noopener noreferrer"
               className="inline-flex items-center gap-2 text-sm font-medium text-slate-700 hover:text-slate-900"
             >
               <ExternalLink className="h-4 w-4" />

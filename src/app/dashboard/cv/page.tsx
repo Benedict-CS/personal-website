@@ -171,7 +171,7 @@ export default function CVPage() {
                   Preview CV
                 </Button>
               </Link>
-              <Link href="/api/cv/download" download="Benedict_Tiong_CV.pdf" prefetch={false}>
+              <Link href="/api/cv/download" download="site-owner-cv.pdf" prefetch={false}>
                 <Button variant="outline" className="gap-2">
                   <Download className="h-4 w-4" />
                   Download CV

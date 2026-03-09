@@ -27,6 +27,7 @@ jest.mock("@/lib/audit", () => ({
 }));
 
 import { requireSession } from "@/lib/auth";
+const mockRequireSession = requireSession as jest.MockedFunction<typeof requireSession>;
 
 function createGetRequest(searchParams?: Record<string, string>) {
   const url = new URL("http://localhost/api/posts");
@@ -92,7 +93,7 @@ describe("POST /api/posts", () => {
   });
 
   it("returns 401 when not authenticated", async () => {
-    requireSession.mockResolvedValue({
+    mockRequireSession.mockResolvedValue({
       unauthorized: NextResponse.json({ error: "Unauthorized" }, { status: 401 }),
     });
     const req = new NextRequest("http://localhost/api/posts", {
@@ -109,7 +110,7 @@ describe("POST /api/posts", () => {
   });
 
   it("returns 400 when missing required fields", async () => {
-    requireSession.mockResolvedValue({ session: { user: {} } });
+    mockRequireSession.mockResolvedValue({ session: { user: {} } } as Awaited<ReturnType<typeof requireSession>>);
     const req = new NextRequest("http://localhost/api/posts", {
       method: "POST",
       body: JSON.stringify({ title: "Only title" }),
@@ -122,7 +123,7 @@ describe("POST /api/posts", () => {
   });
 
   it("returns 201 and post when valid body and authenticated", async () => {
-    requireSession.mockResolvedValue({ session: { user: {} } });
+    mockRequireSession.mockResolvedValue({ session: { user: {} } } as Awaited<ReturnType<typeof requireSession>>);
     const created = {
       id: "new-id",
       title: "New Post",

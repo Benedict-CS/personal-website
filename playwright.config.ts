@@ -16,7 +16,7 @@ export default defineConfig({
     ? {
         command: "npm run build && npm run start",
         url: process.env.PLAYWRIGHT_BASE_URL ?? "http://localhost:3000",
-        reuseExistingServer: false,
+        reuseExistingServer: true,
       }
     : undefined,
 });

@@ -13,6 +13,7 @@ import {
   CardTitle,
 } from "@/components/ui/card";
 import { InsertMediaModal } from "@/components/insert-media-modal";
+import { MarkdownTemplateInserter } from "@/components/markdown-template-inserter";
 import { validateSlug } from "@/lib/utils";
 
 // Dynamic import MDEditor to avoid SSR issues
@@ -158,6 +159,10 @@ export default function NewPostPage() {
     }
   };
 
+  const insertTemplateBlock = (markdown: string) => {
+    setContent((prev) => prev + (prev ? "\n\n" : "") + markdown.trim() + "\n\n");
+  };
+
   return (
     <div className="w-full max-w-[min(100%,1400px)] py-8">
       <Card>
@@ -300,6 +305,7 @@ export default function NewPostPage() {
                   onClose={() => setShowInsertMedia(false)}
                   onSelect={(url) => setContent((prev) => prev + "\n\n![Image](" + url + ")\n\n")}
                 />
+                <MarkdownTemplateInserter onInsert={insertTemplateBlock} compact />
                 <div data-color-mode="light">
                   <MDEditor
                     value={content}

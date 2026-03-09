@@ -3,13 +3,24 @@
 import { useState } from "react";
 import { usePathname } from "next/navigation";
 import { LeaveGuardLink } from "@/components/leave-guard-link";
-import { FileText, Image as ImageIcon, Tags, StickyNote, Layout, BarChart3, Home, ChevronDown, ChevronRight, ScrollText } from "lucide-react";
+import {
+  FileText,
+  Image as ImageIcon,
+  Tags,
+  StickyNote,
+  Layout,
+  BarChart3,
+  Home,
+  ChevronDown,
+  ChevronRight,
+  ScrollText,
+  Mail,
+  UserCircle2,
+  Settings,
+  Layers,
+} from "lucide-react";
 
-const contentSubItems = [
-  { href: "/dashboard/content/site", label: "Site settings" },
-  { href: "/dashboard/content/home", label: "Home" },
-  { href: "/dashboard/content/contact", label: "Contact" },
-  { href: "/dashboard/content/about", label: "About & CV" },
+const morePagesSubItems = [
   { href: "/dashboard/content/pages", label: "Custom pages" },
 ] as const;
 
@@ -23,8 +34,12 @@ const navItems: Array<{
   { href: "/dashboard", label: "Home", icon: Home, exact: true },
   { href: "/dashboard/analytics", label: "Analytics", icon: BarChart3, exact: false },
   { href: "/dashboard/posts", label: "Posts", icon: FileText, exact: false },
+  { href: "/editor/home", label: "Home page", icon: Layout, exact: false },
+  { href: "/editor/about", label: "About page", icon: UserCircle2, exact: false },
+  { href: "/editor/contact", label: "Contact page", icon: Mail, exact: false },
+  { href: "/dashboard/content/site", label: "Site settings", icon: Settings, exact: false },
+  { href: "/dashboard/content/pages", label: "More pages", icon: Layers, exact: false, hasChildren: true },
   { href: "/dashboard/notes", label: "Notes", icon: StickyNote, exact: false },
-  { href: "/dashboard/content", label: "Content", icon: Layout, exact: false, hasChildren: true },
   { href: "/dashboard/media", label: "Media", icon: ImageIcon, exact: false },
   { href: "/dashboard/tags", label: "Tags", icon: Tags, exact: false },
   { href: "/dashboard/audit", label: "Audit", icon: ScrollText, exact: false },
@@ -36,8 +51,8 @@ interface DashboardNavProps {
 
 export function DashboardNav({ collapsed = false }: DashboardNavProps) {
   const pathname = usePathname();
-  const isContentActive = pathname === "/dashboard/content" || pathname.startsWith("/dashboard/content/");
-  const [contentOpen, setContentOpen] = useState(isContentActive);
+  const isMorePagesActive = pathname === "/dashboard/content/pages" || pathname.startsWith("/dashboard/content/pages/");
+  const [morePagesOpen, setMorePagesOpen] = useState(isMorePagesActive);
 
   return (
     <nav className="flex flex-col gap-1">
@@ -48,12 +63,12 @@ export function DashboardNav({ collapsed = false }: DashboardNavProps) {
           : pathname === href || pathname.startsWith(href + "/");
 
         if (hasChildren && !collapsed) {
-          const open = contentOpen || isContentActive;
+          const open = morePagesOpen || isMorePagesActive;
           return (
             <div key={href}>
               <button
                 type="button"
-                onClick={() => setContentOpen((o) => !o)}
+                onClick={() => setMorePagesOpen((o) => !o)}
                 className={`flex w-full items-center gap-2 rounded-md px-3 py-2 transition-colors ${
                   isActive
                     ? "bg-slate-200/90 text-slate-900 font-medium ring-1 ring-slate-300/50"
@@ -66,7 +81,7 @@ export function DashboardNav({ collapsed = false }: DashboardNavProps) {
               </button>
               {open && (
                 <div className="ml-6 mt-0.5 flex flex-col gap-0.5 border-l border-slate-200 pl-3">
-                  {contentSubItems.map((sub) => {
+                  {morePagesSubItems.map((sub) => {
                     const subActive = pathname === sub.href;
                     return (
                       <LeaveGuardLink

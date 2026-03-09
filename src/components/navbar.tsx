@@ -68,15 +68,22 @@ export function Navbar({ siteConfig }: { siteConfig?: SiteConfigForRender | null
                   </Button>
                 </Link>
               )}
+              {!isDashboard && (
+                <Link href="/editor/home">
+                  <Button variant="ghost" size="sm" className="text-slate-700 hover:text-slate-900 text-xs sm:text-sm btn-interactive">
+                    Editor
+                  </Button>
+                </Link>
+              )}
               {isDashboard && (
                 <>
                   {typeof expiresAt === "number" && <SessionCountdown expiresAt={expiresAt} />}
-                  <a href="/" target="_blank" rel="noopener noreferrer" className="inline-flex items-center gap-1">
+                  <Link href="/" className="inline-flex items-center gap-1">
                     <Button variant="ghost" size="sm" className="text-slate-600 hover:text-slate-900 text-xs sm:text-sm btn-interactive">
                       <ExternalLink className="h-3.5 w-3.5" />
                       View site
                     </Button>
-                  </a>
+                  </Link>
                 </>
               )}
               <Button
@@ -109,16 +116,21 @@ export function Navbar({ siteConfig }: { siteConfig?: SiteConfigForRender | null
             {isLoggedIn && (
               <>
                 {!isDashboard && (
-                  <Link href="/dashboard" onClick={() => setMobileOpen(false)} className="block">
-                    <Button variant="ghost" size="sm" className="text-slate-700 w-full justify-center min-h-[44px] py-3 rounded-md">Dashboard</Button>
-                  </Link>
+                  <>
+                    <Link href="/dashboard" onClick={() => setMobileOpen(false)} className="block">
+                      <Button variant="ghost" size="sm" className="text-slate-700 w-full justify-center min-h-[44px] py-3 rounded-md">Dashboard</Button>
+                    </Link>
+                    <Link href="/editor/home" onClick={() => setMobileOpen(false)} className="block">
+                      <Button variant="ghost" size="sm" className="text-slate-700 w-full justify-center min-h-[44px] py-3 rounded-md">Editor</Button>
+                    </Link>
+                  </>
                 )}
                 {isDashboard && (
-                  <a href="/" target="_blank" rel="noopener noreferrer" onClick={() => setMobileOpen(false)} className="block">
+                  <Link href="/" onClick={() => setMobileOpen(false)} className="block">
                     <Button variant="ghost" size="sm" className="text-slate-600 w-full justify-center gap-1 min-h-[44px] py-3 rounded-md">
                       <ExternalLink className="h-3.5 w-3.5" /> View site
                     </Button>
-                  </a>
+                  </Link>
                 )}
                 <Button
                 variant="outline"

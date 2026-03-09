@@ -54,7 +54,7 @@ export const authOptions: NextAuthOptions = {
           clearAttempts(ip);
           return {
             id: "1",
-            name: "Benedict",
+            name: "Administrator",
             email: "admin@example.com",
           };
         }

@@ -29,7 +29,7 @@ const defaultResponse: SiteConfigResponse = {
   ogImageUrl: null,
   setupCompleted: false,
   templateId: "default",
-  themeMode: "system",
+  themeMode: "light",
   autoAddCustomPagesToNav: true,
 };
 
@@ -59,7 +59,7 @@ export async function GET() {
       : DEFAULT_NAV_ITEMS;
     let setupCompleted = false;
     let templateId = "default";
-    let themeMode: "light" | "dark" | "system" = "system";
+    const themeMode = "light" as const;
     let autoAddCustomPagesToNav = true;
     try {
       const extra = await prisma.siteConfig.findUnique({
@@ -69,7 +69,6 @@ export async function GET() {
       if (extra) {
         setupCompleted = extra.setupCompleted ?? false;
         templateId = extra.templateId ?? "default";
-        themeMode = (extra.themeMode === "light" || extra.themeMode === "dark" || extra.themeMode === "system") ? extra.themeMode : "system";
         autoAddCustomPagesToNav = extra.autoAddCustomPagesToNav ?? true;
       }
     } catch {
@@ -116,7 +115,6 @@ export async function PATCH(request: Request) {
     ogImageUrl,
     setupCompleted,
     templateId,
-    themeMode,
     autoAddCustomPagesToNav,
   } = body;
   const safeNavItems = Array.isArray(navItems)
@@ -142,7 +140,7 @@ export async function PATCH(request: Request) {
         ogImageUrl: ogImageUrl ?? null,
         setupCompleted: setupCompleted === true,
         templateId: typeof templateId === "string" && ["default", "minimal", "card"].includes(templateId) ? templateId : "default",
-        themeMode: typeof themeMode === "string" && ["light", "dark", "system"].includes(themeMode) ? themeMode : "system",
+        themeMode: "light",
         autoAddCustomPagesToNav: autoAddCustomPagesToNav !== false,
         updatedAt: now,
       },
@@ -159,7 +157,7 @@ export async function PATCH(request: Request) {
         ...(ogImageUrl !== undefined && { ogImageUrl: ogImageUrl || null }),
         ...(setupCompleted !== undefined && { setupCompleted: setupCompleted === true }),
         ...(typeof templateId === "string" && ["default", "minimal", "card"].includes(templateId) && { templateId }),
-        ...(typeof themeMode === "string" && ["light", "dark", "system"].includes(themeMode) && { themeMode }),
+        themeMode: "light",
         ...(typeof autoAddCustomPagesToNav === "boolean" && { autoAddCustomPagesToNav }),
         updatedAt: now,
       },

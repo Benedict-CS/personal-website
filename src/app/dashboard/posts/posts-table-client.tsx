@@ -398,8 +398,6 @@ export function PostsTableClient({
                   <div className="flex justify-end gap-1">
                     <a
                       href={post.published ? `/blog/${post.slug}` : `/dashboard/notes/${post.slug}`}
-                      target="_blank"
-                      rel="noopener noreferrer"
                       className="inline-flex"
                     >
                       <Button variant="ghost" size="sm" title={post.published ? "View on site" : "Preview as note"}>
@@ -458,7 +456,7 @@ export function PostsTableClient({
               </div>
             </div>
             <div className="flex flex-wrap gap-2">
-              <a href={post.published ? `/blog/${post.slug}` : `/dashboard/notes/${post.slug}`} target="_blank" rel="noopener noreferrer">
+              <a href={post.published ? `/blog/${post.slug}` : `/dashboard/notes/${post.slug}`}>
                 <Button variant="ghost" size="sm">View</Button>
               </a>
               <Button variant="ghost" size="sm" disabled={duplicatingId === post.id} onClick={() => handleDuplicate(post.id)} className="gap-1">

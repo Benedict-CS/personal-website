@@ -48,7 +48,7 @@ describe("GET /api/site-config", () => {
       .mockResolvedValueOnce({
         setupCompleted: true,
         templateId: "minimal",
-        themeMode: "system",
+        themeMode: "light",
         autoAddCustomPagesToNav: true,
       });
     const res = await GET();

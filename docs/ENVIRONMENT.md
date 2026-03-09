@@ -75,7 +75,7 @@ The app container receives `S3_ENDPOINT=http://rustfs:9000` and `S3_REGION=us-ea
 |----------|-------------|---------|
 | `ADMIN_PASSWORD` | Password for the single dashboard user (credentials provider). | Your secure password |
 | `NEXTAUTH_SECRET` | Secret used to sign cookies and tokens. | `openssl rand -base64 32` |
-| `NEXTAUTH_URL` | Canonical URL of the site (no trailing slash). | `https://benedict.winlab.tw` |
+| `NEXTAUTH_URL` | Canonical URL of the site (no trailing slash). | `https://example.com` |
 | `NEXT_PUBLIC_SITE_URL` | Same as `NEXTAUTH_URL`; used in client-side links and sitemap. | Same value |
 
 ### Login CAPTCHA (optional)
@@ -130,12 +130,12 @@ Comments under blog posts use [Giscus](https://giscus.app) (GitHub Discussions).
 
 1. **Enable Discussions** on your repo (you already did this).
 2. **Install the [Giscus app](https://github.com/apps/giscus)** on the repo so visitors can post comments via GitHub.
-3. Open **[giscus.app](https://giscus.app)** → enter `Benedict-CS/personal-website` → choose **Discussion mapping**: “pathname” → choose **Category** (e.g. “Announcements” or create “Comments”) → copy the generated IDs.
+3. Open **[giscus.app](https://giscus.app)** → enter `your-org/your-repo` → choose **Discussion mapping**: “pathname” → choose **Category** (e.g. “Announcements” or create “Comments”) → copy the generated IDs.
 4. Add to `.env`:
 
 | Variable | Description | Example |
 |----------|-------------|---------|
-| `NEXT_PUBLIC_GISCUS_REPO` | `owner/repo` | `Benedict-CS/personal-website` |
+| `NEXT_PUBLIC_GISCUS_REPO` | `owner/repo` | `your-org/your-repo` |
 | `NEXT_PUBLIC_GISCUS_REPO_ID` | From giscus.app | `R_kgDO...` |
 | `NEXT_PUBLIC_GISCUS_CATEGORY` | Category name | `Announcements` or `Comments` |
 | `NEXT_PUBLIC_GISCUS_CATEGORY_ID` | From giscus.app | `DIC_kwDO...` |

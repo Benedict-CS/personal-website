@@ -36,6 +36,8 @@ type HomeContent = {
   heroTitle?: string;
   heroSubtitle?: string;
   skills?: string[];
+  sectionTitleLatestPosts?: string;
+  sectionTitleSkills?: string;
   ctaPrimaryText?: string;
   ctaPrimaryHref?: string;
   ctaSecondaryText?: string;
@@ -49,8 +51,8 @@ type HomeContent = {
 };
 
 const defaultHomeContent: HomeContent = {
-  heroTitle: "Hi, I'm Benedict.",
-  heroSubtitle: "Network Administrator | Full Stack Developer | Open Source Enthusiast",
+  heroTitle: "Hi, I'm Your Name.",
+  heroSubtitle: "Builder Owner | Product Creator | Technical Writer",
   skills: ["Next.js", "TypeScript", "Proxmox", "Linux", "Networking", "Docker"],
   ctaPrimaryText: "Read My Blog",
   ctaPrimaryHref: "/blog",
@@ -58,6 +60,8 @@ const defaultHomeContent: HomeContent = {
   ctaSecondaryHref: "/about",
   ctaContactText: "Get in Touch",
   ctaContactHref: "/contact",
+  sectionTitleLatestPosts: "Latest Articles",
+  sectionTitleSkills: "Technical Skills",
 };
 
 export default async function Home() {
@@ -113,25 +117,25 @@ export default async function Home() {
     <section key="hero" className={`container mx-auto max-w-6xl px-6 ${templateId === "minimal" ? "py-12 md:py-16" : "py-20 md:py-28 lg:py-32"}`}>
       <div className="mx-auto max-w-4xl text-center">
         <h1 className="mb-6 text-4xl font-bold tracking-tight text-slate-900 sm:text-5xl md:text-6xl lg:text-7xl">
-          {homeContent.heroTitle ?? defaultHomeContent.heroTitle}
+          <span data-inline-field="home.heroTitle">{homeContent.heroTitle ?? defaultHomeContent.heroTitle}</span>
         </h1>
         <p className="mb-10 text-lg text-slate-600 sm:text-xl md:text-2xl">
-          {homeContent.heroSubtitle ?? defaultHomeContent.heroSubtitle}
+          <span data-inline-field="home.heroSubtitle">{homeContent.heroSubtitle ?? defaultHomeContent.heroSubtitle}</span>
         </p>
         <div className="flex flex-col items-center justify-center gap-3 sm:flex-row sm:gap-4">
           <Link href={homeContent.ctaPrimaryHref ?? "/blog"}>
             <Button size="lg" className="w-full sm:w-auto btn-interactive">
-              {homeContent.ctaPrimaryText ?? defaultHomeContent.ctaPrimaryText}
+              <span data-inline-field="home.ctaPrimaryText">{homeContent.ctaPrimaryText ?? defaultHomeContent.ctaPrimaryText}</span>
             </Button>
           </Link>
           <Link href={homeContent.ctaSecondaryHref ?? "/about"}>
             <Button size="lg" variant="outline" className="w-full sm:w-auto btn-interactive">
-              {homeContent.ctaSecondaryText ?? defaultHomeContent.ctaSecondaryText}
+              <span data-inline-field="home.ctaSecondaryText">{homeContent.ctaSecondaryText ?? defaultHomeContent.ctaSecondaryText}</span>
             </Button>
           </Link>
           <Link href={homeContent.ctaContactHref ?? "/contact"}>
             <Button size="lg" variant="outline" className="w-full sm:w-auto btn-interactive">
-              {homeContent.ctaContactText ?? defaultHomeContent.ctaContactText}
+              <span data-inline-field="home.ctaContactText">{homeContent.ctaContactText ?? defaultHomeContent.ctaContactText}</span>
             </Button>
           </Link>
         </div>
@@ -142,7 +146,9 @@ export default async function Home() {
   const latestPostsSection = (
     <section key="latestPosts" className="container mx-auto max-w-6xl px-6 py-16">
       <div className="w-full">
-        <h2 className="mb-8 text-3xl font-bold text-slate-900">Latest Articles</h2>
+        <h2 className="mb-8 text-3xl font-bold text-slate-900" data-inline-field="home.sectionTitleLatestPosts">
+          {homeContent.sectionTitleLatestPosts ?? defaultHomeContent.sectionTitleLatestPosts}
+        </h2>
         {latestPosts.length === 0 ? (
           <div className="rounded-lg border border-slate-200 bg-white p-12 text-center">
             <p className="text-slate-500">More content coming soon...</p>
@@ -191,7 +197,9 @@ export default async function Home() {
   const skillsSection = (
     <section key="skills" className="container mx-auto max-w-6xl px-6 py-16">
       <div className="mx-auto max-w-4xl">
-        <h2 className="mb-8 text-center text-3xl font-bold text-slate-900">Technical Skills</h2>
+        <h2 className="mb-8 text-center text-3xl font-bold text-slate-900" data-inline-field="home.sectionTitleSkills">
+          {homeContent.sectionTitleSkills ?? defaultHomeContent.sectionTitleSkills}
+        </h2>
         <div className="flex flex-wrap justify-center gap-3">
           {skills.map((skill) => (
             <Badge key={skill} variant="secondary" className="px-4 py-2 text-sm font-medium text-slate-700">
