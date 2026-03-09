@@ -3,6 +3,7 @@
 import { useState, useEffect, useCallback } from "react";
 import { useRouter } from "next/navigation";
 import {
+  LayoutDashboard,
   PenSquare,
   BarChart3,
   StickyNote,
@@ -23,6 +24,7 @@ type Action = {
 };
 
 const ACTIONS: Action[] = [
+  { id: "dashboard-overview", label: "Dashboard overview", keywords: ["dashboard", "overview", "home"], href: "/dashboard", icon: LayoutDashboard },
   { id: "editor-home", label: "Open visual editor", keywords: ["editor", "home", "visual"], href: "/editor/home", icon: PenSquare },
   { id: "editor-blog", label: "Blog editor", keywords: ["editor", "blog", "posts"], href: "/editor/blog", icon: PenSquare },
   { id: "analytics", label: "Analytics", keywords: ["analytics", "stats", "views"], href: "/dashboard/analytics", icon: BarChart3 },

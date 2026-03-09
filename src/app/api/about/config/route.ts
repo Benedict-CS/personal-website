@@ -1,12 +1,14 @@
 import { NextRequest, NextResponse } from "next/server";
 import { requireSession } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
+import { auditLog } from "@/lib/audit";
 
 const CACHE_60 = { "Cache-Control": "public, s-maxage=60, stale-while-revalidate=120" };
 const SECTION_TITLES_KEY = "__sectionTitles";
 const DEFAULT_SECTION_TITLES = {
   education: "Education",
   experience: "Experience",
+  volunteer: "Volunteer",
   projects: "Projects",
   skills: "Technical Skills",
   achievements: "Achievements",
@@ -49,6 +51,7 @@ export async function GET() {
           aboutMainContent: null,
           educationBlocks: "[]",
           experienceBlocks: "[]",
+          volunteerBlocks: "[]",
           projectBlocks: "[]",
           schoolLogos: "[]",
           projectImages: "[]",
@@ -56,11 +59,12 @@ export async function GET() {
           contactLinks: "[]",
           technicalSkills: "[]",
           achievements: "[]",
+          customSections: "[]",
         },
       });
     }
 
-    const c = config as { introText?: string | null; aboutMainContent?: string | null; educationBlocks?: string | null; experienceBlocks?: string | null; projectBlocks?: string | null; contactLinks?: string | null; technicalSkills?: string | null; achievements?: string | null };
+    const c = config as { introText?: string | null; aboutMainContent?: string | null; educationBlocks?: string | null; experienceBlocks?: string | null; volunteerBlocks?: string | null; projectBlocks?: string | null; contactLinks?: string | null; technicalSkills?: string | null; achievements?: string | null; customSections?: string | null };
     const parseBlocks = (s: string | null | undefined) => {
       if (s == null || s === "") return [];
       try { return JSON.parse(s); } catch { return []; }
@@ -78,6 +82,7 @@ export async function GET() {
         aboutMainContent: c.aboutMainContent ?? null,
         educationBlocks: parseBlocks(c.educationBlocks),
         experienceBlocks: parseBlocks(c.experienceBlocks),
+        volunteerBlocks: parseBlocks(c.volunteerBlocks),
         projectBlocks: parseBlocks(c.projectBlocks),
         schoolLogos: config.schoolLogos ? JSON.parse(config.schoolLogos) : [],
         projectImages: config.projectImages ? JSON.parse(config.projectImages) : [],
@@ -87,7 +92,8 @@ export async function GET() {
         contactLinks: parseBlocks(c.contactLinks ?? config.contactLinks),
         technicalSkills: parseBlocks(c.technicalSkills ?? config.technicalSkills),
         achievements: parseBlocks(c.achievements ?? config.achievements),
-        sectionOrder: (config as { sectionOrder?: string }).sectionOrder ? JSON.parse((config as { sectionOrder: string }).sectionOrder) : ["education", "experience", "projects", "skills", "achievements"],
+        customSections: parseBlocks(c.customSections ?? (config as { customSections?: string }).customSections),
+        sectionOrder: (config as { sectionOrder?: string }).sectionOrder ? JSON.parse((config as { sectionOrder: string }).sectionOrder) : ["education", "experience", "volunteer", "projects", "skills", "achievements"],
         sectionVisibility: parseSectionSettings((config as { sectionVisibility?: string }).sectionVisibility).visibility,
         sectionTitles: parseSectionSettings((config as { sectionVisibility?: string }).sectionVisibility).titles,
       },
@@ -109,6 +115,7 @@ export async function GET() {
           aboutMainContent: null,
           educationBlocks: [],
           experienceBlocks: [],
+          volunteerBlocks: [],
           projectBlocks: [],
           schoolLogos: [],
           projectImages: [],
@@ -118,7 +125,8 @@ export async function GET() {
           contactLinks: [],
           technicalSkills: [],
           achievements: [],
-          sectionOrder: ["education", "experience", "projects", "skills", "achievements"],
+          customSections: [],
+          sectionOrder: ["education", "experience", "volunteer", "projects", "skills", "achievements"],
           sectionVisibility: {},
           sectionTitles: DEFAULT_SECTION_TITLES,
         },
@@ -154,6 +162,7 @@ export async function POST(request: NextRequest) {
       aboutMainContent,
       educationBlocks,
       experienceBlocks,
+      volunteerBlocks,
       projectBlocks,
       schoolLogos,
       projectImages,
@@ -163,13 +172,14 @@ export async function POST(request: NextRequest) {
       contactLinks,
       technicalSkills,
       achievements,
+      customSections,
       sectionOrder,
       sectionVisibility,
       sectionTitles,
     } = body;
 
     let config = await prisma.aboutConfig.findFirst();
-    const cfg = config as { educationBlocks?: string; experienceBlocks?: string; projectBlocks?: string; introText?: string | null; aboutMainContent?: string | null };
+    const cfg = config as { educationBlocks?: string; experienceBlocks?: string; volunteerBlocks?: string; projectBlocks?: string; introText?: string | null; aboutMainContent?: string | null; customSections?: string };
 
     if (!config) {
       config = await prisma.aboutConfig.create({
@@ -185,6 +195,7 @@ export async function POST(request: NextRequest) {
           aboutMainContent: aboutMainContent ?? null,
           educationBlocks: educationBlocks ? JSON.stringify(educationBlocks) : "[]",
           experienceBlocks: experienceBlocks ? JSON.stringify(experienceBlocks) : "[]",
+          volunteerBlocks: volunteerBlocks ? JSON.stringify(volunteerBlocks) : "[]",
           projectBlocks: projectBlocks ? JSON.stringify(projectBlocks) : "[]",
           schoolLogos: schoolLogos ? JSON.stringify(schoolLogos) : "[]",
           projectImages: projectImages ? JSON.stringify(projectImages) : "[]",
@@ -194,7 +205,8 @@ export async function POST(request: NextRequest) {
           contactLinks: contactLinks ? JSON.stringify(contactLinks) : "[]",
           technicalSkills: technicalSkills ? JSON.stringify(technicalSkills) : "[]",
           achievements: achievements ? JSON.stringify(achievements) : "[]",
-          sectionOrder: typeof sectionOrder !== "undefined" ? JSON.stringify(sectionOrder) : '["education","experience","projects","skills","achievements"]',
+          customSections: customSections ? JSON.stringify(customSections) : "[]",
+          sectionOrder: typeof sectionOrder !== "undefined" ? JSON.stringify(sectionOrder) : '["education","experience","volunteer","projects","skills","achievements"]',
           sectionVisibility: JSON.stringify({
             ...(typeof sectionVisibility === "object" && sectionVisibility ? sectionVisibility : {}),
             [SECTION_TITLES_KEY]: {
@@ -220,6 +232,7 @@ export async function POST(request: NextRequest) {
           aboutMainContent: aboutMainContent !== undefined ? aboutMainContent : cfg.aboutMainContent,
           educationBlocks: educationBlocks !== undefined ? JSON.stringify(educationBlocks) : (cfg.educationBlocks ?? "[]"),
           experienceBlocks: experienceBlocks !== undefined ? JSON.stringify(experienceBlocks) : (cfg.experienceBlocks ?? "[]"),
+          volunteerBlocks: volunteerBlocks !== undefined ? JSON.stringify(volunteerBlocks) : (cfg.volunteerBlocks ?? "[]"),
           projectBlocks: projectBlocks !== undefined ? JSON.stringify(projectBlocks) : (cfg.projectBlocks ?? "[]"),
           schoolLogos: schoolLogos !== undefined ? JSON.stringify(schoolLogos) : config.schoolLogos,
           projectImages: projectImages !== undefined ? JSON.stringify(projectImages) : config.projectImages,
@@ -229,6 +242,7 @@ export async function POST(request: NextRequest) {
           contactLinks: contactLinks !== undefined ? JSON.stringify(contactLinks) : (config.contactLinks ?? "[]"),
           technicalSkills: technicalSkills !== undefined ? JSON.stringify(technicalSkills) : (config.technicalSkills ?? "[]"),
           achievements: achievements !== undefined ? JSON.stringify(achievements) : (config.achievements ?? "[]"),
+          customSections: customSections !== undefined ? JSON.stringify(customSections) : (cfg.customSections ?? "[]"),
           ...(sectionOrder !== undefined && { sectionOrder: JSON.stringify(sectionOrder) }),
           ...((sectionVisibility !== undefined || sectionTitles !== undefined) && {
             sectionVisibility: JSON.stringify({
@@ -245,8 +259,18 @@ export async function POST(request: NextRequest) {
       });
     }
 
-    const out = config as { introText?: string | null; aboutMainContent?: string | null; educationBlocks?: string; experienceBlocks?: string; projectBlocks?: string; contactLinks?: string; technicalSkills?: string; achievements?: string };
+    const out = config as { introText?: string | null; aboutMainContent?: string | null; educationBlocks?: string; experienceBlocks?: string; volunteerBlocks?: string; projectBlocks?: string; contactLinks?: string; technicalSkills?: string; achievements?: string; customSections?: string };
     const parse = (s: string | null | undefined) => { if (s == null || s === "") return []; try { return JSON.parse(s); } catch { return []; } };
+    await auditLog({
+      action: "about_config.update",
+      resourceType: "about_config",
+      resourceId: config.id,
+      details: JSON.stringify({
+        sectionOrder: sectionOrder ?? null,
+        updatedKeys: Object.keys(body ?? {}),
+      }),
+      ip: request.headers.get("x-forwarded-for") ?? null,
+    });
     return NextResponse.json({
       profileImage: config.profileImage ?? null,
       heroName: config.heroName ?? null,
@@ -259,6 +283,7 @@ export async function POST(request: NextRequest) {
       aboutMainContent: out.aboutMainContent ?? null,
       educationBlocks: parse(out.educationBlocks),
       experienceBlocks: parse(out.experienceBlocks),
+      volunteerBlocks: parse(out.volunteerBlocks),
       projectBlocks: parse(out.projectBlocks),
       schoolLogos: config.schoolLogos ? JSON.parse(config.schoolLogos) : [],
       projectImages: config.projectImages ? JSON.parse(config.projectImages) : [],
@@ -268,7 +293,8 @@ export async function POST(request: NextRequest) {
       contactLinks: parse(out.contactLinks ?? config.contactLinks),
       technicalSkills: parse(out.technicalSkills ?? config.technicalSkills),
       achievements: parse(out.achievements ?? config.achievements),
-      sectionOrder: (config as { sectionOrder?: string }).sectionOrder ? JSON.parse((config as { sectionOrder: string }).sectionOrder) : ["education", "experience", "projects", "skills", "achievements"],
+      customSections: parse(out.customSections ?? (config as { customSections?: string }).customSections),
+      sectionOrder: (config as { sectionOrder?: string }).sectionOrder ? JSON.parse((config as { sectionOrder: string }).sectionOrder) : ["education", "experience", "volunteer", "projects", "skills", "achievements"],
       sectionVisibility: parseSectionSettings((config as { sectionVisibility?: string }).sectionVisibility).visibility,
       sectionTitles: parseSectionSettings((config as { sectionVisibility?: string }).sectionVisibility).titles,
     }, { status: 200 });

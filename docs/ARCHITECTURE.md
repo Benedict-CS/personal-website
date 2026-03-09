@@ -51,17 +51,19 @@ flowchart LR
 - **Blog:** App reads `Post` (published) and `Tag`, renders list and post pages; Markdown is rendered with rehype/remark (highlight, math, etc.).
 - **About:** App reads `AboutConfig` (profile, blocks, skills, achievements) and `sectionOrder` / `sectionVisibility`, renders sections in order.
 - **Contact:** App reads contact config; form POST goes to `/api/contact`, which sends email via Resend or SMTP.
-- **Custom pages:** App reads `CustomPage` by slug, renders Markdown at `/page/[slug]`.
+- **Custom pages:** App reads `CustomPage` by slug and renders Markdown at `/page/[slug]`, including scheduled publish logic (`effectivePublished`) and metadata stripping for public output.
 
 ### Dashboard (authenticated write path)
 
 - **Auth:** User submits password at `/auth/signin`; NextAuth credentials provider checks `ADMIN_PASSWORD` (env), creates session. Middleware protects `/dashboard/*` and relevant API routes.
 - **Posts:** CRUD via `/api/posts`, `/api/posts/[id]`; version history in `PostVersion`; preview tokens for draft sharing.
 - **Media:** Upload to S3 (RustFS) via `/api/upload`; listing and delete via `/api/media`; serving via `/api/media/serve/[filename]`.
+- **Media optimization:** `/api/media/optimize` supports both dry-run assessment and real optimization execution with audit records.
 - **Site config:** Single row in `SiteConfig` (id = 1); PATCH via `/api/site-config`. Drives nav, footer, meta, template, theme.
 - **Home / Contact content:** Stored in `SitePageContent` (page = `home` | `contact`); PATCH via `/api/site-content`.
 - **About:** Stored in `AboutConfig` (single row); PATCH via `/api/about/config`. Section order/visibility in `sectionOrder` / `sectionVisibility` columns.
-- **Custom pages:** CRUD and reorder via `/api/custom-pages` and slug-specific routes.
+- **Custom pages:** CRUD and reorder via `/api/custom-pages`, plus preview-token and scheduled publish support.
+- **Audit:** Operational actions are written to `AuditLog` and surfaced in `/dashboard/audit`.
 
 ```mermaid
 sequenceDiagram
@@ -92,9 +94,10 @@ sequenceDiagram
 - **PostVersion:** version history for posts (title, slug, content, tags, versionNumber).
 - **SiteConfig:** singleton (id = 1); siteName, logoUrl, faviconUrl, metaTitle, metaDescription, authorName, links (JSON), navItems (JSON), footerText, ogImageUrl, setupCompleted, templateId, themeMode, autoAddCustomPagesToNav.
 - **SitePageContent:** keyed by `page` (`home` | `contact`); `content` JSON (e.g. hero, CTAs, sectionOrder, sectionVisibility for home).
-- **CustomPage:** id, slug, title, content (Markdown), order, published.
+- **CustomPage:** id, slug, title, content (Markdown + schedule metadata marker), order, published.
 - **AboutConfig:** singleton; profileImage, hero fields, introText, educationBlocks / experienceBlocks / projectBlocks (JSON), technicalSkills, achievements, sectionOrder, sectionVisibility, contactLinks, etc.
 - **Analytics:** page views (path, IP, country, etc.) for dashboard analytics.
+- **AuditLog:** action-level event log with actor, resource, details, and timestamp.
 
 ---
 

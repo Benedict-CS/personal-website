@@ -1,122 +1,130 @@
-# Maintenance
+# Maintenance Guide
 
-This document covers backups, updates, and operational checks for the personal website stack.
+This runbook covers daily and weekly maintenance for a commercial-grade single-admin deployment.
 
 ---
 
-## Backups
+## 1) Backup Policy
 
-### PostgreSQL
+Maintain at least:
 
-- **What to back up:** The database (all tables: posts, tags, site config, custom pages, about config, analytics, etc.).
-- **How:** Use `pg_dump` from the host or a dedicated backup container. Example from host (with `DATABASE_URL` or connection params):
+- Database backups (PostgreSQL dumps)
+- Object storage backups (media bucket/data)
+- Secure copy of runtime configuration (`.env`) in secret storage
 
-  ```bash
-  docker compose exec -T postgres pg_dump -U ben blog > backup_$(date +%Y%m%d).sql
-  ```
+Suggested frequency:
 
-- **Restore:** Create an empty DB (or drop and recreate), then:
-  ```bash
-  cat backup_YYYYMMDD.sql | docker compose exec -T postgres psql -U ben blog
-  ```
+- DB: daily
+- Object storage: daily or after large media operations
+- Config snapshot: on each environment change
 
-- **Frequency:** Daily or weekly depending on how often you change content. Store backups off the server (e.g. another machine or object storage).
-
-### RustFS (media files)
-
-- **What to back up:** The `rustfs-data` directory (and optionally `rustfs-logs`).
-- **How:** Copy or sync the volume (e.g. `rsync`, `rclone`, or tar). Example:
-  ```bash
-  tar -czvf rustfs-backup-$(date +%Y%m%d).tar.gz -C /path/to/project rustfs-data
-  ```
-- **Restore:** Stop RustFS, replace `rustfs-data` with the restored copy, then start again.
-
-### One-command backup script (DB + public + RustFS)
-
-Use the project script to back up the database, `public/about`, `public/cv.pdf`, and `rustfs-data` into a timestamped tarball under `backups/`:
+Example DB backup:
 
 ```bash
-./scripts/backup-data.sh
+docker compose exec -T postgres pg_dump -U "$POSTGRES_USER" "$POSTGRES_DB" > "backup-$(date +%F).sql"
 ```
 
-- **Cron:** To run daily (e.g. at 2:00 AM), add a crontab entry (run as the user that can run `docker compose` and read project files):
-  ```bash
-  0 2 * * * cd /path/to/personal-website && ./scripts/backup-data.sh
-  ```
-- The script keeps the latest 10 backups and deletes older ones. Copy `backups/*.tar.gz` off the server (e.g. to another host or object storage) for disaster recovery.
+---
 
-### After important content changes (Dashboard Export)
+## 2) Restore Drills
 
-When you make important changes (e.g. new posts, updated pages, site config), use **Dashboard → Export** to download a JSON backup of posts, pages, and config. Store this file alongside your DB/backup tarballs so you have a point-in-time export that can be re-imported if needed.
+Test restore regularly on a staging environment:
 
-### Application and config
+1. Restore DB dump.
+2. Restore object storage data.
+3. Boot app with restored data.
+4. Validate key flows (dashboard login, content pages, media, previews).
 
-- **What to back up:** `.env` (secrets; store securely), any customizations under `public/` (e.g. CV), and your repo (code is in Git).
-- **Scripts:** If you use `scripts/backup-vm-fresh-start.sh` or similar, ensure it backs up DB dumps and RustFS data (and optionally `.env` in a secure way).
+No backup is valid until restore is verified.
 
 ---
 
-## Updates
+## 3) Update Procedure
 
-### Application (Next.js, dependencies)
+For regular platform updates:
 
-1. Pull latest code:
-   ```bash
-   git fetch origin main
-   git checkout main
-   git pull
-   ```
-2. Rebuild and restart:
-   ```bash
-   docker compose build --no-cache app
-   docker compose up -d app
-   ```
-3. Run any new migrations:
-   ```bash
-   docker compose exec app npx prisma migrate deploy
-   ```
+```bash
+git fetch origin main
+git checkout main
+git pull
+docker compose up -d --build
+docker compose exec app npx prisma migrate deploy
+```
 
-### Database migrations
+Then run smoke checks:
 
-- Always run migrations **after** deploying new code that may introduce new migrations:
-  ```bash
-  docker compose exec app npx prisma migrate deploy
-  ```
-- Check status:
-  ```bash
-  docker compose exec app npx prisma migrate status
-  ```
-
-### Docker images (Postgres, RustFS)
-
-- To pull newer base images and recreate containers:
-  ```bash
-  docker compose pull
-  docker compose up -d
-  ```
-- Test the app and DB after upgrading Postgres; for RustFS, ensure the data directory is compatible with the new version (check release notes).
+- `/api/health`
+- `/dashboard`
+- edit -> save draft -> publish flow
+- custom page preview and scheduled publish metadata
+- media optimize assessment run
+- audit log entry creation
 
 ---
 
-## Monitoring and health
+## 4) Scheduled Maintenance Checks
 
-- **Containers:** `docker compose ps` — all services should be “healthy” or “running”.
-- **App health:** `curl http://localhost:3000/api/health` (or your public URL). Expect 200 and `{"ok":true,"db":"ok"}` when the app and DB are up.
-- **Logs:** `docker compose logs app`, `docker compose logs postgres`, `docker compose logs rustfs`. Use `-f` to follow.
-- **Sentry:** If `SENTRY_DSN` is set, errors are reported to Sentry; check the Sentry project for exceptions and performance.
+### Daily
+
+- Check service health (`docker compose ps`)
+- Check app errors (`docker compose logs app --tail=200`)
+- Verify backup job status
+
+### Weekly
+
+- Review disk usage for DB and media storage
+- Review failed media optimization categories
+- Review audit activity anomalies
+- Apply safe dependency/image updates if needed
 
 ---
 
-## Disk and cleanup
+## 5) Media Maintenance
 
-- **Postgres:** Monitor DB size; run `VACUUM` if needed (Prisma/Postgres handle this for normal workloads).
-- **RustFS:** Remove unused objects via the dashboard (Media) or RustFS Console; the app’s “cleanup” feature can remove objects not referenced in posts/pages.
-- **Docker:** Prune unused images and build cache periodically: `docker system prune -a` (use with care; ensure you do not remove images still in use).
+Use dashboard media tooling to:
+
+- Analyze unused files before deletion.
+- Run optimize assessment (`dryRun`) first.
+- Execute optimization in batches.
+- Retry failed categories after investigation.
+
+After large optimization batches:
+
+- Re-run candidate assessment and compare delta.
+- Export failed items for follow-up.
 
 ---
 
-## Security
+## 6) Audit and Governance
 
-- Rotate `ADMIN_PASSWORD`, `NEXTAUTH_SECRET`, and DB/RustFS passwords periodically; update `.env` and restart the app.
-- Keep the server and Docker images updated for security patches.
-- If you use a reverse proxy or WAF (e.g. Cloudflare), keep it enabled and configured for your domain.
+The audit UI is the primary operations timeline.
+
+Recommended routine:
+
+- Filter by recent high-impact actions (`publish`, `custom_page.update`, `media.optimize`).
+- Expand payload only for entries requiring investigation.
+- Keep operational notes for unexpected changes.
+
+---
+
+## 7) Incident Response Basics
+
+When production behavior is degraded:
+
+1. Check health endpoint and service status.
+2. Inspect app logs and DB connectivity.
+3. Isolate whether issue is auth, DB, storage, or deployment mismatch.
+4. If needed, roll back release and restore last known good backup.
+5. Record incident summary and prevention action.
+
+Reference: [`RUNBOOK.md`](RUNBOOK.md), [`MONITORING.md`](MONITORING.md)
+
+---
+
+## 8) Security Maintenance
+
+- Rotate admin/session/storage secrets on schedule.
+- Keep OS, Docker, and base images patched.
+- Ensure HTTPS remains enforced.
+- Restrict infra access to least privilege.
+- Review exposed endpoints and disable unused integrations.

@@ -4,6 +4,7 @@ import { prisma } from "@/lib/prisma";
 import { getSiteConfigForRender } from "@/lib/site-config";
 import { MarkdownRenderer } from "@/components/markdown-renderer";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { isScheduledLive, stripScheduledPublishAt } from "@/lib/custom-page-schedule";
 
 export const dynamic = "force-dynamic";
 
@@ -12,10 +13,12 @@ type Props = { params: Promise<{ slug: string }> };
 export async function generateMetadata({ params }: Props): Promise<Metadata> {
   const { slug } = await params;
   const page = await prisma.customPage.findFirst({
-    where: { slug: slug.toLowerCase().trim(), published: true },
-    select: { title: true },
+    where: { slug: slug.toLowerCase().trim() },
+    select: { title: true, published: true, content: true },
   });
   if (!page) return { title: "Not Found" };
+  const live = (page.published ?? true) || isScheduledLive(page.content);
+  if (!live) return { title: "Not Found" };
   const config = await getSiteConfigForRender();
   return {
     title: page.title,
@@ -29,12 +32,15 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
 export default async function CustomPageRoute({ params }: Props) {
   const { slug } = await params;
   const page = await prisma.customPage.findFirst({
-    where: { slug: slug.toLowerCase().trim(), published: true },
+    where: { slug: slug.toLowerCase().trim() },
   });
   if (!page) notFound();
-  const themeMatch = page.content.match(/^<!--\s*site-theme:(clean|soft|bold)\s*-->\s*\n?/i);
+  const live = (page.published ?? true) || isScheduledLive(page.content);
+  if (!live) notFound();
+  const cleanContent = stripScheduledPublishAt(page.content);
+  const themeMatch = cleanContent.match(/^<!--\s*site-theme:(clean|soft|bold)\s*-->\s*\n?/i);
   const pageTheme = (themeMatch?.[1]?.toLowerCase() as "clean" | "soft" | "bold" | undefined) ?? "clean";
-  const withoutTheme = themeMatch ? page.content.replace(themeMatch[0], "") : page.content;
+  const withoutTheme = themeMatch ? cleanContent.replace(themeMatch[0], "") : cleanContent;
   const brandMatch = withoutTheme.match(/^<!--\s*site-brand:(\{[\s\S]*?\})\s*-->\s*\n?/i);
   let brand = {
     brandName: "",

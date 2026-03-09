@@ -14,4 +14,4 @@ All scripts must be run from the **project root** (e.g. `./scripts/backup-data.s
 | `init-rustfs.sh` | Create rustfs-data dirs and start RustFS |
 | `crontab.example` | Cron entries for daily backup / git push; install with `crontab scripts/crontab.example` |
 
-One-off / maintenance: `add-company-logos-column.sh`, `create-about-config-table.sh`, `create-postversion-table.sh`, `fix-db-auth.sh`, `cleanup-docker-images.sh`, `cleanup-git-history.sh`.
+One-off / maintenance: `fix-db-auth.sh`, `cleanup-docker-images.sh`, `cleanup-git-history.sh`.

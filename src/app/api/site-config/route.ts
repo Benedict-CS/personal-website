@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { requireSession } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
+import { auditLog } from "@/lib/audit";
 import type { NavItem, SiteConfigResponse } from "@/types/site";
 
 const DEFAULT_LINKS = { email: "", github: "", linkedin: "", rss: "" };
@@ -161,6 +162,15 @@ export async function PATCH(request: Request) {
         ...(typeof autoAddCustomPagesToNav === "boolean" && { autoAddCustomPagesToNav }),
         updatedAt: now,
       },
+    });
+    await auditLog({
+      action: "site_config.update",
+      resourceType: "site_config",
+      resourceId: "1",
+      details: JSON.stringify({
+        updatedKeys: Object.keys(body ?? {}),
+      }),
+      ip: request.headers.get("x-forwarded-for") ?? null,
     });
     return NextResponse.json({ ok: true });
   } catch (e) {

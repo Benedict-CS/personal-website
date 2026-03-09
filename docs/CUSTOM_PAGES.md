@@ -1,20 +1,79 @@
-# Custom Pages (English)
+# Custom Pages
 
-Custom pages let you add arbitrary pages (e.g. Portfolio, Services) from the dashboard. They are stored in the **CustomPage** table and rendered at `/page/[slug]`.
+Custom pages allow non-technical users to create and manage additional pages (for example, Services, Portfolio, or Landing pages) without coding.
 
-## Where the CustomPage table is used
+Public route: `/page/[slug]`
 
-| Place | Usage |
-|-------|--------|
-| **Dashboard → Content → Custom pages** | List, create, edit, delete, and **drag-to-reorder** custom pages. Slug and title are required; content is Markdown. |
-| **Frontend** | Each page is rendered at **`/page/[slug]`** (e.g. `/page/portfolio`). The route is `src/app/page/[slug]/page.tsx`; it loads the page by slug from the database and renders Markdown in a card layout. |
-| **Navigation** | In **Site settings → Navigation**, add a link with href `/page/your-slug` to show the custom page in the navbar. |
-| **API** | `GET /api/custom-pages` — list (ordered by `order`, then `createdAt`). `POST /api/custom-pages` — create (auth). `GET /api/custom-pages/slug/[slug]` — get one by slug (public). `PATCH /api/custom-pages/id/[id]` — update (auth). `DELETE /api/custom-pages/id/[id]` — delete (auth). `POST /api/custom-pages/reorder` — set order by sending `{ orderedIds: string[] }` (auth). |
+---
 
-## Schema (Prisma)
+## What Users Can Do
 
-- `id` (uuid), `slug` (unique), `title`, `content` (Markdown), `order` (integer, for dashboard list order), `createdAt`, `updatedAt`.
+- Create, edit, duplicate, delete, and reorder pages from Dashboard.
+- Filter by status and search by title/slug.
+- Use one-click starter templates.
+- Work with a safe content lifecycle: draft -> preview -> publish.
+- Schedule a page to go live at a specific date/time.
+- Generate read-only preview links for stakeholder review before publishing.
 
-## Reorder
+---
 
-On **Content → Custom pages**, use the grip handle (⋮⋮) to drag and drop. Order is persisted via `POST /api/custom-pages/reorder` and used when listing pages.
+## Publishing Model
+
+Each custom page has:
+
+- `published`: manual publish switch.
+- `scheduledPublishAt`: optional datetime for automatic go-live.
+- `effectivePublished`: computed state used by UI and public route.
+
+`effectivePublished` becomes true when either:
+
+- `published` is true, or
+- `scheduledPublishAt` is set and its timestamp is in the past.
+
+---
+
+## Preview Links
+
+Preview links provide read-only access to page content without making the page public.
+
+- Token-based access.
+- Can be shared with collaborators or clients.
+- Intended for review workflows before publication.
+
+API route: `POST /api/custom-pages/id/[id]/preview-token`
+
+Preview page route: `/page/preview`
+
+---
+
+## Dashboard UX Highlights
+
+- Metadata editing: title, slug, status, schedule.
+- Reorder controls for page ordering safety.
+- Quick status visibility: live/draft/scheduled.
+- Schedule clear action for fast rollback to manual publish mode.
+
+---
+
+## API Surface
+
+- `GET /api/custom-pages` - list pages (includes scheduling metadata).
+- `POST /api/custom-pages` - create page.
+- `GET /api/custom-pages/slug/[slug]` - fetch public page by slug (respects effective publish state).
+- `PATCH /api/custom-pages/id/[id]` - update page fields and content.
+- `DELETE /api/custom-pages/id/[id]` - delete page.
+- `POST /api/custom-pages/reorder` - persist custom order.
+- `POST /api/custom-pages/id/[id]/preview-token` - issue preview token.
+- `GET /api/custom-pages/preview` - resolve token and return preview payload.
+
+---
+
+## Audit Logging
+
+Custom page operations are tracked:
+
+- `custom_page.create`
+- `custom_page.update`
+- `custom_page.delete`
+
+For update operations, before/after snapshots are stored to support change reviews in the audit UI.

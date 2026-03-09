@@ -2,11 +2,14 @@ import { NextResponse } from "next/server";
 import { requireSession } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 import { listS3Objects, deleteFromS3 } from "@/lib/s3";
+import { auditLog } from "@/lib/audit";
 
-export async function POST() {
+export async function POST(request: Request) {
   try {
     const auth = await requireSession();
     if ("unauthorized" in auth) return auth.unauthorized;
+    const body = await request.json().catch(() => ({}));
+    const dryRun = body?.dryRun !== false;
 
     // 1. Gather all "used" references: posts + SiteConfig (logo, favicon, OG) + AboutConfig (any /api/media/serve/ URLs)
     const [posts, siteConfig, aboutConfig] = await Promise.all([
@@ -44,6 +47,7 @@ export async function POST() {
     const deletedFiles: string[] = [];
     const errors: string[] = [];
 
+    const unusedFiles: string[] = [];
     for (const fileName of files) {
       const inPosts =
         allContent.includes(fileName) ||
@@ -53,6 +57,8 @@ export async function POST() {
       const isReferenced = inPosts || usedKeys.has(fileName) || isAboutAsset;
 
       if (!isReferenced) {
+        unusedFiles.push(fileName);
+        if (dryRun) continue;
         // 4. Delete from RustFS if not referenced
         try {
           await deleteFromS3(fileName);
@@ -64,7 +70,24 @@ export async function POST() {
       }
     }
 
+    await auditLog({
+      action: "media.cleanup",
+      resourceType: "media",
+      resourceId: null,
+      details: JSON.stringify({
+        dryRun,
+        scanned: files.length,
+        unused: unusedFiles.length,
+        deleted: deletedFiles.length,
+      }),
+      ip: request.headers.get("x-forwarded-for") ?? null,
+    });
+
     return NextResponse.json({
+      dryRun,
+      scannedFiles: files.length,
+      unusedCount: unusedFiles.length,
+      unusedFiles,
       deletedCount: deletedFiles.length,
       deletedFiles,
       errors: errors.length > 0 ? errors : undefined,

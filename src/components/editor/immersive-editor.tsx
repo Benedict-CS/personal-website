@@ -24,6 +24,7 @@ import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Card, CardContent } from "@/components/ui/card";
 import { InsertMediaModal } from "@/components/insert-media-modal";
+import { SiteBlockBuilder } from "@/components/site-block-builder";
 import type { EditorTarget } from "@/lib/editor-route";
 
 type HomeContent = {
@@ -162,6 +163,7 @@ export function ImmersiveEditor({ target }: { target: EditorTarget }) {
   const [contact, setContact] = useState<ContactContent>(defaultContact);
   const [about, setAbout] = useState<AboutContent>({});
   const [customPage, setCustomPage] = useState<CustomPageContent | null>(null);
+  const [customEditorMode, setCustomEditorMode] = useState<"builder" | "raw">("builder");
 
   const [isEditing] = useState(true);
   const sensors = useSensors(
@@ -465,6 +467,34 @@ export function ImmersiveEditor({ target }: { target: EditorTarget }) {
                     className="text-3xl font-bold text-slate-900"
                     placeholder="Page title"
                   />
+                  <div className="flex items-center gap-2">
+                    <Button
+                      type="button"
+                      size="sm"
+                      variant={customEditorMode === "builder" ? "default" : "outline"}
+                      onClick={() => setCustomEditorMode("builder")}
+                    >
+                      Visual builder
+                    </Button>
+                    <Button
+                      type="button"
+                      size="sm"
+                      variant={customEditorMode === "raw" ? "default" : "outline"}
+                      onClick={() => setCustomEditorMode("raw")}
+                    >
+                      Raw markdown
+                    </Button>
+                  </div>
+                  {customEditorMode === "builder" ? (
+                    <SiteBlockBuilder
+                      value={customPage.content}
+                      onChange={(nextMarkdown) =>
+                        setCustomPage((current) =>
+                          current ? { ...current, content: nextMarkdown } : current
+                        )
+                      }
+                    />
+                  ) : (
                   <div
                     role="textbox"
                     contentEditable
@@ -476,6 +506,7 @@ export function ImmersiveEditor({ target }: { target: EditorTarget }) {
                   >
                     {customPage.content}
                   </div>
+                  )}
                   <label className="inline-flex items-center gap-2 text-sm text-slate-700">
                     <input
                       type="checkbox"

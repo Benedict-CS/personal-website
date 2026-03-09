@@ -5,9 +5,15 @@ export type AuditAction =
   | "post.update"
   | "post.delete"
   | "site_config.update"
+  | "site_content.update"
+  | "about_config.update"
+  | "media.cleanup"
+  | "media.optimize"
   | "custom_page.create"
   | "custom_page.update"
   | "custom_page.delete"
+  | "editor.draft.save"
+  | "editor.publish"
   | "import";
 
 /**

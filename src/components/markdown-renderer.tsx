@@ -538,7 +538,7 @@ export function MarkdownRenderer({ content, postId, editable = false }: Markdown
 
   return (
     <>
-      <div className="prose prose-lg max-w-none overflow-hidden markdown-renderer">
+      <div className="prose prose-lg max-w-none markdown-renderer">
         <ReactMarkdown
           remarkPlugins={[remarkGfm, remarkMath]}
           rehypePlugins={[rehypeRaw, rehypeSanitize, rehypeSlug, rehypeKatex, rehypeHighlight]}

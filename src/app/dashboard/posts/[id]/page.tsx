@@ -1179,6 +1179,35 @@ export default function EditPostPage({
             )}
           </CardContent>
         </Card>
+        <div className="fixed bottom-20 right-4 z-40 rounded-lg border border-slate-200 bg-white/95 p-2 shadow-lg backdrop-blur">
+          <div className="flex items-center gap-2">
+            <MarkdownTemplateInserter onInsert={insertTemplateBlock} compact />
+            <Button
+              type="button"
+              variant="outline"
+              size="sm"
+              onClick={() => fileInputRef.current?.click()}
+              disabled={isUploading || isSubmitting || isDeleting}
+              className="gap-2"
+              title="Upload images without scrolling"
+            >
+              <Paperclip className="h-4 w-4" />
+              {isUploading ? "Uploading..." : "Upload"}
+            </Button>
+            <Button
+              type="button"
+              variant="outline"
+              size="sm"
+              onClick={() => setShowInsertMedia(true)}
+              disabled={isSubmitting || isDeleting}
+              className="gap-2"
+              title="Insert images from media library"
+            >
+              <ImagePlus className="h-4 w-4" />
+              Media
+            </Button>
+          </div>
+        </div>
       </div>
     </div>
   );

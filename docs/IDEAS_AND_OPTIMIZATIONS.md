@@ -1,5 +1,8 @@
 # Ideas: New Features, Management, Optimizations & UI/UX
 
+> Note: This file is a long-term brainstorming backlog and may include items that are already implemented.
+> For current implementation state, use `docs/FEATURE_STATUS.md` as the source of truth.
+
 A list of concrete items you can implement when you have time. Order by your priority; no code here — just descriptions and where to touch.
 
 ---

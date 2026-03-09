@@ -73,9 +73,9 @@ export function DashboardShell({ children }: { children: React.ReactNode }) {
     </aside>
     <div className="flex flex-1 min-h-0">
       <aside
-        className={`hidden md:flex fixed left-0 top-16 h-[calc(100vh-4rem)] border-r border-slate-200 bg-slate-50 z-10 transition-[width] duration-200 ease-out ${sidebarWidth} flex-col overflow-hidden`}
+        className={`hidden md:flex fixed left-0 top-16 h-[calc(100vh-4rem)] border-r border-slate-200 bg-slate-50 z-10 transition-[width] duration-200 ease-out ${sidebarWidth} flex-col overflow-visible`}
       >
-        <div className={`flex flex-col flex-1 min-h-0 ${collapsed ? "p-2" : "p-6"} overflow-y-auto`}>
+        <div className={`flex flex-col flex-1 min-h-0 ${collapsed ? "p-2 overflow-visible" : "p-6 overflow-y-auto"}`}>
           <div className={`flex items-center shrink-0 ${collapsed ? "justify-center" : "justify-between"} mb-4`}>
             {!collapsed && <span className="text-xs font-medium text-slate-500 uppercase tracking-wider">Menu</span>}
             <kbd className={collapsed ? "hidden" : "mr-2 rounded border border-slate-300 bg-slate-100 px-1.5 py-0.5 text-[10px] text-slate-500"} title="Open command palette">

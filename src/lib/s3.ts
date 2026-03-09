@@ -3,6 +3,7 @@ import {
   PutObjectCommand,
   ListObjectsV2Command,
   DeleteObjectCommand,
+  GetObjectCommand,
   CreateBucketCommand,
   HeadBucketCommand,
   CreateMultipartUploadCommand,
@@ -144,4 +145,30 @@ export async function deleteFromS3(fileName: string) {
       Key: fileName,
     })
   );
+}
+
+// Read object bytes and content type
+export async function getFromS3(fileName: string): Promise<{ buffer: Buffer; contentType: string | null }> {
+  await ensureBucketExists();
+  const response = await s3Client.send(
+    new GetObjectCommand({
+      Bucket: S3_BUCKET,
+      Key: fileName,
+    })
+  );
+
+  const body = response.Body;
+  if (!body) return { buffer: Buffer.alloc(0), contentType: response.ContentType ?? null };
+
+  if (typeof (body as { transformToByteArray?: () => Promise<Uint8Array> }).transformToByteArray === "function") {
+    const bytes = await (body as { transformToByteArray: () => Promise<Uint8Array> }).transformToByteArray();
+    return { buffer: Buffer.from(bytes), contentType: response.ContentType ?? null };
+  }
+
+  const chunks: Buffer[] = [];
+  for await (const chunk of body as AsyncIterable<Uint8Array | Buffer | string>) {
+    if (typeof chunk === "string") chunks.push(Buffer.from(chunk));
+    else chunks.push(Buffer.from(chunk));
+  }
+  return { buffer: Buffer.concat(chunks), contentType: response.ContentType ?? null };
 }

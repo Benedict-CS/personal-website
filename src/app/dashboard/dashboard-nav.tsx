@@ -8,6 +8,7 @@ import {
   ChevronRight,
   Settings2,
   LineChart,
+  LayoutDashboard,
 } from "lucide-react";
 
 type NavChildItem = {
@@ -18,8 +19,8 @@ type NavChildItem = {
 type NavItem = {
   id: string;
   href: string;
-  label: "Manage" | "Insights";
-  icon: typeof Settings2;
+  label: "Overview" | "Manage" | "Insights";
+  icon: typeof Settings2 | typeof LineChart | typeof LayoutDashboard;
   exact: boolean;
   children?: readonly NavChildItem[];
 };
@@ -38,11 +39,13 @@ const insightsSubItems = [
 ] as const;
 
 const navItems: readonly NavItem[] = [
-  { id: "manage", href: "/dashboard/content/site", label: "Manage", icon: Settings2, exact: false, children: manageSubItems },
+  { id: "overview", href: "/dashboard", label: "Overview", icon: LayoutDashboard, exact: true },
   { id: "insights", href: "/dashboard/analytics", label: "Insights", icon: LineChart, exact: false, children: insightsSubItems },
+  { id: "manage", href: "/dashboard/content/site", label: "Manage", icon: Settings2, exact: false, children: manageSubItems },
 ] as const;
 
 export const DASHBOARD_NAV_ITEMS = [
+  { href: "/dashboard", label: "Overview" },
   { href: "/dashboard/media", label: "Media" },
   { href: "/dashboard/content/site", label: "Site settings" },
   { href: "/dashboard/content/pages", label: "Custom pages" },
@@ -72,6 +75,7 @@ export function DashboardNav({ collapsed = false }: DashboardNavProps) {
   });
   const [manageOpen, setManageOpen] = useState(isManageActive);
   const [insightsOpen, setInsightsOpen] = useState(isInsightsActive);
+  const [collapsedOpenGroup, setCollapsedOpenGroup] = useState<string | null>(null);
 
   return (
     <nav className="flex flex-col gap-1">
@@ -139,18 +143,44 @@ export function DashboardNav({ collapsed = false }: DashboardNavProps) {
             return pathname === target || pathname.startsWith(`${target}/`);
           });
           return (
-            <LeaveGuardLink
-              key={href}
-              href={href}
-              title={label}
-              className={`flex justify-center rounded-md p-2 transition-colors ${
-                isGroupActive
-                  ? "bg-slate-200/90 text-slate-900 ring-1 ring-slate-300/50"
-                  : "text-slate-700 hover:bg-slate-200/60"
-              }`}
-            >
-              <Icon className="h-4 w-4 shrink-0" />
-            </LeaveGuardLink>
+            <div key={href} className="relative">
+              <button
+                type="button"
+                title={label}
+                aria-label={label}
+                onClick={() => setCollapsedOpenGroup((current) => (current === id ? null : id))}
+                className={`flex w-full justify-center rounded-md p-2 transition-colors ${
+                  isGroupActive || collapsedOpenGroup === id
+                    ? "bg-slate-200/90 text-slate-900 ring-1 ring-slate-300/50"
+                    : "text-slate-700 hover:bg-slate-200/60"
+                }`}
+              >
+                <Icon className="h-4 w-4 shrink-0" />
+              </button>
+              {collapsedOpenGroup === id && (
+                <div className="absolute left-full top-0 z-30 ml-2 min-w-[11rem] rounded-md border border-slate-200 bg-white p-1 shadow-lg">
+                  <p className="px-2 py-1 text-[11px] font-semibold uppercase tracking-wide text-slate-500">{label}</p>
+                  {children.map((sub) => {
+                    const target = stripHash(sub.href);
+                    const subActive = pathname === target || pathname.startsWith(`${target}/`);
+                    return (
+                      <LeaveGuardLink
+                        key={sub.href}
+                        href={sub.href}
+                        onClick={() => setCollapsedOpenGroup(null)}
+                        className={`block rounded px-2 py-1.5 text-sm transition-colors ${
+                          subActive
+                            ? "bg-slate-100 font-medium text-slate-900"
+                            : "text-slate-700 hover:bg-slate-100"
+                        }`}
+                      >
+                        {sub.label}
+                      </LeaveGuardLink>
+                    );
+                  })}
+                </div>
+              )}
+            </div>
           );
         }
 

@@ -779,6 +779,7 @@ model AboutConfig {
   aboutMainContent  String?  // Legacy: one markdown; use educationBlocks/experienceBlocks/projectBlocks instead
   educationBlocks   String   @default("[]") // [{title, logoUrl?, organization, dateRange, content}]
   experienceBlocks  String   @default("[]")
+  volunteerBlocks   String   @default("[]")
   projectBlocks     String   @default("[]")
   schoolLogos       String   @default("[]") // JSON array: [{school: "NYCU", logo: "url"}, ...]
   projectImages String   @default("[]") // JSON array: [{project: "project-name", image: "url"}, ...]
@@ -788,7 +789,8 @@ model AboutConfig {
   contactLinks   String   @default("[]") // JSON: [{label, url}, ...] e.g. Email, LinkedIn, GitHub
   technicalSkills String @default("[]") // JSON: [{category, items: string[]}, ...]
   achievements   String   @default("[]") // JSON: [{title, organization, year}, ...]
-  sectionOrder   String   @default("[\"education\",\"experience\",\"projects\",\"skills\",\"achievements\"]") // Order of About page sections
+  customSections String   @default("[]") // JSON: [{id, title, blocks: [{title, logoUrl?, organization, dateRange, content}]}]
+  sectionOrder   String   @default("[\"education\",\"experience\",\"volunteer\",\"projects\",\"skills\",\"achievements\"]") // Order of About page sections
   sectionVisibility String @default("{}") // JSON: { "education": true, "skills": false, ... }
   createdAt    DateTime @default(now())
   updatedAt    DateTime @updatedAt

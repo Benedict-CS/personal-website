@@ -4,7 +4,7 @@ import Image from "next/image";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
-import { Mail, Linkedin, Github, GraduationCap, Briefcase, Award, Trophy, Download, Code, Network } from "lucide-react";
+import { Mail, Linkedin, Github, GraduationCap, Briefcase, HeartHandshake, Award, Trophy, Download, Code, Network } from "lucide-react";
 import { getSiteConfigForRender } from "@/lib/site-config";
 import { prisma } from "@/lib/prisma";
 import { AboutHighlightScroll } from "@/components/about-highlight-scroll";
@@ -51,6 +51,12 @@ interface CompanyLogo {
   logo: string;
 }
 
+interface AboutCustomSection {
+  id: string;
+  title: string;
+  blocks: AboutBlockEntry[];
+}
+
 export interface AboutBlockEntry {
   title: string;
   logoUrl?: string | null;
@@ -64,6 +70,7 @@ export interface AboutBlockEntry {
 const DEFAULT_SECTION_TITLES = {
   education: "Education",
   experience: "Experience",
+  volunteer: "Volunteer",
   projects: "Projects",
   skills: "Technical Skills",
   achievements: "Achievements",
@@ -85,6 +92,7 @@ async function getAboutConfig() {
         aboutMainContent: null,
         educationBlocks: [] as AboutBlockEntry[],
         experienceBlocks: [] as AboutBlockEntry[],
+        volunteerBlocks: [] as AboutBlockEntry[],
         projectBlocks: [] as AboutBlockEntry[],
         schoolLogos: [] as SchoolLogo[],
         projectImages: [] as ProjectImage[],
@@ -94,7 +102,8 @@ async function getAboutConfig() {
         contactLinks: [] as { label: string; url: string }[],
         technicalSkills: [] as { category: string; items: string[] }[],
         achievements: [] as { title: string; organization: string; year: string }[],
-        sectionOrder: ["education", "experience", "projects", "skills", "achievements"],
+        customSections: [] as AboutCustomSection[],
+        sectionOrder: ["education", "experience", "volunteer", "projects", "skills", "achievements"],
         sectionVisibility: {} as Record<string, boolean>,
         sectionTitles: { ...DEFAULT_SECTION_TITLES },
       };
@@ -104,6 +113,7 @@ async function getAboutConfig() {
       aboutMainContent?: string | null;
       educationBlocks?: string;
       experienceBlocks?: string;
+      volunteerBlocks?: string;
       projectBlocks?: string;
       heroName?: string | null;
       heroTagline?: string | null;
@@ -116,6 +126,7 @@ async function getAboutConfig() {
       contactLinks?: string | null;
       technicalSkills?: string | null;
       achievements?: string | null;
+      customSections?: string | null;
       sectionOrder?: string;
       sectionVisibility?: string;
     };
@@ -143,6 +154,7 @@ async function getAboutConfig() {
       aboutMainContent: c.aboutMainContent ?? null,
       educationBlocks: parseJson(c.educationBlocks, []) as AboutBlockEntry[],
       experienceBlocks: parseJson(c.experienceBlocks, []) as AboutBlockEntry[],
+      volunteerBlocks: parseJson(c.volunteerBlocks, []) as AboutBlockEntry[],
       projectBlocks: parseJson(c.projectBlocks, []) as AboutBlockEntry[],
       schoolLogos: config.schoolLogos ? (JSON.parse(config.schoolLogos) as SchoolLogo[]) : [],
       projectImages: config.projectImages ? (JSON.parse(config.projectImages) as ProjectImage[]) : [],
@@ -152,7 +164,8 @@ async function getAboutConfig() {
       contactLinks: (parseJson(c.contactLinks ?? (config as { contactLinks?: string }).contactLinks, []) as { label: string; url: string }[]),
       technicalSkills: (parseJson(c.technicalSkills ?? (config as { technicalSkills?: string }).technicalSkills, []) as { category: string; items: string[] }[]),
       achievements: (parseJson(c.achievements ?? (config as { achievements?: string }).achievements, []) as { title: string; organization: string; year: string }[]),
-      sectionOrder: (parseJson(c.sectionOrder, ["education", "experience", "projects", "skills", "achievements"]) as string[]).filter((id) => ["education", "experience", "projects", "skills", "achievements"].includes(id)),
+      customSections: (parseJson(c.customSections ?? (config as { customSections?: string }).customSections, []) as AboutCustomSection[]),
+      sectionOrder: (parseJson(c.sectionOrder, ["education", "experience", "volunteer", "projects", "skills", "achievements"]) as string[]).filter((id) => ["education", "experience", "volunteer", "projects", "skills", "achievements"].includes(id) || String(id).startsWith("custom:")),
       sectionVisibility,
       sectionTitles,
     };
@@ -170,6 +183,7 @@ async function getAboutConfig() {
       aboutMainContent: null,
       educationBlocks: [] as AboutBlockEntry[],
       experienceBlocks: [] as AboutBlockEntry[],
+      volunteerBlocks: [] as AboutBlockEntry[],
       projectBlocks: [] as AboutBlockEntry[],
       schoolLogos: [] as SchoolLogo[],
       projectImages: [] as ProjectImage[],
@@ -179,7 +193,8 @@ async function getAboutConfig() {
       contactLinks: [] as { label: string; url: string }[],
       technicalSkills: [] as { category: string; items: string[] }[],
       achievements: [] as { title: string; organization: string; year: string }[],
-      sectionOrder: ["education", "experience", "projects", "skills", "achievements"],
+      customSections: [] as AboutCustomSection[],
+      sectionOrder: ["education", "experience", "volunteer", "projects", "skills", "achievements"],
       sectionVisibility: {} as Record<string, boolean>,
       sectionTitles: { ...DEFAULT_SECTION_TITLES },
     };
@@ -293,11 +308,24 @@ function normalizeBlockMarkdown(content: string): string {
 
 export default async function AboutPage() {
   const config = await getAboutConfig();
-  const { profileImage, heroName, heroTagline, heroPortfolioLabel, heroPortfolioUrl, introText, aboutMainContent, educationBlocks, experienceBlocks, projectBlocks, schoolLogos, projectImages, companyLogos, technicalSkills, achievements, sectionVisibility, sectionTitles } = config;
+  const { profileImage, heroName, heroTagline, heroPortfolioLabel, heroPortfolioUrl, introText, aboutMainContent, educationBlocks, experienceBlocks, volunteerBlocks, projectBlocks, schoolLogos, projectImages, companyLogos, technicalSkills, achievements, customSections, sectionOrder, sectionVisibility, sectionTitles } = config;
   const downloadCvLabel = heroPortfolioLabel?.trim() || "Download CV (PDF)";
   const downloadCvHref = heroPortfolioUrl?.trim() || "/api/media/serve/cv.pdf";
   const aboutVisible = (id: string) => sectionVisibility?.[id] !== false;
-  const useStructuredBlocks = educationBlocks.length > 0 || experienceBlocks.length > 0 || projectBlocks.length > 0;
+  const customSectionIds = (Array.isArray(customSections) ? customSections : [])
+    .map((section) => `custom:${String(section.id ?? "").trim()}`)
+    .filter((id) => id !== "custom:");
+  const allSectionIds = ["education", "experience", "volunteer", "projects", "skills", "achievements", ...customSectionIds] as const;
+  const resolvedSectionOrder = Array.isArray(sectionOrder) ? sectionOrder : [];
+  const normalizedSectionOrder = [
+    ...resolvedSectionOrder.filter((id) => allSectionIds.includes(id as (typeof allSectionIds)[number])),
+    ...allSectionIds.filter((id) => !resolvedSectionOrder.includes(id)),
+  ];
+  const sectionOrderIndex = (id: (typeof allSectionIds)[number]) => {
+    const idx = normalizedSectionOrder.indexOf(id);
+    return idx === -1 ? normalizedSectionOrder.length : idx;
+  };
+  const useStructuredBlocks = educationBlocks.length > 0 || experienceBlocks.length > 0 || volunteerBlocks.length > 0 || projectBlocks.length > 0 || customSections.length > 0;
 
   if (process.env.NODE_ENV === "development") {
     console.log("About page config:", {
@@ -372,7 +400,7 @@ export default async function AboutPage() {
       <Suspense fallback={null}>
         <AboutHighlightScroll />
       </Suspense>
-      <div className="space-y-8" data-about-content>
+      <div className="flex flex-col space-y-8" data-about-content>
         {/* Hero: profile card (name, tagline, contact, CV) — first thing visitors see */}
         {/* Hero + Intro merged into one card for a tighter, less empty layout */}
         <Card className="shadow-lg">
@@ -428,7 +456,11 @@ export default async function AboutPage() {
         {/* Structured blocks from dashboard (Education, Experience, Projects) - template: title, logo, org, date, content */}
         {useStructuredBlocks && (
           <>
-            {aboutVisible("education") && educationBlocks.length > 0 && (
+            {educationBlocks.length > 0 && (
+              <div
+                data-about-section="education"
+                style={{ order: sectionOrderIndex("education"), display: aboutVisible("education") ? undefined : "none" }}
+              >
               <Card className="shadow-lg">
                 <CardHeader>
                   <CardTitle className="flex items-center gap-2 text-slate-900">
@@ -445,7 +477,14 @@ export default async function AboutPage() {
                         inferCountryCodeFromOrganization(entry.organization || "") ||
                         inferCountryCodeFromOrganization(entry.title || "");
                       return (
-                      <div key={i} className="border-l-4 border-blue-500 pl-3">
+                      <div
+                        key={i}
+                        className="border-l-4 border-blue-500 pl-3"
+                        data-about-block-root
+                        data-about-block-section="education"
+                        data-about-block-group="education"
+                        data-about-block-index={i}
+                      >
                         <div className="flex gap-2">
                           {entryLogo ? (
                             <div
@@ -495,8 +534,13 @@ export default async function AboutPage() {
                   </div>
                 </CardContent>
               </Card>
+              </div>
             )}
-            {aboutVisible("experience") && experienceBlocks.length > 0 && (
+            {experienceBlocks.length > 0 && (
+              <div
+                data-about-section="experience"
+                style={{ order: sectionOrderIndex("experience"), display: aboutVisible("experience") ? undefined : "none" }}
+              >
               <Card className="shadow-lg">
                 <CardHeader>
                   <CardTitle className="flex items-center gap-2 text-slate-900">
@@ -509,7 +553,14 @@ export default async function AboutPage() {
                     {experienceBlocks.map((entry, i) => {
                       const entryLogo = (entry.logoUrl && entry.logoUrl.trim()) ? entry.logoUrl : (entry.logoUrl === "" ? null : getCompanyLogo(companyLogos, entry.organization));
                       return (
-                      <div key={i} className="border-l-4 border-green-500 pl-3">
+                      <div
+                        key={i}
+                        className="border-l-4 border-green-500 pl-3"
+                        data-about-block-root
+                        data-about-block-section="experience"
+                        data-about-block-group="experience"
+                        data-about-block-index={i}
+                      >
                         <div className="flex gap-2">
                           {entryLogo ? (
                             <div
@@ -554,8 +605,169 @@ export default async function AboutPage() {
                   </div>
                 </CardContent>
               </Card>
+              </div>
             )}
-            {aboutVisible("projects") && projectBlocks.length > 0 && (
+            {aboutVisible("volunteer") && (
+              <div
+                data-about-section="volunteer"
+                style={{ order: sectionOrderIndex("volunteer"), display: aboutVisible("volunteer") ? undefined : "none" }}
+              >
+              <Card className="shadow-lg">
+                <CardHeader>
+                  <CardTitle className="flex items-center gap-2 text-slate-900">
+                    <HeartHandshake className="h-5 w-5" />
+                    <span data-about-edit="sectionTitles.volunteer">{sectionTitles.volunteer ?? "Volunteer"}</span>
+                  </CardTitle>
+                </CardHeader>
+                <CardContent>
+                  {volunteerBlocks.length > 0 ? (
+                  <div className="space-y-4">
+                    {volunteerBlocks.map((entry, i) => {
+                      const entryLogo = (entry.logoUrl && entry.logoUrl.trim()) ? entry.logoUrl : (entry.logoUrl === "" ? null : getCompanyLogo(companyLogos, entry.organization));
+                      return (
+                      <div
+                        key={i}
+                        className="border-l-4 border-amber-500 pl-3"
+                        data-about-block-root
+                        data-about-block-section="volunteer"
+                        data-about-block-group="volunteer"
+                        data-about-block-index={i}
+                      >
+                        <div className="flex gap-2">
+                          {entryLogo ? (
+                            <div
+                              className="relative h-16 w-16 flex-shrink-0"
+                              data-about-logo-key={`volunteerBlocks.${i}.logoUrl`}
+                              data-about-logo-kind="volunteer"
+                            >
+                              <img src={entryLogo} alt="" className="h-full w-full object-contain" data-about-logo-img />
+                            </div>
+                          ) : (
+                            <div
+                              className="hidden h-16 w-16 flex-shrink-0 items-center justify-center rounded border-2 border-dashed border-slate-300 text-[11px] text-slate-500"
+                              data-about-logo-key={`volunteerBlocks.${i}.logoUrl`}
+                              data-about-logo-kind="volunteer"
+                              data-about-logo-empty
+                            >
+                              + Logo
+                            </div>
+                          )}
+                          <div className="flex-1 min-w-0 flex flex-wrap items-start justify-between gap-x-4 gap-y-0.5">
+                            <div>
+                              <h3 className="font-semibold text-slate-900 text-lg mb-0.5" data-about-edit={`volunteerBlocks.${i}.title`}>{entry.title}</h3>
+                              {entry.organization && (
+                                <p className="text-base font-semibold text-slate-700" data-about-edit={`volunteerBlocks.${i}.organization`}>{entry.organization}</p>
+                              )}
+                            </div>
+                            {entry.dateRange && (
+                              <Badge variant="secondary" className="shrink-0 text-slate-600 font-normal" data-about-edit={`volunteerBlocks.${i}.dateRange`}>{entry.dateRange}</Badge>
+                            )}
+                          </div>
+                        </div>
+                        {entry.content && (
+                          <div className="mt-0.5" data-about-edit={`volunteerBlocks.${i}.content`}>
+                            <div className="prose prose-slate prose-sm max-w-none text-sm">
+                              <MarkdownRenderer content={normalizeBlockMarkdown(entry.content)} />
+                            </div>
+                          </div>
+                        )}
+                      </div>
+                    );
+                    })}
+                  </div>
+                  ) : (
+                    <p className="text-sm text-slate-500">No volunteer entries yet.</p>
+                  )}
+                </CardContent>
+              </Card>
+              </div>
+            )}
+            {customSections.map((section, sectionIndex) => {
+              const sectionId = `custom:${section.id}`;
+              const sectionBlocks = Array.isArray(section.blocks) ? section.blocks : [];
+              return (
+                <div
+                  key={sectionId}
+                  data-about-section={sectionId}
+                  data-about-custom-section-id={section.id}
+                  style={{ order: sectionOrderIndex(sectionId), display: aboutVisible(sectionId) ? undefined : "none" }}
+                >
+                  <Card className="shadow-lg">
+                    <CardHeader>
+                      <CardTitle className="flex items-center gap-2 text-slate-900">
+                        <Code className="h-5 w-5" />
+                        <span data-about-edit={`customSections.${sectionIndex}.title`}>
+                          {section.title || "Custom section"}
+                        </span>
+                      </CardTitle>
+                    </CardHeader>
+                    <CardContent>
+                      <div className="space-y-4">
+                        {sectionBlocks.map((entry, i) => {
+                          const entryLogo = (entry.logoUrl && entry.logoUrl.trim()) ? entry.logoUrl : null;
+                          const blockPrefix = `customSections.${sectionIndex}.blocks`;
+                          return (
+                            <div
+                              key={`${sectionId}-${i}`}
+                              className="border-l-4 border-slate-400 pl-3"
+                              data-about-block-root
+                              data-about-block-section="custom"
+                              data-about-block-group={sectionId}
+                              data-about-block-prefix={blockPrefix}
+                              data-about-block-index={i}
+                            >
+                              <div className="flex gap-2">
+                                {entryLogo ? (
+                                  <div
+                                    className="relative h-16 w-16 flex-shrink-0"
+                                    data-about-logo-key={`${blockPrefix}.${i}.logoUrl`}
+                                    data-about-logo-kind="custom"
+                                  >
+                                    <img src={entryLogo} alt="" className="h-full w-full object-contain" data-about-logo-img />
+                                  </div>
+                                ) : (
+                                  <div
+                                    className="hidden h-16 w-16 flex-shrink-0 items-center justify-center rounded border-2 border-dashed border-slate-300 text-[11px] text-slate-500"
+                                    data-about-logo-key={`${blockPrefix}.${i}.logoUrl`}
+                                    data-about-logo-kind="custom"
+                                    data-about-logo-empty
+                                  >
+                                    + Logo
+                                  </div>
+                                )}
+                                <div className="flex-1 min-w-0 flex flex-wrap items-start justify-between gap-x-4 gap-y-0.5">
+                                  <div>
+                                    <h3 className="font-semibold text-slate-900 text-lg mb-0.5" data-about-edit={`${blockPrefix}.${i}.title`}>{entry.title}</h3>
+                                    {entry.organization && (
+                                      <p className="text-base font-semibold text-slate-700" data-about-edit={`${blockPrefix}.${i}.organization`}>{entry.organization}</p>
+                                    )}
+                                  </div>
+                                  {entry.dateRange && (
+                                    <Badge variant="secondary" className="shrink-0 text-slate-600 font-normal" data-about-edit={`${blockPrefix}.${i}.dateRange`}>{entry.dateRange}</Badge>
+                                  )}
+                                </div>
+                              </div>
+                              {entry.content && (
+                                <div className="mt-0.5" data-about-edit={`${blockPrefix}.${i}.content`}>
+                                  <div className="prose prose-slate prose-sm max-w-none text-sm">
+                                    <MarkdownRenderer content={normalizeBlockMarkdown(entry.content)} />
+                                  </div>
+                                </div>
+                              )}
+                            </div>
+                          );
+                        })}
+                      </div>
+                    </CardContent>
+                  </Card>
+                </div>
+              );
+            })}
+            {projectBlocks.length > 0 && (
+              <div
+                data-about-section="projects"
+                style={{ order: sectionOrderIndex("projects"), display: aboutVisible("projects") ? undefined : "none" }}
+              >
               <Card className="shadow-lg">
                 <CardHeader>
                   <CardTitle className="flex items-center gap-2 text-slate-900">
@@ -566,7 +778,14 @@ export default async function AboutPage() {
                 <CardContent>
                   <div className="space-y-4">
                     {projectBlocks.map((entry, i) => (
-                      <div key={i} className="border-l-4 border-purple-500 pl-3 relative">
+                      <div
+                        key={i}
+                        className="border-l-4 border-purple-500 pl-3 relative"
+                        data-about-block-root
+                        data-about-block-section="project"
+                        data-about-block-group="projects"
+                        data-about-block-index={i}
+                      >
                         <div className="flex-1 min-w-0">
                             <div className="flex flex-wrap items-start justify-between gap-x-4 gap-y-0.5">
                               <div>
@@ -592,15 +811,31 @@ export default async function AboutPage() {
                   </div>
                 </CardContent>
               </Card>
+              </div>
             )}
 
-            {(aboutVisible("skills") || aboutVisible("achievements")) && (
+            <div
+              data-about-section="skills"
+              style={{ order: sectionOrderIndex("skills"), display: aboutVisible("skills") ? undefined : "none" }}
+            >
               <AboutSkillsAchievementsEditor
-                initialSkills={aboutVisible("skills") ? technicalSkills : []}
-                initialAchievements={aboutVisible("achievements") ? achievements : []}
+                mode="skills"
+                initialSkills={technicalSkills}
+                initialAchievements={[]}
                 initialSectionTitles={sectionTitles}
               />
-            )}
+            </div>
+            <div
+              data-about-section="achievements"
+              style={{ order: sectionOrderIndex("achievements"), display: aboutVisible("achievements") ? undefined : "none" }}
+            >
+              <AboutSkillsAchievementsEditor
+                mode="achievements"
+                initialSkills={[]}
+                initialAchievements={achievements}
+                initialSectionTitles={sectionTitles}
+              />
+            </div>
 
           </>
         )}

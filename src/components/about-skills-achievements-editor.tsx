@@ -1,9 +1,8 @@
 "use client";
 
-import { useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import { usePathname } from "next/navigation";
-import { Award, GripVertical, Network, Plus, X } from "lucide-react";
-import { Button } from "@/components/ui/button";
+import { Award, GripVertical, Network, Plus, Trash2, X } from "lucide-react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 
@@ -15,6 +14,10 @@ type SectionTitles = {
   projects: string;
   skills: string;
   achievements: string;
+};
+type EditorActionSnapshot = {
+  skills: SkillBlock[];
+  achievements: AchievementBlock[];
 };
 
 const DEFAULT_SKILLS: SkillBlock[] = [
@@ -31,14 +34,38 @@ const DEFAULT_ACHIEVEMENTS: AchievementBlock[] = [
   { title: "5G Mobileheroes - Shortlisted", organization: "Industrial Development Administration 2021", year: "2021" },
 ];
 
+const SKILLS_SECTION_GAP_CLASS = "space-y-2";
+const ACHIEVEMENTS_SECTION_GAP_CLASS = "space-y-1.5";
+const BLOCK_CONTAINER_CLASS = "rounded-md p-2 transition-colors";
+const BLOCK_HEADER_MARGIN_CLASS = "mb-1.5";
+const ACTION_HISTORY_LIMIT = 50;
+
+function escapeRegExp(value: string): string {
+  return value.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+}
+
+function trimRepeatedAchievementYear(organization: string, year: string): string {
+  const org = organization.trim();
+  const y = year.trim();
+  if (!org || !y) return org;
+  const pattern = new RegExp(`(?:[\\s,()\\-–—]+)?${escapeRegExp(y)}\\s*$`);
+  return org.replace(pattern, "").trim();
+}
+
+function cloneActionSnapshot(snapshot: EditorActionSnapshot): EditorActionSnapshot {
+  return JSON.parse(JSON.stringify(snapshot)) as EditorActionSnapshot;
+}
+
 export function AboutSkillsAchievementsEditor({
   initialSkills,
   initialAchievements,
   initialSectionTitles,
+  mode = "both",
 }: {
   initialSkills: SkillBlock[];
   initialAchievements: AchievementBlock[];
   initialSectionTitles: SectionTitles;
+  mode?: "both" | "skills" | "achievements";
 }) {
   const pathname = usePathname();
   const isEditor = pathname?.startsWith("/editor/about");
@@ -53,6 +80,30 @@ export function AboutSkillsAchievementsEditor({
   const [dragSkillOver, setDragSkillOver] = useState<number | null>(null);
   const [dragAchievementFrom, setDragAchievementFrom] = useState<number | null>(null);
   const [dragAchievementOver, setDragAchievementOver] = useState<number | null>(null);
+  const pendingSkillFocusRef = useRef<{ blockIndex: number; skillIndex: number } | null>(null);
+  const actionUndoRef = useRef<EditorActionSnapshot[]>([]);
+  const actionRedoRef = useRef<EditorActionSnapshot[]>([]);
+  const showSkills = mode === "both" || mode === "skills";
+  const showAchievements = mode === "both" || mode === "achievements";
+
+  useEffect(() => {
+    if (!isEditor) return;
+    const pendingSkillFocus = pendingSkillFocusRef.current;
+    if (!pendingSkillFocus) return;
+    const key = `technicalSkills.${pendingSkillFocus.blockIndex}.items.${pendingSkillFocus.skillIndex}`;
+    const target = document.querySelector<HTMLElement>(`[data-about-edit="${key}"]`);
+    if (!target) return;
+    target.focus();
+    const selection = window.getSelection();
+    if (selection) {
+      const range = document.createRange();
+      range.selectNodeContents(target);
+      range.collapse(false);
+      selection.removeAllRanges();
+      selection.addRange(range);
+    }
+    pendingSkillFocusRef.current = null;
+  }, [isEditor, skills]);
 
   const move = <T,>(arr: T[], from: number, to: number): T[] => {
     if (to < 0 || to >= arr.length) return arr;
@@ -61,6 +112,80 @@ export function AboutSkillsAchievementsEditor({
     next.splice(to, 0, item);
     return next;
   };
+
+  const pushActionHistory = useCallback(() => {
+    const current = cloneActionSnapshot({ skills, achievements });
+    actionUndoRef.current = [...actionUndoRef.current.slice(-(ACTION_HISTORY_LIMIT - 1)), current];
+    actionRedoRef.current = [];
+  }, [achievements, skills]);
+
+  const applySkillsAction = useCallback(
+    (updater: (current: SkillBlock[]) => SkillBlock[]) => {
+      pushActionHistory();
+      setSkills((current) => updater(current));
+    },
+    [pushActionHistory]
+  );
+
+  const applyAchievementsAction = useCallback(
+    (updater: (current: AchievementBlock[]) => AchievementBlock[]) => {
+      pushActionHistory();
+      setAchievements((current) => updater(current));
+    },
+    [pushActionHistory]
+  );
+
+  const undoStructureAction = useCallback(() => {
+    const previous = actionUndoRef.current.pop();
+    if (!previous) return;
+    const current = cloneActionSnapshot({ skills, achievements });
+    actionRedoRef.current = [...actionRedoRef.current, current];
+    setSkills(previous.skills);
+    setAchievements(previous.achievements);
+    pendingSkillFocusRef.current = null;
+  }, [achievements, skills]);
+
+  const redoStructureAction = useCallback(() => {
+    const next = actionRedoRef.current.pop();
+    if (!next) return;
+    const current = cloneActionSnapshot({ skills, achievements });
+    actionUndoRef.current = [...actionUndoRef.current, current];
+    setSkills(next.skills);
+    setAchievements(next.achievements);
+    pendingSkillFocusRef.current = null;
+  }, [achievements, skills]);
+
+  useEffect(() => {
+    if (!isEditor) return;
+    const onKeyDown = (event: KeyboardEvent) => {
+      const hasModifier = event.metaKey || event.ctrlKey;
+      if (!hasModifier) return;
+      const key = event.key.toLowerCase();
+      const wantsUndo = key === "z" && !event.shiftKey;
+      const wantsRedo = key === "y" || (key === "z" && event.shiftKey);
+      if (!wantsUndo && !wantsRedo) return;
+
+      const active = document.activeElement as HTMLElement | null;
+      const isTypingTarget = !!active && (
+        active.tagName === "INPUT" ||
+        active.tagName === "TEXTAREA" ||
+        active.isContentEditable
+      );
+      if (isTypingTarget) return;
+
+      if (wantsUndo) {
+        if (actionUndoRef.current.length === 0) return;
+        event.preventDefault();
+        undoStructureAction();
+        return;
+      }
+      if (actionRedoRef.current.length === 0) return;
+      event.preventDefault();
+      redoStructureAction();
+    };
+    window.addEventListener("keydown", onKeyDown);
+    return () => window.removeEventListener("keydown", onKeyDown);
+  }, [isEditor, redoStructureAction, undoStructureAction]);
 
   const AddBlockButton = ({
     label,
@@ -85,6 +210,7 @@ export function AboutSkillsAchievementsEditor({
 
   return (
     <>
+      {showSkills && (
       <Card className="shadow-lg">
         <CardHeader>
           <CardTitle className="flex items-center gap-2 text-slate-900">
@@ -102,20 +228,16 @@ export function AboutSkillsAchievementsEditor({
           </CardTitle>
         </CardHeader>
         <CardContent>
-          <div className="space-y-4">
-            {isEditor && (
-              <AddBlockButton
-                label="Insert skills block"
-                onClick={() =>
-                  setSkills((current) => [{ category: "New skill group", items: ["New skill"] }, ...current])
-                }
-              />
-            )}
+          <div className={SKILLS_SECTION_GAP_CLASS}>
             {skills.map((section, i) => (
               <div key={`${section.category}-${i}`}>
                 <div
-                  className={`rounded-md border p-3 transition-colors ${
-                    dragSkillOver === i ? "border-slate-400 bg-slate-50" : "border-slate-100"
+                  className={`${BLOCK_CONTAINER_CLASS} ${
+                    dragSkillOver === i
+                      ? "border border-slate-400 bg-slate-50"
+                      : isEditor
+                        ? "border border-slate-100"
+                        : "border-0"
                   }`}
                   onDragOver={(e) => {
                     e.preventDefault();
@@ -124,14 +246,15 @@ export function AboutSkillsAchievementsEditor({
                   onDrop={(e) => {
                     e.preventDefault();
                     if (dragSkillFrom === null) return;
-                    setSkills((current) => move(current, dragSkillFrom, i));
+                    applySkillsAction((current) => move(current, dragSkillFrom, i));
                     setDragSkillFrom(null);
                     setDragSkillOver(null);
                   }}
                 >
                   {isEditor ? (
                     <>
-                      <div className="mb-2 flex items-start gap-2">
+                      <div className={`${BLOCK_HEADER_MARGIN_CLASS} flex items-start justify-between gap-2`}>
+                        <div className="flex items-start gap-2">
                         <button
                           type="button"
                           draggable
@@ -147,17 +270,47 @@ export function AboutSkillsAchievementsEditor({
                           <GripVertical className="h-4 w-4" />
                         </button>
                         <h3
-                          className="mt-1 mb-2 text-sm font-semibold text-slate-800 rounded px-1"
+                          className="mt-1 mb-1 text-sm font-semibold text-slate-800 rounded px-1"
                           data-about-edit={`technicalSkills.${i}.category`}
                         >
                           {section.category}
                         </h3>
+                        </div>
+                        <button
+                          type="button"
+                          className="mt-1 inline-flex h-6 w-6 items-center justify-center rounded border border-rose-200 text-rose-600 hover:bg-rose-50"
+                          onClick={() => applySkillsAction((current) => current.filter((_, idx) => idx !== i))}
+                          aria-label="Delete skill block"
+                          title="Delete block"
+                        >
+                          <Trash2 className="h-3.5 w-3.5" />
+                        </button>
                       </div>
-                      <div className="flex flex-wrap gap-2">
+                      <div className="flex flex-wrap items-center gap-2">
                         {section.items.map((skill, skillIndex) => (
                           <span key={`${i}-${skillIndex}`} className="inline-flex items-center gap-1">
                             <Badge variant="secondary" className="text-xs">
-                              <span data-about-edit={`technicalSkills.${i}.items.${skillIndex}`} className="rounded px-0.5">
+                              <span
+                                data-about-edit={`technicalSkills.${i}.items.${skillIndex}`}
+                                className="rounded px-0.5 outline-none"
+                                contentEditable={isEditor}
+                                suppressContentEditableWarning
+                                onBlur={(event) => {
+                                  const nextValue = (event.currentTarget.textContent ?? "").trim();
+                                  setSkills((current) =>
+                                    current.map((item, idx) =>
+                                      idx === i
+                                        ? {
+                                            ...item,
+                                            items: item.items.map((entry, idx2) =>
+                                              idx2 === skillIndex ? (nextValue || "New skill") : entry
+                                            ),
+                                          }
+                                        : item
+                                    )
+                                  );
+                                }}
+                              >
                                 {skill}
                               </span>
                             </Badge>
@@ -165,7 +318,7 @@ export function AboutSkillsAchievementsEditor({
                               type="button"
                               className="inline-flex h-5 w-5 items-center justify-center rounded border border-slate-200 text-slate-500 hover:text-slate-800"
                               onClick={() =>
-                                setSkills((current) =>
+                                applySkillsAction((current) =>
                                   current.map((item, idx) =>
                                     idx === i
                                       ? { ...item, items: item.items.filter((_, idx2) => idx2 !== skillIndex) }
@@ -179,27 +332,29 @@ export function AboutSkillsAchievementsEditor({
                             </button>
                           </span>
                         ))}
-                      </div>
-                      <div className="mt-2 flex gap-1">
-                        <Button
-                          size="sm"
-                          variant="ghost"
+                        <button
+                          type="button"
+                          className="inline-flex h-6 items-center rounded border border-dashed border-slate-300 px-2 text-xs text-slate-600 hover:border-slate-500 hover:text-slate-900"
                           onClick={() =>
-                            setSkills((current) =>
-                              current.map((item, idx) =>
+                            applySkillsAction((current) => {
+                              const next = current.map((item, idx) =>
                                 idx === i ? { ...item, items: [...item.items, "New skill"] } : item
-                              )
-                            )
+                              );
+                              const newSkillIndex = next[i]?.items.length ? next[i].items.length - 1 : 0;
+                              pendingSkillFocusRef.current = { blockIndex: i, skillIndex: newSkillIndex };
+                              return next;
+                            })
                           }
+                          aria-label="Add skill"
+                          title="Add skill"
                         >
                           + Skill
-                        </Button>
-                        <Button size="sm" variant="ghost" onClick={() => setSkills((current) => current.filter((_, idx) => idx !== i))}>Delete block</Button>
+                        </button>
                       </div>
                     </>
                   ) : (
                     <>
-                      <h3 className="mb-2 text-sm font-semibold text-slate-800">{section.category}</h3>
+                      <h3 className="mb-1 text-sm font-semibold text-slate-800">{section.category}</h3>
                       <div className="flex flex-wrap gap-2">
                         {section.items.map((skill) => (
                           <Badge key={skill} variant="secondary" className="text-xs">
@@ -210,12 +365,12 @@ export function AboutSkillsAchievementsEditor({
                     </>
                   )}
                 </div>
-                {isEditor && (
-                  <div className="mt-3">
+                {isEditor && i === skills.length - 1 && (
+                  <div className="mt-2">
                     <AddBlockButton
                       label="Insert skills block"
                       onClick={() =>
-                        setSkills((current) => {
+                        applySkillsAction((current) => {
                           const next = [...current];
                           next.splice(i + 1, 0, { category: "New skill group", items: ["New skill"] });
                           return next;
@@ -229,7 +384,9 @@ export function AboutSkillsAchievementsEditor({
           </div>
         </CardContent>
       </Card>
+      )}
 
+      {showAchievements && (
       <Card className="shadow-lg">
         <CardHeader>
           <CardTitle className="flex items-center gap-2 text-slate-900">
@@ -247,20 +404,16 @@ export function AboutSkillsAchievementsEditor({
           </CardTitle>
         </CardHeader>
         <CardContent>
-          <div className="space-y-3">
-            {isEditor && (
-              <AddBlockButton
-                label="Insert achievement block"
-                onClick={() =>
-                  setAchievements((current) => [{ title: "New achievement", organization: "", year: "" }, ...current])
-                }
-              />
-            )}
+          <div className={ACHIEVEMENTS_SECTION_GAP_CLASS}>
             {achievements.map((a, i) => (
               <div key={`${a.title}-${i}`}>
                 <div
-                  className={`rounded-md border p-3 transition-colors ${
-                    dragAchievementOver === i ? "border-slate-400 bg-slate-50" : "border-slate-100"
+                  className={`${BLOCK_CONTAINER_CLASS} ${
+                    dragAchievementOver === i
+                      ? "border border-slate-400 bg-slate-50"
+                      : isEditor
+                        ? "border border-slate-100"
+                        : "border-0"
                   }`}
                   onDragOver={(e) => {
                     e.preventDefault();
@@ -269,14 +422,14 @@ export function AboutSkillsAchievementsEditor({
                   onDrop={(e) => {
                     e.preventDefault();
                     if (dragAchievementFrom === null) return;
-                    setAchievements((current) => move(current, dragAchievementFrom, i));
+                    applyAchievementsAction((current) => move(current, dragAchievementFrom, i));
                     setDragAchievementFrom(null);
                     setDragAchievementOver(null);
                   }}
                 >
                   {isEditor ? (
                     <>
-                      <div className="mb-2 flex items-start gap-2">
+                      <div className={`${BLOCK_HEADER_MARGIN_CLASS} flex items-start gap-2`}>
                         <button
                           type="button"
                           draggable
@@ -291,42 +444,63 @@ export function AboutSkillsAchievementsEditor({
                         >
                           <GripVertical className="h-4 w-4" />
                         </button>
-                        <p
-                          className="text-sm font-medium text-slate-800 rounded px-1"
-                          data-about-edit={`achievements.${i}.title`}
-                        >
-                          {a.title}
-                        </p>
-                      </div>
-                      <p
-                        className="text-xs text-slate-500 rounded px-1"
-                        data-about-edit={`achievements.${i}.organization`}
-                      >
-                        {a.organization}
-                      </p>
-                      <p
-                        className="mt-1 inline-flex rounded bg-slate-100 px-2 py-0.5 text-xs text-slate-600"
-                        data-about-edit={`achievements.${i}.year`}
-                      >
-                        {a.year}
-                      </p>
-                      <div className="mt-2 flex gap-1">
-                        <Button size="sm" variant="ghost" onClick={() => setAchievements((current) => current.filter((_, idx) => idx !== i))}>Delete block</Button>
+                        <div className="flex-1 min-w-0">
+                          <div className="flex flex-wrap items-start justify-between gap-x-2 gap-y-1">
+                            <p
+                              className="text-sm font-medium leading-snug text-slate-800 rounded px-1"
+                              data-about-edit={`achievements.${i}.title`}
+                            >
+                              {a.title}
+                            </p>
+                            <div className="flex items-center gap-1">
+                              <p
+                                className="inline-flex rounded bg-slate-100 px-2 py-0.5 text-xs text-slate-600"
+                                data-about-edit={`achievements.${i}.year`}
+                              >
+                                {a.year}
+                              </p>
+                              <button
+                                type="button"
+                                className="inline-flex h-6 w-6 items-center justify-center rounded border border-rose-200 text-rose-600 hover:bg-rose-50"
+                                onClick={() => applyAchievementsAction((current) => current.filter((_, idx) => idx !== i))}
+                                aria-label="Delete achievement block"
+                                title="Delete block"
+                              >
+                                <Trash2 className="h-3.5 w-3.5" />
+                              </button>
+                            </div>
+                          </div>
+                          <p
+                            className="mt-0.5 text-xs leading-snug text-slate-500 rounded px-1"
+                            data-about-edit={`achievements.${i}.organization`}
+                          >
+                            {trimRepeatedAchievementYear(a.organization, a.year)}
+                          </p>
+                        </div>
                       </div>
                     </>
                   ) : (
                     <>
-                      <p className="text-sm font-medium text-slate-800">{a.title}</p>
-                      <p className="text-xs text-slate-500">{a.organization}</p>
+                      <div className="flex flex-wrap items-start justify-between gap-x-2 gap-y-1">
+                        <p className="text-sm font-medium leading-snug text-slate-800">{a.title}</p>
+                        {a.year && (
+                          <p className="inline-flex rounded bg-slate-100 px-2 py-0.5 text-xs text-slate-600">
+                            {a.year}
+                          </p>
+                        )}
+                      </div>
+                      <p className="mt-0.5 text-xs leading-snug text-slate-500">
+                        {trimRepeatedAchievementYear(a.organization, a.year)}
+                      </p>
                     </>
                   )}
                 </div>
-                {isEditor && (
-                  <div className="mt-3">
+                {isEditor && i === achievements.length - 1 && (
+                  <div className="mt-2">
                     <AddBlockButton
                       label="Insert achievement block"
                       onClick={() =>
-                        setAchievements((current) => {
+                        applyAchievementsAction((current) => {
                           const next = [...current];
                           next.splice(i + 1, 0, { title: "New achievement", organization: "", year: "" });
                           return next;
@@ -340,6 +514,7 @@ export function AboutSkillsAchievementsEditor({
           </div>
         </CardContent>
       </Card>
+      )}
     </>
   );
 }

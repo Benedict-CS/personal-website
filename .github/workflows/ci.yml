@@ -1,12 +1,12 @@
 name: CI - Build and Test (Optional)
 
-# 這個 CI 是可選的，主要用於檢查代碼是否可以正常建置
-# 如果不需要，可以刪除這個文件
+# This CI workflow is optional and primarily validates build health.
+# If you do not need it, you can remove this file.
 
 on:
   pull_request:
     branches: [test]
-  workflow_dispatch: # 只允許手動觸發，不會自動運行
+  workflow_dispatch: # Manual trigger
 
 jobs:
   build:
@@ -30,7 +30,7 @@ jobs:
 
       - name: Run linter
         run: npm run lint
-        continue-on-error: true  # 允許 lint 錯誤，不阻止建置
+        continue-on-error: true  # Do not block build on lint errors
 
       - name: Build application
         run: npm run build

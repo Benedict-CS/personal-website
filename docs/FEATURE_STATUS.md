@@ -1,94 +1,69 @@
-# Feature status (from backlog)
+# Feature Status
 
-Status of items from the original todo / IDEAS list. **Done** = implemented; **Partial** = partly done; **Not done** = not implemented.
+This document tracks current implementation status of major product capabilities.
 
----
+Status labels:
 
-## Quick wins
-
-| Item | Status | Notes |
-|------|--------|-------|
-| loading.tsx | **Done** | Dashboard: content/*, media, tags, posts, setup, cv, notes all have loading.tsx (skeleton-style). |
-| revalidate | **Done** | `revalidate = 60` on blog list and post page; `revalidatePath` in posts API on create/update/delete. |
-| skip-to-content | **Done** | In root layout; `.skip-link` in globals.css. |
-| reading progress | **Done** | `ReadingProgress` on blog post and preview pages. |
-| breadcrumbs clickable | **Done** | Dashboard breadcrumbs use `LeaveGuardLink` for non-last segments. |
-| toast "View on site" | **Done** | Post edit page and site config success message include "View on site" link. |
-| empty states | **Done** | Posts list and media have empty state + CTA. |
+- **Done**: implemented and usable
+- **Partial**: implemented with known scope limits
+- **Planned**: not implemented yet
 
 ---
 
-## UI Dashboard
+## Editing and Publishing
 
-| Item | Status | Notes |
-|------|--------|-------|
-| Skeleton | **Done** | loading.tsx uses animate-pulse skeleton blocks. |
-| Confirm dialogs | **Done** | Delete post, delete media, bulk actions, analytics clear use `ConfirmDialog`. |
-| Shortcuts | **Done** | Post edit: ⌘S save, ⌘Enter publish; command palette ⌘K. |
-| Dark mode | **Not done** | Skipped per user request. |
-| Mobile nav | **Done** | Hamburger + drawer on small screens; sidebar hidden on md below. |
-
----
-
-## UI Public
-
-| Item | Status | Notes |
-|------|--------|-------|
-| TOC | **Done** | `TableOfContents` on blog post page. |
-| Print | **Done** | `@media print` in globals.css (hide nav/footer/sidebar). |
-| Share | **Done** | `ShareButtons` on blog post page. |
-| Related posts | **Done** | Up to 5 related posts by tag on blog post page. |
+| Feature | Status | Notes |
+|---|---|---|
+| Immersive editor overlay | **Done** | Dedicated editor route with focused editing flow |
+| Undo/redo (keyboard + toolbar) | **Done** | Supports standard shortcuts (`Ctrl/Cmd+Z`, `Ctrl/Cmd+Y`, `Cmd+Shift+Z`) |
+| Save Draft and Publish split | **Done** | Draft save is independent from live publish action |
+| Draft recovery UX | **Done** | Local recovery flow replaced blocking confirm-style behavior |
+| Server revision history | **Done** | API-backed revision storage and restore path |
+| Preview link for draft review | **Done** | Token-based read-only preview links |
+| Scheduled publish (custom pages) | **Done** | Scheduled datetime with effective publish state |
+| Block lock/protection | **Partial** | Basic lock semantics exist; advanced role-level lock is pending |
 
 ---
 
-## Features
+## Content Management
 
-| Item | Status | Notes |
-|------|--------|-------|
-| Draft autosave | **Done** | Post edit: debounced 5s autosave (content + meta), `autosave: true` in API; "Draft saved" toast. |
-| publishedAt | **Done** | Schema + UI (Schedule publish at datetime); blog/API treat as published when publishedAt ≤ now. |
-| Tag RSS | **Done** | `/feed/tag/[tag]` returns RSS for that tag. |
-| Preview expiry | **Done** | `previewTokenExpiresAt` in schema; preview page returns 404 when expired. |
-| Page templates | **Done** | Custom pages: "From template" buttons for Portfolio and Services. |
-| Backup trigger | **Done (minimal)** | Dashboard has `DashboardBackupTrigger`; API returns instructions (does not run backup script). |
-
----
-
-## Management
-
-| Item | Status | Notes |
-|------|--------|-------|
-| System info | **Done** | Dashboard shows Node version and DB size (pg_database_size). |
-| Media usage | **Done** | Media page shows file count and total storage size. |
-| Bulk actions | **Done** | Posts: select multiple → publish / unpublish / delete; bulk edit category, tags, published. Media: bulk delete. |
-| Tag merge | **Done** | Tags page: list all tags + "Merge into..." dropdown; POST /api/tags/merge. |
-| Audit log | **Done** | AuditLog model; logged from post create/update/delete and import; /dashboard/audit page. |
-| Export/import | **Done** | GET /api/export (JSON); POST /api/import; Export/Import buttons on dashboard. |
+| Feature | Status | Notes |
+|---|---|---|
+| Home/About/Contact dashboard editing | **Done** | Full dashboard editing flow in production |
+| Dashboard overview workspace | **Done** | Landing dashboard includes metrics, health, recent activity, and operations hub |
+| Customizable quick actions | **Done** | Pin, reorder, and reset shortcuts for personal workflow |
+| About section ordering and visibility | **Done** | Non-technical control over section structure |
+| Custom pages CRUD + reorder + filters | **Done** | Includes templates and safer management controls |
+| Post CRUD + versions + preview | **Done** | Includes publish state and historical restore |
+| Global find/replace across site | **Planned** | Not in current production scope |
 
 ---
 
-## Perf
+## Media and Assets
 
-| Item | Status | Notes |
-|------|--------|-------|
-| next/image | **Done** | Blog (markdown), About, dashboard media/about; all use `unoptimized` to preserve original format (no WebP). |
-| Dashboard dynamic import | **Done** | About editor and Media page use `next/dynamic` with loading skeleton; MDEditor already dynamic. |
-
----
-
-## Advanced / Ops
-
-| Item | Status | Notes |
-|------|--------|-------|
-| Sitemap split | **Done** | `generateSitemaps()` returns id 0 (static + custom pages) and id 1 (blog posts); `/sitemap/0.xml`, `/sitemap/1.xml`. |
-| Form inline validation | **Done** | Slug format (lowercase, hyphens) and required title on blur/change; post edit, new post, custom pages. |
-| List pagination / Load more | **Done** | Posts: server-side pagination (page, limit 20). Media: client "Load more" (24 per page). |
-| Security headers | **Done** | X-Frame-Options, X-Content-Type-Options, Referrer-Policy, Permissions-Policy; CSP report-only. |
-| S3 multipart + progress | **Done** | Server: multipart upload for files ≥ 5MB. Client: XHR upload with progress bar (file count + %). |
+| Feature | Status | Notes |
+|---|---|---|
+| Media upload and serve pipeline | **Done** | S3-compatible object storage |
+| Unused media cleanup analysis | **Done** | Safe analysis support with deletion flow |
+| Optimization assessment (`dryRun`) | **Done** | Candidate scan + estimated savings |
+| Optimization execution (`dryRun=false`) | **Done** | Actual compression/overwrite with batch controls |
+| Batch optimization controls | **Done** | Run all, stop, retry failed, filter failed reasons |
 
 ---
 
-## Summary
+## Operations and Governance
 
-- **Done:** Quick wins; dashboard skeleton, confirm dialogs, shortcuts, mobile nav (drawer); public TOC, print, share, related posts; draft autosave, publishedAt (UI + logic), tag RSS, preview expiry, page templates, backup trigger; system info (Node + DB size), media usage, tag merge, audit log, export/import; bulk actions; next/image (unoptimized); dashboard lazy (About, Media); sitemap split; form inline validation; list pagination / Load more; security headers (CSP report-only); S3 multipart + upload progress.
-- **Not done:** Dark mode (skipped per user request).
+| Feature | Status | Notes |
+|---|---|---|
+| Audit logging backend | **Done** | Tracks editor, custom pages, media optimization, and related actions |
+| Audit log dashboard UI | **Done** | Filters + compact summaries + expandable payload |
+| Analytics dashboard | **Done** | Page view and operational visibility |
+| Export/import content | **Done** | Data portability endpoints available |
+| Multi-user RBAC | **Planned** | Current mode is single-admin oriented |
+
+---
+
+## Platform Readiness Summary
+
+- **Commercial readiness:** strong for single-admin workflows and no-code content operations.
+- **Most valuable next upgrades:** RBAC approval flow, true collaborative editing, and global content replacement tooling.

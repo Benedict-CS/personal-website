@@ -21,15 +21,15 @@ export function Footer({ siteConfig: siteConfigProp }: { siteConfig?: SiteConfig
   const rss = links?.rss?.trim() || "/feed.xml";
 
   return (
-    <footer className="relative z-20 mt-auto border-t border-slate-200 bg-slate-50/80">
-      <div className="container mx-auto max-w-6xl px-4 py-6 sm:px-6 lg:px-8">
-        <div className="flex flex-col items-center gap-4 sm:flex-row sm:justify-between sm:items-center">
-          <div className="flex items-center gap-2 sm:gap-6 text-slate-600 shrink-0">
+    <footer className="relative z-20 mt-auto border-t border-slate-200/90 bg-slate-50/80">
+      <div className="container mx-auto max-w-6xl px-4 py-4 sm:px-6 lg:px-8">
+        <div className="flex flex-col items-center gap-3 sm:flex-row sm:justify-between sm:items-center">
+          <div className="flex items-center gap-1.5 sm:gap-4 text-slate-600 shrink-0">
             {email ? (
               <Link
                 href={emailHref || "/contact"}
                 data-editor-button="footer.email"
-                className="inline-flex items-center justify-center min-w-[44px] min-h-[44px] rounded-md hover:text-slate-900 transition-colors duration-200 focus:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
+                className="inline-flex items-center justify-center min-w-[40px] min-h-[40px] rounded-md hover:text-slate-900 transition-colors duration-200 focus:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
                 title="Contact"
               >
                 <Mail className="h-5 w-5" />
@@ -41,7 +41,7 @@ export function Footer({ siteConfig: siteConfigProp }: { siteConfig?: SiteConfig
                 target="_blank"
                 rel="noopener noreferrer"
                 data-editor-button="footer.linkedin"
-                className="inline-flex items-center justify-center min-w-[44px] min-h-[44px] rounded-md hover:text-slate-900 transition-colors duration-200 focus:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
+                className="inline-flex items-center justify-center min-w-[40px] min-h-[40px] rounded-md hover:text-slate-900 transition-colors duration-200 focus:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
                 title="LinkedIn"
               >
                 <Linkedin className="h-5 w-5" />
@@ -53,7 +53,7 @@ export function Footer({ siteConfig: siteConfigProp }: { siteConfig?: SiteConfig
                 target="_blank"
                 rel="noopener noreferrer"
                 data-editor-button="footer.github"
-                className="inline-flex items-center justify-center min-w-[44px] min-h-[44px] rounded-md hover:text-slate-900 transition-colors duration-200 focus:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
+                className="inline-flex items-center justify-center min-w-[40px] min-h-[40px] rounded-md hover:text-slate-900 transition-colors duration-200 focus:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
                 title="GitHub"
               >
                 <Github className="h-5 w-5" />
@@ -64,14 +64,14 @@ export function Footer({ siteConfig: siteConfigProp }: { siteConfig?: SiteConfig
               target="_blank"
               rel="noopener noreferrer"
               data-editor-button="footer.rss"
-              className="flex items-center gap-1.5 min-h-[44px] px-2 rounded-md hover:text-slate-900 transition-colors duration-200 focus:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
+              className="flex items-center gap-1 min-h-[40px] px-1.5 rounded-md hover:text-slate-900 transition-colors duration-200 focus:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
               title="Subscribe via RSS"
             >
               <Rss className="h-5 w-5" />
-              <span className="text-sm" data-editor-button-label>RSS</span>
+              <span className="text-xs sm:text-sm" data-editor-button-label>RSS</span>
             </Link>
           </div>
-          <p className="text-sm text-slate-500 text-center sm:text-right min-w-0" data-editor-site="footer.author">
+          <p className="text-xs sm:text-sm leading-tight text-slate-500 text-center sm:text-right min-w-0" data-editor-site="footer.author">
             © {year} <span data-editor-author-name>{name}</span>. <span data-editor-footer-text>{footerLine}</span>
           </p>
         </div>
