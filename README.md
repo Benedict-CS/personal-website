@@ -2,10 +2,15 @@
 
 [![Next.js](https://img.shields.io/badge/Next.js-16-black?logo=next.js)](https://nextjs.org/)
 [![React](https://img.shields.io/badge/React-19-61DAFB?logo=react)](https://reactjs.org/)
+[![TypeScript](https://img.shields.io/badge/TypeScript-5-3178C6?logo=typescript)](https://www.typescriptlang.org/)
 [![Prisma](https://img.shields.io/badge/Prisma-ORM-2D3748?logo=prisma)](https://www.prisma.io/)
+[![Tailwind CSS](https://img.shields.io/badge/Tailwind_CSS-4-38B2AC?logo=tailwind-css)](https://tailwindcss.com/)
+[![NextAuth](https://img.shields.io/badge/NextAuth-4-000000)](https://next-auth.js.org/)
+[![PostgreSQL](https://img.shields.io/badge/PostgreSQL-Database-336791?logo=postgresql)](https://www.postgresql.org/)
+[![Docker](https://img.shields.io/badge/Docker-Compose-2496ED?logo=docker)](https://www.docker.com/)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](LICENSE)
 
-Production-ready personal website and CMS with a commercial-style dashboard and visual editor. Next.js 16, React 19, Prisma, PostgreSQL, S3-compatible storage.
+Production-ready personal website and CMS with a commercial-style dashboard and visual editor. Built with Next.js 16 (App Router), React 19, TypeScript, Prisma, PostgreSQL, and S3-compatible storage.
 
 ---
 
@@ -23,21 +28,40 @@ Production-ready personal website and CMS with a commercial-style dashboard and 
 
 ## Tech Stack
 
-| Layer | Technology |
-|---|---|
-| Framework | Next.js 16 (App Router) |
-| UI | React 19, Tailwind CSS 4 |
-| Database | PostgreSQL + Prisma |
-| Object storage | S3-compatible API (RustFS by default) |
-| Authentication | NextAuth credentials session |
-| Deployment | Docker Compose |
+### Core
+
+| Layer | Technology | Notes |
+|-------|------------|--------|
+| **Framework** | [Next.js 16](https://nextjs.org/) | App Router, server components, dynamic OG images |
+| **UI** | [React 19](https://reactjs.org/) | Server + client components |
+| **Language** | [TypeScript 5](https://www.typescriptlang.org/) | Strict mode |
+| **Styling** | [Tailwind CSS 4](https://tailwindcss.com/) | Utility-first, `@tailwindcss/typography` for prose |
+| **Database** | [PostgreSQL](https://www.postgresql.org/) + [Prisma 5](https://www.prisma.io/) | ORM, migrations, type-safe client |
+| **Auth** | [NextAuth.js 4](https://next-auth.js.org/) | Credentials provider, session-based |
+| **Deployment** | [Docker](https://www.docker.com/) + Compose | Single-service app image |
+
+### Key libraries
+
+| Purpose | Package |
+|---------|---------|
+| Animations | [Framer Motion](https://www.framer.com/motion/) |
+| Icons | [Lucide React](https://lucide.dev/) |
+| Markdown | [react-markdown](https://github.com/remarkjs/react-markdown), [remark-gfm](https://github.com/remarkjs/remark-gfm), [rehype-highlight](https://github.com/rehypejs/rehype-highlight), [rehype-katex](https://github.com/remarkjs/remark-math) |
+| UI primitives | [Radix UI](https://www.radix-ui.com/) (Slot, Tabs) |
+| Drag and drop | [@dnd-kit](https://dndkit.com/) |
+| State | [Zustand](https://github.com/pmndrs/zustand) |
+| Email | [Resend](https://resend.com/) or [Nodemailer](https://nodemailer.com/) |
+| Object storage | [AWS SDK S3](https://aws.amazon.com/sdk-for-javascript/) (S3-compatible API) |
+| Images | [Sharp](https://sharp.pixelplumbing.com/) (optimization, OG) |
+| Testing | [Jest](https://jestjs.io/), [Playwright](https://playwright.dev/) |
+| Lint / format | [ESLint](https://eslint.org/), [eslint-config-next](https://nextjs.org/docs/app/building-your-application/configuring/eslint) |
 
 ---
 
 ## Quick Start
 
 ```bash
-git clone <your-repo-url> personal-website
+git clone https://github.com/Benedict-CS/personal-website.git personal-website
 cd personal-website
 cp .env.example .env
 docker compose up -d --build
