@@ -492,6 +492,7 @@ export default async function AboutPage() {
                               data-about-logo-key={`educationBlocks.${i}.logoUrl`}
                               data-about-logo-kind="education"
                             >
+                              {/* eslint-disable-next-line @next/next/no-img-element -- dynamic CMS URL, not known at build time */}
                               <img src={entryLogo} alt="" className="h-full w-full object-contain" data-about-logo-img />
                             </div>
                           ) : (
@@ -568,6 +569,7 @@ export default async function AboutPage() {
                               data-about-logo-key={`experienceBlocks.${i}.logoUrl`}
                               data-about-logo-kind="experience"
                             >
+                              {/* eslint-disable-next-line @next/next/no-img-element -- dynamic CMS URL, not known at build time */}
                               <img src={entryLogo} alt="" className="h-full w-full object-contain" data-about-logo-img />
                             </div>
                           ) : (
@@ -640,6 +642,7 @@ export default async function AboutPage() {
                               data-about-logo-key={`volunteerBlocks.${i}.logoUrl`}
                               data-about-logo-kind="volunteer"
                             >
+                              {/* eslint-disable-next-line @next/next/no-img-element -- dynamic CMS URL, not known at build time */}
                               <img src={entryLogo} alt="" className="h-full w-full object-contain" data-about-logo-img />
                             </div>
                           ) : (
@@ -723,7 +726,8 @@ export default async function AboutPage() {
                                     data-about-logo-key={`${blockPrefix}.${i}.logoUrl`}
                                     data-about-logo-kind="custom"
                                   >
-                                    <img src={entryLogo} alt="" className="h-full w-full object-contain" data-about-logo-img />
+                                    {/* eslint-disable-next-line @next/next/no-img-element -- dynamic CMS URL, not known at build time */}
+                              <img src={entryLogo} alt="" className="h-full w-full object-contain" data-about-logo-img />
                                   </div>
                                 ) : (
                                   <div

@@ -72,6 +72,7 @@ export const authOptions: NextAuthOptions = {
     strategy: "jwt",
     maxAge: 60 * 60, // 1 hour
   },
+  // NextAuth sets Secure, HttpOnly, SameSite=Lax when NEXTAUTH_URL is https
   callbacks: {
     async jwt({ token, user }) {
       if (user) {

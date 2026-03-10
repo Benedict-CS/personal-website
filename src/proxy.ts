@@ -11,7 +11,7 @@ export async function proxy(request: NextRequest, event: NextFetchEvent) {
   const ip = request.headers.get("x-forwarded-for")?.split(",")[0]?.trim() || request.headers.get("x-real-ip") || "";
   logRequest(request.method, pathname, { ip: ip || undefined });
 
-  if (pathname.startsWith("/dashboard")) {
+  if (pathname.startsWith("/dashboard") || pathname.startsWith("/editor")) {
     return withAuth({
       pages: { signIn: "/auth/signin" },
     })(request as never, event);
@@ -91,7 +91,15 @@ export async function proxy(request: NextRequest, event: NextFetchEvent) {
     }).catch(() => {});
   }
 
-  return NextResponse.next();
+  const res = NextResponse.next();
+  res.headers.set("X-Frame-Options", "DENY");
+  res.headers.set("X-Content-Type-Options", "nosniff");
+  res.headers.set("Referrer-Policy", "strict-origin-when-cross-origin");
+  res.headers.set("Permissions-Policy", "camera=(), microphone=(), geolocation=()");
+  if (request.headers.get("x-forwarded-proto") === "https") {
+    res.headers.set("Strict-Transport-Security", "max-age=31536000; includeSubDomains; preload");
+  }
+  return res;
 }
 
 export const config = {

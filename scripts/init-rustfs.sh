@@ -1,53 +1,52 @@
 #!/bin/bash
 
-# RustFS 初始化腳本
-# 設置目錄權限並啟動服務
+# RustFS initialization: create dirs, set permissions, start service.
 
 set -e
 ROOT="$(cd "$(dirname "$0")/.." && pwd)"
 cd "$ROOT"
 
-echo "🚀 初始化 RustFS..."
+echo "🚀 Initializing RustFS..."
 echo ""
 
-# 1. 創建數據和日誌目錄
-echo "1️⃣ 創建數據和日誌目錄..."
+# 1. Create data and log directories
+echo "1️⃣ Creating data and log directories..."
 mkdir -p ./rustfs-data ./rustfs-logs
-echo "✅ 目錄已創建"
+echo "✅ Directories created"
 echo ""
 
-# 2. 設置目錄權限（RustFS 使用 UID 10001）
-echo "2️⃣ 設置目錄權限（UID 10001）..."
+# 2. Set directory ownership (RustFS runs as UID 10001)
+echo "2️⃣ Setting directory ownership (UID 10001)..."
 sudo chown -R 10001:10001 ./rustfs-data ./rustfs-logs 2>/dev/null || {
-    echo "⚠️  無法設置權限（可能需要 sudo）"
-    echo "   請手動執行：sudo chown -R 10001:10001 ./rustfs-data ./rustfs-logs"
+    echo "⚠️  Could not set ownership (may need sudo)"
+    echo "   Run manually: sudo chown -R 10001:10001 ./rustfs-data ./rustfs-logs"
 }
 echo ""
 
-# 3. 啟動服務
-echo "3️⃣ 啟動 RustFS 服務..."
+# 3. Start RustFS service
+echo "3️⃣ Starting RustFS service..."
 sudo docker compose up -d rustfs
 echo ""
 
-# 4. 等待服務就緒
-echo "4️⃣ 等待 RustFS 服務就緒..."
+# 4. Wait for service to be ready
+echo "4️⃣ Waiting for RustFS to be ready..."
 sleep 10
 
-# 5. 檢查服務狀態
-echo "5️⃣ 檢查服務狀態..."
+# 5. Check service status
+echo "5️⃣ Checking service status..."
 if docker ps | grep -q "personal-website-rustfs"; then
-    echo "✅ RustFS 服務正在運行"
+    echo "✅ RustFS is running"
     echo ""
-    echo "📝 訪問資訊："
+    echo "📝 Access:"
     echo "   - Console: http://localhost:9001"
-    echo "   - 預設帳號: rustfsadmin"
-    echo "   - 預設密碼: rustfsadmin"
+    echo "   - Default user: rustfsadmin"
+    echo "   - Default password: rustfsadmin"
     echo "   - S3 API: http://localhost:9000"
     echo ""
-    echo "💡 下一步："
-    echo "   1. 訪問 Console 建立 'uploads' bucket"
-    echo "   2. 或等待應用程式自動建立（第一次上傳時）"
+    echo "💡 Next steps:"
+    echo "   1. Open Console and create 'uploads' bucket"
+    echo "   2. Or let the app create it on first upload"
 else
-    echo "❌ RustFS 服務未運行"
-    echo "   請檢查日誌：sudo docker compose logs rustfs"
+    echo "❌ RustFS is not running"
+    echo "   Check logs: sudo docker compose logs rustfs"
 fi

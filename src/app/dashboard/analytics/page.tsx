@@ -101,7 +101,7 @@ export default function AnalyticsPage() {
     if (filterIP.trim()) params.set("ip", filterIP.trim());
     setLoading(true);
     setError(null);
-    fetch(`/api/analytics/stats?${params}`)
+    fetch(`/api/analytics/stats?${params}`, { credentials: "include" })
       .then(async (r) => {
         if (!r.ok) {
           const body = await r.json().catch(() => ({}));

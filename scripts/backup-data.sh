@@ -16,28 +16,28 @@ cleanup() {
 }
 trap cleanup EXIT
 
-echo "1. 備份資料庫（含 Post、Tag、AboutConfig、PageView 等）..."
+echo "1. Backing up database (Post, Tag, AboutConfig, PageView, etc.)..."
 if ! docker compose exec -T postgres pg_dump -U ben blog > "$NAME/backup.sql" 2>/dev/null; then
-  echo "錯誤: pg_dump 失敗（請確認 postgres 容器在跑、且目前使用者已在 docker 群組：groups）"
+  echo "Error: pg_dump failed (ensure postgres is running and user is in docker group: groups)"
   exit 1
 fi
 if [ ! -s "$NAME/backup.sql" ]; then
-  echo "錯誤: backup.sql 為空"
+  echo "Error: backup.sql is empty"
   exit 1
 fi
 
-echo "2. 備份 public/about、cv.pdf..."
+echo "2. Backing up public/about, cv.pdf..."
 mkdir -p "$NAME/public"
 cp -r public/about "$NAME/public/" 2>/dev/null || true
 cp public/cv.pdf "$NAME/public/" 2>/dev/null || true
 
-echo "3. 備份 RustFS（文章圖片）..."
+echo "3. Backing up RustFS (media)..."
 cp -r rustfs-data "$NAME/" 2>/dev/null || true
 
-echo "4. 打包到 $BACKUPS_DIR/ ..."
+echo "4. Archiving to $BACKUPS_DIR/ ..."
 tar -czvf "$BACKUPS_DIR/$NAME.tar.gz" "$NAME"
 
-echo "5. 只保留最新 10 份備份，刪除更舊的..."
+echo "5. Keeping latest 10 backups, removing older ones..."
 ls -t "$BACKUPS_DIR"/backup-*.tar.gz 2>/dev/null | tail -n +11 | xargs -r rm -f
 
-echo "完成: $BACKUPS_DIR/$NAME.tar.gz"
+echo "Done: $BACKUPS_DIR/$NAME.tar.gz"

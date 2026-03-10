@@ -1,15 +1,19 @@
-# Benedict's Personal Website
+# Personal Website Platform
 
-Production-ready personal website platform with a commercial-style dashboard and visual editing workflow for non-technical users.
+[![Next.js](https://img.shields.io/badge/Next.js-16-black?logo=next.js)](https://nextjs.org/)
+[![React](https://img.shields.io/badge/React-19-61DAFB?logo=react)](https://reactjs.org/)
+[![Prisma](https://img.shields.io/badge/Prisma-ORM-2D3748?logo=prisma)](https://www.prisma.io/)
+[![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](LICENSE)
 
-Built with Next.js 16, React 19, Prisma, PostgreSQL, and S3-compatible storage.
+Production-ready personal website and CMS with a commercial-style dashboard and visual editor. Next.js 16, React 19, Prisma, PostgreSQL, S3-compatible storage.
 
 ---
 
 ## Core Capabilities
 
 - Public site pages: Home, About, Blog, Contact, and custom pages (`/page/[slug]`).
-- Dashboard management for site settings, content pages, posts, tags, media, analytics, audit logs, and setup.
+- **Site settings** (Dashboard → Content → Site settings): site name, logo, favicon, meta, navbar, footer, copyright, social links, OG image, Google Analytics. See [Site settings](docs/SITE_SETTINGS.md) for what each option affects.
+- Dashboard management for site settings, content pages, home sections (add/remove/reorder), posts, tags, media, analytics, audit logs, and setup.
 - Editor workflow with `Save Draft`, `Publish`, undo/redo shortcuts, local recovery, and server revision history.
 - Shareable preview links for unpublished content.
 - Scheduled publishing for custom pages.
@@ -49,13 +53,16 @@ Then open:
 
 ## Documentation
 
-- Setup: [`docs/GETTING_STARTED.md`](docs/GETTING_STARTED.md)
-- Environment variables: [`docs/ENVIRONMENT.md`](docs/ENVIRONMENT.md)
-- System architecture: [`docs/ARCHITECTURE.md`](docs/ARCHITECTURE.md)
-- Dashboard user guide: [`docs/DASHBOARD_USER_GUIDE.md`](docs/DASHBOARD_USER_GUIDE.md)
-- Custom pages and scheduling: [`docs/CUSTOM_PAGES.md`](docs/CUSTOM_PAGES.md)
-- Feature implementation status: [`docs/FEATURE_STATUS.md`](docs/FEATURE_STATUS.md)
-- Deploy and operations: [`docs/DEPLOYMENT.md`](docs/DEPLOYMENT.md), [`docs/MAINTENANCE.md`](docs/MAINTENANCE.md), [`docs/RUNBOOK.md`](docs/RUNBOOK.md)
+| Doc | Description |
+|-----|-------------|
+| [GETTING_STARTED.md](docs/GETTING_STARTED.md) | First-time setup |
+| [ENVIRONMENT.md](docs/ENVIRONMENT.md) | Environment variables |
+| [ARCHITECTURE.md](docs/ARCHITECTURE.md) | System design and data flow |
+| [API.md](docs/API.md) | REST API reference |
+| [DASHBOARD_USER_GUIDE.md](docs/DASHBOARD_USER_GUIDE.md) | Dashboard usage |
+| [CUSTOM_PAGES.md](docs/CUSTOM_PAGES.md) | Custom pages and scheduling |
+| [SITE_SETTINGS.md](docs/SITE_SETTINGS.md) | What site settings affect (navbar, footer, meta, GA) |
+| [DEPLOYMENT.md](docs/DEPLOYMENT.md), [MAINTENANCE.md](docs/MAINTENANCE.md), [RUNBOOK.md](docs/RUNBOOK.md) | Deploy and operations |
 
 ---
 

@@ -18,6 +18,7 @@ export function TableOfContents({ content }: TableOfContentsProps) {
   const [headings, setHeadings] = useState<TocItem[]>([]);
   const [activeId, setActiveId] = useState<string>("");
   const [expandedH2, setExpandedH2] = useState<string>("");
+  const [sectionProgress, setSectionProgress] = useState(0);
 
   // Read headings from DOM after markdown has rendered
   useEffect(() => {
@@ -53,7 +54,7 @@ export function TableOfContents({ content }: TableOfContentsProps) {
     return () => clearTimeout(timer);
   }, [content]);
 
-  // Scroll listener to highlight current heading
+  // Scroll listener to highlight current heading and section progress
   useEffect(() => {
     if (headings.length === 0) return;
 
@@ -67,26 +68,31 @@ export function TableOfContents({ content }: TableOfContentsProps) {
 
       // Find heading to highlight
       let currentId = "";
+      let currentIndex = 0;
       for (let i = headingElements.length - 1; i >= 0; i--) {
         if (scrollPosition >= headingElements[i].offsetTop) {
           currentId = headingElements[i].id;
+          currentIndex = i;
           break;
         }
       }
 
       setActiveId(currentId || headings[0]?.id || "");
 
+      // Section progress: 0–100% through the list
+      const progress = headingElements.length > 1
+        ? Math.round((currentIndex / (headingElements.length - 1)) * 100)
+        : 100;
+      setSectionProgress(progress);
+
       // Expand h2 based on activeId
       const activeHeading = headings.find(h => h.id === currentId);
       if (activeHeading) {
         if (activeHeading.level === 2) {
-          // If active is h2, expand it
           setExpandedH2(activeHeading.id);
         } else if (activeHeading.level === 3 && activeHeading.parentId) {
-          // If active is h3, expand its parent h2
           setExpandedH2(activeHeading.parentId);
         } else if (activeHeading.level === 1) {
-          // If active is h1, collapse all
           setExpandedH2("");
         }
       }
@@ -106,9 +112,24 @@ export function TableOfContents({ content }: TableOfContentsProps) {
     <div className="hidden lg:block w-full">
       <div className="max-h-[calc(100vh-5rem)] overflow-y-auto">
         <div className="rounded-lg border border-slate-200 bg-white p-4">
-          <h2 className="mb-4 text-sm font-semibold text-slate-900">
-            On This Page
-          </h2>
+          <div className="mb-4 flex items-center justify-between gap-2">
+            <h2 className="text-sm font-semibold text-slate-900">
+              On This Page
+            </h2>
+            {headings.length > 1 && (
+              <span className="text-xs text-slate-400 tabular-nums" aria-hidden>
+                {sectionProgress}%
+              </span>
+            )}
+          </div>
+          {headings.length > 1 && (
+            <div className="mb-4 h-1 w-full rounded-full bg-slate-100 overflow-hidden">
+              <div
+                className="h-full rounded-full bg-slate-300 transition-all duration-200 ease-out"
+                style={{ width: `${sectionProgress}%` }}
+              />
+            </div>
+          )}
           <nav className="space-y-1">
             {headings.map((heading) => {
               // Show h3 only when parent h2 is expanded
@@ -130,7 +151,7 @@ export function TableOfContents({ content }: TableOfContentsProps) {
                       : "pl-7"
                   } ${
                     activeId === heading.id
-                      ? "text-blue-600 font-semibold border-blue-600 bg-blue-50"
+                      ? "text-slate-900 font-semibold border-slate-700 bg-slate-100"
                       : "text-slate-600 hover:text-slate-900 border-transparent hover:border-slate-300"
                   }`}
                   onClick={(e) => {

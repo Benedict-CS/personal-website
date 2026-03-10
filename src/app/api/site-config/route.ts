@@ -25,13 +25,17 @@ const defaultResponse: SiteConfigResponse = {
   metaDescription: null,
   authorName: null,
   links: DEFAULT_LINKS,
+  socialLinks: {},
   navItems: DEFAULT_NAV_ITEMS,
   footerText: null,
+  copyrightText: null,
   ogImageUrl: null,
+  googleAnalyticsId: null,
   setupCompleted: false,
   templateId: "default",
   themeMode: "light",
   autoAddCustomPagesToNav: true,
+  contactEmail: null,
 };
 
 const SITE_CONFIG_SAFE_SELECT = {
@@ -42,9 +46,13 @@ const SITE_CONFIG_SAFE_SELECT = {
   metaDescription: true,
   authorName: true,
   links: true,
+  socialLinks: true,
   navItems: true,
   footerText: true,
+  copyrightText: true,
   ogImageUrl: true,
+  googleAnalyticsId: true,
+  contactEmail: true,
 } as const;
 
 export async function GET() {
@@ -62,19 +70,23 @@ export async function GET() {
     let templateId = "default";
     const themeMode = "light" as const;
     let autoAddCustomPagesToNav = true;
+    let contactEmail: string | null = null;
     try {
       const extra = await prisma.siteConfig.findUnique({
         where: { id: 1 },
-        select: { setupCompleted: true, templateId: true, themeMode: true, autoAddCustomPagesToNav: true },
+        select: { setupCompleted: true, templateId: true, themeMode: true, autoAddCustomPagesToNav: true, contactEmail: true },
       });
       if (extra) {
         setupCompleted = extra.setupCompleted ?? false;
         templateId = extra.templateId ?? "default";
         autoAddCustomPagesToNav = extra.autoAddCustomPagesToNav ?? true;
+        contactEmail = extra.contactEmail ?? null;
       }
     } catch {
       // New columns not yet migrated
     }
+    const resolvedContactEmail = contactEmail ?? (row as { contactEmail?: string | null }).contactEmail ?? null;
+    const socialLinks = (row.socialLinks as Record<string, string>) ?? {};
     return NextResponse.json(
       {
         siteName: row.siteName,
@@ -84,13 +96,17 @@ export async function GET() {
         metaDescription: row.metaDescription,
         authorName: row.authorName,
         links: { ...DEFAULT_LINKS, ...links },
+        socialLinks: { ...socialLinks },
         navItems,
         footerText: row.footerText ?? null,
+        copyrightText: (row as { copyrightText?: string | null }).copyrightText ?? null,
         ogImageUrl: row.ogImageUrl ?? null,
+        googleAnalyticsId: (row as { googleAnalyticsId?: string | null }).googleAnalyticsId ?? null,
         setupCompleted,
         templateId,
         themeMode,
         autoAddCustomPagesToNav,
+        contactEmail: resolvedContactEmail,
       } satisfies SiteConfigResponse,
       { headers: CACHE_60 }
     );
@@ -111,12 +127,16 @@ export async function PATCH(request: Request) {
     metaDescription,
     authorName,
     links,
+    socialLinks,
     navItems,
     footerText,
+    copyrightText,
     ogImageUrl,
+    googleAnalyticsId,
     setupCompleted,
     templateId,
     autoAddCustomPagesToNav,
+    contactEmail: contactEmailBody,
   } = body;
   const safeNavItems = Array.isArray(navItems)
     ? (navItems as unknown[]).filter((n): n is { label: string; href: string } =>
@@ -136,13 +156,17 @@ export async function PATCH(request: Request) {
         metaDescription: metaDescription ?? null,
         authorName: authorName ?? null,
         links: links && typeof links === "object" ? links : {},
+        socialLinks: socialLinks && typeof socialLinks === "object" ? socialLinks : {},
         navItems: safeNavItems && safeNavItems.length > 0 ? safeNavItems : DEFAULT_NAV_ITEMS,
         footerText: footerText ?? null,
+        copyrightText: copyrightText ?? null,
         ogImageUrl: ogImageUrl ?? null,
+        googleAnalyticsId: typeof googleAnalyticsId === "string" ? googleAnalyticsId : null,
         setupCompleted: setupCompleted === true,
         templateId: typeof templateId === "string" && ["default", "minimal", "card"].includes(templateId) ? templateId : "default",
         themeMode: "light",
         autoAddCustomPagesToNav: autoAddCustomPagesToNav !== false,
+        contactEmail: contactEmailBody ?? null,
         updatedAt: now,
       },
       update: {
@@ -153,13 +177,17 @@ export async function PATCH(request: Request) {
         ...(metaDescription !== undefined && { metaDescription: metaDescription || null }),
         ...(authorName !== undefined && { authorName: authorName || null }),
         ...(links && typeof links === "object" && { links }),
+        ...(socialLinks && typeof socialLinks === "object" && { socialLinks }),
         ...(safeNavItems && safeNavItems.length > 0 && { navItems: safeNavItems }),
         ...(footerText !== undefined && { footerText: footerText || null }),
+        ...(copyrightText !== undefined && { copyrightText: copyrightText || null }),
         ...(ogImageUrl !== undefined && { ogImageUrl: ogImageUrl || null }),
+        ...(typeof googleAnalyticsId === "string" && { googleAnalyticsId }),
         ...(setupCompleted !== undefined && { setupCompleted: setupCompleted === true }),
         ...(typeof templateId === "string" && ["default", "minimal", "card"].includes(templateId) && { templateId }),
         themeMode: "light",
         ...(typeof autoAddCustomPagesToNav === "boolean" && { autoAddCustomPagesToNav }),
+        ...(contactEmailBody !== undefined && { contactEmail: contactEmailBody === "" ? null : contactEmailBody }),
         updatedAt: now,
       },
     });

@@ -1,18 +1,18 @@
 #!/bin/bash
-# 部署腳本（手動或由 CI/CD 呼叫；設 CI=1 時為非互動模式）
+# Deploy script (manual or CI/CD; set CI=1 for non-interactive mode).
 
 set -e
 ROOT="$(cd "$(dirname "$0")/.." && pwd)"
 cd "$ROOT"
 
-echo "🚀 手動部署腳本"
+echo "🚀 Manual deploy"
 echo "================"
 echo ""
 
-# 檢查是否在專案目錄
+# Ensure we are in project directory
 if [ ! -f "docker-compose.yml" ]; then
-    echo "❌ 錯誤：不在專案目錄中"
-    echo "   請在 ~/personal-website 目錄執行此腳本"
+    echo "❌ Error: not in project directory"
+    echo "   Run this script from ~/personal-website"
     exit 1
 fi
 
@@ -23,75 +23,71 @@ if [ -n "${CI:-}" ] || [ -n "${NONINTERACTIVE:-}" ]; then
     git reset --hard origin/main
     git clean -fd
 else
-    # 檢查是否有未提交的變更
+    # Check for uncommitted changes
     if [ -n "$(git status --porcelain)" ]; then
-        echo "⚠️  有未提交的變更："
+        echo "⚠️  Uncommitted changes:"
         git status --short
         echo ""
-        read -p "是否要先提交這些變更？(y/N): " -n 1 -r
+        read -p "Commit these changes first? (y/N): " -n 1 -r
         echo
         if [[ $REPLY =~ ^[Yy]$ ]]; then
-            read -p "提交訊息: " COMMIT_MSG
+            read -p "Commit message: " COMMIT_MSG
             git add .
             git commit -m "$COMMIT_MSG"
-            echo "✅ 已提交"
+            echo "✅ Committed"
         fi
     fi
 
-    # 拉取最新代碼
     echo ""
-    echo "📥 拉取最新代碼..."
+    echo "📥 Pulling latest code..."
     git pull origin main || {
-        echo "⚠️  git pull 失敗，繼續使用本地代碼"
+        echo "⚠️  git pull failed, continuing with local code"
     }
 fi
 
-# 建置 Docker image
+# Build Docker image
 echo ""
-echo "🔨 建置 Docker image..."
+echo "🔨 Building Docker image..."
 sudo docker compose build app
 
-# 確保服務已啟動（migrate 需在 app 容器內執行）
+# Ensure services are up (migrate runs inside app container)
 echo ""
-echo "🔄 確保服務運行中..."
+echo "🔄 Ensuring services are up..."
 sudo docker compose up -d
 
-# 執行資料庫遷移（必須在 app 容器內執行，使用 docker-compose 的 DATABASE_URL）
+# Run database migrations (must run inside app container with compose DATABASE_URL)
 echo ""
-echo "🗄️  執行資料庫遷移..."
+echo "🗄️  Running database migrations..."
 if sudo docker compose exec -T app npx prisma migrate deploy; then
-    echo "✅ 遷移完成"
+    echo "✅ Migrations done"
 else
-    echo "⚠️  遷移失敗或無新遷移，繼續部署（若持續 500 請手動執行 migrate）"
+    echo "⚠️  Migration failed or no new migrations; continuing (if 500 errors persist, run migrate manually)"
 fi
 
-# 重啟 app 以載入新 image
+# Restart app to load new image
 echo ""
-echo "🚀 重啟 app 服務..."
+echo "🚀 Restarting app..."
 sudo docker compose up -d app
 
-# 等待服務啟動
 echo ""
-echo "⏳ 等待服務啟動..."
+echo "⏳ Waiting for app to start..."
 sleep 15
 
-# 檢查服務狀態
 echo ""
-echo "📊 服務狀態："
+echo "📊 Service status:"
 sudo docker compose ps
 
-# 檢查服務是否正常響應
 echo ""
-echo "🔍 檢查服務健康..."
+echo "🔍 Checking health..."
 if curl -f http://localhost:3000 > /dev/null 2>&1; then
-    echo "✅ 服務正常運行！"
+    echo "✅ Service is up."
 else
-    echo "⚠️  服務可能尚未完全啟動，請稍後檢查"
+    echo "⚠️  Service may not be ready yet; check again shortly."
 fi
 
 echo ""
-echo "✅ 部署完成！"
+echo "✅ Deploy complete."
 echo ""
-echo "💡 提示："
-echo "   - 查看日誌: sudo docker compose logs -f app"
-echo "   - 訪問網站: https://benedict.winlab.tw"
+echo "💡 Next:"
+echo "   - Logs: sudo docker compose logs -f app"
+echo "   - Site: https://benedict.winlab.tw"

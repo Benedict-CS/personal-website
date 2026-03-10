@@ -1,20 +1,21 @@
 #!/bin/bash
 
-# Quick build script for small changes
-# Build first (app keeps running), then restart → downtime = restart only (~5–15s)
+# Quick build: NO downtime during build. Only a short downtime when restarting the app.
+# - Step 1: Build new image only. Does NOT stop or restart the running container. Site stays up.
+# - Step 2: Recreate app container (new image). Downtime = only this step (~5–15s until new container is ready).
 
 set -e
 ROOT="$(cd "$(dirname "$0")/.." && pwd)"
 cd "$ROOT"
 
-echo "⚡ Quick build (build first, then restart for minimal downtime)..."
+echo "⚡ Quick build: build first (no downtime), then restart (brief downtime only)..."
 
-# 1) Build a new image while the current app stays online.
-echo "🔨 Building app image with cache (site remains available)..."
+# 1) Build new image only. Running app container is NOT touched. Site remains available.
+echo "🔨 Building app image (current app keeps running, no restart yet)..."
 sudo docker compose build app
 
-# 2) Restart app container (downtime only in this step).
-echo "🔄 Restarting app (expected downtime: ~5-15 seconds)..."
+# 2) Recreate app container with new image. ONLY here does the site have ~5–15s downtime.
+echo "🔄 Restarting app container (downtime only now: ~5-15 seconds)..."
 sudo docker compose up -d app
 
 # 3) Wait for startup.

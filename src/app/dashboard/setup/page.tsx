@@ -22,13 +22,17 @@ const defaults: SiteConfigResponse = {
   metaDescription: null,
   authorName: null,
   links: { email: "", github: "", linkedin: "" },
+  socialLinks: {},
   navItems: DEFAULT_NAV_ITEMS,
   footerText: null,
+  copyrightText: null,
   ogImageUrl: null,
+  googleAnalyticsId: null,
   setupCompleted: false,
   templateId: "default",
   themeMode: "light",
   autoAddCustomPagesToNav: true,
+  contactEmail: null,
 };
 
 const STEPS = [
@@ -49,7 +53,7 @@ export default function SetupWizardPage() {
   const [mediaPickerFor, setMediaPickerFor] = useState<"logo" | "favicon" | null>(null);
 
   useEffect(() => {
-    fetch("/api/site-config")
+    fetch("/api/site-config", { credentials: "include" })
       .then((r) => r.json())
       .then((data) => {
         const merged = { ...defaults, ...data };
@@ -86,13 +90,13 @@ export default function SetupWizardPage() {
   const completeSetup = () => saveAndGo(true);
   const skipWizard = () => saveAndGo(true);
 
-  if (loading) return <p className="text-slate-600">Loading...</p>;
+  if (loading) return <p className="text-[var(--muted-foreground)]">Loading...</p>;
 
   return (
     <div className="max-w-2xl mx-auto space-y-8">
       <div>
-        <h2 className="text-2xl font-bold text-slate-900">First-time setup</h2>
-        <p className="text-slate-600 mt-1">A few steps to get your site ready. You can change any of this later in Content → Site settings.</p>
+        <h2 className="text-2xl font-bold text-[var(--foreground)]">First-time setup</h2>
+        <p className="text-[var(--muted-foreground)] mt-1">A few steps to get your site ready. You can change any of this later in Content → Site settings.</p>
       </div>
 
       <div className="flex gap-2 flex-wrap">
@@ -100,7 +104,7 @@ export default function SetupWizardPage() {
           <span
             key={s.id}
             className={`inline-flex items-center gap-1 rounded-full px-3 py-1 text-sm font-medium ${
-              step === s.id ? "bg-slate-900 text-white" : step > s.id ? "bg-slate-200 text-slate-700" : "bg-slate-100 text-slate-500"
+              step === s.id ? "bg-[var(--primary)] text-[var(--primary-foreground)]" : step > s.id ? "bg-[var(--muted)] text-[var(--foreground)]" : "bg-[var(--muted)]/60 text-[var(--muted-foreground)]"
             }`}
           >
             {step > s.id ? <Check className="h-4 w-4" /> : null}
@@ -172,7 +176,7 @@ export default function SetupWizardPage() {
 
           {step === 3 && (
             <div className="space-y-3">
-              <p className="text-sm text-slate-600">Add the links that appear in the top menu. Drag the handle to change the order.</p>
+              <p className="text-sm text-[var(--muted-foreground)]">Add the links that appear in the top menu. Drag the handle to change the order.</p>
               <NavItemsEditor
                 items={config.navItems}
                 onChange={(navItems) => setConfig((c) => ({ ...c, navItems }))}
@@ -205,7 +209,7 @@ export default function SetupWizardPage() {
 
           {step === 5 && (
             <div className="space-y-4">
-              <p className="text-slate-600">Your site name is <strong>{config.siteName}</strong> and you have {config.navItems.length} menu links. Everything will be saved; you can change it anytime in <Link href="/dashboard/content/site" className="text-blue-600 underline">Site settings</Link> or open the <Link href="/editor/home" className="text-blue-600 underline">visual editor</Link>.</p>
+              <p className="text-[var(--muted-foreground)]">Your site name is <strong>{config.siteName}</strong> and you have {config.navItems.length} menu links. Everything will be saved; you can change it anytime in <Link href="/dashboard/content/site" className="text-blue-600 underline">Site settings</Link> or open the <Link href="/editor/home" className="text-blue-600 underline">visual editor</Link>.</p>
               {error && <p className="text-red-600 text-sm">{error}</p>}
             </div>
           )}

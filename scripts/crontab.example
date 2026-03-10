@@ -1,9 +1,9 @@
 # Personal website: daily at 0:00 (midnight)
 # 1. Install cron: sudo apt install -y cron && sudo systemctl enable cron && sudo systemctl start cron
-# 2. Install: crontab -e  then paste the lines below (adjust PROJECT_DIR)
+# 2. Install: crontab -e then paste the lines below (adjust PROJECT_DIR)
 # 3. mkdir -p "$PROJECT_DIR/logs"
-# 4. Backup 需目前使用者在 docker 群組: sudo usermod -aG docker $USER (登出再登入)
-# 5. Git push 需可免密 push: 用 SSH key (ssh -T git@github.com 測試) 或 credential helper
+# 4. Backup requires user in docker group: sudo usermod -aG docker $USER (then log out and back in)
+# 5. Git push must work without password: use SSH key (test: ssh -T git@github.com) or credential helper
 # Manual run: ./scripts/run-cron-jobs.sh   or   ./scripts/run-cron-jobs.sh --no-clean
 
 PROJECT_DIR=/home/ben/personal-website

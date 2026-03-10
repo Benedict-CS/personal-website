@@ -20,7 +20,7 @@ if ./scripts/backup-data.sh >> logs/backup.log 2>&1; then
   echo "Backup done."
 else
   log_time "Backup FAILED (exit $?)" >> logs/backup.log
-  echo "Backup failed. See logs/backup.log (確認 docker 容器在跑、使用者已加進 docker 群組)"
+  echo "Backup failed. See logs/backup.log (ensure Docker is running and user is in docker group)"
 fi
 
 echo "=== 2. Git add / commit / push ==="
@@ -36,7 +36,7 @@ else
     echo "Git push done."
   else
     log_time "Git push FAILED (exit $?)" >> logs/git-push.log
-    echo "Git push failed. See logs/git-push.log (cron 需設定 SSH key 或 credential)"
+    echo "Git push failed. See logs/git-push.log (cron needs SSH key or credential configured)"
     exit 1
   fi
 fi

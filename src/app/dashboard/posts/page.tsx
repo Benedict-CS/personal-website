@@ -76,7 +76,7 @@ export default async function PostsPage({ searchParams }: PostsPageProps) {
   return (
     <div className="space-y-6">
       <div className="flex flex-wrap items-center justify-between gap-4">
-        <h2 className="text-3xl font-bold text-slate-900">Published Posts {total > POSTS_PER_PAGE ? `(${total} total)` : ""}</h2>
+        <h2 className="text-3xl font-bold text-[var(--foreground)]">Published Posts {total > POSTS_PER_PAGE ? `(${total} total)` : ""}</h2>
         <div className="flex items-center gap-4">
           <PostsSearch defaultValue={search} />
           <Link href="/dashboard/posts/new">
@@ -86,16 +86,16 @@ export default async function PostsPage({ searchParams }: PostsPageProps) {
       </div>
 
       {posts.length === 0 ? (
-        <div className="rounded-lg border border-slate-200 bg-white p-12 text-center">
+        <div className="rounded-xl border border-[var(--border)] bg-card p-12 text-center shadow-[var(--shadow-sm)]">
           {search ? (
             <>
-              <p className="mb-2 text-slate-600">No posts match your search.</p>
-              <p className="mb-6 text-sm text-slate-500">Try a different title or slug, or clear the search.</p>
+              <p className="mb-2 text-[var(--foreground)]">No posts match your search.</p>
+              <p className="mb-6 text-sm text-[var(--muted-foreground)]">Try a different title or slug, or clear the search.</p>
             </>
           ) : (
             <>
-              <p className="mb-2 text-slate-600">No posts yet.</p>
-              <p className="mb-6 text-sm text-slate-500">Create your first post to get started.</p>
+              <p className="mb-2 text-[var(--foreground)] font-medium">No posts yet.</p>
+              <p className="mb-6 text-sm text-[var(--muted-foreground)]">Create your first post to get started.</p>
               <Link href="/dashboard/posts/new">
                 <Button>Create New Post</Button>
               </Link>
@@ -121,7 +121,7 @@ export default async function PostsPage({ searchParams }: PostsPageProps) {
                   </Button>
                 </Link>
               ) : null}
-              <span className="text-sm text-slate-600 px-2">
+              <span className="text-sm text-[var(--muted-foreground)] px-2">
                 Page {page} of {totalPages}
               </span>
               {page < totalPages ? (

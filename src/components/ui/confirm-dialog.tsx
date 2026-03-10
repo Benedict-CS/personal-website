@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useRef } from "react";
+import { motion, AnimatePresence } from "framer-motion";
 import { Button } from "@/components/ui/button";
 
 type ConfirmDialogProps = {
@@ -64,31 +65,40 @@ export function ConfirmDialog({
     };
   }, [open, onClose]);
 
-  if (!open) return null;
-
   const handleConfirm = () => {
     onConfirm();
   };
 
   return (
-    <div
-      className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4"
-      role="dialog"
-      aria-modal="true"
-      aria-labelledby="confirm-dialog-title"
-    >
-      <div
-        ref={panelRef}
-        className="w-full max-w-md rounded-lg border border-slate-200 bg-white p-6 shadow-xl"
-        onClick={(e) => e.stopPropagation()}
-      >
-        <h2 id="confirm-dialog-title" className="text-lg font-semibold text-slate-900">
-          {title}
-        </h2>
-        {description && (
-          <p className="mt-2 text-sm text-slate-600">{description}</p>
-        )}
-        <div className="mt-6 flex justify-end gap-2">
+    <AnimatePresence>
+      {open && (
+        <motion.div
+          initial={{ opacity: 0 }}
+          animate={{ opacity: 1 }}
+          exit={{ opacity: 0 }}
+          transition={{ duration: 0.15 }}
+          className="fixed inset-0 z-50 flex items-center justify-center bg-[oklch(0.2_0.02_265/0.4)] backdrop-blur-sm p-4"
+          role="dialog"
+          aria-modal="true"
+          aria-labelledby="confirm-dialog-title"
+          onClick={onClose}
+        >
+          <motion.div
+            ref={panelRef}
+            initial={{ opacity: 0, scale: 0.98 }}
+            animate={{ opacity: 1, scale: 1 }}
+            exit={{ opacity: 0, scale: 0.98 }}
+            transition={{ duration: 0.2, ease: [0.25, 0.46, 0.45, 0.94] }}
+            className="w-full max-w-md rounded-xl border border-[var(--border)] bg-[var(--card)] p-6 shadow-[var(--shadow-lg)]"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <h2 id="confirm-dialog-title" className="text-lg font-semibold text-[var(--foreground)]">
+              {title}
+            </h2>
+            {description && (
+              <p className="mt-2 text-sm text-[var(--muted-foreground)]">{description}</p>
+            )}
+            <div className="mt-6 flex justify-end gap-2">
           <Button variant="outline" onClick={onClose} disabled={loading}>
             {cancelLabel}
           </Button>
@@ -100,8 +110,10 @@ export function ConfirmDialog({
           >
             {loading ? "..." : confirmLabel}
           </Button>
-        </div>
-      </div>
-    </div>
+            </div>
+          </motion.div>
+        </motion.div>
+      )}
+    </AnimatePresence>
   );
 }

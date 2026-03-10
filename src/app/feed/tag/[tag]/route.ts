@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
-import { siteConfig } from "@/config/site";
+import { getSiteConfigForRender } from "@/lib/site-config";
 import { stripMarkdown } from "@/lib/utils";
 
 function escapeCdata(s: string): string {
@@ -14,7 +14,10 @@ export async function GET(
   try {
     const { tag: tagSlug } = await params;
     const fullContent = request.nextUrl.searchParams.get("full") === "1";
-    const baseUrl = siteConfig.url;
+    const config = await getSiteConfigForRender();
+    const baseUrl = config.url;
+    const authorName = config.authorName ?? config.siteName;
+    const authorEmail = config.links?.email ?? "";
 
     const tag = await prisma.tag.findUnique({
       where: { slug: tagSlug },
@@ -65,12 +68,12 @@ export async function GET(
       <pubDate>${pubDate}</pubDate>
       <atom:updated>${updatedDate}</atom:updated>
       <guid isPermaLink="true">${link}</guid>
-      <author>${siteConfig.author.email} (${siteConfig.author.name})</author>${contentEncoded}
+      <author>${authorEmail} (${authorName})</author>${contentEncoded}
     </item>`;
       })
       .join("\n");
 
-    const channelTitle = `${siteConfig.title} — ${tag.name}`;
+    const channelTitle = `${config.metaTitle || config.siteName} — ${tag.name}`;
     const rssXml = `<?xml version="1.0" encoding="UTF-8"?>
 <rss version="2.0" xmlns:atom="http://www.w3.org/2005/Atom" xmlns:content="http://purl.org/rss/1.0/modules/content/">
   <channel>

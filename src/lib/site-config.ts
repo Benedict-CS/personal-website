@@ -1,7 +1,7 @@
 import { unstable_noStore } from "next/cache";
 import { prisma } from "@/lib/prisma";
-import { siteConfig } from "@/config/site";
-import type { NavItem, SiteConfigForRender } from "@/types/site";
+import { siteUrl } from "@/config/site";
+import type { NavItem, SiteConfigForRender, SocialLinksMap } from "@/types/site";
 
 export type { NavItem, SiteConfigForRender } from "@/types/site";
 
@@ -12,26 +12,28 @@ const DEFAULT_NAV: NavItem[] = [
   { label: "Contact", href: "/contact" },
 ];
 
+/** Fallback when no DB row: generic white-label defaults only. */
 const fallback: SiteConfigForRender = {
-  siteName: siteConfig.name,
+  siteName: "My Site",
   logoUrl: null,
   faviconUrl: null,
-  metaTitle: siteConfig.title,
-  metaDescription: siteConfig.description ?? null,
-  authorName: siteConfig.author.name,
-  links: siteConfig.links,
+  metaTitle: "My Site",
+  metaDescription: null,
+  authorName: null,
+  links: {},
+  socialLinks: {},
   navItems: DEFAULT_NAV,
   footerText: null,
-  ogImageUrl: siteConfig.ogImage ?? null,
+  copyrightText: null,
+  ogImageUrl: null,
+  googleAnalyticsId: null,
   setupCompleted: false,
   templateId: "default",
   themeMode: "light",
-  url: siteConfig.url,
+  url: siteUrl,
 };
 
-// Select only columns that exist before migration 20260214000001 (setupCompleted, templateId).
-// This avoids "column does not exist" when production DB has not run the new migration yet.
-const SITE_CONFIG_SAFE_SELECT = {
+const SITE_CONFIG_SELECT = {
   siteName: true,
   logoUrl: true,
   faviconUrl: true,
@@ -39,9 +41,12 @@ const SITE_CONFIG_SAFE_SELECT = {
   metaDescription: true,
   authorName: true,
   links: true,
+  socialLinks: true,
   navItems: true,
   footerText: true,
+  copyrightText: true,
   ogImageUrl: true,
+  googleAnalyticsId: true,
 } as const;
 
 async function mergeCustomPagesIntoNav(navItems: NavItem[]): Promise<NavItem[]> {
@@ -71,33 +76,21 @@ export async function getSiteConfigForRender(): Promise<SiteConfigForRender> {
   try {
     const row = await prisma.siteConfig.findUnique({
       where: { id: 1 },
-      select: SITE_CONFIG_SAFE_SELECT,
+      select: { ...SITE_CONFIG_SELECT, setupCompleted: true, templateId: true, themeMode: true, autoAddCustomPagesToNav: true },
     });
     if (!row) {
       const navItems = await mergeCustomPagesIntoNav(DEFAULT_NAV);
       return { ...fallback, navItems };
     }
     const links = (row.links as Record<string, string>) ?? {};
+    const socialLinks = (row.socialLinks as SocialLinksMap) ?? {};
     let navItems = Array.isArray(row.navItems) && (row.navItems as NavItem[]).length > 0
       ? (row.navItems as NavItem[])
       : DEFAULT_NAV;
-    let setupCompleted = false;
-    let templateId = "default";
+    const setupCompleted = row.setupCompleted ?? false;
+    const templateId = row.templateId ?? "default";
     const themeMode = "light" as const;
-    let autoAddCustomPagesToNav = true;
-    try {
-      const extra = await prisma.siteConfig.findUnique({
-        where: { id: 1 },
-        select: { setupCompleted: true, templateId: true, themeMode: true, autoAddCustomPagesToNav: true },
-      });
-      if (extra) {
-        setupCompleted = extra.setupCompleted ?? false;
-        templateId = extra.templateId ?? "default";
-        autoAddCustomPagesToNav = extra.autoAddCustomPagesToNav ?? true;
-      }
-    } catch {
-      // New columns not yet migrated: assume auto-add is on so custom pages still show
-    }
+    const autoAddCustomPagesToNav = row.autoAddCustomPagesToNav ?? true;
     if (autoAddCustomPagesToNav) {
       navItems = await mergeCustomPagesIntoNav(navItems);
     }
@@ -108,14 +101,17 @@ export async function getSiteConfigForRender(): Promise<SiteConfigForRender> {
       metaTitle: row.metaTitle || fallback.metaTitle,
       metaDescription: row.metaDescription,
       authorName: row.authorName,
-      links: { ...fallback.links, ...links },
+      links: { ...links },
+      socialLinks: { ...socialLinks },
       navItems,
       footerText: row.footerText ?? null,
+      copyrightText: row.copyrightText ?? null,
       ogImageUrl: row.ogImageUrl ?? null,
+      googleAnalyticsId: row.googleAnalyticsId ?? null,
       setupCompleted,
       templateId,
       themeMode,
-      url: siteConfig.url,
+      url: siteUrl,
     };
   } catch {
     return fallback;

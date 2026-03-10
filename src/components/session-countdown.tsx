@@ -30,10 +30,10 @@ export function SessionCountdown({ expiresAt }: { expiresAt: number }) {
     return () => clearInterval(interval);
   }, [expiresAt]);
 
-  if (remaining <= 0) return <span className="text-xs text-amber-700">Session expired</span>;
+  if (remaining <= 0) return <span className="text-xs font-medium text-amber-700">Session expired</span>;
 
   return (
-    <span className="text-xs text-slate-500" title="Session expires in">
+    <span className="text-xs text-[var(--muted-foreground)]" title="Session expires in">
       Session: {formatRemaining(remaining)}
     </span>
   );

@@ -7,22 +7,23 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { stripMarkdown } from "@/lib/utils";
 import { calculateReadingTime, formatReadingTime } from "@/lib/reading-time";
-import { siteConfig } from "@/config/site";
 import { getSiteConfigForRender } from "@/lib/site-config";
+import { HomeCustomMarkdownSection } from "@/components/home-custom-markdown-section";
 
 export const dynamic = "force-dynamic";
 
 export async function generateMetadata(): Promise<Metadata> {
   const config = await getSiteConfigForRender();
+  const description = config.metaDescription ?? "";
   const ogUrl = config.ogImageUrl
     ? (config.ogImageUrl.startsWith("http") ? config.ogImageUrl : new URL(config.ogImageUrl, config.url).toString())
     : undefined;
   return {
     title: "Home",
-    description: siteConfig.description,
+    description: description || undefined,
     openGraph: {
       title: "Home",
-      description: siteConfig.description,
+      description: description || undefined,
       url: config.url,
       ...(ogUrl && { images: [ogUrl] }),
     },
@@ -44,10 +45,12 @@ type HomeContent = {
   ctaSecondaryHref?: string;
   ctaContactText?: string;
   ctaContactHref?: string;
-  /** Section display order on home page. Default: hero, latestPosts, skills */
+  /** Section display order on home page. May include "markdown_1", "markdown_2", etc. */
   sectionOrder?: string[];
   /** Which sections are visible. Default: all true */
   sectionVisibility?: Record<string, boolean>;
+  /** Custom markdown sections (id -> { title?, content }) */
+  customSections?: Record<string, { title?: string; content: string }>;
 };
 
 const defaultHomeContent: HomeContent = {
@@ -84,11 +87,12 @@ export default async function Home() {
   const skills = Array.isArray(homeContent.skills) && homeContent.skills.length > 0
     ? homeContent.skills
     : defaultHomeContent.skills!;
-  const sectionOrder: HomeSectionId[] = Array.isArray(homeContent.sectionOrder) && homeContent.sectionOrder.length > 0
-    ? homeContent.sectionOrder.filter((id): id is HomeSectionId => HOME_SECTION_IDS.includes(id as HomeSectionId))
+  const sectionOrder: string[] = Array.isArray(homeContent.sectionOrder) && homeContent.sectionOrder.length > 0
+    ? homeContent.sectionOrder
     : [...HOME_SECTION_IDS];
   const sectionVisibility = homeContent.sectionVisibility ?? {};
   const visible = (id: string) => sectionVisibility[id] !== false;
+  const customSections = homeContent.customSections ?? {};
 
   const formatDate = (date: Date) => {
     return new Date(date).toLocaleDateString("en-US", {
@@ -108,10 +112,10 @@ export default async function Home() {
 
   const wrapperClass =
     templateId === "minimal"
-      ? "min-h-screen bg-white"
+      ? "min-h-screen bg-[var(--background)]"
       : templateId === "card"
-        ? "min-h-screen bg-slate-100"
-        : "min-h-screen bg-gradient-to-br from-slate-50 via-white to-slate-100";
+        ? "min-h-screen bg-[var(--muted)]"
+        : "min-h-screen bg-gradient-to-br from-[var(--muted)] via-[var(--background)] to-[var(--muted)]";
 
   const heroSection = (
     <section
@@ -120,10 +124,10 @@ export default async function Home() {
       className={`container mx-auto max-w-6xl px-6 ${templateId === "minimal" ? "py-12 md:py-16" : "py-20 md:py-28 lg:py-32"}`}
     >
       <div className="mx-auto max-w-4xl text-center">
-        <h1 className="mb-6 text-4xl font-bold tracking-tight text-slate-900 sm:text-5xl md:text-6xl lg:text-7xl">
+        <h1 className="mb-6 text-4xl font-bold tracking-tight text-[var(--foreground)] sm:text-5xl md:text-6xl lg:text-7xl">
           <span data-inline-field="home.heroTitle">{homeContent.heroTitle ?? defaultHomeContent.heroTitle}</span>
         </h1>
-        <p className="mb-10 text-lg text-slate-600 sm:text-xl md:text-2xl">
+        <p className="mb-10 text-lg text-[var(--muted-foreground)] sm:text-xl md:text-2xl">
           <span data-inline-field="home.heroSubtitle">{homeContent.heroSubtitle ?? defaultHomeContent.heroSubtitle}</span>
         </p>
         <div className="flex flex-col items-center justify-center gap-3 sm:flex-row sm:gap-4">
@@ -156,24 +160,24 @@ export default async function Home() {
   const latestPostsSection = (
     <section key="latestPosts" data-home-section="latestPosts" className="container mx-auto max-w-6xl px-6 py-16">
       <div className="w-full">
-        <h2 className="mb-8 text-3xl font-bold text-slate-900" data-inline-field="home.sectionTitleLatestPosts">
+        <h2 className="mb-8 text-3xl font-bold text-[var(--foreground)]" data-inline-field="home.sectionTitleLatestPosts">
           {homeContent.sectionTitleLatestPosts ?? defaultHomeContent.sectionTitleLatestPosts}
         </h2>
         {latestPosts.length === 0 ? (
-          <div className="rounded-lg border border-slate-200 bg-white p-12 text-center">
-            <p className="text-slate-500">More content coming soon...</p>
+          <div className="rounded-xl border border-[var(--border)] bg-card p-12 text-center shadow-[var(--shadow-sm)]">
+            <p className="text-[var(--muted-foreground)]">More content coming soon...</p>
           </div>
         ) : (
           <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-3">
             {latestPosts.map((post) => (
               <Link key={post.id} href={`/blog/${post.slug}`} className="block focus:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 rounded-xl">
-                <Card className="h-full card-interactive border-slate-200/80 hover:border-slate-300 transition-all duration-200 hover:shadow-lg hover:shadow-slate-200/50">
+                <Card className="h-full border-[var(--border)] shadow-[var(--shadow-sm)] transition-all duration-200 hover:shadow-[var(--shadow-md)] hover:border-[oklch(0.91_0.012_255)]">
                   <CardHeader className="gap-3">
-                    <CardTitle className="line-clamp-2 text-slate-900 leading-relaxed flex items-start gap-1.5">
+                    <CardTitle className="line-clamp-2 text-[var(--foreground)] leading-relaxed flex items-start gap-1.5">
                       {post.pinned && <Pin className="h-4 w-4 mt-0.5 flex-shrink-0 text-amber-500" aria-hidden />}
                       <span>{post.title}</span>
                     </CardTitle>
-                    <div className="flex items-center gap-2 text-sm text-slate-500">
+                    <div className="flex items-center gap-2 text-sm text-[var(--muted-foreground)]">
                       <span>{formatDate(post.createdAt)}</span>
                       <span>•</span>
                       <span>{formatReadingTime(calculateReadingTime(post.content))}</span>
@@ -182,7 +186,7 @@ export default async function Home() {
                       <div className="flex flex-wrap gap-2">
                         {post.tags.map((tag) => (
                           <Link key={tag.id} href={`/blog/tag/${tag.slug}`} className="inline-block">
-                            <Badge variant="secondary" className="text-xs cursor-pointer hover:bg-slate-200 hover:scale-105 transition-all" title={`View all posts tagged "${tag.name}"`}>
+                            <Badge variant="secondary" className="text-xs cursor-pointer hover:bg-[var(--accent)] transition-colors duration-150" title={`View all posts tagged "${tag.name}"`}>
                               {tag.name}
                             </Badge>
                           </Link>
@@ -191,7 +195,7 @@ export default async function Home() {
                     )}
                   </CardHeader>
                   <CardContent>
-                    <p className="text-sm text-slate-600 line-clamp-3 leading-relaxed">
+                    <p className="text-sm text-[var(--muted-foreground)] line-clamp-3 leading-relaxed">
                       {post.description || truncateContent(post.content)}
                     </p>
                   </CardContent>
@@ -207,12 +211,12 @@ export default async function Home() {
   const skillsSection = (
     <section key="skills" data-home-section="skills" className="container mx-auto max-w-6xl px-6 py-16">
       <div className="mx-auto max-w-4xl">
-        <h2 className="mb-8 text-center text-3xl font-bold text-slate-900" data-inline-field="home.sectionTitleSkills">
+        <h2 className="mb-8 text-center text-3xl font-bold text-[var(--foreground)]" data-inline-field="home.sectionTitleSkills">
           {homeContent.sectionTitleSkills ?? defaultHomeContent.sectionTitleSkills}
         </h2>
         <div className="flex flex-wrap justify-center gap-3" data-home-skills-container>
           {skills.map((skill, index) => (
-            <Badge key={`${skill}-${index}`} variant="secondary" className="px-4 py-2 text-sm font-medium text-slate-700">
+            <Badge key={`${skill}-${index}`} variant="secondary" className="px-4 py-2 text-sm font-medium text-[var(--foreground)]">
               <span data-inline-field={`home.skills.${index}`}>{skill}</span>
             </Badge>
           ))}
@@ -221,11 +225,31 @@ export default async function Home() {
     </section>
   );
 
-  const sectionMap = { hero: heroSection, latestPosts: latestPostsSection, skills: skillsSection };
+  const sectionMap: Record<string, React.ReactNode> = {
+    hero: heroSection,
+    latestPosts: latestPostsSection,
+    skills: skillsSection,
+  };
 
   return (
     <div className={wrapperClass}>
-      {sectionOrder.map((id) => visible(id) && sectionMap[id]).filter(Boolean)}
+      {sectionOrder
+        .filter((id) => visible(id))
+        .map((id) => {
+          if (sectionMap[id]) return <div key={id}>{sectionMap[id]}</div>;
+          if (id.startsWith("markdown_") && customSections[id]) {
+            const { title, content } = customSections[id];
+            return (
+              <HomeCustomMarkdownSection
+                key={id}
+                id={id}
+                title={title}
+                content={content ?? ""}
+              />
+            );
+          }
+          return null;
+        })}
     </div>
   );
 }

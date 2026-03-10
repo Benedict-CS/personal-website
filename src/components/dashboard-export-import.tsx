@@ -75,9 +75,9 @@ export function DashboardExportImport() {
             disabled={exporting}
           >
             {exporting ? <Loader2 className="h-4 w-4 animate-spin" /> : <Download className="h-4 w-4" />}
-            {exporting ? "Exporting…" : "Export"}
+            {exporting ? "Exporting…" : "Export posts"}
           </Button>
-          <p className="mt-1 text-xs text-slate-500">Backup or migrate: download all posts and custom pages. Use Import to restore.</p>
+          <p className="mt-1 text-xs text-[var(--muted-foreground)]">Download posts and custom pages as JSON. Use Import posts to restore.</p>
         </CardContent>
       </Card>
       <Card className="min-w-[140px]">
@@ -97,10 +97,10 @@ export function DashboardExportImport() {
             disabled={importing}
           >
             {importing ? <Loader2 className="h-4 w-4 animate-spin" /> : <Upload className="h-4 w-4" />}
-            {importing ? "Importing…" : "Import"}
+            {importing ? "Importing…" : "Import posts"}
           </Button>
-          <p className="mt-1 text-xs text-slate-500">Restore or migrate: upload a JSON from Export to create posts and pages.</p>
-          {importResult && <p className="mt-2 text-xs text-slate-600 line-clamp-3">{importResult}</p>}
+          <p className="mt-1 text-xs text-[var(--muted-foreground)]">Upload a JSON file from Export posts to create posts and pages.</p>
+          {importResult && <p className="mt-2 text-xs text-[var(--foreground)] line-clamp-3">{importResult}</p>}
         </CardContent>
       </Card>
     </>

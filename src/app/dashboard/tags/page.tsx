@@ -34,7 +34,7 @@ export default function TagsPage() {
   const [mergeMessage, setMergeMessage] = useState<{ type: "success" | "error"; text: string } | null>(null);
 
   useEffect(() => {
-    fetch("/api/tags?all=1")
+    fetch("/api/tags?all=1", { credentials: "include" })
       .then((r) => r.json())
       .then((data) => setAllTags(Array.isArray(data) ? data : []))
       .catch(() => setAllTags([]));
@@ -52,6 +52,7 @@ export default function TagsPage() {
     try {
       const response = await fetch("/api/tags/cleanup", {
         method: "POST",
+        credentials: "include",
       });
 
       if (!response.ok) {
@@ -77,6 +78,7 @@ export default function TagsPage() {
       const res = await fetch("/api/tags/merge", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
+        credentials: "include",
         body: JSON.stringify({ fromTagId, toTagId }),
       });
       const data = await res.json().catch(() => ({}));

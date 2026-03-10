@@ -364,7 +364,7 @@ export function ImmersivePageEditor({ payload, isLoggedIn }: { payload: EditorPa
       )}
 
       {isLoggedIn && (
-        <div className="fixed bottom-6 right-6 z-50 flex items-center gap-3 rounded-xl border border-slate-300 bg-white/95 p-3 shadow-xl backdrop-blur">
+        <div className="fixed bottom-6 right-6 z-50 flex items-center gap-3 rounded-xl border border-[var(--border)] bg-[var(--glass-bg)] p-3 shadow-[var(--glass-shadow-hover)] backdrop-blur-xl">
           <Link href={`/${payload.slug === "home" ? "" : payload.slug}`} target="_blank">
             <Button variant="outline" size="sm" className="gap-2">
               <Globe className="h-4 w-4" />
@@ -375,7 +375,7 @@ export function ImmersivePageEditor({ payload, isLoggedIn }: { payload: EditorPa
             <Save className="h-4 w-4" />
             {saving ? "Saving..." : "Save & Publish"}
           </Button>
-          {status ? <span className="text-xs text-slate-600">{status}</span> : null}
+          {status ? <span className="text-xs text-[var(--muted-foreground)]">{status}</span> : null}
         </div>
       )}
 

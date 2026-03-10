@@ -8,7 +8,7 @@ import { ThemeApplier } from "@/components/theme-applier";
 import { AnalyticsBeacon } from "@/components/analytics-beacon";
 import { RssAutodiscovery } from "@/components/rss-autodiscovery";
 import { FloatingEditButton } from "@/components/floating-edit-button";
-import { siteConfig } from "@/config/site";
+import { GoogleAnalyticsScript } from "@/components/google-analytics-script";
 import { getSiteConfigForRender } from "@/lib/site-config";
 
 const geistSans = Geist({
@@ -23,13 +23,15 @@ const geistMono = Geist_Mono({
 
 export async function generateMetadata(): Promise<Metadata> {
   const config = await getSiteConfigForRender();
+  const title = config.metaTitle || config.siteName;
+  const description = config.metaDescription ?? "";
   return {
     metadataBase: new URL(config.url),
     title: {
-      default: config.metaTitle || siteConfig.title,
+      default: title,
       template: `%s | ${config.siteName}`,
     },
-    description: config.metaDescription ?? siteConfig.description,
+    description: description || undefined,
     keywords: [
       "Website Builder",
       "WYSIWYG",
@@ -40,16 +42,15 @@ export async function generateMetadata(): Promise<Metadata> {
       "Next.js",
       "TypeScript",
       "Prisma",
-      "Next.js",
     ],
-    authors: [{ name: config.authorName ?? siteConfig.author.name, url: config.links?.linkedin }],
-    creator: config.authorName ?? siteConfig.author.name,
+    authors: config.authorName ? [{ name: config.authorName, url: config.links?.linkedin }] : undefined,
+    creator: config.authorName ?? undefined,
     openGraph: {
       type: "website",
       locale: "en_US",
       url: config.url,
-      title: config.metaTitle || siteConfig.title,
-      description: config.metaDescription ?? siteConfig.description,
+      title,
+      description: description || undefined,
       siteName: config.siteName,
       ...(config.ogImageUrl && {
         images: [
@@ -59,9 +60,8 @@ export async function generateMetadata(): Promise<Metadata> {
     },
     twitter: {
       card: "summary_large_image",
-      title: config.metaTitle || siteConfig.title,
-      description: config.metaDescription ?? siteConfig.description,
-      creator: "@sitebuilder",
+      title,
+      description: description || undefined,
       ...(config.ogImageUrl && {
         images: [
           config.ogImageUrl.startsWith("http") ? config.ogImageUrl : new URL(config.ogImageUrl, config.url).toString(),
@@ -105,19 +105,23 @@ export default async function RootLayout({
         data-template={siteConfigForRender.templateId ?? "default"}
       >
         <ThemeApplier themeMode={siteConfigForRender.themeMode ?? "light"} />
+        {siteConfigForRender.googleAnalyticsId && (
+          <GoogleAnalyticsScript measurementId={siteConfigForRender.googleAnalyticsId} />
+        )}
         <Providers>
           <RssAutodiscovery />
           <AnalyticsBeacon />
-          <a
-            href="#main-content"
-            className="skip-link"
-          >
+          <a href="#main-content" className="skip-link">
             Skip to main content
           </a>
-          <Navbar siteConfig={siteConfigForRender} />
+          <div data-zen-hide>
+            <Navbar siteConfig={siteConfigForRender} />
+          </div>
           <main id="main-content" className="flex flex-1 flex-col min-h-0 main-fade-in">{children}</main>
-          <FloatingEditButton />
-          <Footer siteConfig={siteConfigForRender} />
+          <div data-zen-hide><FloatingEditButton /></div>
+          <div data-zen-hide>
+            <Footer siteConfig={siteConfigForRender} />
+          </div>
         </Providers>
       </body>
     </html>

@@ -59,10 +59,10 @@ export async function POST() {
       return [".jpg", ".jpeg", ".png", ".gif", ".webp"].includes(ext);
     });
 
-    // 3. Find unused files
+    // 3. Find unused files (not referenced in any About config)
     const unusedFiles = imageFiles.filter((file) => !usedFiles.has(file));
 
-    // 4. Delete unused files
+    // 4. Delete unused files from disk
     const deletedFiles: string[] = [];
     const errors: string[] = [];
 

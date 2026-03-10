@@ -1,10 +1,10 @@
 import { MetadataRoute } from "next";
 import { prisma } from "@/lib/prisma";
-import { siteConfig } from "@/config/site";
+import { siteUrl } from "@/config/site";
 
 export const dynamic = "force-dynamic";
 
-const baseUrl = siteConfig.url;
+const baseUrl = siteUrl;
 
 /** Split sitemap: 0 = static + custom pages, 1 = blog posts */
 export async function generateSitemaps() {

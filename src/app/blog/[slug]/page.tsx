@@ -19,8 +19,8 @@ import { PublicBreadcrumbs } from "@/components/public-breadcrumbs";
 import { stripMarkdown } from "@/lib/utils";
 import { Pencil } from "lucide-react";
 import { calculateReadingTime, formatReadingTime } from "@/lib/reading-time";
-import { siteConfig } from "@/config/site";
 import { getSiteConfigForRender } from "@/lib/site-config";
+import { ZenModeProvider, ZenModeButton, ZenModeExitButton } from "@/components/zen-mode";
 
 export const revalidate = 60;
 
@@ -59,11 +59,8 @@ export async function generateMetadata({
   const config = await getSiteConfigForRender();
   const description = stripMarkdown(post.content).substring(0, 160) + "...";
   const canonicalUrl = `${config.url}/blog/${slug}`;
-  const ogUrl = config.ogImageUrl
-    ? (config.ogImageUrl.startsWith("http") ? config.ogImageUrl : new URL(config.ogImageUrl, config.url).toString())
-    : undefined;
-
   const tagNames = post.tags.map((t) => t.name).filter(Boolean);
+
   return {
     title: post.title,
     description: description,
@@ -75,13 +72,12 @@ export async function generateMetadata({
       url: canonicalUrl,
       type: "article",
       publishedTime: post.createdAt.toISOString(),
-      ...(ogUrl && { images: [{ url: ogUrl, width: 1200, height: 630, alt: post.title }] }),
+      images: [{ url: `${config.url}/blog/${slug}/opengraph-image`, width: 1200, height: 630, alt: post.title }],
     },
     twitter: {
       card: "summary_large_image",
       title: post.title,
       description: description,
-      ...(ogUrl && { images: [ogUrl] }),
     },
   };
 }
@@ -175,11 +171,11 @@ export default async function BlogPostPage({
     dateModified: post.updatedAt.toISOString(),
     author: {
       "@type": "Person",
-      name: siteConfig.author.name,
+      name: configForRender.authorName ?? configForRender.siteName,
     },
     publisher: {
       "@type": "Organization",
-      name: siteConfig.name,
+      name: configForRender.siteName,
       ...(publisherLogoUrl && {
         logo: { "@type": "ImageObject", url: publisherLogoUrl },
       }),
@@ -203,9 +199,10 @@ export default async function BlogPostPage({
       />
       <div className="container mx-auto max-w-[90rem] px-4 py-12">
       <PublicBreadcrumbs items={[{ label: "Home", href: "/" }, { label: "Blog", href: "/blog" }, { label: post.title }]} />
+      <ZenModeProvider>
       <div className="grid grid-cols-1 gap-10 lg:grid-cols-[1fr_250px]">
         {/* Main content */}
-        <div className="min-w-0">
+        <div data-zen-root className="min-w-0">
           <Card>
             <CardContent className="pt-6">
               <div className="space-y-6 overflow-hidden">
@@ -234,12 +231,14 @@ export default async function BlogPostPage({
                     </div>
                   )}
 
-                  {/* Share buttons */}
-                  <ShareButtons
-                    title={post.title}
-                    url={`/blog/${post.slug}`}
-                    description={stripMarkdown(post.content).substring(0, 100)}
-                  />
+                  <div className="flex flex-wrap items-center gap-2">
+                    <ShareButtons
+                      title={post.title}
+                      url={`/blog/${post.slug}`}
+                      description={stripMarkdown(post.content).substring(0, 100)}
+                    />
+                    <ZenModeButton />
+                  </div>
 
                   {/* Edit button for logged in users */}
                   {session && (
@@ -325,6 +324,7 @@ export default async function BlogPostPage({
               </div>
             </CardContent>
           </Card>
+          <ZenModeExitButton />
         </div>
 
         {/* TOC sidebar */}
@@ -332,6 +332,7 @@ export default async function BlogPostPage({
           <TableOfContents content={post.content} />
         </aside>
       </div>
+      </ZenModeProvider>
       <BackToTop />
     </div>
     </>

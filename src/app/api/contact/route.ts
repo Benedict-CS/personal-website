@@ -1,19 +1,14 @@
 import { NextRequest, NextResponse } from "next/server";
 import { Resend } from "resend";
 import nodemailer from "nodemailer";
-import { siteConfig } from "@/config/site";
 import { checkRateLimit, getClientIP } from "@/lib/rate-limit";
+import { prisma } from "@/lib/prisma";
 
-const RECIPIENT = process.env.CONTACT_EMAIL || siteConfig.author.email;
 const CC = process.env.CONTACT_CC ? process.env.CONTACT_CC.split(",").map((e) => e.trim()).filter(Boolean) : undefined;
 const BCC = process.env.CONTACT_BCC ? process.env.CONTACT_BCC.split(",").map((e) => e.trim()).filter(Boolean) : undefined;
 
-// Option 1: Resend (API key) — https://resend.com
-const resend = process.env.RESEND_API_KEY
-  ? new Resend(process.env.RESEND_API_KEY)
-  : null;
+const resend = process.env.RESEND_API_KEY ? new Resend(process.env.RESEND_API_KEY) : null;
 
-// Option 2: SMTP (Gmail, Outlook, etc.) — no API key needed, use your email app password
 function getSmtpTransporter() {
   const host = process.env.SMTP_HOST;
   const port = Number(process.env.SMTP_PORT) || 587;
@@ -24,6 +19,23 @@ function getSmtpTransporter() {
 }
 
 const smtpTransporter = getSmtpTransporter();
+
+/**
+ * Resolve the recipient for contact form emails: tenant contactEmail from DB, then footer/author email, then env fallback.
+ */
+async function getContactRecipient(): Promise<string | null> {
+  const row = await prisma.siteConfig.findUnique({
+    where: { id: 1 },
+    select: { contactEmail: true, links: true, tenantSiteId: true },
+  });
+  if (!row) return process.env.CONTACT_EMAIL ?? null;
+  const contactEmail = (row as { contactEmail?: string | null }).contactEmail ?? null;
+  if (contactEmail?.trim()) return contactEmail.trim();
+  const links = (row.links as Record<string, string>) ?? {};
+  const footerEmail = links.email?.trim();
+  if (footerEmail) return footerEmail;
+  return process.env.CONTACT_EMAIL ?? null;
+}
 
 export async function POST(request: NextRequest) {
   const ip = getClientIP(request);
@@ -46,16 +58,49 @@ export async function POST(request: NextRequest) {
     }
     const rateLimitHeaders = { "X-RateLimit-Remaining": String(remaining - 1) };
 
+    const configRow = await prisma.siteConfig.findUnique({
+      where: { id: 1 },
+      select: { tenantSiteId: true, contactEmail: true, links: true },
+    });
+    const tenantSiteId = configRow?.tenantSiteId ?? null;
+
+    if (tenantSiteId) {
+      await prisma.formSubmission.create({
+        data: {
+          siteId: tenantSiteId,
+          pageSlug: "contact",
+          formName: "contact",
+          payload: {
+            name: name.trim(),
+            email: email.trim(),
+            subject: subject?.trim() ?? "",
+            message: message.trim(),
+          },
+        },
+      });
+    }
+
+    const recipient = await getContactRecipient();
+    if (!recipient) {
+      return NextResponse.json(
+        {
+          error:
+            "Contact form is not configured. Set a contact email in Dashboard → Content → Site settings → Contact form, or set CONTACT_EMAIL in .env.",
+        },
+        { status: 503 }
+      );
+    }
+
     const subjectLine = subject?.trim() || `Message from ${name.trim()}`;
     const textBody = `From: ${name.trim()} <${email.trim()}>\n\n${message.trim()}`;
+    const visitorEmail = email.trim();
 
-    // Prefer Resend if configured
     if (resend) {
       const from = process.env.RESEND_FROM_EMAIL || "onboarding@resend.dev";
       const { data, error } = await resend.emails.send({
         from,
-        to: RECIPIENT,
-        replyTo: email,
+        to: recipient,
+        replyTo: visitorEmail,
         cc: CC,
         bcc: BCC,
         subject: subjectLine,
@@ -71,13 +116,12 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ success: true, id: data?.id }, { headers: rateLimitHeaders });
     }
 
-    // Fallback: SMTP (Gmail, Outlook, etc.)
     if (smtpTransporter) {
       const from = process.env.SMTP_FROM || process.env.SMTP_USER || "noreply@localhost";
       await smtpTransporter.sendMail({
         from,
-        to: RECIPIENT,
-        replyTo: email,
+        to: recipient,
+        replyTo: visitorEmail,
         cc: CC,
         bcc: BCC,
         subject: subjectLine,
@@ -86,7 +130,6 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ success: true }, { headers: rateLimitHeaders });
     }
 
-    // Neither configured
     console.error("Contact form: neither RESEND_API_KEY nor SMTP_* configured.");
     return NextResponse.json(
       {

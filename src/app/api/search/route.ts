@@ -2,7 +2,6 @@ import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { Prisma } from "@prisma/client";
 import { stripMarkdown } from "@/lib/utils";
-import { siteConfig } from "@/config/site";
 
 const SNIPPET_RADIUS = 80;
 const MAX_SNIPPETS_PER_POST = 10;
@@ -56,7 +55,7 @@ const STATIC_PAGES: { path: string; title: string; searchableText: string }[] = 
     title: "About",
     searchableText: [
       "About",
-      siteConfig.name,
+      "My Site",
       "Education",
       "M.S. in Computer Science",
       "NYCU",

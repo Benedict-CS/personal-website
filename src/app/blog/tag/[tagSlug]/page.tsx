@@ -7,7 +7,7 @@ import { Badge } from "@/components/ui/badge";
 import { Pin } from "lucide-react";
 import { stripMarkdown } from "@/lib/utils";
 import { calculateReadingTime, formatReadingTime } from "@/lib/reading-time";
-import { siteConfig } from "@/config/site";
+import { getSiteConfigForRender } from "@/lib/site-config";
 
 export const dynamic = "force-dynamic";
 
@@ -18,19 +18,17 @@ export async function generateMetadata({
 }): Promise<Metadata> {
   const { tagSlug } = await params;
   const decodedSlug = decodeURIComponent(tagSlug);
-  
-  const tag = await prisma.tag.findUnique({
-    where: { slug: decodedSlug },
-  });
+  const [tag, config] = await Promise.all([
+    prisma.tag.findUnique({ where: { slug: decodedSlug } }),
+    getSiteConfigForRender(),
+  ]);
 
   if (!tag) {
-    return {
-      title: "Tag Not Found",
-    };
+    return { title: "Tag Not Found" };
   }
 
   return {
-    title: `Tag: ${tag.name} | ${siteConfig.name}`,
+    title: `Tag: ${tag.name} | ${config.siteName}`,
     description: `All posts tagged with "${tag.name}"`,
   };
 }

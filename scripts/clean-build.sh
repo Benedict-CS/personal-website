@@ -1,56 +1,56 @@
 #!/bin/bash
 
-# Clean build script for personal-website
-# 完整乾淨建置（清除所有快取）
+# Clean build: full rebuild with no cache. SITE IS DOWN for the whole duration (down → build → up).
+# For minimal downtime use quick-build.sh instead (build while app runs, then restart only).
 
 set -e
 ROOT="$(cd "$(dirname "$0")/.." && pwd)"
 cd "$ROOT"
 
-echo "🧹 開始乾淨建置..."
+echo "🧹 Clean build (site will be down until build and startup finish)..."
 
-# 1. 停止所有容器
-echo "📦 停止所有容器..."
+# 1. Stop all containers
+echo "📦 Stopping all containers..."
 sudo docker compose down
 
-# 2. 移除舊的 app image
-echo "🗑️  移除舊的 app image..."
+# 2. Remove old app image
+echo "🗑️  Removing old app image..."
 sudo docker rmi personal-website-app 2>/dev/null || true
 
-# 3. 清除建置快取
-echo "🧹 清除建置快取..."
+# 3. Prune build cache
+echo "🧹 Pruning build cache..."
 sudo docker builder prune -f
 
-# 4. 不使用快取建置
-echo "🔨 建置 app（無快取）..."
+# 4. Build app with no cache
+echo "🔨 Building app (no cache)..."
 sudo docker compose build --no-cache app
 
-# 5. 初始化 RustFS（如果需要）
+# 5. Initialize RustFS if needed
 if [ ! -d "./rustfs-data" ]; then
-    echo "🔧 初始化 RustFS..."
+    echo "🔧 Initializing RustFS..."
     ./scripts/init-rustfs.sh
 fi
 
-# 6. 啟動所有服務
-echo "🚀 啟動所有服務..."
+# 6. Start all services
+echo "🚀 Starting all services..."
 sudo docker compose up -d
 
-# 7. 等待服務健康
-echo "⏳ 等待服務健康..."
+# 7. Wait for services to be healthy
+echo "⏳ Waiting for services to be healthy..."
 sleep 20
 
-# 8. 檢查服務狀態
-echo "📊 服務狀態:"
+# 8. Check service status
+echo "📊 Service status:"
 sudo docker compose ps
 
-# 9. 顯示 app 日誌
-echo "📋 最近 app 日誌:"
+# 9. Show app logs
+echo "📋 Recent app logs:"
 sudo docker compose logs app --tail 20
 
 echo ""
-echo "✅ 乾淨建置完成！"
+echo "✅ Clean build completed."
 echo ""
-echo "💡 下一步："
-echo "   - 檢查服務健康: sudo docker compose ps"
-echo "   - 查看日誌: sudo docker compose logs -f app"
-echo "   - 訪問網站: http://localhost:3000"
+echo "💡 Next steps:"
+echo "   - Check health: sudo docker compose ps"
+echo "   - Tail logs: sudo docker compose logs -f app"
+echo "   - Open site: http://localhost:3000"

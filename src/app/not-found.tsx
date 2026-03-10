@@ -1,7 +1,13 @@
+import type { Metadata } from "next";
 import Link from "next/link";
 import { Button } from "@/components/ui/button";
-import { siteConfig } from "@/config/site";
+import { siteUrl } from "@/config/site";
 import { Search, Home, BookOpen, User, Mail } from "lucide-react";
+
+export const metadata: Metadata = {
+  title: "Page not found",
+  robots: { index: false, follow: false },
+};
 
 export default function NotFound() {
   return (
@@ -42,7 +48,7 @@ export default function NotFound() {
         </Button>
       </div>
       <p className="mt-10 text-sm text-slate-500">
-        {siteConfig.name} · {siteConfig.url}
+        My Site · {siteUrl}
       </p>
     </div>
   );

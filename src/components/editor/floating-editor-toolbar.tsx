@@ -104,12 +104,25 @@ export function FloatingEditorToolbar({ slug }: Props) {
     });
   };
 
+  const GRID_SIZE = 16;
+
+  const snapToGrid = (value: number, min: number, max: number) => {
+    const snapped = Math.round(value / GRID_SIZE) * GRID_SIZE;
+    return Math.max(min, Math.min(max, snapped));
+  };
+
   const endDrag = (event: React.PointerEvent<HTMLDivElement>) => {
     if (event.currentTarget.hasPointerCapture(event.pointerId)) {
       event.currentTarget.releasePointerCapture(event.pointerId);
     }
     dragRef.current = null;
     setDragging(false);
+    const maxX = Math.max(8, window.innerWidth - 360);
+    const maxY = Math.max(8, window.innerHeight - 220);
+    setPosition((prev) => ({
+      x: snapToGrid(prev.x, 8, maxX),
+      y: snapToGrid(prev.y, 8, maxY),
+    }));
   };
 
   const persist = async (publish: boolean) => {
@@ -147,11 +160,11 @@ export function FloatingEditorToolbar({ slug }: Props) {
     <>
       <div
         data-testid="floating-editor-toolbar"
-        className="fixed z-[80] w-[340px] rounded-xl border border-slate-300 bg-white shadow-xl"
+        className="fixed z-[80] w-[340px] rounded-xl border border-[var(--border)] bg-[var(--glass-bg)] shadow-[var(--glass-shadow-hover)] backdrop-blur-xl"
         style={{ left: `${position.x}px`, top: `${position.y}px` }}
       >
         <div
-          className={`cursor-move rounded-t-xl border-b border-slate-200 bg-slate-100 px-3 py-2 text-sm font-semibold text-slate-800 ${
+          className={`cursor-move rounded-t-xl border-b border-[var(--border)] bg-[var(--muted)]/60 px-3 py-2 text-sm font-semibold text-[var(--foreground)] ${
             dragging ? "select-none" : ""
           }`}
           onPointerDown={startDrag}
@@ -161,7 +174,7 @@ export function FloatingEditorToolbar({ slug }: Props) {
           Editor mode: {slug}
         </div>
         <div className="space-y-3 p-3">
-          <p className="text-xs text-slate-600">
+          <p className="text-xs text-[var(--muted-foreground)]">
             Directly edit text on the page. Click an image to replace it from Media.
           </p>
           <div className="flex items-center gap-2">
@@ -185,7 +198,7 @@ export function FloatingEditorToolbar({ slug }: Props) {
               This page is editable in canvas mode, but structured persistence is currently enabled for Home and Contact.
             </p>
           )}
-          {message ? <p className="text-xs text-slate-700">{message}</p> : null}
+          {message ? <p className="text-xs text-[var(--foreground)]">{message}</p> : null}
         </div>
       </div>
 

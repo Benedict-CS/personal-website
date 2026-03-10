@@ -102,10 +102,10 @@ export function DashboardNav({ collapsed = false }: DashboardNavProps) {
                   }
                   setInsightsOpen((o) => !o);
                 }}
-                className={`flex w-full items-center gap-2 rounded-md px-3 py-2 transition-colors ${
+                className={`flex w-full items-center gap-2 rounded-lg px-3 py-2 text-left transition-[background-color,color] duration-200 ${
                   isGroupActive
-                    ? "bg-slate-200/90 text-slate-900 font-medium ring-1 ring-slate-300/50"
-                    : "text-slate-700 hover:bg-slate-200/60 hover:text-slate-900"
+                    ? "bg-[var(--accent)] text-[var(--accent-foreground)] font-medium ring-1 ring-[var(--border)]"
+                    : "text-[var(--foreground)] hover:bg-[var(--accent)]/70 hover:text-[var(--accent-foreground)]"
                 }`}
               >
                 <Icon className="h-4 w-4 shrink-0" />
@@ -113,7 +113,7 @@ export function DashboardNav({ collapsed = false }: DashboardNavProps) {
                 {open ? <ChevronDown className="h-4 w-4" /> : <ChevronRight className="h-4 w-4" />}
               </button>
               {open && (
-                <div className="ml-6 mt-0.5 flex flex-col gap-0.5 border-l border-slate-200 pl-3">
+                <div className="ml-6 mt-0.5 flex flex-col gap-0.5 border-l border-[var(--border)] pl-3">
                   {children.map((sub) => {
                     const target = stripHash(sub.href);
                     const subActive = pathname === target || pathname.startsWith(`${target}/`);
@@ -121,10 +121,11 @@ export function DashboardNav({ collapsed = false }: DashboardNavProps) {
                       <LeaveGuardLink
                         key={sub.href}
                         href={sub.href}
-                        className={`rounded py-1.5 pl-2 text-sm transition-colors ${
+                        aria-current={subActive ? "page" : undefined}
+                        className={`rounded-md py-1.5 pl-2 text-sm transition-[background-color,color] duration-150 ${
                           subActive
-                            ? "font-medium text-slate-900"
-                            : "text-slate-600 hover:text-slate-900"
+                            ? "font-medium text-[var(--foreground)] bg-[var(--accent)]/50"
+                            : "text-[var(--muted-foreground)] hover:bg-[var(--accent)]/40 hover:text-[var(--foreground)]"
                         }`}
                       >
                         {sub.label}
@@ -149,17 +150,17 @@ export function DashboardNav({ collapsed = false }: DashboardNavProps) {
                 title={label}
                 aria-label={label}
                 onClick={() => setCollapsedOpenGroup((current) => (current === id ? null : id))}
-                className={`flex w-full justify-center rounded-md p-2 transition-colors ${
+                className={`flex w-full justify-center rounded-lg p-2 transition-[background-color,color] duration-200 ${
                   isGroupActive || collapsedOpenGroup === id
-                    ? "bg-slate-200/90 text-slate-900 ring-1 ring-slate-300/50"
-                    : "text-slate-700 hover:bg-slate-200/60"
+                    ? "bg-[var(--accent)] text-[var(--accent-foreground)] ring-1 ring-[var(--border)]"
+                    : "text-[var(--foreground)] hover:bg-[var(--accent)]/70"
                 }`}
               >
                 <Icon className="h-4 w-4 shrink-0" />
               </button>
               {collapsedOpenGroup === id && (
-                <div className="absolute left-full top-0 z-30 ml-2 min-w-[11rem] rounded-md border border-slate-200 bg-white p-1 shadow-lg">
-                  <p className="px-2 py-1 text-[11px] font-semibold uppercase tracking-wide text-slate-500">{label}</p>
+                <div className="absolute left-full top-0 z-30 ml-2 min-w-[11rem] rounded-lg border border-[var(--border)] bg-[var(--card)] p-1 shadow-[var(--shadow-lg)]">
+                  <p className="px-2 py-1 text-[11px] font-semibold uppercase tracking-wide text-[var(--muted-foreground)]">{label}</p>
                   {children.map((sub) => {
                     const target = stripHash(sub.href);
                     const subActive = pathname === target || pathname.startsWith(`${target}/`);
@@ -167,11 +168,12 @@ export function DashboardNav({ collapsed = false }: DashboardNavProps) {
                       <LeaveGuardLink
                         key={sub.href}
                         href={sub.href}
+                        aria-current={subActive ? "page" : undefined}
                         onClick={() => setCollapsedOpenGroup(null)}
-                        className={`block rounded px-2 py-1.5 text-sm transition-colors ${
+                        className={`block rounded-md px-2 py-1.5 text-sm transition-[background-color,color] duration-150 ${
                           subActive
-                            ? "bg-slate-100 font-medium text-slate-900"
-                            : "text-slate-700 hover:bg-slate-100"
+                            ? "bg-[var(--accent)] font-medium text-[var(--accent-foreground)]"
+                            : "text-[var(--foreground)] hover:bg-[var(--accent)]/60"
                         }`}
                       >
                         {sub.label}
@@ -188,13 +190,14 @@ export function DashboardNav({ collapsed = false }: DashboardNavProps) {
           <LeaveGuardLink
             key={href}
             href={href}
+            aria-current={isActive ? "page" : undefined}
             title={collapsed ? label : undefined}
-            className={`flex items-center rounded-md transition-colors ${
-              collapsed ? "justify-center p-2 hover:bg-slate-200/80" : "gap-2 px-3 py-2"
+            className={`flex items-center rounded-lg transition-[background-color,color] duration-200 ${
+              collapsed ? "justify-center p-2 hover:bg-[var(--accent)]/70" : "gap-2 px-3 py-2"
             } ${
               isActive
-                ? "bg-slate-200/90 text-slate-900 font-medium ring-1 ring-slate-300/50"
-                : "text-slate-700 hover:bg-slate-200/60 hover:text-slate-900"
+                ? "bg-[var(--accent)] text-[var(--accent-foreground)] font-medium ring-1 ring-[var(--border)]"
+                : "text-[var(--foreground)] hover:bg-[var(--accent)]/70 hover:text-[var(--accent-foreground)]"
             }`}
           >
             <Icon className="h-4 w-4 shrink-0" />

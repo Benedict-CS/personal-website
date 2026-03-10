@@ -32,7 +32,7 @@ export function FieldHelp({ text, className = "" }: { text: string; className?: 
       <button
         type="button"
         onClick={() => setOpen((o) => !o)}
-        className="text-slate-400 hover:text-slate-600 focus:outline-none focus-visible:ring-2 focus-visible:ring-ring rounded p-0.5"
+        className="text-[var(--muted-foreground)] hover:text-[var(--foreground)] focus:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 rounded-lg p-0.5 transition-colors duration-150"
         aria-label="Help"
         title={text}
       >
@@ -40,7 +40,7 @@ export function FieldHelp({ text, className = "" }: { text: string; className?: 
       </button>
       {open && (
         <div
-          className="absolute left-0 top-full mt-1 z-[100] min-w-[180px] max-w-[280px] max-h-[min(50vh,320px)] overflow-y-auto rounded-lg border border-slate-200 bg-white px-3 py-2 text-sm text-slate-700 shadow-lg"
+          className="absolute left-0 top-full mt-1 z-[100] min-w-[180px] max-w-[280px] max-h-[min(50vh,320px)] overflow-y-auto rounded-xl border border-[var(--border)] bg-[var(--card)] px-3 py-2 text-sm text-[var(--foreground)] shadow-[var(--shadow-lg)]"
           role="tooltip"
         >
           {text}

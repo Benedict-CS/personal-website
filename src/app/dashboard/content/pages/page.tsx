@@ -161,7 +161,7 @@ export default function CustomPagesPage() {
   };
 
   const refresh = async () => {
-    const res = await fetch("/api/custom-pages", { cache: "no-store" });
+    const res = await fetch("/api/custom-pages", { cache: "no-store", credentials: "include" });
     if (!res.ok) throw new Error("Failed to load custom pages");
     const raw = (await res.json()) as CustomPageItem[];
     const safe = Array.isArray(raw) ? raw : [];
@@ -212,6 +212,7 @@ export default function CustomPagesPage() {
       const res = await fetch("/api/custom-pages", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
+        credentials: "include",
         body: JSON.stringify({
           slug,
           title,
@@ -244,6 +245,7 @@ export default function CustomPagesPage() {
       const res = await fetch("/api/custom-pages", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
+        credentials: "include",
         body: JSON.stringify({
           slug,
           title,
@@ -304,7 +306,7 @@ export default function CustomPagesPage() {
     setDeletingId(page.id);
     setMessage(null);
     try {
-      const res = await fetch(`/api/custom-pages/id/${page.id}`, { method: "DELETE" });
+      const res = await fetch(`/api/custom-pages/id/${page.id}`, { method: "DELETE", credentials: "include" });
       if (!res.ok) throw new Error("Failed to delete custom page");
       await refresh();
       setMessage({ type: "success", text: `Deleted "${page.title || page.slug}".` });
@@ -328,6 +330,7 @@ export default function CustomPagesPage() {
       const res = await fetch("/api/custom-pages/reorder", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
+        credentials: "include",
         body: JSON.stringify({ orderedIds: normalized.map((p) => p.id) }),
       });
       if (!res.ok) throw new Error("Failed to reorder custom pages");
@@ -344,13 +347,14 @@ export default function CustomPagesPage() {
     setDuplicatingId(page.id);
     setMessage(null);
     try {
-      const detailRes = await fetch(`/api/custom-pages/slug/${encodeURIComponent(page.slug)}`, { cache: "no-store" });
+      const detailRes = await fetch(`/api/custom-pages/slug/${encodeURIComponent(page.slug)}`, { cache: "no-store", credentials: "include" });
       const detail = detailRes.ok ? ((await detailRes.json()) as { content?: string }) : {};
       const slug = nextAvailableSlug(`${page.slug}-copy`);
       const title = `${page.title} (Copy)`;
       const createRes = await fetch("/api/custom-pages", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
+        credentials: "include",
         body: JSON.stringify({
           slug,
           title,
@@ -509,7 +513,10 @@ export default function CustomPagesPage() {
             </div>
           </div>
           {pages.length === 0 ? (
-            <p className="text-sm text-slate-500">No custom pages yet.</p>
+            <div className="rounded-lg border border-dashed border-[var(--border)] bg-[var(--muted)]/30 p-8 text-center">
+              <p className="text-sm font-medium text-[var(--foreground)]">No custom pages yet</p>
+              <p className="mt-1 text-sm text-[var(--muted-foreground)]">Create one above (title + slug) or use a template, then edit content in the visual editor.</p>
+            </div>
           ) : filteredPages.length === 0 ? (
             <p className="text-sm text-slate-500">No pages match your current filters.</p>
           ) : (
@@ -652,7 +659,11 @@ export default function CustomPagesPage() {
         </CardContent>
       </Card>
 
-      {message && <p className={message.type === "success" ? "text-green-600" : "text-red-600"}>{message.text}</p>}
+      {message && (
+        <p role="status" aria-live="polite" className={message.type === "success" ? "text-green-600" : "text-red-600"}>
+          {message.text}
+        </p>
+      )}
     </div>
   );
 }

@@ -10,7 +10,8 @@ const coreItems = [
 ];
 
 const immersiveItems = [
-  { href: "/editor/home", label: "Home editor", icon: Home, description: "True WYSIWYG page editing with inline text and media updates" },
+  { href: "/dashboard/content/home", label: "Home sections", icon: Home, description: "Add, remove, reorder, and edit home page sections (hero, latest posts, skills, custom markdown)" },
+  { href: "/editor/home", label: "Home editor (visual)", icon: Home, description: "WYSIWYG editing for hero text, skills, and CTAs on the live home page" },
   { href: "/editor/about", label: "About editor", icon: UserCircle2, description: "Edit the live About page directly on the real frontend layout" },
   { href: "/editor/contact", label: "Contact editor", icon: Mail, description: "Edit contact copy directly on the live page view" },
   { href: "/dashboard/content/pages", label: "Custom pages", icon: Layers, description: "Manage additional pages and open each one in immersive editor flow" },

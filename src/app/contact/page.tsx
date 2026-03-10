@@ -8,7 +8,6 @@ import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { Mail, Linkedin, Github, CheckCircle2, AlertCircle } from "lucide-react";
 import Link from "next/link";
-import { siteConfig } from "@/config/site";
 import { PublicBreadcrumbs } from "@/components/public-breadcrumbs";
 
 const defaultIntro = "I'm open to new opportunities, collaborations, or a chat about tech.";
@@ -40,9 +39,9 @@ export default function ContactPage() {
   const [title, setTitle] = useState("Contact");
   const [intro, setIntro] = useState(defaultIntro);
   const [formNote, setFormNote] = useState(defaultFormNote);
-  const [contactEmail, setContactEmail] = useState(siteConfig.links.email);
-  const [linkedinUrl, setLinkedinUrl] = useState(siteConfig.links.linkedin);
-  const [githubUrl, setGithubUrl] = useState(siteConfig.links.github);
+  const [contactEmail, setContactEmail] = useState("");
+  const [linkedinUrl, setLinkedinUrl] = useState("");
+  const [githubUrl, setGithubUrl] = useState("");
   const [emailLabel, setEmailLabel] = useState(defaultEmailLabel);
   const [linkedinLabel, setLinkedinLabel] = useState(defaultLinkedinLabel);
   const [githubLabel, setGithubLabel] = useState(defaultGithubLabel);
@@ -89,9 +88,9 @@ export default function ContactPage() {
   }, []);
 
   const emailValue = (contactEmail || "").replace(/^mailto:/i, "");
-  const emailHref = emailValue ? `mailto:${emailValue}` : `mailto:${siteConfig.links.email}`;
-  const linkedinHref = linkedinUrl || siteConfig.links.linkedin;
-  const githubHref = githubUrl || siteConfig.links.github;
+  const emailHref = emailValue ? `mailto:${emailValue}` : "#";
+  const linkedinHref = linkedinUrl || "#";
+  const githubHref = githubUrl || "#";
   const contactButtons: Record<ContactButtonKey, { href: string; label: string; targetBlank?: boolean; icon: ReactNode; editorKey: string }> = {
     email: {
       href: emailHref,
@@ -156,15 +155,15 @@ export default function ContactPage() {
   }
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-slate-50 via-white to-slate-100">
+    <div className="min-h-screen bg-gradient-to-br from-[var(--muted)] via-[var(--background)] to-[var(--muted)]">
       <section className="container mx-auto px-4 py-16 md:py-24">
         <div className="mx-auto max-w-2xl">
           <PublicBreadcrumbs items={[{ label: "Home", href: "/" }, { label: "Contact" }]} />
-          <h1 className="mb-4 text-4xl font-bold text-slate-900" data-inline-field="contact.title">{title}</h1>
-          <p className="mb-2 text-slate-600" data-inline-field="contact.intro">
+          <h1 className="mb-4 text-4xl font-bold text-[var(--foreground)]" data-inline-field="contact.title">{title}</h1>
+          <p className="mb-2 text-[var(--muted-foreground)]" data-inline-field="contact.intro">
             {intro}
           </p>
-          <p className="mb-1 text-sm text-slate-500" data-inline-field="contact.formNote">
+          <p className="mb-1 text-sm text-[var(--muted-foreground)]" data-inline-field="contact.formNote">
             {formNote}
           </p>
           <div className="mb-10 flex flex-wrap gap-3" data-contact-buttons-container>
@@ -190,14 +189,14 @@ export default function ContactPage() {
               })}
           </div>
 
-          <Card className="shadow-lg">
+          <Card className="shadow-[var(--shadow-lg)] border-[var(--border)]">
             <CardHeader>
-              <CardTitle className="text-slate-900">Send a message</CardTitle>
+              <CardTitle className="text-[var(--foreground)]">Send a message</CardTitle>
             </CardHeader>
             <CardContent>
               <form onSubmit={handleSubmit} className="space-y-4">
                 <div>
-                  <label htmlFor="name" className="mb-1 block text-sm font-medium text-slate-700">
+                  <label htmlFor="name" className="mb-1 block text-sm font-medium text-[var(--foreground)]">
                     Name
                   </label>
                   <Input
@@ -207,12 +206,11 @@ export default function ContactPage() {
                     required
                     maxLength={LIMITS.name}
                     placeholder="Your name"
-                    className="bg-white"
                     disabled={status === "sending"}
                   />
                 </div>
                 <div>
-                  <label htmlFor="email" className="mb-1 block text-sm font-medium text-slate-700">
+                  <label htmlFor="email" className="mb-1 block text-sm font-medium text-[var(--foreground)]">
                     Email
                   </label>
                   <Input
@@ -222,12 +220,11 @@ export default function ContactPage() {
                     required
                     maxLength={LIMITS.email}
                     placeholder="you@example.com"
-                    className="bg-white"
                     disabled={status === "sending"}
                   />
                 </div>
                 <div>
-                  <label htmlFor="subject" className="mb-1 block text-sm font-medium text-slate-700">
+                  <label htmlFor="subject" className="mb-1 block text-sm font-medium text-[var(--foreground)]">
                     Subject (optional)
                   </label>
                   <Input
@@ -236,12 +233,11 @@ export default function ContactPage() {
                     type="text"
                     maxLength={LIMITS.subject}
                     placeholder="e.g. Collaboration inquiry"
-                    className="bg-white"
                     disabled={status === "sending"}
                   />
                 </div>
                 <div>
-                  <label htmlFor="message" className="mb-1 block text-sm font-medium text-slate-700">
+                  <label htmlFor="message" className="mb-1 block text-sm font-medium text-[var(--foreground)]">
                     Message
                   </label>
                   <Textarea
@@ -251,7 +247,7 @@ export default function ContactPage() {
                     maxLength={LIMITS.message}
                     rows={5}
                     placeholder="Your message..."
-                    className="bg-white resize-none"
+                    className="resize-none"
                     disabled={status === "sending"}
                   />
                 </div>
@@ -262,14 +258,14 @@ export default function ContactPage() {
                     aria-live="polite"
                     className={`flex items-center gap-3 rounded-lg border p-4 text-sm ${
                       status === "success"
-                        ? "border-green-200 bg-green-50 text-green-800"
-                        : "border-red-200 bg-red-50 text-red-800"
+                        ? "border-emerald-200 bg-emerald-50 text-emerald-800"
+                        : "border-destructive/30 bg-destructive/10 text-destructive"
                     }`}
                   >
                     {status === "success" ? (
-                      <CheckCircle2 className="h-5 w-5 shrink-0 text-green-600" />
+                      <CheckCircle2 className="h-5 w-5 shrink-0 text-emerald-600" />
                     ) : (
-                      <AlertCircle className="h-5 w-5 shrink-0 text-red-600" />
+                      <AlertCircle className="h-5 w-5 shrink-0 text-destructive" />
                     )}
                     <span>
                       {status === "success"

@@ -704,10 +704,12 @@ model MediaAsset {
   storageKey   String
   publicUrl    String
   metadata     Json         @default("{}")
+  markedOrphanedAt DateTime? // When set, asset is in trash (not referenced in blocks/pages); safe to delete via Storage Manager
   createdAt    DateTime     @default(now())
   updatedAt    DateTime     @updatedAt
 
   @@index([siteId, folderId, createdAt])
+  @@index([siteId, markedOrphanedAt])
   @@unique([siteId, storageKey])
 }
 
@@ -799,6 +801,7 @@ model AboutConfig {
 }
 
 // Global site branding & meta (navbar name, favicon, meta title, footer links, nav, footer text, OG). Singleton: single row id=1.
+// White-label: all tenant-facing strings and assets come from DB; no hardcoded constants.
 model SiteConfig {
   id              Int      @id @default(1)
   tenantSiteId      String?
@@ -809,14 +812,20 @@ model SiteConfig {
   metaTitle       String   @default("")
   metaDescription String?
   authorName      String?
-  links           Json     @default("{}") // { email?, github?, linkedin? }
+  links           Json     @default("{}") // { email?, github?, linkedin?, rss? }
+  socialLinks     Json     @default("{}") // { twitter?, instagram?, linkedin?, github?, youtube?, etc. } for footer icons
   navItems        Json     @default("[]") // [{ label: string, href: string }]
   footerText      String?  // e.g. "All rights reserved." or second line
+  copyrightText   String?  // e.g. "© 2025 Company Name. All rights reserved." (overrides footer line when set)
   ogImageUrl      String?
+  googleAnalyticsId String?
+  stripePublishableKey String?  // Client-side; use env or tenant key
+  stripeSecretKey String?  // Server-only; must be stored securely (e.g. encrypted or env per tenant)
   setupCompleted  Boolean  @default(false) // true after first-time setup wizard
   templateId              String   @default("default") // "default" | "minimal" | "card" for layout variants
   themeMode               String   @default("light") // Light-only mode
   autoAddCustomPagesToNav  Boolean  @default(true) // when true, custom pages are appended to navbar
+  contactEmail            String?  // Destination for contact form submissions (platform-managed; Resend sends here)
   updatedAt               DateTime @updatedAt
 }
 

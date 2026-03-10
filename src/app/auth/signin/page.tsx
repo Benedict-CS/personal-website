@@ -4,6 +4,7 @@ import { useState, useEffect, useCallback } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import { signIn } from "next-auth/react";
 import Script from "next/script";
+import { motion } from "framer-motion";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import {
@@ -90,7 +91,7 @@ export default function SignInPage() {
   };
 
   return (
-    <div className="flex h-screen items-center justify-center bg-slate-50">
+    <div className="flex min-h-screen items-center justify-center bg-[var(--background)] px-4">
       {SITE_KEY && captchaRequired && (
         <Script
           src={TURNSTILE_SCRIPT}
@@ -98,17 +99,23 @@ export default function SignInPage() {
           onLoad={() => setCaptchaReady(true)}
         />
       )}
-      <Card className="w-full max-w-md animate-in fade-in duration-300">
-        <CardHeader>
-          <CardTitle className="text-slate-900">Admin Login</CardTitle>
-        </CardHeader>
-        <CardContent>
-          <form onSubmit={handleSubmit} className="space-y-4">
-            {error && (
-              <p className="rounded-md bg-red-50 px-3 py-2 text-sm font-medium text-red-800" role="alert">
-                {error}
-              </p>
-            )}
+      <motion.div
+        initial={{ opacity: 0, y: 8 }}
+        animate={{ opacity: 1, y: 0 }}
+        transition={{ duration: 0.3, ease: [0.25, 0.46, 0.45, 0.94] }}
+        className="w-full max-w-md"
+      >
+        <Card className="w-full border-[var(--border)] shadow-[var(--shadow-lg)]">
+          <CardHeader>
+            <CardTitle className="text-[var(--foreground)]">Admin Login</CardTitle>
+          </CardHeader>
+          <CardContent>
+            <form onSubmit={handleSubmit} className="space-y-4">
+              {error && (
+                <p className="rounded-lg bg-destructive/10 px-3 py-2 text-sm font-medium text-destructive" role="alert">
+                  {error}
+                </p>
+              )}
             <div className="space-y-2">
               <Input
                 type="password"
@@ -130,11 +137,12 @@ export default function SignInPage() {
               />
             )}
             <Button type="submit" className="w-full" disabled={isLoading}>
-              {isLoading ? "Signing in..." : "Sign In"}
+                {isLoading ? "Signing in..." : "Sign In"}
             </Button>
           </form>
-        </CardContent>
-      </Card>
+          </CardContent>
+        </Card>
+      </motion.div>
     </div>
   );
 }

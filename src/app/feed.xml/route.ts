@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
-import { siteConfig } from "@/config/site";
+import { getSiteConfigForRender } from "@/lib/site-config";
 import { stripMarkdown } from "@/lib/utils";
 
 /** Escape CDATA end marker so it doesn't break XML. */
@@ -11,7 +11,12 @@ function escapeCdata(s: string): string {
 export async function GET(request: NextRequest) {
   try {
     const fullContent = request.nextUrl.searchParams.get("full") === "1";
-    const baseUrl = siteConfig.url;
+    const config = await getSiteConfigForRender();
+    const baseUrl = config.url;
+    const siteTitle = config.metaTitle || config.siteName;
+    const siteDescription = config.metaDescription ?? "";
+    const authorName = config.authorName ?? config.siteName;
+    const authorEmail = config.links?.email ?? "";
 
     const now = new Date();
     const posts = await prisma.post.findMany({
@@ -67,7 +72,7 @@ export async function GET(request: NextRequest) {
       <pubDate>${pubDate}</pubDate>
       <atom:updated>${updatedDate}</atom:updated>
       <guid isPermaLink="true">${link}</guid>
-      <author>${siteConfig.author.email} (${siteConfig.author.name})</author>${contentEncoded}
+      <author>${authorEmail} (${authorName})</author>${contentEncoded}
     </item>`;
       })
       .join("\n");
@@ -75,12 +80,12 @@ export async function GET(request: NextRequest) {
     const rssXml = `<?xml version="1.0" encoding="UTF-8"?>
 <rss version="2.0" xmlns:atom="http://www.w3.org/2005/Atom" xmlns:content="http://purl.org/rss/1.0/modules/content/">
   <channel>
-    <title><![CDATA[${siteConfig.title}]]></title>
+    <title><![CDATA[${siteTitle}]]></title>
     <link>${baseUrl}</link>
-    <description><![CDATA[${siteConfig.description}]]></description>
+    <description><![CDATA[${siteDescription}]]></description>
     <language>en-US</language>
-    <managingEditor>${siteConfig.author.email} (${siteConfig.author.name})</managingEditor>
-    <webMaster>${siteConfig.author.email} (${siteConfig.author.name})</webMaster>
+    <managingEditor>${authorEmail} (${authorName})</managingEditor>
+    <webMaster>${authorEmail} (${authorName})</webMaster>
     <lastBuildDate>${formatRSSDate(new Date())}</lastBuildDate>
     <atom:link href="${baseUrl}/feed.xml" rel="self" type="application/rss+xml"/>
     ${rssItems}

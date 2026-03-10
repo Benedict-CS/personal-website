@@ -6,14 +6,17 @@ import { Badge } from "@/components/ui/badge";
 import { Pin } from "lucide-react";
 import { stripMarkdown } from "@/lib/utils";
 import { calculateReadingTime, formatReadingTime } from "@/lib/reading-time";
-import { siteConfig } from "@/config/site";
+import { getSiteConfigForRender } from "@/lib/site-config";
 
 export const dynamic = "force-dynamic";
 
-export const metadata: Metadata = {
-  title: `Archive | ${siteConfig.name}`,
-  description: "Browse all blog posts by year",
-};
+export async function generateMetadata(): Promise<Metadata> {
+  const config = await getSiteConfigForRender();
+  return {
+    title: `Archive | ${config.siteName}`,
+    description: "Browse all blog posts by year",
+  };
+}
 
 export default async function ArchivePage() {
   const posts = await prisma.post.findMany({

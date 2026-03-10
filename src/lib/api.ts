@@ -19,6 +19,7 @@ async function request<T = unknown>(
   const isGet = (init.method ?? "GET").toUpperCase() === "GET";
   const res = await fetch(url, {
     ...init,
+    credentials: "include",
     headers: {
       ...(isGet ? {} : { "Content-Type": "application/json" }),
       ...init.headers,

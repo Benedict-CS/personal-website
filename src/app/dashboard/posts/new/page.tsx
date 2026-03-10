@@ -58,7 +58,7 @@ export default function NewPostPage() {
   const uploadOne = async (file: File): Promise<string> => {
     const formData = new FormData();
     formData.append("file", file);
-    const res = await fetch("/api/upload", { method: "POST", body: formData });
+    const res = await fetch("/api/upload", { method: "POST", credentials: "include", body: formData });
     if (!res.ok) {
       const err = await res.json().catch(() => ({}));
       throw new Error(err.error || "Upload failed");
@@ -376,7 +376,6 @@ export default function NewPostPage() {
         </Card>
         <div className="fixed bottom-20 right-4 z-40 rounded-lg border border-slate-200 bg-white/95 p-2 shadow-lg backdrop-blur">
           <div className="flex items-center gap-2">
-            <MarkdownTemplateInserter onInsert={insertTemplateBlock} compact />
             <Button
               type="button"
               variant="outline"

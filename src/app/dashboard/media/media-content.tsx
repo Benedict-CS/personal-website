@@ -188,7 +188,7 @@ export default function MediaContent() {
   const fetchMediaFiles = async () => {
     try {
       setIsLoading(true);
-      const response = await fetch("/api/media");
+      const response = await fetch("/api/media", { credentials: "include" });
       if (!response.ok) {
         throw new Error("Failed to fetch media files");
       }

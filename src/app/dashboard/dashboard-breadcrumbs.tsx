@@ -45,17 +45,17 @@ export function DashboardBreadcrumbs() {
   return (
     <nav
       aria-label="Breadcrumb"
-      className="mb-4 flex items-center gap-1.5 text-sm text-slate-600"
+      className="mb-4 flex items-center gap-1.5 text-sm text-[var(--muted-foreground)]"
     >
       {crumbs.map((crumb, i) => (
         <span key={crumb.href} className="flex items-center gap-1.5">
-          {i > 0 && <span className="text-slate-400">/</span>}
+          {i > 0 && <span className="text-[var(--muted-foreground)]/70" aria-hidden>/</span>}
           {i === crumbs.length - 1 ? (
-            <span className="font-medium text-slate-900">{crumb.label}</span>
+            <span className="font-medium text-[var(--foreground)]">{crumb.label}</span>
           ) : (
             <LeaveGuardLink
               href={crumb.href}
-              className="hover:text-slate-900 hover:underline"
+              className="hover:text-[var(--foreground)] hover:underline transition-colors duration-150"
             >
               {crumb.label}
             </LeaveGuardLink>

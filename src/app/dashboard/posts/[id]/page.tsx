@@ -100,7 +100,7 @@ export default function EditPostPage({
   useEffect(() => {
     const fetchPost = async () => {
       try {
-        const response = await fetch(`/api/posts/${id}`);
+        const response = await fetch(`/api/posts/${id}`, { credentials: "include" });
         if (!response.ok) {
           throw new Error("Failed to fetch post");
         }
@@ -351,7 +351,7 @@ export default function EditPostPage({
   const uploadOne = async (file: File): Promise<string> => {
     const formData = new FormData();
     formData.append("file", file);
-    const res = await fetch("/api/upload", { method: "POST", body: formData });
+    const res = await fetch("/api/upload", { method: "POST", credentials: "include", body: formData });
     if (!res.ok) {
       const err = await res.json().catch(() => ({}));
       throw new Error(err.error || "Upload failed");
@@ -491,7 +491,7 @@ export default function EditPostPage({
   const loadVersions = async () => {
     setIsLoadingVersions(true);
     try {
-      const response = await fetch(`/api/posts/${id}/versions`);
+      const response = await fetch(`/api/posts/${id}/versions`, { credentials: "include" });
       if (!response.ok) {
         throw new Error("Failed to load versions");
       }
@@ -516,6 +516,7 @@ export default function EditPostPage({
     try {
       const response = await fetch(`/api/posts/${id}/versions/${versionId}/restore`, {
         method: "POST",
+        credentials: "include",
       });
 
       if (!response.ok) {
@@ -524,7 +525,7 @@ export default function EditPostPage({
       }
 
       // Reload post data
-      const postResponse = await fetch(`/api/posts/${id}`);
+      const postResponse = await fetch(`/api/posts/${id}`, { credentials: "include" });
       if (postResponse.ok) {
         const post = await postResponse.json();
         setTitle(post.title || "");
@@ -576,7 +577,7 @@ export default function EditPostPage({
   const handleGeneratePreviewLink = async () => {
     setIsGeneratingPreview(true);
     try {
-      const res = await fetch(`/api/posts/${id}/preview-token`, { method: "POST" });
+      const res = await fetch(`/api/posts/${id}/preview-token`, { method: "POST", credentials: "include" });
       if (!res.ok) throw new Error("Failed to generate link");
       const data = await res.json();
       setPreviewToken(data.token);
@@ -605,7 +606,7 @@ export default function EditPostPage({
   const handleRevokePreviewLink = async () => {
     setIsRevokingPreview(true);
     try {
-      const res = await fetch(`/api/posts/${id}/preview-token`, { method: "DELETE" });
+      const res = await fetch(`/api/posts/${id}/preview-token`, { method: "DELETE", credentials: "include" });
       if (!res.ok) throw new Error("Failed to revoke");
       setPreviewToken(null);
       setSavedMessage("Preview link revoked");
@@ -1181,7 +1182,6 @@ export default function EditPostPage({
         </Card>
         <div className="fixed bottom-20 right-4 z-40 rounded-lg border border-slate-200 bg-white/95 p-2 shadow-lg backdrop-blur">
           <div className="flex items-center gap-2">
-            <MarkdownTemplateInserter onInsert={insertTemplateBlock} compact />
             <Button
               type="button"
               variant="outline"

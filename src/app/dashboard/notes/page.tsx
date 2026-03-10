@@ -38,7 +38,7 @@ export default function NotesPage() {
   useEffect(() => {
     const fetchNotes = async () => {
       try {
-        const response = await fetch("/api/posts?published=false");
+        const response = await fetch("/api/posts?published=false", { credentials: "include" });
         if (response.ok) {
           const data = await response.json();
           setNotes(data);
@@ -134,7 +134,7 @@ export default function NotesPage() {
         setEditingCategory("");
         
         // Refresh to update grouping
-        const refreshResponse = await fetch("/api/posts?published=false");
+        const refreshResponse = await fetch("/api/posts?published=false", { credentials: "include" });
         if (refreshResponse.ok) {
           const data = await refreshResponse.json();
           setNotes(data);

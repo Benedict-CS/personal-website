@@ -26,10 +26,10 @@ export function DashboardNextSteps({
   ];
 
   return (
-    <Card className="border-slate-200 bg-slate-50/50">
+    <Card className="border-[var(--border)] bg-[var(--muted)]/30">
       <CardHeader>
-        <CardTitle className="text-base font-medium text-slate-800">Next steps</CardTitle>
-        <p className="text-sm text-slate-600">
+        <CardTitle className="text-base font-medium text-[var(--foreground)]">Next steps</CardTitle>
+        <p className="text-sm text-[var(--muted-foreground)]">
           Do these in any order. Edit directly on the live frontend and click Save & Publish.
         </p>
       </CardHeader>
@@ -40,11 +40,11 @@ export function DashboardNextSteps({
               {step.done ? (
                 <CheckCircle2 className="h-5 w-5 shrink-0 text-emerald-600" aria-hidden />
               ) : (
-                <Circle className="h-5 w-5 shrink-0 text-slate-300" aria-hidden />
+                <Circle className="h-5 w-5 shrink-0 text-[var(--muted-foreground)]/60" aria-hidden />
               )}
               <Link
                 href={step.href}
-                className={`flex-1 text-sm ${step.done ? "text-slate-600" : "font-medium text-slate-800 hover:underline"}`}
+                className={`flex-1 text-sm transition-colors duration-150 ${step.done ? "text-[var(--muted-foreground)]" : "font-medium text-[var(--foreground)] hover:text-[var(--primary)] hover:underline"}`}
               >
                 {step.label}
               </Link>
@@ -59,10 +59,10 @@ export function DashboardNextSteps({
           ))}
         </ul>
         {siteUrl && (
-          <div className="mt-4 pt-4 border-t border-slate-200">
+          <div className="mt-4 pt-4 border-t border-[var(--border)]">
             <a
               href={siteUrl}
-              className="inline-flex items-center gap-2 text-sm font-medium text-slate-700 hover:text-slate-900"
+              className="inline-flex items-center gap-2 text-sm font-medium text-[var(--foreground)] hover:text-[var(--primary)] transition-colors duration-150"
             >
               <ExternalLink className="h-4 w-4" />
               View your live site

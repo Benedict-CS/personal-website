@@ -138,26 +138,26 @@ export function InsertMediaModal({
     <div className="fixed inset-0 z-[2147483000] isolate" role="dialog" aria-modal="true" aria-label="Insert from Media">
       <button
         type="button"
-        className="absolute inset-0 h-full w-full cursor-default bg-black/55"
+        className="absolute inset-0 h-full w-full cursor-default bg-[oklch(0.2_0.02_265/0.45)] backdrop-blur-[2px]"
         onClick={onClose}
         aria-label="Close media dialog"
       />
       <div className="absolute inset-0 flex items-start justify-center p-3 pt-6 pointer-events-none sm:p-4 sm:pt-10">
         <div
-          className="pointer-events-auto relative z-[2147483001] flex max-h-[90vh] w-full max-w-5xl flex-col overflow-hidden rounded-xl border border-slate-200 bg-white shadow-2xl"
+          className="pointer-events-auto relative z-[2147483001] flex max-h-[90vh] w-full max-w-5xl flex-col overflow-hidden rounded-xl border border-[var(--border)] bg-[var(--card)] shadow-[var(--shadow-lg)]"
           onClick={(e) => e.stopPropagation()}
           onMouseDown={(e) => e.stopPropagation()}
         >
-        <div className="flex items-center justify-between border-b border-slate-200 p-4">
+        <div className="flex items-center justify-between border-b border-[var(--border)] p-4">
           <div>
-            <h2 className="text-lg font-semibold text-slate-900">Insert from Media</h2>
-            <p className="text-xs text-slate-500">Choose an existing image or upload a new one.</p>
+            <h2 className="text-lg font-semibold text-[var(--foreground)]">Insert from Media</h2>
+            <p className="text-xs text-[var(--muted-foreground)]">Choose an existing image or upload a new one.</p>
           </div>
           <Button type="button" variant="ghost" size="sm" onClick={onClose}>
             Close
           </Button>
         </div>
-        <div className="border-b border-slate-100 px-4 py-3">
+        <div className="border-b border-[var(--border)] px-4 py-3">
           <div className="flex flex-wrap items-center gap-2 sm:gap-3">
             <Input
               type="text"
@@ -184,7 +184,7 @@ export function InsertMediaModal({
               {uploading ? <Loader2 className="h-4 w-4 animate-spin" /> : <Upload className="h-4 w-4" />}
               {uploading ? "Uploading..." : "Upload image"}
             </Button>
-            <span className="ml-auto text-xs text-slate-500">
+            <span className="ml-auto text-xs text-[var(--muted-foreground)]">
               {filtered.length} / {files.length} image{files.length === 1 ? "" : "s"}
             </span>
           </div>
@@ -192,10 +192,10 @@ export function InsertMediaModal({
         <div className="min-h-0 flex-1 overflow-y-auto p-4">
           {loading ? (
             <div className="flex items-center justify-center py-12">
-              <Loader2 className="h-8 w-8 animate-spin text-slate-400" />
+              <Loader2 className="h-8 w-8 animate-spin text-[var(--muted-foreground)]" />
             </div>
           ) : filtered.length === 0 ? (
-            <div className="py-12 text-center text-slate-500">
+            <div className="py-12 text-center text-[var(--muted-foreground)]">
               {files.length === 0
                 ? "No media files. Upload images in Media first."
                 : "No files match your search."}
@@ -205,10 +205,10 @@ export function InsertMediaModal({
               {filtered.map((file) => (
                 <Card
                   key={file.name}
-                  className="group cursor-pointer overflow-hidden transition hover:ring-2 hover:ring-slate-400"
+                  className="group cursor-pointer overflow-hidden transition hover:ring-2 hover:ring-[var(--ring)]"
                   onClick={() => handlePick(file)}
                 >
-                  <div className="relative aspect-square w-full bg-slate-100">
+                  <div className="relative aspect-square w-full bg-[var(--muted)]">
                     {/\.(jpe?g|png|gif|webp)$/i.test(file.name) ? (
                       <Image
                         src={file.url}
@@ -220,7 +220,7 @@ export function InsertMediaModal({
                       />
                     ) : (
                       <div className="flex h-full items-center justify-center">
-                        <ImageIcon className="h-10 w-10 text-slate-400" />
+                        <ImageIcon className="h-10 w-10 text-[var(--muted-foreground)]" />
                       </div>
                     )}
                     <div className="pointer-events-none absolute inset-x-0 bottom-0 bg-gradient-to-t from-black/55 to-transparent p-2 opacity-0 transition-opacity group-hover:opacity-100">
@@ -228,10 +228,10 @@ export function InsertMediaModal({
                     </div>
                   </div>
                   <CardContent className="p-2">
-                    <p className="truncate text-xs text-slate-700" title={file.name}>
+                    <p className="truncate text-xs text-[var(--foreground)]" title={file.name}>
                       {file.name}
                     </p>
-                    <p className="mt-0.5 text-[11px] text-slate-500">
+                    <p className="mt-0.5 text-[11px] text-[var(--muted-foreground)]">
                       {formatSize(file.size)}{file.createdAt ? ` · ${formatDate(file.createdAt)}` : ""}
                     </p>
                   </CardContent>

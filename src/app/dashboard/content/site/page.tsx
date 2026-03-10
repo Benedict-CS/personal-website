@@ -23,13 +23,17 @@ const defaults: SiteConfigResponse = {
   metaDescription: null,
   authorName: null,
   links: { email: "", github: "", linkedin: "" },
+  socialLinks: {},
   navItems: DEFAULT_NAV_ITEMS,
   footerText: null,
+  copyrightText: null,
   ogImageUrl: null,
+  googleAnalyticsId: null,
   setupCompleted: false,
   templateId: "default",
   themeMode: "light",
   autoAddCustomPagesToNav: true,
+  contactEmail: null,
 };
 
 export default function SiteSettingsPage() {
@@ -76,6 +80,7 @@ export default function SiteSettingsPage() {
       const res = await fetch("/api/site-config", {
         method: "PATCH",
         headers: { "Content-Type": "application/json" },
+        credentials: "include",
         body: JSON.stringify(config),
       });
       const data = await res.json().catch(() => ({}));
@@ -139,9 +144,10 @@ export default function SiteSettingsPage() {
       await fetch("/api/site-config", {
         method: "PATCH",
         headers: { "Content-Type": "application/json" },
+        credentials: "include",
         body: JSON.stringify({ ...config, navItems: t.navItems, templateId: t.templateId }),
       });
-      const homeRes = await fetch("/api/site-content?page=home");
+      const homeRes = await fetch("/api/site-content?page=home", { credentials: "include" });
       const currentHome = homeRes.ok ? await homeRes.json().catch(() => ({})) : {};
       const homeContent = typeof currentHome === "object" && currentHome !== null
         ? { ...currentHome, sectionOrder: t.sectionOrder, sectionVisibility: {} }
@@ -149,6 +155,7 @@ export default function SiteSettingsPage() {
       await fetch("/api/site-content", {
         method: "PATCH",
         headers: { "Content-Type": "application/json" },
+        credentials: "include",
         body: JSON.stringify({ page: "home", content: homeContent }),
       });
       setConfig((c) => ({ ...c, navItems: t.navItems, templateId: t.templateId }));
@@ -160,19 +167,45 @@ export default function SiteSettingsPage() {
     }
   };
 
-  if (loading) return <p className="text-slate-600">Loading...</p>;
+  if (loading) {
+    return (
+      <div className="space-y-8 animate-pulse">
+        <div className="h-10 w-56 rounded bg-[var(--muted)]" />
+        <div className="h-5 w-full max-w-md rounded bg-[var(--muted)]" />
+        <div className="rounded-lg border border-[var(--border)] p-6 space-y-4">
+          <div className="h-6 w-40 rounded bg-[var(--muted)]" />
+          <div className="h-10 w-full rounded bg-[var(--muted)]/70" />
+          <div className="h-10 w-full rounded bg-[var(--muted)]/70" />
+        </div>
+      </div>
+    );
+  }
+
+  const siteUrl = typeof process.env.NEXT_PUBLIC_SITE_URL === "string" ? process.env.NEXT_PUBLIC_SITE_URL : null;
 
   return (
     <div className="space-y-8">
-      <div>
-        <h2 className="text-3xl font-bold text-slate-900">Site settings</h2>
-        <p className="mt-1 text-slate-600">Site name, favicon, logo, meta, navigation, footer, and OG image. All visible on the site.</p>
+      <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
+        <div>
+          <h2 className="text-3xl font-bold text-[var(--foreground)]">Site settings</h2>
+          <p className="mt-1 text-[var(--muted-foreground)]">Site name, favicon, logo, meta, navigation, footer, and OG image. All visible on the site.</p>
+        </div>
+        {siteUrl && (
+          <a
+            href={siteUrl}
+            target="_blank"
+            rel="noopener noreferrer"
+            className="text-sm font-medium text-[var(--primary)] hover:underline shrink-0"
+          >
+            View site →
+          </a>
+        )}
       </div>
 
       <Card>
         <CardHeader>
           <CardTitle>Templates</CardTitle>
-          <p className="text-sm text-slate-600">One-click apply: set navigation and layout style. You can still edit everything after.</p>
+          <p className="text-sm text-[var(--muted-foreground)]">One-click apply: set navigation and layout style. You can still edit everything after.</p>
         </CardHeader>
         <CardContent className="flex flex-wrap gap-2">
           <Button variant="outline" onClick={() => applyTemplate("personal")} disabled={saving}>
@@ -190,10 +223,10 @@ export default function SiteSettingsPage() {
       <Card>
         <CardHeader>
           <CardTitle>Custom pages</CardTitle>
-          <p className="text-sm font-normal text-slate-500">Custom pages are managed in a dedicated screen so they stay separate from core site settings.</p>
+          <p className="text-sm font-normal text-[var(--muted-foreground)]">Custom pages are managed in a dedicated screen so they stay separate from core site settings.</p>
         </CardHeader>
         <CardContent className="flex items-center justify-between gap-3">
-          <p className="text-sm text-slate-600">Create, publish, reorder, and edit custom pages from one place.</p>
+          <p className="text-sm text-[var(--muted-foreground)]">Create, publish, reorder, and edit custom pages from one place.</p>
           <Link href="/dashboard/content/pages">
             <Button variant="outline">Open custom pages</Button>
           </Link>
@@ -204,7 +237,7 @@ export default function SiteSettingsPage() {
         <Card className="border-amber-200 bg-amber-50">
           <CardHeader>
             <CardTitle className="text-lg">First-time setup</CardTitle>
-            <p className="text-sm font-normal text-slate-600">Use the step-by-step wizard or fill this page and mark complete.</p>
+            <p className="text-sm font-normal text-[var(--muted-foreground)]">Use the step-by-step wizard or fill this page and mark complete.</p>
           </CardHeader>
           <CardContent className="flex flex-wrap gap-2">
             <Link href="/dashboard/setup">
@@ -239,7 +272,7 @@ export default function SiteSettingsPage() {
       <Card>
         <CardHeader>
           <CardTitle>Branding & meta</CardTitle>
-          <p className="text-sm font-normal text-slate-500">Navbar name, logo, favicon, browser tab title.</p>
+          <p className="text-sm font-normal text-[var(--muted-foreground)]">Navbar name, logo, favicon, browser tab title.</p>
         </CardHeader>
         <CardContent className="space-y-4">
           <div className="space-y-2">
@@ -322,7 +355,7 @@ export default function SiteSettingsPage() {
             <CardTitle>Navigation (navbar links)</CardTitle>
             <FieldHelp text="Label = text shown in the menu. Link = web address: use /about for About page, /blog for the blog. Start with / for pages on your site." />
           </div>
-          <p className="text-sm font-normal text-slate-500">Core pages should stay explicit: Home, About, Blog (Posts), Contact. Custom pages are additional items and can be appended automatically.</p>
+          <p className="text-sm font-normal text-[var(--muted-foreground)]">Core pages should stay explicit: Home, About, Blog (Posts), Contact. Custom pages are additional items and can be appended automatically.</p>
         </CardHeader>
         <CardContent className="space-y-3">
           <label className="flex items-center gap-2 cursor-pointer">
@@ -330,9 +363,9 @@ export default function SiteSettingsPage() {
               type="checkbox"
               checked={config.autoAddCustomPagesToNav !== false}
               onChange={(e) => setConfig((c) => ({ ...c, autoAddCustomPagesToNav: e.target.checked }))}
-              className="rounded border-slate-300"
+              className="rounded border-[var(--border)]"
             />
-            <span className="text-sm text-slate-700">Auto-add custom pages to navigation</span>
+            <span className="text-sm text-[var(--foreground)]">Auto-add custom pages to navigation</span>
           </label>
           <NavItemsEditor
             items={config.navItems}
@@ -341,15 +374,72 @@ export default function SiteSettingsPage() {
             helpText="Drag the handle to reorder. Label = text in menu, Link = URL (e.g. /about, /blog)."
           />
           {config.autoAddCustomPagesToNav !== false && customPagesForNav.length > 0 && (
-            <p className="text-xs text-slate-500 mt-2">Custom pages are merged into the list above when auto-add is ON. Reorder or remove as needed, then Save.</p>
+            <p className="text-xs text-[var(--muted-foreground)] mt-2">Custom pages are merged into the list above when auto-add is ON. Reorder or remove as needed, then Save.</p>
           )}
+        </CardContent>
+      </Card>
+
+      {/* Contact form receiving email hidden for now: sending is limited to verified domains / own address; solution TBD. */}
+
+      <Card>
+        <CardHeader>
+          <CardTitle>Copyright</CardTitle>
+          <p className="text-sm font-normal text-[var(--muted-foreground)]">Shown in the footer. Use {"{year}"} for the current year.</p>
+        </CardHeader>
+        <CardContent className="space-y-2">
+          <Input
+            id="copyrightText"
+            value={config.copyrightText ?? ""}
+            onChange={(e) => setConfig((c) => ({ ...c, copyrightText: e.target.value.trim() || null }))}
+            placeholder="e.g. © {year} Company Name. All rights reserved."
+          />
+        </CardContent>
+      </Card>
+
+      <Card>
+        <CardHeader>
+          <CardTitle>Social links (footer)</CardTitle>
+          <p className="text-sm font-normal text-[var(--muted-foreground)]">URLs for social icons in the footer. Leave empty to hide.</p>
+        </CardHeader>
+        <CardContent className="space-y-4">
+          {(["twitter", "instagram", "linkedin", "github", "youtube"] as const).map((key) => (
+            <div key={key} className="space-y-2">
+              <Label htmlFor={`social-${key}`}>{key.charAt(0).toUpperCase() + key.slice(1)} URL</Label>
+              <Input
+                id={`social-${key}`}
+                value={config.socialLinks?.[key] ?? ""}
+                onChange={(e) =>
+                  setConfig((c) => ({
+                    ...c,
+                    socialLinks: { ...c.socialLinks, [key]: e.target.value.trim() || "" },
+                  }))
+                }
+                placeholder={key === "youtube" ? "https://youtube.com/..." : `https://${key}.com/...`}
+              />
+            </div>
+          ))}
+        </CardContent>
+      </Card>
+
+      <Card>
+        <CardHeader>
+          <CardTitle>Google Analytics</CardTitle>
+          <p className="text-sm font-normal text-[var(--muted-foreground)]">Optional. Enter a GA4 Measurement ID (e.g. G-XXXXXXXXXX) to enable Google Analytics on all pages.</p>
+        </CardHeader>
+        <CardContent className="space-y-2">
+          <Input
+            id="googleAnalyticsId"
+            value={config.googleAnalyticsId ?? ""}
+            onChange={(e) => setConfig((c) => ({ ...c, googleAnalyticsId: e.target.value.trim() || null }))}
+            placeholder="G-XXXXXXXXXX"
+          />
         </CardContent>
       </Card>
 
       <Card>
         <CardHeader>
           <CardTitle>Footer links</CardTitle>
-          <p className="text-sm font-normal text-slate-500">Email, GitHub, LinkedIn icons in the footer.</p>
+          <p className="text-sm font-normal text-[var(--muted-foreground)]">Email, GitHub, LinkedIn icons in the footer.</p>
         </CardHeader>
         <CardContent className="space-y-4">
           <div className="space-y-2">
@@ -389,7 +479,7 @@ export default function SiteSettingsPage() {
               placeholder="e.g. All rights reserved. Or a second line."
               rows={2}
             />
-            <p className="text-xs text-slate-500">Shown below the © line. Leave empty for default &quot;All rights reserved.&quot;</p>
+            <p className="text-xs text-[var(--muted-foreground)]">Shown below the © line. Leave empty for default &quot;All rights reserved.&quot;</p>
           </div>
         </CardContent>
       </Card>
@@ -400,7 +490,7 @@ export default function SiteSettingsPage() {
             <CardTitle>OG image (social share)</CardTitle>
             <FieldHelp text="Image shown when someone shares your site on Facebook, Twitter, etc. Use a square or 1200×630 image for best results. Optional." />
           </div>
-          <p className="text-sm font-normal text-slate-500">Image when sharing the site on social media.</p>
+          <p className="text-sm font-normal text-[var(--muted-foreground)]">Image when sharing the site on social media.</p>
         </CardHeader>
         <CardContent className="space-y-2">
           <div className="flex gap-2 flex-wrap">
@@ -418,7 +508,7 @@ export default function SiteSettingsPage() {
       </Card>
 
       {message && (
-        <p className={message.type === "success" ? "text-green-600" : "text-red-600"}>
+        <p role="status" aria-live="polite" className={message.type === "success" ? "text-green-600" : "text-red-600"}>
           {message.text}
           {message.type === "success" && typeof process.env.NEXT_PUBLIC_SITE_URL === "string" && (
             <> — <a href={process.env.NEXT_PUBLIC_SITE_URL} className="underline">View on site</a></>
