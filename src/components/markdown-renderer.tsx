@@ -16,7 +16,7 @@ import type { Components } from "react-markdown";
 import { cn } from "@/lib/utils";
 import "highlight.js/styles/atom-one-light.css";
 
-/** Renders image with next/image, unoptimized to preserve original format (no WebP). */
+/** Renders image with next/image, unoptimized to preserve original format (no WebP). White background for transparent PNGs. */
 function MarkdownImage({
   src,
   alt,
@@ -28,7 +28,10 @@ function MarkdownImage({
 }) {
   const [loaded, setLoaded] = useState(false);
   return (
-    <span className={cn("relative block w-full", className)} style={{ paddingBottom: "56.25%" }}>
+    <span
+      className={cn("relative block w-full bg-white", className)}
+      style={{ paddingBottom: "56.25%" }}
+    >
       {!loaded && (
         <span
           className="absolute inset-0 block animate-pulse rounded bg-slate-200"
@@ -339,7 +342,7 @@ export function MarkdownRenderer({ content, postId, editable = false }: Markdown
           <button
             type="button"
             onClick={() => setLightboxSrc(fullSrc)}
-            className="inline-block w-full cursor-zoom-in focus:outline-none focus:ring-2 focus:ring-slate-400 focus:ring-offset-2 rounded overflow-hidden relative min-h-[120px]"
+            className="inline-block w-full cursor-zoom-in focus:outline-none focus:ring-2 focus:ring-slate-400 focus:ring-offset-2 rounded overflow-hidden relative min-h-[120px] bg-white"
             title="Click to enlarge"
           >
             <MarkdownImage src={fullSrc} alt={alt ?? ""} className="block" />
@@ -566,13 +569,14 @@ export function MarkdownRenderer({ content, postId, editable = false }: Markdown
               <line x1="6" y1="6" x2="18" y2="18" />
             </svg>
           </button>
-          {/* eslint-disable-next-line @next/next/no-img-element */}
-          <img
-            src={lightboxSrc}
-            alt="Enlarged preview"
-            className="max-w-full max-h-[90vh] w-auto h-auto object-contain rounded shadow-2xl"
-            onClick={(e) => e.stopPropagation()}
-          />
+          <span className="bg-white rounded shadow-2xl p-1 max-w-full max-h-[90vh] flex items-center justify-center" onClick={(e) => e.stopPropagation()}>
+            {/* eslint-disable-next-line @next/next/no-img-element */}
+            <img
+              src={lightboxSrc}
+              alt="Enlarged preview"
+              className="max-w-full max-h-[85vh] w-auto h-auto object-contain"
+            />
+          </span>
         </div>
       )}
     </>

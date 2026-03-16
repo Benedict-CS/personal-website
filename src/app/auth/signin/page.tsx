@@ -2,8 +2,9 @@
 
 import { useState, useEffect, useCallback } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
-import { signIn } from "next-auth/react";
+import { signIn, signOut } from "next-auth/react";
 import Script from "next/script";
+import { isSessionExpiredError } from "@/lib/session-expired";
 import { motion } from "framer-motion";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -26,6 +27,15 @@ export default function SignInPage() {
   const [captchaRequired, setCaptchaRequired] = useState(false);
   const [captchaToken, setCaptchaToken] = useState<string | null>(null);
   const [captchaReady, setCaptchaReady] = useState(false);
+
+  const errorParam = searchParams.get("error");
+  const sessionExpired = isSessionExpiredError(errorParam);
+
+  // Clear stale session when we landed here due to session expiry so login works without F5
+  useEffect(() => {
+    if (!sessionExpired) return;
+    signOut({ redirect: false });
+  }, [sessionExpired]);
 
   useEffect(() => {
     fetch("/api/auth/captcha-required")
@@ -111,6 +121,11 @@ export default function SignInPage() {
           </CardHeader>
           <CardContent>
             <form onSubmit={handleSubmit} className="space-y-4">
+              {sessionExpired && (
+                <p className="rounded-lg bg-amber-500/10 px-3 py-2 text-sm font-medium text-amber-800" role="alert">
+                  Your session has expired. Please sign in again.
+                </p>
+              )}
               {error && (
                 <p className="rounded-lg bg-destructive/10 px-3 py-2 text-sm font-medium text-destructive" role="alert">
                   {error}

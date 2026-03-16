@@ -7,6 +7,7 @@ import { DashboardNav } from "./dashboard-nav";
 import { DashboardBreadcrumbs } from "./dashboard-breadcrumbs";
 import { DashboardCommandPalette } from "./dashboard-command-palette";
 import { SessionExpiryBanner } from "@/components/session-expiry-banner";
+import { SessionGuard } from "@/components/session-guard";
 import { PanelLeftClose, PanelLeftOpen, Menu } from "lucide-react";
 import { Button } from "@/components/ui/button";
 
@@ -46,6 +47,7 @@ export function DashboardShell({ children }: { children: React.ReactNode }) {
     >
       Skip to main content
     </a>
+    <SessionGuard />
     <DashboardCommandPalette />
     {/* Mobile menu button: visible only on small screens */}
     <div className="fixed left-4 top-20 z-30 md:hidden">

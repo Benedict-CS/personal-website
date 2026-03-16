@@ -1,7 +1,10 @@
 /**
  * Lightweight API client for frontend. Centralizes base URL, JSON handling,
- * and optional auth. Use fetch() directly if you need custom behavior.
+ * and optional auth. On 401/403 with handleAuth, redirects to sign-in (session
+ * expired) in the browser so the user is not left on a stale page.
  */
+
+import { redirectToSignInSessionExpired } from "@/lib/session-expired";
 
 const getBase = () => (typeof window !== "undefined" ? "" : process.env.NEXTAUTH_URL ?? "");
 
@@ -27,9 +30,10 @@ async function request<T = unknown>(
   });
 
   if (res.status === 401 || res.status === 403) {
-    if (handleAuth) {
-      return { data: null, response: res, error: "Unauthorized" };
+    if (handleAuth && typeof window !== "undefined") {
+      redirectToSignInSessionExpired();
     }
+    return { data: null, response: res, error: "Unauthorized" };
   }
 
   const text = await res.text();
