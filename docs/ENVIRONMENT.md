@@ -148,8 +148,14 @@ Restart the app (or rebuild) after changing these. Comments will appear at the b
 
 | Variable | Description | Default |
 |----------|-------------|---------|
-| `ANALYTICS_SECRET` | Secret for server-side analytics beacon (middleware calls `/api/analytics/view`). If set, the middleware can log page views. | Not set (analytics disabled) |
+| `ANALYTICS_SECRET` | Secret for server-side analytics beacon (middleware calls `/api/analytics/view`). | Not set |
 | `ANALYTICS_EXCLUDED_IPS` | Comma-separated IPs or prefixes to exclude from counts. Trailing dot = subnet (e.g. `140.113.` excludes 140.113.x.x). | Not set |
+| `ACCESS_BLOCK_IP_PREFIXES` | Comma-separated IPv4 prefixes; blocked clients get **403** on all routes (including `/api`). Use a trailing dot per octet group, e.g. `140.113.194.` blocks `140.113.194.0–255` only. Empty = no blocking. Restart the Node process after changing. **Docker:** pass these into the container (`env_file` or `-e`), not only on the host. | Not set |
+| `ACCESS_ALLOW_IPS` | Comma-separated exact IPs always allowed, even if they match `ACCESS_BLOCK_IP_PREFIXES`. Supports `::ffff:` form. | Not set |
+
+Client IP is taken in order from **`CF-Connecting-IP`** (Cloudflare), **`True-Client-IP`**, **`Fly-Client-IP`**, **`X-Real-IP`**, then the first **`X-Forwarded-For`** hop. Your reverse proxy should set one of these to the real visitor address.
+
+**Docker Compose:** Variables in the host `.env` file are **not** visible inside the `app` container unless they appear under `services.app.environment` in `docker-compose.yml`. `ACCESS_BLOCK_*`, `ANALYTICS_SECRET`, and `ANALYTICS_EXCLUDED_IPS` are wired there; add any other keys the same way, then `docker compose up -d --force-recreate app`.
 | `SENTRY_DSN` | Sentry DSN for error reporting. When set, Sentry is enabled (client/server/edge configs). | Not set |
 | `NEXT_PUBLIC_SENTRY_DSN` | Optional; can be used by client config if different from `SENTRY_DSN`. | — |
 | `SENTRY_ORG` | Sentry organization (for source maps upload in build). | Optional |

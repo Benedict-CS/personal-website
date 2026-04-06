@@ -87,6 +87,12 @@ export function PostsTableClient({
       day: "numeric",
     });
 
+  const isPostPublic = (post: PostRow) => {
+    if (post.published) return true;
+    if (!post.publishedAt) return false;
+    return new Date(post.publishedAt) <= new Date();
+  };
+
   const toggleOne = (id: string) => {
     setSelected((prev) => {
       const next = new Set(prev);
@@ -361,6 +367,7 @@ export function PostsTableClient({
               </TableHead>
               <TableHead>Title</TableHead>
               <TableHead>Published Status</TableHead>
+              <TableHead className="text-right tabular-nums">Views</TableHead>
               <TableHead>Published Date</TableHead>
               <TableHead>Last Edited</TableHead>
               <TableHead className="text-right">Actions</TableHead>
@@ -389,6 +396,9 @@ export function PostsTableClient({
                       Draft
                     </span>
                   )}
+                </TableCell>
+                <TableCell className="text-right tabular-nums text-[var(--muted-foreground)]">
+                  {isPostPublic(post) ? (post.viewCount ?? 0).toLocaleString() : "—"}
                 </TableCell>
                 <TableCell className="text-[var(--muted-foreground)]">{formatDate(post.createdAt)}</TableCell>
                 <TableCell className="text-xs text-[var(--muted-foreground)]">
@@ -450,6 +460,9 @@ export function PostsTableClient({
                     <span className="rounded-full bg-emerald-100 px-2 py-0.5 font-medium text-emerald-800">Published</span>
                   ) : (
                     <span className="rounded-full bg-[var(--muted)] px-2 py-0.5 font-medium text-[var(--muted-foreground)]">Draft</span>
+                  )}
+                  {isPostPublic(post) && (
+                    <span className="tabular-nums">{(post.viewCount ?? 0).toLocaleString()} views</span>
                   )}
                   <span>{formatDate(post.updatedAt)}</span>
                 </div>

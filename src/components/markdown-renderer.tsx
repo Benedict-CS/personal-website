@@ -1,11 +1,10 @@
 "use client";
 
 import React, { useState, useEffect } from "react";
-import Image from "next/image";
 import ReactMarkdown from "react-markdown";
 import rehypeHighlight from "rehype-highlight";
 import rehypeRaw from "rehype-raw";
-import rehypeSanitize from "rehype-sanitize";
+import rehypeSanitize, { defaultSchema } from "rehype-sanitize";
 import rehypeSlug from "rehype-slug";
 import rehypeKatex from "rehype-katex";
 import remarkGfm from "remark-gfm";
@@ -16,7 +15,19 @@ import type { Components } from "react-markdown";
 import { cn } from "@/lib/utils";
 import "highlight.js/styles/atom-one-light.css";
 
-/** Renders image with next/image, unoptimized to preserve original format (no WebP). White background for transparent PNGs. */
+/** Schema that allows <style>, class, and inline style so blog posts match editor preview. */
+const blogPostSchema = {
+  ...defaultSchema,
+  tagNames: [...(defaultSchema.tagNames ?? []), "style"],
+  attributes: {
+    ...defaultSchema.attributes,
+    div: [...(defaultSchema.attributes?.div ?? []), "className"],
+    span: [...(defaultSchema.attributes?.span ?? []), "className"],
+    "*": [...(defaultSchema.attributes?.["*"] ?? []), "style"],
+  },
+};
+
+/** Renders image at natural aspect ratio (no forced 16:9). White background for transparent PNGs. */
 function MarkdownImage({
   src,
   alt,
@@ -28,24 +39,23 @@ function MarkdownImage({
 }) {
   const [loaded, setLoaded] = useState(false);
   return (
-    <span
-      className={cn("relative block w-full bg-white", className)}
-      style={{ paddingBottom: "56.25%" }}
-    >
+    <span className={cn("relative block w-full bg-white min-h-[80px]", className)}>
       {!loaded && (
         <span
-          className="absolute inset-0 block animate-pulse rounded bg-slate-200"
+          className="absolute inset-0 block animate-pulse rounded bg-slate-200 min-h-[80px]"
           aria-hidden
         />
       )}
-      <Image
+      {/* eslint-disable-next-line @next/next/no-img-element */}
+      <img
         src={src}
         alt={alt ?? ""}
-        fill
-        unoptimized
-        className={cn("object-contain transition-opacity duration-200", !loaded && "opacity-0")}
+        className={cn(
+          "block max-w-full h-auto object-contain transition-opacity duration-200",
+          !loaded && "opacity-0 absolute"
+        )}
         onLoad={() => setLoaded(true)}
-        sizes="(max-width: 768px) 100vw, 800px"
+        loading="lazy"
       />
     </span>
   );
@@ -544,7 +554,7 @@ export function MarkdownRenderer({ content, postId, editable = false }: Markdown
       <div className="prose prose-lg max-w-none markdown-renderer">
         <ReactMarkdown
           remarkPlugins={[remarkGfm, remarkMath]}
-          rehypePlugins={[rehypeRaw, rehypeSanitize, rehypeSlug, rehypeKatex, rehypeHighlight]}
+          rehypePlugins={[rehypeRaw, [rehypeSanitize, blogPostSchema], rehypeSlug, rehypeKatex, rehypeHighlight]}
           components={components}
         >
           {content}

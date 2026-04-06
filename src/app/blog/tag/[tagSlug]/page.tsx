@@ -80,7 +80,7 @@ export default async function TagPage({
   };
 
   return (
-    <div className="container mx-auto max-w-6xl px-4 py-12">
+    <div className="container mx-auto max-w-6xl px-4 py-8 sm:px-6 sm:py-10 lg:px-8 lg:py-12">
       <div className="mb-8">
         <Link
           href="/blog"
@@ -88,7 +88,7 @@ export default async function TagPage({
         >
           ← Back to Blog
         </Link>
-        <h1 className="text-4xl font-bold text-slate-900 mt-4">
+        <h1 className="text-3xl font-bold text-slate-900 mt-4 sm:text-4xl">
           Tag: <span className="text-slate-600">{tag.name}</span>
         </h1>
         <p className="text-slate-600 mt-2">
@@ -97,15 +97,15 @@ export default async function TagPage({
       </div>
 
       {tag.posts.length === 0 ? (
-        <div className="rounded-lg border border-slate-200 bg-white p-12 text-center">
+        <div className="rounded-xl border border-[var(--border)] bg-card p-12 text-center shadow-[var(--shadow-sm)]">
           <p className="text-slate-500">No posts found with this tag.</p>
         </div>
       ) : (
-        <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-3">
+        <div className="grid gap-5 sm:gap-6 md:grid-cols-2 lg:grid-cols-3">
           {tag.posts.map((post) => (
-            <Link key={post.id} href={`/blog/${post.slug}`}>
-              <Card className="h-full transition-shadow hover:shadow-lg">
-                <CardHeader className="gap-3">
+            <Link key={post.id} href={`/blog/${post.slug}`} className="block rounded-xl transition-opacity hover:opacity-95">
+              <Card className="h-full border-[var(--border)] shadow-[var(--shadow-sm)] transition-all duration-200 hover:shadow-[var(--shadow-md)] hover:border-slate-300">
+                <CardHeader className="gap-2 p-5 sm:gap-3 sm:p-6">
                   <CardTitle className="line-clamp-2 text-slate-900 leading-relaxed flex items-start gap-1.5">
                     {post.pinned && (
                       <Pin className="h-4 w-4 mt-0.5 flex-shrink-0 text-amber-500" aria-hidden />
@@ -131,7 +131,7 @@ export default async function TagPage({
                     </div>
                   )}
                 </CardHeader>
-                <CardContent>
+                <CardContent className="px-5 pb-5 sm:px-6 sm:pb-6 pt-0">
                   <p className="text-sm text-slate-600 line-clamp-3 leading-relaxed">
                     {post.description || truncateContent(post.content)}
                   </p>

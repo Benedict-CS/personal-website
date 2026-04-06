@@ -5,11 +5,49 @@ import { withAuth } from "next-auth/middleware";
 import { NextResponse } from "next/server";
 import type { NextRequest, NextFetchEvent } from "next/server";
 import { logRequest } from "@/lib/logger";
+import { isAccessBlocked } from "@/lib/access-blocked-ips";
+import { getTrustedClientIp } from "@/lib/client-ip";
+import { getInternalAppOrigin } from "@/lib/internal-app-origin";
 
 export async function proxy(request: NextRequest, event: NextFetchEvent) {
+  const internalOrigin = getInternalAppOrigin(request);
   const pathname = request.nextUrl.pathname;
-  const ip = request.headers.get("x-forwarded-for")?.split(",")[0]?.trim() || request.headers.get("x-real-ip") || "";
+  const ip = getTrustedClientIp(request);
   logRequest(request.method, pathname, { ip: ip || undefined });
+
+  // Internal fetch from the block handler re-enters middleware with the same client IP in
+  // X-Forwarded-For on some hosts; without this bypass the log API never runs.
+  const accessBlockLogPost =
+    request.method === "POST" && pathname === "/api/analytics/access-block-log";
+
+  if (!accessBlockLogPost && isAccessBlocked(ip)) {
+    const logSecret =
+      (process.env.ACCESS_BLOCK_LOG_SECRET || process.env.ANALYTICS_SECRET || "").trim();
+    if (logSecret) {
+      const logUrl = new URL("/api/analytics/access-block-log", internalOrigin);
+      const logPromise = fetch(logUrl.toString(), {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          "X-Access-Block-Log-Secret": logSecret,
+        },
+        body: JSON.stringify({
+          ip: ip || "unknown",
+          path: pathname,
+          userAgent: (request.headers.get("user-agent") || "").slice(0, 512),
+        }),
+      }).catch(() => {});
+      if (typeof event.waitUntil === "function") {
+        event.waitUntil(logPromise);
+      } else {
+        void logPromise;
+      }
+    }
+    return new NextResponse("Forbidden", {
+      status: 403,
+      headers: { "Content-Type": "text/plain; charset=utf-8" },
+    });
+  }
 
   if (pathname.startsWith("/dashboard") || pathname.startsWith("/editor")) {
     return withAuth({
@@ -29,7 +67,7 @@ export async function proxy(request: NextRequest, event: NextFetchEvent) {
 
   if (hostName && shouldRouteTenant) {
     try {
-      const edgeRes = await fetch(`${request.nextUrl.origin}/api/infra/edge`, {
+      const edgeRes = await fetch(`${internalOrigin}/api/infra/edge`, {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
@@ -77,17 +115,19 @@ export async function proxy(request: NextRequest, event: NextFetchEvent) {
   // Log page view for analytics (non-dashboard pages only)
   const secret = process.env.ANALYTICS_SECRET;
   if (secret) {
-    const clientIp =
-      request.headers.get("x-forwarded-for")?.split(",")[0]?.trim() ||
-      request.headers.get("x-real-ip") ||
-      "unknown";
-    fetch(`${request.nextUrl.origin}/api/analytics/view`, {
+    const clientIp = getTrustedClientIp(request) || "unknown";
+    fetch(`${internalOrigin}/api/analytics/view`, {
       method: "POST",
       headers: {
         "Content-Type": "application/json",
         "X-Analytics-Secret": secret,
       },
-      body: JSON.stringify({ path: pathname, ip: clientIp }),
+      body: JSON.stringify({
+        path: pathname,
+        ip: clientIp,
+        referrer: request.headers.get("referer") || "",
+        userAgent: request.headers.get("user-agent") || "",
+      }),
     }).catch(() => {});
   }
 

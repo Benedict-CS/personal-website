@@ -44,8 +44,20 @@ export async function GET(request: NextRequest) {
   if (toDate) dateFilter.lte = toDate;
   if (Object.keys(dateFilter).length) where.createdAt = dateFilter;
 
+  const blockWhere: Prisma.AccessBlockLogWhereInput = {};
+  if (filterIP) {
+    blockWhere.ip = filterIP;
+  }
+  if (Object.keys(dateFilter).length) blockWhere.createdAt = dateFilter;
+
+  const now = new Date();
+  const publishedPostsWhere: Prisma.PostWhereInput = {
+    OR: [{ published: true }, { publishedAt: { lte: now } }],
+  };
+
   try {
-    const [total, byPath, byIP, byCountry, withDuration, recent] = await Promise.all([
+    const [total, byPath, byIP, byCountry, byReferrer, withDuration, recent, topBlogPosts, accessBlockTotal, accessBlockedRecent] =
+      await Promise.all([
       prisma.pageView.count({ where }),
       prisma.pageView.groupBy({
         by: ["path"],
@@ -58,7 +70,8 @@ export async function GET(request: NextRequest) {
         by: ["ip"],
         where,
         _count: { ip: true },
-        orderBy: { _count: { ip: "desc" } },
+        _max: { createdAt: true },
+        orderBy: { _max: { createdAt: "desc" } },
         take: 50,
       }),
       prisma.pageView.groupBy({
@@ -67,6 +80,13 @@ export async function GET(request: NextRequest) {
         _count: { country: true },
         orderBy: { _count: { country: "desc" } },
         take: 30,
+      }),
+      prisma.pageView.groupBy({
+        by: ["referrer"],
+        where: { ...where, referrer: { not: null } },
+        _count: { referrer: true },
+        orderBy: { _count: { referrer: "desc" } },
+        take: 25,
       }),
       prisma.pageView.aggregate({
         where: { ...where, durationSeconds: { not: null } },
@@ -77,33 +97,82 @@ export async function GET(request: NextRequest) {
         where,
         orderBy: { createdAt: "desc" },
         take: 100,
-        select: { path: true, ip: true, country: true, city: true, durationSeconds: true, createdAt: true },
+        select: {
+          path: true,
+          ip: true,
+          country: true,
+          city: true,
+          durationSeconds: true,
+          referrer: true,
+          userAgent: true,
+          createdAt: true,
+        },
+      }),
+      prisma.post.findMany({
+        where: publishedPostsWhere,
+        orderBy: [{ viewCount: "desc" }, { updatedAt: "desc" }],
+        take: 20,
+        select: { title: true, slug: true, viewCount: true },
+      }),
+      prisma.accessBlockLog.count({ where: blockWhere }),
+      prisma.accessBlockLog.findMany({
+        where: blockWhere,
+        orderBy: { createdAt: "desc" },
+        take: 100,
+        select: { ip: true, path: true, userAgent: true, createdAt: true },
       }),
     ]);
 
     const cvDownloads = byPath.find((p) => p.path === "/cv.pdf" || p.path === "/api/cv/download")?._count?.path ?? 0;
 
-    const byIPFiltered = filterByExcludedIP(byIP.map((p) => ({ ip: p.ip, count: p._count.ip })));
+    const byIPFiltered = filterByExcludedIP(
+      byIP.map((p) => ({
+        ip: p.ip,
+        count: p._count.ip,
+        lastVisit: p._max.createdAt?.toISOString() ?? "",
+      }))
+    );
     const recentFiltered = filterByExcludedIP(recent);
 
     return NextResponse.json({
       total,
       byPath: byPath.map((p) => ({ path: p.path, count: p._count.path })),
-      byIP: byIPFiltered,
+      byIP: byIPFiltered.map((p) => ({
+        ip: p.ip,
+        count: p.count,
+        lastVisit: p.lastVisit || undefined,
+      })),
       byCountry: byCountry
         .filter((c) => c.country)
         .map((c) => ({ country: c.country!, count: c._count.country })),
+      byReferrer: byReferrer
+        .filter((r) => r.referrer)
+        .map((r) => ({ referrer: r.referrer!, count: r._count.referrer })),
       avgDurationSeconds: withDuration._count.durationSeconds
         ? Math.round((withDuration._avg.durationSeconds ?? 0) * 10) / 10
         : null,
       durationSampleCount: withDuration._count.durationSeconds,
       cvDownloads,
+      topBlogPosts: topBlogPosts.map((p) => ({
+        title: p.title,
+        slug: p.slug,
+        viewCount: p.viewCount,
+      })),
       recent: recentFiltered.map((r) => ({
         path: r.path,
         ip: r.ip,
         country: r.country,
         city: r.city,
         durationSeconds: r.durationSeconds,
+        referrer: r.referrer,
+        userAgent: r.userAgent,
+        createdAt: r.createdAt.toISOString(),
+      })),
+      accessBlockTotal,
+      accessBlockedRecent: accessBlockedRecent.map((r) => ({
+        ip: r.ip,
+        path: r.path,
+        userAgent: r.userAgent,
         createdAt: r.createdAt.toISOString(),
       })),
       filterIP: filterIP || undefined,

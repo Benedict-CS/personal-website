@@ -1,10 +1,13 @@
 import path from "path";
 import { NextRequest, NextResponse } from "next/server";
+import { GetObjectCommand } from "@aws-sdk/client-s3";
 import { prisma } from "@/lib/prisma";
+import { s3Client, S3_BUCKET } from "@/lib/s3";
 import { isPrivateIP } from "@/lib/is-private-url";
-import { isExcludedIP } from "@/lib/analytics-excluded-ips";
 
 export const dynamic = "force-dynamic";
+
+const CV_S3_KEY = "cv.pdf";
 
 function ensureGeoIPDataDir() {
   if (!process.env.GEODATADIR) {
@@ -18,24 +21,11 @@ function getClientIP(req: NextRequest): string {
   return req.headers.get("x-real-ip") || "unknown";
 }
 
-/** Build redirect base URL from request (avoids 0.0.0.0 when server binds to all interfaces). */
-function getRedirectBase(req: NextRequest): string {
-  const host = req.headers.get("x-forwarded-host") || req.headers.get("host") || "";
-  const proto = req.headers.get("x-forwarded-proto") || (req.nextUrl.protocol?.replace(":", "") ?? "https");
-  if (host && host !== "0.0.0.0:3000" && host !== "0.0.0.0") {
-    return `${proto}://${host}`;
-  }
-  const siteUrl = process.env.NEXT_PUBLIC_SITE_URL || process.env.NEXTAUTH_URL || "";
-  if (siteUrl) {
-    return siteUrl.replace(/\/$/, "");
-  }
-  return req.nextUrl.origin;
-}
-
-/** Log CV download then redirect to S3-served CV (/api/media/serve/cv.pdf). */
+/** Log CV download (always count; only skip private IP). Then stream PDF from S3. */
 export async function GET(request: NextRequest) {
   const ip = getClientIP(request);
-  if (!isExcludedIP(ip) && !isPrivateIP(ip)) {
+
+  if (!isPrivateIP(ip)) {
     let country: string | null = null;
     let city: string | null = null;
     try {
@@ -47,16 +37,46 @@ export async function GET(request: NextRequest) {
         city = (geo.city ?? "").trim() || null;
       }
     } catch {
-      // GeoIP data not available at build time
+      // GeoIP optional
     }
     try {
       await prisma.pageView.create({
         data: { path: "/cv.pdf", ip, country, city },
       });
-    } catch {
-      // ignore
+    } catch (e) {
+      console.error("[cv/download] Failed to log PageView:", e);
     }
   }
-  const base = getRedirectBase(request);
-  return NextResponse.redirect(`${base}/api/media/serve/cv.pdf`, 302);
+
+  try {
+    const response = await s3Client.send(
+      new GetObjectCommand({ Bucket: S3_BUCKET, Key: CV_S3_KEY })
+    );
+
+    if (!response.Body) {
+      return new NextResponse("CV file not found", { status: 404 });
+    }
+
+    const chunks: Uint8Array[] = [];
+    for await (const chunk of response.Body as AsyncIterable<Uint8Array>) {
+      chunks.push(chunk);
+    }
+    const buffer = Buffer.concat(chunks);
+    const contentType = response.ContentType || "application/pdf";
+
+    return new NextResponse(buffer, {
+      headers: {
+        "Content-Type": contentType,
+        "Content-Disposition": 'attachment; filename="site-owner-cv.pdf"',
+        "Cache-Control": "private, no-cache",
+      },
+    });
+  } catch (error: unknown) {
+    console.error("[cv/download] S3 error:", error);
+    const err = error as { name?: string; $metadata?: { httpStatusCode?: number } };
+    if (err.name === "NoSuchKey" || err.$metadata?.httpStatusCode === 404) {
+      return new NextResponse("CV file not found", { status: 404 });
+    }
+    return new NextResponse("Failed to serve CV", { status: 500 });
+  }
 }

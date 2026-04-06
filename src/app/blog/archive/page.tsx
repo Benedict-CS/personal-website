@@ -64,7 +64,7 @@ export default async function ArchivePage() {
   };
 
   return (
-    <div className="container mx-auto max-w-6xl px-4 py-12">
+    <div className="container mx-auto max-w-6xl px-4 py-8 sm:px-6 sm:py-10 lg:px-8 lg:py-12">
       <div className="mb-8">
         <Link
           href="/blog"
@@ -72,31 +72,31 @@ export default async function ArchivePage() {
         >
           ← Back to Blog
         </Link>
-        <h1 className="text-4xl font-bold text-slate-900 mt-4">Archive</h1>
+        <h1 className="text-3xl font-bold text-slate-900 mt-4 sm:text-4xl">Archive</h1>
         <p className="text-slate-600 mt-2">
           {posts.length} {posts.length === 1 ? "post" : "posts"} in total
         </p>
       </div>
 
       {years.length === 0 ? (
-        <div className="rounded-lg border border-slate-200 bg-white p-12 text-center">
+        <div className="rounded-xl border border-[var(--border)] bg-card p-12 text-center shadow-[var(--shadow-sm)]">
           <p className="text-slate-500">No posts available yet.</p>
         </div>
       ) : (
-        <div className="space-y-12">
+        <div className="space-y-10">
           {years.map((year) => (
-            <div key={year}>
-              <h2 className="text-3xl font-bold text-slate-900 mb-6 pb-2 border-b border-slate-200">
+            <section key={year}>
+              <h2 className="text-2xl font-bold text-slate-900 mb-5 pb-2 border-b border-slate-200 sm:text-3xl">
                 {year}
                 <span className="ml-3 text-lg font-normal text-slate-500">
                   ({postsByYear[year].length} {postsByYear[year].length === 1 ? "post" : "posts"})
                 </span>
               </h2>
-              <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-3">
+              <div className="grid gap-5 sm:gap-6 md:grid-cols-2 lg:grid-cols-3">
                 {postsByYear[year].map((post) => (
-                  <Link key={post.id} href={`/blog/${post.slug}`}>
-                    <Card className="h-full transition-shadow hover:shadow-lg">
-                      <CardHeader className="gap-3">
+                  <Link key={post.id} href={`/blog/${post.slug}`} className="block rounded-xl transition-opacity hover:opacity-95">
+                    <Card className="h-full border-[var(--border)] shadow-[var(--shadow-sm)] transition-all duration-200 hover:shadow-[var(--shadow-md)] hover:border-slate-300">
+                      <CardHeader className="gap-2 p-5 sm:gap-3 sm:p-6">
                         <CardTitle className="line-clamp-2 text-slate-900 leading-relaxed flex items-start gap-1.5">
                           {post.pinned && (
                             <Pin className="h-4 w-4 mt-0.5 flex-shrink-0 text-amber-500" aria-hidden />
@@ -131,7 +131,7 @@ export default async function ArchivePage() {
                   </Link>
                 ))}
               </div>
-            </div>
+            </section>
           ))}
         </div>
       )}

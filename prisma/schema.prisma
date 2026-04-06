@@ -728,6 +728,7 @@ model Post {
   previewToken String?       @unique // Secret token for read-only draft preview link
   previewTokenExpiresAt DateTime? // When preview link expires (optional)
   publishedAt  DateTime?     // Scheduled publish time; when <= now, post is treated as published
+  viewCount    Int           @default(0) // Public blog views (deduped with PageView; dashboard only)
   createdAt    DateTime      @default(now())
   updatedAt    DateTime      @updatedAt
   tags         Tag[]
@@ -976,10 +977,24 @@ model PageView {
   country        String?  // ISO country code from GeoIP
   city           String?  // City from GeoIP (when available)
   durationSeconds Int?    // time on page (set when user leaves)
+  referrer       String?  @db.VarChar(512) // HTTP Referer when available
+  userAgent      String?  @db.VarChar(512) // truncated User-Agent
   createdAt      DateTime @default(now())
 
   @@index([path])
   @@index([createdAt])
   @@index([ip])
   @@index([country])
+}
+
+// Log 403 responses from ACCESS_BLOCK_IP_PREFIXES (proxy); dashboard only
+model AccessBlockLog {
+  id        String   @id @default(uuid())
+  ip        String
+  path      String
+  userAgent String?  @db.VarChar(512)
+  createdAt DateTime @default(now())
+
+  @@index([createdAt])
+  @@index([ip])
 }

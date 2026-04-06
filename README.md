@@ -19,6 +19,7 @@ Production-ready personal website and CMS with a commercial-style dashboard and 
 - Public site pages: Home, About, Blog, Contact, and custom pages (`/page/[slug]`).
 - **Site settings** (Dashboard → Content → Site settings): site name, logo, favicon, meta, navbar, footer, copyright, social links, OG image, Google Analytics. See [Site settings](docs/SITE_SETTINGS.md) for what each option affects.
 - Dashboard management for site settings, content pages, home sections (add/remove/reorder), posts, tags, media, analytics, audit logs, and setup.
+- Dashboard analytics (page views, blog view counts, CV downloads); see [Environment](docs/ENVIRONMENT.md) for `ANALYTICS_SECRET` / `ANALYTICS_EXCLUDED_IPS`.
 - Editor workflow with `Save Draft`, `Publish`, undo/redo shortcuts, local recovery, and server revision history.
 - Shareable preview links for unpublished content.
 - Scheduled publishing for custom pages.

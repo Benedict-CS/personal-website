@@ -20,7 +20,6 @@ import { stripMarkdown } from "@/lib/utils";
 import { Pencil } from "lucide-react";
 import { calculateReadingTime, formatReadingTime } from "@/lib/reading-time";
 import { getSiteConfigForRender } from "@/lib/site-config";
-import { ZenModeProvider, ZenModeButton, ZenModeExitButton } from "@/components/zen-mode";
 
 export const revalidate = 60;
 
@@ -197,20 +196,19 @@ export default async function BlogPostPage({
         prevHref={prevPost ? `/blog/${prevPost.slug}` : null}
         nextHref={nextPost ? `/blog/${nextPost.slug}` : null}
       />
-      <div className="container mx-auto max-w-[90rem] px-4 py-12">
+      <div className="container mx-auto max-w-[120rem] px-4 py-8 sm:px-6 sm:py-10 lg:px-8 lg:py-12">
       <PublicBreadcrumbs items={[{ label: "Home", href: "/" }, { label: "Blog", href: "/blog" }, { label: post.title }]} />
-      <ZenModeProvider>
-      <div className="grid grid-cols-1 gap-10 lg:grid-cols-[1fr_250px]">
+      <div className="grid grid-cols-1 gap-8 lg:grid-cols-[1fr_260px] lg:gap-12">
         {/* Main content */}
-        <div data-zen-root className="min-w-0">
-          <Card>
-            <CardContent className="pt-6">
-              <div className="space-y-6 overflow-hidden">
-                <div>
-                  <h1 className="mb-4 text-4xl font-bold text-slate-900">
+        <div className="min-w-0">
+          <Card className="overflow-hidden">
+            <CardContent className="px-4 pt-6 pb-8 sm:px-6 sm:pt-8 sm:pb-10 lg:px-8">
+              <div className="space-y-8 overflow-hidden">
+                <header>
+                  <h1 className="text-3xl font-bold tracking-tight text-slate-900 sm:text-4xl">
                     {post.title}
                   </h1>
-                  <div className="mb-4 flex flex-wrap items-center gap-x-4 gap-y-1 text-sm text-slate-500">
+                  <div className="mt-3 flex flex-wrap items-center gap-x-4 gap-y-1 text-sm text-slate-500">
                     <span>Published on {formatDate(post.createdAt)}</span>
                     <span aria-hidden>·</span>
                     <span>{formatReadingTime(readingTime)} read</span>
@@ -231,13 +229,12 @@ export default async function BlogPostPage({
                     </div>
                   )}
 
-                  <div className="flex flex-wrap items-center gap-2">
+                  <div className="mt-4 flex flex-wrap items-center gap-2">
                     <ShareButtons
                       title={post.title}
                       url={`/blog/${post.slug}`}
                       description={stripMarkdown(post.content).substring(0, 100)}
                     />
-                    <ZenModeButton />
                   </div>
 
                   {/* Edit button for logged in users */}
@@ -251,16 +248,16 @@ export default async function BlogPostPage({
                       </Link>
                     </div>
                   )}
-                </div>
+                </header>
 
-                <div data-post-content className="prose-reading">
+                <div data-post-content className="prose-reading prose-reading-full mt-8">
                   <MarkdownRenderer content={post.content} postId={post.id} editable={!!session} />
                 </div>
                 <HighlightScroll highlight={highlight} occurrence={occurrence} contentSelector="[data-post-content]" />
 
                 {/* Related posts (by tag) */}
                 {relatedPosts.length > 0 && (
-                  <div className="border-t border-slate-200 pt-6">
+                  <div className="border-t border-slate-200 pt-8">
                     <h3 className="mb-3 text-sm font-medium uppercase tracking-wider text-slate-500">Related</h3>
                     <ul className="space-y-2">
                       {relatedPosts.map((r) => (
@@ -278,7 +275,7 @@ export default async function BlogPostPage({
                 )}
 
                 {/* Prev/Next navigation */}
-                <div className="border-t border-slate-200 pt-6">
+                <div className="border-t border-slate-200 pt-8">
                   <div className="flex flex-col gap-4 sm:flex-row sm:justify-between">
                     {prevPost ? (
                       <Link
@@ -314,25 +311,25 @@ export default async function BlogPostPage({
                   </div>
                 </div>
 
-                <div className="pt-4">
+                <div className="pt-6">
                   <Link href="/blog">
-                    <Button variant="outline">Back to Blog</Button>
+                    <Button variant="outline" size="sm">Back to Blog</Button>
                   </Link>
                 </div>
 
-                <GiscusComments mapping="pathname" />
+                <div className="border-t border-slate-200 pt-8 mt-8">
+                  <GiscusComments mapping="pathname" />
+                </div>
               </div>
             </CardContent>
           </Card>
-          <ZenModeExitButton />
         </div>
 
         {/* TOC sidebar */}
-        <aside className="lg:sticky lg:top-20 lg:self-start">
+        <aside className="lg:sticky lg:top-20 lg:self-start w-full lg:w-[260px]">
           <TableOfContents content={post.content} />
         </aside>
       </div>
-      </ZenModeProvider>
       <BackToTop />
     </div>
     </>

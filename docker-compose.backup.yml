@@ -92,6 +92,10 @@ services:
       - CONTACT_BCC=${CONTACT_BCC:-}
       - NEXT_PUBLIC_TURNSTILE_SITE_KEY=${NEXT_PUBLIC_TURNSTILE_SITE_KEY:-}
       - TURNSTILE_SECRET_KEY=${TURNSTILE_SECRET_KEY:-}
+      - ACCESS_BLOCK_IP_PREFIXES=${ACCESS_BLOCK_IP_PREFIXES:-}
+      - ACCESS_ALLOW_IPS=${ACCESS_ALLOW_IPS:-}
+      - ANALYTICS_SECRET=${ANALYTICS_SECRET:-}
+      - ANALYTICS_EXCLUDED_IPS=${ANALYTICS_EXCLUDED_IPS:-}
     healthcheck:
       test: ["CMD", "node", "-e", "require('http').get('http://localhost:3000', (r) => {process.exit(r.statusCode === 200 ? 0 : 1)})"]
       interval: 30s

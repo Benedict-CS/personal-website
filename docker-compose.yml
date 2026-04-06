@@ -60,6 +60,8 @@ services:
       - ./public:/app/public
     environment:
       - NODE_ENV=production
+      # Proxy self-fetch (block log, analytics view, edge): public origin is often unreachable from inside the container
+      - INTERNAL_APP_ORIGIN=http://127.0.0.1:3000
       - DATABASE_URL=postgresql://${POSTGRES_USER:-ben}:${POSTGRES_PASSWORD}@postgres:5432/${POSTGRES_DB:-blog}
       - ADMIN_PASSWORD=${ADMIN_PASSWORD}
       - NEXTAUTH_SECRET=${NEXTAUTH_SECRET}
@@ -80,6 +82,12 @@ services:
       # Login CAPTCHA (optional; after N failed attempts)
       - NEXT_PUBLIC_TURNSTILE_SITE_KEY=${NEXT_PUBLIC_TURNSTILE_SITE_KEY:-}
       - TURNSTILE_SECRET_KEY=${TURNSTILE_SECRET_KEY:-}
+      # Site-wide IP block (proxy) and analytics — must be listed here or the container never sees host .env keys
+      - ACCESS_BLOCK_IP_PREFIXES=${ACCESS_BLOCK_IP_PREFIXES:-}
+      - ACCESS_ALLOW_IPS=${ACCESS_ALLOW_IPS:-}
+      - ACCESS_BLOCK_LOG_SECRET=${ACCESS_BLOCK_LOG_SECRET:-}
+      - ANALYTICS_SECRET=${ANALYTICS_SECRET:-}
+      - ANALYTICS_EXCLUDED_IPS=${ANALYTICS_EXCLUDED_IPS:-}
       # Blog comments (Giscus) — required for /api/giscus-config at runtime
       - NEXT_PUBLIC_GISCUS_REPO=${NEXT_PUBLIC_GISCUS_REPO}
       - NEXT_PUBLIC_GISCUS_REPO_ID=${NEXT_PUBLIC_GISCUS_REPO_ID}

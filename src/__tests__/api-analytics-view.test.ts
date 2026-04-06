@@ -2,6 +2,8 @@ import { NextRequest } from "next/server";
 
 const mockFindFirst = jest.fn();
 const mockCreate = jest.fn();
+const mockPostFindFirst = jest.fn();
+const mockPostUpdate = jest.fn();
 const mockIsPrivateIP = jest.fn();
 const mockIsExcludedIP = jest.fn();
 const mockNormalizeIP = jest.fn();
@@ -12,6 +14,10 @@ jest.mock("@/lib/prisma", () => ({
     pageView: {
       findFirst: (...args: unknown[]) => mockFindFirst(...args),
       create: (...args: unknown[]) => mockCreate(...args),
+    },
+    post: {
+      findFirst: (...args: unknown[]) => mockPostFindFirst(...args),
+      update: (...args: unknown[]) => mockPostUpdate(...args),
     },
   },
 }));
@@ -47,6 +53,8 @@ describe("POST /api/analytics/view", () => {
     mockGetRequestOrigin.mockReturnValue("https://site.test");
     mockFindFirst.mockResolvedValue(null);
     mockCreate.mockResolvedValue({ id: "pv-1" });
+    mockPostFindFirst.mockResolvedValue(null);
+    mockPostUpdate.mockResolvedValue({});
   });
 
   it("returns 401 for disallowed origin", async () => {
@@ -136,6 +144,36 @@ describe("POST /api/analytics/view", () => {
     const res = await POST(req);
     expect(res.status).toBe(200);
     expect(mockCreate).toHaveBeenCalled();
+    expect(mockPostUpdate).not.toHaveBeenCalled();
+  });
+
+  it("increments post viewCount for published blog slug path", async () => {
+    mockPostFindFirst.mockResolvedValue({ id: "post-1" });
+    const POST = await loadRoute();
+    const req = new NextRequest("http://localhost/api/analytics/view", {
+      method: "POST",
+      headers: {
+        origin: "https://site.test",
+        "content-type": "application/json",
+        "x-forwarded-for": "3.3.3.3",
+      },
+      body: JSON.stringify({ path: "/blog/hello-world", referrer: "https://google.com/", userAgent: "TestAgent/1.0" }),
+    });
+    const res = await POST(req);
+    expect(res.status).toBe(200);
+    expect(mockCreate).toHaveBeenCalledWith(
+      expect.objectContaining({
+        data: expect.objectContaining({
+          path: "/blog/hello-world",
+          referrer: "https://google.com/",
+          userAgent: "TestAgent/1.0",
+        }),
+      })
+    );
+    expect(mockPostUpdate).toHaveBeenCalledWith({
+      where: { id: "post-1" },
+      data: { viewCount: { increment: 1 } },
+    });
   });
 
   it("accepts middleware-secret flow and bypasses origin check", async () => {

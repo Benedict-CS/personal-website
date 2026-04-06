@@ -140,16 +140,16 @@ export default function BlogPageClient() {
   }, [postsByYear]);
 
   return (
-    <div className="container mx-auto max-w-6xl px-4 py-12">
+    <div className="container mx-auto max-w-6xl px-4 py-8 sm:px-6 sm:py-10 lg:px-8 lg:py-12">
       <PublicBreadcrumbs items={[{ label: "Home", href: "/" }, { label: "Blog" }]} />
       <div className="mb-8">
-        <h1 className="text-4xl font-bold tracking-tight text-[var(--foreground)] sm:text-5xl">Blog</h1>
+        <h1 className="text-3xl font-bold tracking-tight text-[var(--foreground)] sm:text-4xl">Blog</h1>
         <p className="mt-2 text-[var(--muted-foreground)]">Articles and notes by topic.</p>
       </div>
 
       {/* Tag filter: All + tag buttons */}
       <div className="mb-6">
-        <p className="text-sm font-medium text-[var(--foreground)] mb-2">Filter by tag (random 10)</p>
+        <p className="text-sm font-medium text-[var(--foreground)] mb-2">Filter by tag</p>
         <div className="flex flex-wrap gap-2">
           <Button
             variant={activeTag === null ? "default" : "outline"}
@@ -178,8 +178,8 @@ export default function BlogPageClient() {
       </div>
 
       {/* Subscribe via RSS */}
-      <div className="mb-6 flex items-center gap-2 text-sm text-[var(--muted-foreground)]">
-        <Rss className="h-4 w-4 flex-shrink-0" />
+      <div className="mb-8 flex flex-wrap items-center gap-x-2 gap-y-1 text-sm text-[var(--muted-foreground)]">
+        <Rss className="h-4 w-4 flex-shrink-0" aria-hidden />
         <span>Subscribe via RSS:</span>
         <Link
           href="/feed.xml"
@@ -189,7 +189,7 @@ export default function BlogPageClient() {
         >
           feed.xml
         </Link>
-        <span>— Add this URL to Feedly, Inoreader, or any RSS reader to get new posts.</span>
+        <span className="hidden sm:inline">— Add to Feedly, Inoreader, or any RSS reader.</span>
       </div>
 
       {activeTag && (
@@ -231,16 +231,16 @@ export default function BlogPageClient() {
           </p>
         </div>
       ) : (
-        <div className="space-y-12">
+        <div className="space-y-10">
           {years.map((year) => (
-            <div key={year}>
-              <h2 className="text-3xl font-bold text-[var(--foreground)] mb-6 pb-2 border-b border-[var(--border)]">
+            <section key={year} className="first:pt-0">
+              <h2 className="text-2xl font-bold text-[var(--foreground)] mb-5 pb-2 border-b border-[var(--border)] sm:text-3xl">
                 {year}
                 <span className="ml-3 text-lg font-normal text-[var(--muted-foreground)]">
                   ({postsByYear[year].length} {postsByYear[year].length === 1 ? "post" : "posts"})
                 </span>
               </h2>
-              <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-3">
+              <div className="grid gap-5 sm:gap-6 md:grid-cols-2 lg:grid-cols-3">
                 {postsByYear[year].map((post, cardIndex) => (
                   <motion.div
                     key={post.id}
@@ -248,9 +248,9 @@ export default function BlogPageClient() {
                     animate={{ opacity: 1, y: 0 }}
                     transition={{ duration: 0.3, delay: Math.min(cardIndex * 0.05, 0.25), ease: [0.25, 0.46, 0.45, 0.94] }}
                   >
-                    <Link href={`/blog/${post.slug}`} className="block focus:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 rounded-xl">
-                      <Card className="h-full border-[var(--border)] shadow-[var(--shadow-sm)] transition-all duration-200 hover:shadow-[var(--shadow-md)] hover:border-[oklch(0.91_0.012_255)]">
-                        <CardHeader className="gap-3">
+                    <Link href={`/blog/${post.slug}`} className="block focus:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 rounded-xl transition-opacity hover:opacity-95">
+                      <Card className="h-full border-[var(--border)] shadow-[var(--shadow-sm)] transition-all duration-200 hover:shadow-[var(--shadow-md)] hover:border-slate-300">
+                        <CardHeader className="gap-2 p-5 sm:gap-3 sm:p-6">
                           <CardTitle className="line-clamp-2 text-[var(--foreground)] leading-relaxed flex items-start gap-1.5">
                             {post.pinned && (
                               <Pin className="h-4 w-4 mt-0.5 flex-shrink-0 text-amber-500" aria-hidden />
@@ -283,7 +283,7 @@ export default function BlogPageClient() {
                             </div>
                           )}
                         </CardHeader>
-                        <CardContent>
+                        <CardContent className="px-5 pb-5 sm:px-6 sm:pb-6 pt-0">
                           <p className="text-sm text-[var(--muted-foreground)] line-clamp-3 leading-relaxed">
                             {post.description || truncateContent(post.content)}
                           </p>
@@ -293,7 +293,7 @@ export default function BlogPageClient() {
                   </motion.div>
                 ))}
               </div>
-            </div>
+            </section>
           ))}
         </div>
       )}

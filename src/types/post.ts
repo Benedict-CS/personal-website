@@ -4,6 +4,8 @@ export type PostRow = {
   title: string;
   slug: string;
   published: boolean;
+  publishedAt?: string | null;
+  viewCount?: number;
   createdAt: string;
   updatedAt: string;
   tags: { name: string; slug: string }[];

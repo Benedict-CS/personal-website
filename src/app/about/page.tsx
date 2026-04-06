@@ -310,7 +310,19 @@ export default async function AboutPage() {
   const config = await getAboutConfig();
   const { profileImage, heroName, heroTagline, heroPortfolioLabel, heroPortfolioUrl, introText, aboutMainContent, educationBlocks, experienceBlocks, volunteerBlocks, projectBlocks, schoolLogos, projectImages, companyLogos, technicalSkills, achievements, customSections, sectionOrder, sectionVisibility, sectionTitles } = config;
   const downloadCvLabel = heroPortfolioLabel?.trim() || "Download CV (PDF)";
-  const downloadCvHref = heroPortfolioUrl?.trim() || "/api/media/serve/cv.pdf";
+  const rawCvHref = heroPortfolioUrl?.trim() || "";
+  const cvPath =
+    rawCvHref.startsWith("http://") || rawCvHref.startsWith("https://")
+      ? (() => {
+          try {
+            return new URL(rawCvHref).pathname;
+          } catch {
+            return rawCvHref;
+          }
+        })()
+      : rawCvHref;
+  const isOurServeCv = cvPath === "/api/media/serve/cv.pdf";
+  const downloadCvHref = rawCvHref && !isOurServeCv ? rawCvHref : "/api/cv/download";
   const aboutVisible = (id: string) => sectionVisibility?.[id] !== false;
   const customSectionIds = (Array.isArray(customSections) ? customSections : [])
     .map((section) => `custom:${String(section.id ?? "").trim()}`)

@@ -10,12 +10,30 @@ import { Download } from "lucide-react";
 type Stats = {
   total: number;
   byPath: { path: string; count: number }[];
-  byIP: { ip: string; count: number }[];
+  byIP: { ip: string; count: number; lastVisit?: string }[];
   byCountry?: { country: string; count: number }[];
+  byReferrer?: { referrer: string; count: number }[];
+  topBlogPosts?: { title: string; slug: string; viewCount: number }[];
   avgDurationSeconds?: number | null;
   durationSampleCount?: number;
   cvDownloads?: number;
-  recent: { path: string; ip: string; country?: string | null; city?: string | null; durationSeconds?: number | null; createdAt: string }[];
+  recent: {
+    path: string;
+    ip: string;
+    country?: string | null;
+    city?: string | null;
+    durationSeconds?: number | null;
+    referrer?: string | null;
+    userAgent?: string | null;
+    createdAt: string;
+  }[];
+  accessBlockTotal?: number;
+  accessBlockedRecent?: {
+    ip: string;
+    path: string;
+    userAgent: string | null;
+    createdAt: string;
+  }[];
   filterIP?: string;
   excludedIPs?: string[];
 };
@@ -44,7 +62,7 @@ function escapeCsvCell(s: string | number | null | undefined): string {
 
 function exportStatsToCsv(stats: Stats, from: string, to: string) {
   const rows: string[] = [];
-  rows.push("path,ip,country,city,duration_seconds,created_at");
+  rows.push("path,ip,country,city,duration_seconds,referrer,user_agent,created_at");
   for (const r of stats.recent) {
     rows.push([
       escapeCsvCell(r.path),
@@ -52,6 +70,8 @@ function exportStatsToCsv(stats: Stats, from: string, to: string) {
       escapeCsvCell(r.country),
       escapeCsvCell(r.city),
       escapeCsvCell(r.durationSeconds ?? ""),
+      escapeCsvCell(r.referrer),
+      escapeCsvCell(r.userAgent),
       escapeCsvCell(r.createdAt),
     ].join(","));
   }
@@ -60,10 +80,38 @@ function exportStatsToCsv(stats: Stats, from: string, to: string) {
   for (const p of stats.byPath) {
     rows.push([escapeCsvCell(p.path), escapeCsvCell(p.count)].join(","));
   }
+  if (stats.byReferrer?.length) {
+    rows.push("");
+    rows.push("referrer,count");
+    for (const r of stats.byReferrer) {
+      rows.push([escapeCsvCell(r.referrer), escapeCsvCell(r.count)].join(","));
+    }
+  }
+  if (stats.topBlogPosts?.length) {
+    rows.push("");
+    rows.push("title,view_count");
+    for (const p of stats.topBlogPosts) {
+      rows.push([escapeCsvCell(p.title), escapeCsvCell(p.viewCount)].join(","));
+    }
+  }
   rows.push("");
-  rows.push("ip,count");
+  rows.push("ip,count,last_visit");
   for (const b of stats.byIP) {
-    rows.push([escapeCsvCell(b.ip), escapeCsvCell(b.count)].join(","));
+    rows.push([escapeCsvCell(b.ip), escapeCsvCell(b.count), escapeCsvCell(b.lastVisit)].join(","));
+  }
+  if (stats.accessBlockedRecent?.length) {
+    rows.push("");
+    rows.push("blocked_time,blocked_ip,blocked_path,blocked_user_agent");
+    for (const r of stats.accessBlockedRecent) {
+      rows.push(
+        [
+          escapeCsvCell(r.createdAt),
+          escapeCsvCell(r.ip),
+          escapeCsvCell(r.path),
+          escapeCsvCell(r.userAgent),
+        ].join(",")
+      );
+    }
   }
   const csv = rows.join("\n");
   const blob = new Blob([csv], { type: "text/csv;charset=utf-8;" });
@@ -137,10 +185,20 @@ export default function AnalyticsPage() {
         setClearMessage(data.error || `Error ${res.status}`);
         return;
       }
-      setClearMessage(`Deleted ${data.deleted ?? 0} record(s) before ${date}.`);
+      const ab = typeof data.accessBlockDeleted === "number" ? data.accessBlockDeleted : 0;
+      setClearMessage(
+        `Deleted ${data.deleted ?? 0} page view(s)${ab ? ` and ${ab} blocked-access log row(s)` : ""} before ${date}.`
+      );
       setClearBefore("");
       setRefreshKey((k) => k + 1);
-      toast(`Deleted ${data.deleted ?? 0} record(s).`, "success");
+      toast(
+        `Deleted ${data.deleted ?? 0} page view(s)${
+          typeof data.accessBlockDeleted === "number" && data.accessBlockDeleted > 0
+            ? `, ${data.accessBlockDeleted} block log(s)`
+            : ""
+        }.`,
+        "success"
+      );
     } catch (e) {
       setClearMessage((e as Error)?.message || "Request failed");
       toast((e as Error)?.message || "Request failed", "error");
@@ -170,10 +228,20 @@ export default function AnalyticsPage() {
         toast(data.error || `Error ${res.status}`, "error");
         return;
       }
-      setClearMessage(`Deleted ${data.deleted ?? 0} record(s) for IP ${ip}.`);
+      const ab = typeof data.accessBlockDeleted === "number" ? data.accessBlockDeleted : 0;
+      setClearMessage(
+        `Deleted ${data.deleted ?? 0} page view(s)${ab ? ` and ${ab} blocked-access log row(s)` : ""} for IP ${ip}.`
+      );
       setClearByIP("");
       setRefreshKey((k) => k + 1);
-      toast(`Deleted ${data.deleted ?? 0} record(s) for IP.`, "success");
+      toast(
+        `Deleted ${data.deleted ?? 0} page view(s)${
+          typeof data.accessBlockDeleted === "number" && data.accessBlockDeleted > 0
+            ? `, ${data.accessBlockDeleted} block log(s)`
+            : ""
+        } for IP.`,
+        "success"
+      );
     } catch (e) {
       setClearMessage((e as Error)?.message || "Request failed");
       toast((e as Error)?.message || "Request failed", "error");
@@ -202,10 +270,20 @@ export default function AnalyticsPage() {
         toast(data.error || `Error ${res.status}`, "error");
         return;
       }
-      setClearMessage(`Deleted ${data.deleted ?? 0} record(s) on ${date}.`);
+      const ab = typeof data.accessBlockDeleted === "number" ? data.accessBlockDeleted : 0;
+      setClearMessage(
+        `Deleted ${data.deleted ?? 0} page view(s)${ab ? ` and ${ab} blocked-access log row(s)` : ""} on ${date}.`
+      );
       setClearOnDate("");
       setRefreshKey((k) => k + 1);
-      toast(`Deleted ${data.deleted ?? 0} record(s).`, "success");
+      toast(
+        `Deleted ${data.deleted ?? 0} page view(s)${
+          typeof data.accessBlockDeleted === "number" && data.accessBlockDeleted > 0
+            ? `, ${data.accessBlockDeleted} block log(s)`
+            : ""
+        }.`,
+        "success"
+      );
     } catch (e) {
       setClearMessage((e as Error)?.message || "Request failed");
       toast((e as Error)?.message || "Request failed", "error");
@@ -234,10 +312,20 @@ export default function AnalyticsPage() {
         toast(data.error || `Error ${res.status}`, "error");
         return;
       }
-      setClearMessage(`Deleted all: ${data.deleted ?? 0} record(s).`);
+      const ab = typeof data.accessBlockDeleted === "number" ? data.accessBlockDeleted : 0;
+      setClearMessage(
+        `Deleted all: ${data.deleted ?? 0} page view(s)${ab ? ` and ${ab} blocked-access log row(s)` : ""}.`
+      );
       setClearAllConfirm(false);
       setRefreshKey((k) => k + 1);
-      toast(`Deleted all: ${data.deleted ?? 0} record(s).`, "success");
+      toast(
+        `Deleted all: ${data.deleted ?? 0} page view(s)${
+          typeof data.accessBlockDeleted === "number" && data.accessBlockDeleted > 0
+            ? `, ${data.accessBlockDeleted} block log(s)`
+            : ""
+        }.`,
+        "success"
+      );
     } catch (e) {
       setClearMessage((e as Error)?.message || "Request failed");
       toast((e as Error)?.message || "Request failed", "error");
@@ -428,6 +516,17 @@ export default function AnalyticsPage() {
                 )}
               </CardContent>
             </Card>
+            <Card>
+              <CardHeader>
+                <CardTitle>Access denied (403)</CardTitle>
+              </CardHeader>
+              <CardContent>
+                <p className="text-3xl font-bold text-slate-900">{stats.accessBlockTotal ?? 0}</p>
+                <p className="text-xs text-slate-500 mt-1">
+                  Blocked requests in date range (one log row per IP per minute)
+                </p>
+              </CardContent>
+            </Card>
           </div>
           {stats.byCountry && stats.byCountry.length > 0 && (
             <Card>
@@ -442,6 +541,60 @@ export default function AnalyticsPage() {
                       <span className="text-slate-500">{c.count}</span>
                     </span>
                   ))}
+                </div>
+              </CardContent>
+            </Card>
+          )}
+          {stats.topBlogPosts && stats.topBlogPosts.length > 0 && (
+            <Card>
+              <CardHeader>
+                <CardTitle>Blog posts by view count</CardTitle>
+              </CardHeader>
+              <CardContent>
+                <div className="max-h-80 overflow-auto">
+                  <table className="w-full text-sm min-w-[280px]">
+                    <thead>
+                      <tr className="border-b text-left">
+                        <th className="py-2 pr-4">Post</th>
+                        <th className="py-2">Views</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {stats.topBlogPosts.map((p) => (
+                        <tr key={p.slug} className="border-b border-slate-100">
+                          <td className="py-2 pr-4 text-slate-800">{p.title}</td>
+                          <td className="py-2 tabular-nums">{p.viewCount.toLocaleString()}</td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
+              </CardContent>
+            </Card>
+          )}
+          {stats.byReferrer && stats.byReferrer.length > 0 && (
+            <Card>
+              <CardHeader>
+                <CardTitle>By referrer</CardTitle>
+              </CardHeader>
+              <CardContent>
+                <div className="max-h-64 overflow-auto">
+                  <table className="w-full text-sm min-w-[200px]">
+                    <thead>
+                      <tr className="border-b text-left">
+                        <th className="py-2 pr-4">Referrer</th>
+                        <th className="py-2">Views</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {stats.byReferrer.map((r) => (
+                        <tr key={r.referrer} className="border-b border-slate-100">
+                          <td className="py-2 pr-4 break-all text-slate-700">{r.referrer}</td>
+                          <td className="py-2 tabular-nums">{r.count}</td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
                 </div>
               </CardContent>
             </Card>
@@ -478,10 +631,11 @@ export default function AnalyticsPage() {
               </CardHeader>
               <CardContent>
                 <div className="max-h-80 overflow-auto">
-                  <table className="w-full text-sm min-w-[200px]">
+                  <table className="w-full text-sm min-w-[280px]">
                     <thead>
                       <tr className="border-b text-left">
                         <th className="py-2 pr-4">IP</th>
+                        <th className="py-2 pr-4">Last visit</th>
                         <th className="py-2 pr-4">Views</th>
                         <th className="py-2 w-16"> </th>
                       </tr>
@@ -498,6 +652,9 @@ export default function AnalyticsPage() {
                             >
                               {p.ip}
                             </button>
+                          </td>
+                          <td className="py-2 pr-4 text-slate-600">
+                            {p.lastVisit ? formatDate(p.lastVisit) : "—"}
                           </td>
                           <td className="py-2 pr-4">{p.count}</td>
                           <td className="py-2">
@@ -523,6 +680,60 @@ export default function AnalyticsPage() {
           </div>
           <Card>
             <CardHeader>
+              <CardTitle>Blocked IP log</CardTitle>
+            </CardHeader>
+            <CardContent>
+              <p className="text-sm text-slate-500 mb-3">
+                Logged when the proxy returns 403 for forbidden IPs. Enable with{" "}
+                <span className="font-mono text-xs">ANALYTICS_SECRET</span> or{" "}
+                <span className="font-mono text-xs">ACCESS_BLOCK_LOG_SECRET</span>.
+              </p>
+              {(stats.accessBlockedRecent?.length ?? 0) === 0 ? (
+                <p className="text-sm text-slate-600">No entries in this range.</p>
+              ) : (
+                <div className="max-h-72 overflow-auto">
+                  <table className="w-full text-sm min-w-[280px]">
+                    <thead>
+                      <tr className="border-b text-left">
+                        <th className="py-2 pr-4">Time</th>
+                        <th className="py-2 pr-4">IP</th>
+                        <th className="py-2 pr-4">Path</th>
+                        <th className="py-2 max-w-[200px]">User-Agent</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {(stats.accessBlockedRecent ?? []).map((r, i) => (
+                        <tr key={`${r.createdAt}-${r.ip}-${i}`} className="border-b border-slate-100">
+                          <td className="py-2 pr-4 text-slate-600">{formatDate(r.createdAt)}</td>
+                          <td className="py-2 pr-4">
+                            <button
+                              type="button"
+                              onClick={() => setFilterIP(r.ip)}
+                              className="font-mono text-slate-700 hover:text-blue-600 hover:underline text-left"
+                              title="Filter page views by this IP"
+                            >
+                              {r.ip}
+                            </button>
+                          </td>
+                          <td className="py-2 pr-4 font-mono text-slate-700">{r.path}</td>
+                          <td
+                            className="py-2 text-slate-500 text-xs break-all max-w-[200px]"
+                            title={r.userAgent || ""}
+                          >
+                            {r.userAgent
+                              ? `${r.userAgent.slice(0, 80)}${r.userAgent.length > 80 ? "…" : ""}`
+                              : "—"}
+                          </td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
+              )}
+            </CardContent>
+          </Card>
+          <Card>
+            <CardHeader>
               <CardTitle>Recent views</CardTitle>
             </CardHeader>
             <CardContent>
@@ -534,6 +745,8 @@ export default function AnalyticsPage() {
                       <th className="py-2 pr-4">Path</th>
                       <th className="py-2 pr-4">Country / City</th>
                       <th className="py-2 pr-4">Duration</th>
+                      <th className="py-2 pr-4">Referrer</th>
+                      <th className="py-2 pr-4 max-w-[200px]">User-Agent</th>
                       <th className="py-2">IP</th>
                     </tr>
                   </thead>
@@ -547,6 +760,12 @@ export default function AnalyticsPage() {
                         </td>
                         <td className="py-2 pr-4 text-slate-600">
                           {r.durationSeconds != null ? `${Math.floor(r.durationSeconds / 60)}m ${r.durationSeconds % 60}s` : "—"}
+                        </td>
+                        <td className="py-2 pr-4 text-slate-600 break-all max-w-[180px]">
+                          {r.referrer || "—"}
+                        </td>
+                        <td className="py-2 pr-4 text-slate-500 text-xs break-all max-w-[200px]" title={r.userAgent || ""}>
+                          {r.userAgent ? `${r.userAgent.slice(0, 80)}${r.userAgent.length > 80 ? "…" : ""}` : "—"}
                         </td>
                         <td className="py-2">
                           <button
@@ -572,7 +791,8 @@ export default function AnalyticsPage() {
             </CardHeader>
             <CardContent className="space-y-4">
               <p className="text-sm text-slate-600">
-                Remove analytics records. Analytics data is included in daily DB backup (backup.sql). Requires login.
+                Remove page view records and matching blocked-access log rows (same filters). Analytics data is included in
+                daily DB backup (backup.sql). Requires login.
               </p>
               <div className="flex flex-wrap gap-4 items-end">
                 <div>

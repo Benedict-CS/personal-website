@@ -114,14 +114,10 @@ export default async function RootLayout({
           <a href="#main-content" className="skip-link">
             Skip to main content
           </a>
-          <div data-zen-hide>
-            <Navbar siteConfig={siteConfigForRender} />
-          </div>
+          <Navbar siteConfig={siteConfigForRender} />
           <main id="main-content" className="flex flex-1 flex-col min-h-0 main-fade-in">{children}</main>
-          <div data-zen-hide><FloatingEditButton /></div>
-          <div data-zen-hide>
-            <Footer siteConfig={siteConfigForRender} />
-          </div>
+          <FloatingEditButton />
+          <Footer siteConfig={siteConfigForRender} />
         </Providers>
       </body>
     </html>

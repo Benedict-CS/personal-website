@@ -69,6 +69,11 @@ services:
       - S3_ACCESS_KEY=${S3_ACCESS_KEY}
       - S3_SECRET_KEY=${S3_SECRET_KEY}
       - S3_BUCKET=${S3_BUCKET:-uploads}
+      # Optional: copy from .env — Compose only passes variables listed here into the container
+      - ACCESS_BLOCK_IP_PREFIXES=${ACCESS_BLOCK_IP_PREFIXES:-}
+      - ACCESS_ALLOW_IPS=${ACCESS_ALLOW_IPS:-}
+      - ANALYTICS_SECRET=${ANALYTICS_SECRET:-}
+      - ANALYTICS_EXCLUDED_IPS=${ANALYTICS_EXCLUDED_IPS:-}
     healthcheck:
       test: ["CMD", "node", "-e", "require('http').get('http://localhost:3000', (r) => {process.exit(r.statusCode === 200 ? 0 : 1)})"]
       interval: 30s

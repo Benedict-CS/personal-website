@@ -4,6 +4,7 @@ import { prisma } from "@/lib/prisma";
 import { isPrivateIP } from "@/lib/is-private-url";
 import { isExcludedIP, normalizeIP } from "@/lib/analytics-excluded-ips";
 import { getRequestOrigin } from "@/lib/get-request-origin";
+import { getBlogPostSlugFromPath, incrementPublishedPostViewCount } from "@/lib/blog-analytics";
 
 export const dynamic = "force-dynamic";
 
@@ -23,29 +24,46 @@ function getClientIP(req: NextRequest): string {
   return req.headers.get("x-real-ip") || "unknown";
 }
 
+function truncateMeta(value: unknown, max: number): string | null {
+  if (typeof value !== "string") return null;
+  const t = value.trim();
+  if (!t) return null;
+  return t.length <= max ? t : t.slice(0, max);
+}
+
+type ViewBody = {
+  path?: string;
+  ip?: string;
+  referrer?: string;
+  userAgent?: string;
+};
+
 /** Dedup: avoid duplicate insert for same ip+path within 60s */
-async function isRecentDuplicate(ip: string, path: string): Promise<boolean> {
+async function isRecentDuplicate(ip: string, viewPath: string): Promise<boolean> {
   const since = new Date(Date.now() - 60 * 1000);
   const existing = await prisma.pageView.findFirst({
-    where: { ip, path, createdAt: { gte: since } },
+    where: { ip, path: viewPath, createdAt: { gte: since } },
     select: { id: true },
   });
   return !!existing;
 }
 
 export async function POST(request: NextRequest) {
-  let path: string;
+  let body: ViewBody;
+  try {
+    body = await request.json();
+  } catch {
+    return NextResponse.json({ error: "Invalid body" }, { status: 400 });
+  }
+
+  const viewPath = typeof body.path === "string" ? body.path : "/";
+  const referrer = truncateMeta(body.referrer, 512);
+  const userAgent = truncateMeta(body.userAgent, 512);
+
   let ip: string;
   const fromMiddleware = !!secret && request.headers.get("x-analytics-secret") === secret;
 
   if (fromMiddleware) {
-    let body: { path?: string; ip?: string };
-    try {
-      body = await request.json();
-    } catch {
-      return NextResponse.json({ error: "Invalid body" }, { status: 400 });
-    }
-    path = typeof body.path === "string" ? body.path : "/";
     ip = typeof body.ip === "string" ? body.ip.trim() : "unknown";
   } else {
     const origin = request.headers.get("origin") || request.headers.get("referer") || "";
@@ -57,12 +75,6 @@ export async function POST(request: NextRequest) {
     if (!allowed) {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }
-    try {
-      const body = await request.json();
-      path = typeof body.path === "string" ? body.path : "/";
-    } catch {
-      return NextResponse.json({ error: "Invalid body" }, { status: 400 });
-    }
     ip = getClientIP(request);
   }
 
@@ -73,7 +85,7 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({ ok: true, skipped: "private_ip" });
   }
   const canonicalIP = normalizeIP(ip);
-  if (await isRecentDuplicate(canonicalIP, path)) {
+  if (await isRecentDuplicate(canonicalIP, viewPath)) {
     return NextResponse.json({ ok: true, skipped: "dedup" });
   }
   let country: string | null = null;
@@ -93,8 +105,23 @@ export async function POST(request: NextRequest) {
   }
   try {
     await prisma.pageView.create({
-      data: { path, ip: canonicalIP, country, city },
+      data: {
+        path: viewPath,
+        ip: canonicalIP,
+        country,
+        city,
+        referrer,
+        userAgent,
+      },
     });
+    const slug = getBlogPostSlugFromPath(viewPath);
+    if (slug) {
+      try {
+        await incrementPublishedPostViewCount(slug);
+      } catch (e) {
+        console.error("Blog view count increment error:", e);
+      }
+    }
     return NextResponse.json({ ok: true });
   } catch (e) {
     console.error("Analytics view error:", e);
