@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { s3Client, S3_BUCKET } from "@/lib/s3";
 import { GetObjectCommand } from "@aws-sdk/client-s3";
+import { isSafeS3ObjectKey } from "@/lib/safe-s3-object-key";
 
 export async function GET(
   request: NextRequest,
@@ -8,6 +9,9 @@ export async function GET(
 ) {
   try {
     const { filename } = await params;
+    if (!isSafeS3ObjectKey(filename)) {
+      return new NextResponse("Invalid filename", { status: 400 });
+    }
 
     const command = new GetObjectCommand({
       Bucket: S3_BUCKET,

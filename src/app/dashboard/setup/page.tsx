@@ -11,7 +11,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { InsertMediaModal } from "@/components/insert-media-modal";
 import { ImageIcon, ArrowRight, ArrowLeft, Check } from "lucide-react";
 import type { SiteConfigResponse } from "@/types/site";
-import { DEFAULT_NAV_ITEMS } from "@/app/api/site-config/route";
+import { DEFAULT_NAV_ITEMS } from "@/lib/site-config-defaults";
 import { NavItemsEditor } from "@/components/nav-items-editor";
 
 const defaults: SiteConfigResponse = {
@@ -20,6 +20,7 @@ const defaults: SiteConfigResponse = {
   faviconUrl: null,
   metaTitle: "",
   metaDescription: null,
+  metaKeywords: null,
   authorName: null,
   links: { email: "", github: "", linkedin: "" },
   socialLinks: {},
@@ -78,7 +79,7 @@ export default function SetupWizardPage() {
       if (!res.ok) {
         throw new Error(typeof data?.error === "string" ? data.error : "Failed to save");
       }
-      router.push("/dashboard");
+      router.push("/dashboard/analytics");
       router.refresh();
     } catch (e) {
       setError(e instanceof Error ? e.message : "Failed to save.");

@@ -171,7 +171,7 @@ export default function CVPage() {
                   Preview CV
                 </Button>
               </Link>
-              <a href="/api/cv/download" download="site-owner-cv.pdf">
+              <a href="/api/cv/download">
                 <Button variant="outline" className="gap-2">
                   <Download className="h-4 w-4" />
                   Download CV

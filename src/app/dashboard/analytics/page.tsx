@@ -6,6 +6,11 @@ import { Button } from "@/components/ui/button";
 import { ConfirmDialog } from "@/components/ui/confirm-dialog";
 import { useToast } from "@/contexts/toast-context";
 import { Download } from "lucide-react";
+import {
+  ANALYTICS_OPT_OUT_STORAGE_KEY,
+  setAnalyticsOptOutInBrowser,
+  syncAnalyticsOptOutCookie,
+} from "@/lib/analytics-client-opt-out";
 
 type Stats = {
   total: number;
@@ -141,6 +146,17 @@ export default function AnalyticsPage() {
   const [clearMessage, setClearMessage] = useState<string | null>(null);
   type ClearConfirmType = "before" | "onDate" | "byIP" | "all";
   const [clearConfirm, setClearConfirm] = useState<{ type: ClearConfirmType; value?: string } | null>(null);
+  const [excludeThisBrowser, setExcludeThisBrowser] = useState(false);
+
+  useEffect(() => {
+    try {
+      const on = typeof window !== "undefined" && localStorage.getItem(ANALYTICS_OPT_OUT_STORAGE_KEY) === "1";
+      setExcludeThisBrowser(!!on);
+      if (on) syncAnalyticsOptOutCookie(true);
+    } catch {
+      setExcludeThisBrowser(false);
+    }
+  }, []);
 
   useEffect(() => {
     const params = new URLSearchParams();
@@ -373,6 +389,44 @@ export default function AnalyticsPage() {
         }}
       />
       <h2 className="text-3xl font-bold text-slate-900">Analytics</h2>
+
+      <Card className="border-slate-200 bg-slate-50/80">
+        <CardHeader className="pb-2">
+          <CardTitle className="text-base">Your own visits</CardTitle>
+        </CardHeader>
+        <CardContent className="space-y-3 text-sm text-slate-700">
+          <p>
+            Recent views mix real readers, bots (Ahrefs, GPTBot, Bingbot, etc.), and crawlers. Bursts of many URLs in
+            one second are usually not normal browsing.
+          </p>
+          <label className="flex cursor-pointer items-start gap-3 rounded-lg border border-slate-200 bg-white p-3">
+            <input
+              type="checkbox"
+              className="mt-1 rounded border-slate-300"
+              checked={excludeThisBrowser}
+              onChange={(e) => {
+                const on = e.target.checked;
+                setExcludeThisBrowser(on);
+                setAnalyticsOptOutInBrowser(on);
+                toast(
+                  on
+                    ? "This browser will no longer record page views or duration."
+                    : "This browser will record analytics again.",
+                  "success"
+                );
+              }}
+            />
+            <span>
+              <span className="font-medium text-slate-900">Do not count visits from this browser</span>
+              <span className="mt-1 block text-slate-600">
+                Sets localStorage and a cookie so both the in-browser beacon and edge middleware skip logging. Reload or
+                open a new tab on the public site for the cookie to apply on the next navigation. For fixed IPs, also set{" "}
+                <code className="rounded bg-slate-100 px-1 font-mono text-xs">ANALYTICS_EXCLUDED_IPS</code> in environment.
+              </span>
+            </span>
+          </label>
+        </CardContent>
+      </Card>
 
       <div className="space-y-3">
         <div className="flex flex-wrap gap-2">
@@ -680,6 +734,58 @@ export default function AnalyticsPage() {
           </div>
           <Card>
             <CardHeader>
+              <CardTitle>Recent views</CardTitle>
+            </CardHeader>
+            <CardContent>
+              <div className="max-h-96 overflow-auto">
+                <table className="w-full text-sm min-w-[320px]">
+                  <thead>
+                    <tr className="border-b text-left">
+                      <th className="py-2 pr-4">Time</th>
+                      <th className="py-2 pr-4">Path</th>
+                      <th className="py-2 pr-4">Country / City</th>
+                      <th className="py-2 pr-4">Duration</th>
+                      <th className="py-2 pr-4">Referrer</th>
+                      <th className="py-2 pr-4 max-w-[200px]">User-Agent</th>
+                      <th className="py-2">IP</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {stats.recent.map((r, i) => (
+                      <tr key={i} className="border-b border-slate-100">
+                        <td className="py-2 pr-4 text-slate-600">{formatDate(r.createdAt)}</td>
+                        <td className="py-2 pr-4 font-mono">{r.path}</td>
+                        <td className="py-2 pr-4 text-slate-600">
+                          {[r.country, r.city].filter(Boolean).join(" / ") || "—"}
+                        </td>
+                        <td className="py-2 pr-4 text-slate-600">
+                          {r.durationSeconds != null ? `${Math.floor(r.durationSeconds / 60)}m ${r.durationSeconds % 60}s` : "—"}
+                        </td>
+                        <td className="py-2 pr-4 text-slate-600 break-all max-w-[180px]">
+                          {r.referrer || "—"}
+                        </td>
+                        <td className="py-2 pr-4 text-slate-500 text-xs break-all max-w-[200px]" title={r.userAgent || ""}>
+                          {r.userAgent ? `${r.userAgent.slice(0, 80)}${r.userAgent.length > 80 ? "…" : ""}` : "—"}
+                        </td>
+                        <td className="py-2">
+                          <button
+                            type="button"
+                            onClick={() => setFilterIP(r.ip)}
+                            className="font-mono text-slate-700 hover:text-blue-600 hover:underline text-left"
+                            title="Show only this IP"
+                          >
+                            {r.ip}
+                          </button>
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            </CardContent>
+          </Card>
+          <Card>
+            <CardHeader>
               <CardTitle>Blocked IP log</CardTitle>
             </CardHeader>
             <CardContent>
@@ -730,58 +836,6 @@ export default function AnalyticsPage() {
                   </table>
                 </div>
               )}
-            </CardContent>
-          </Card>
-          <Card>
-            <CardHeader>
-              <CardTitle>Recent views</CardTitle>
-            </CardHeader>
-            <CardContent>
-              <div className="max-h-96 overflow-auto">
-                <table className="w-full text-sm min-w-[320px]">
-                  <thead>
-                    <tr className="border-b text-left">
-                      <th className="py-2 pr-4">Time</th>
-                      <th className="py-2 pr-4">Path</th>
-                      <th className="py-2 pr-4">Country / City</th>
-                      <th className="py-2 pr-4">Duration</th>
-                      <th className="py-2 pr-4">Referrer</th>
-                      <th className="py-2 pr-4 max-w-[200px]">User-Agent</th>
-                      <th className="py-2">IP</th>
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {stats.recent.map((r, i) => (
-                      <tr key={i} className="border-b border-slate-100">
-                        <td className="py-2 pr-4 text-slate-600">{formatDate(r.createdAt)}</td>
-                        <td className="py-2 pr-4 font-mono">{r.path}</td>
-                        <td className="py-2 pr-4 text-slate-600">
-                          {[r.country, r.city].filter(Boolean).join(" / ") || "—"}
-                        </td>
-                        <td className="py-2 pr-4 text-slate-600">
-                          {r.durationSeconds != null ? `${Math.floor(r.durationSeconds / 60)}m ${r.durationSeconds % 60}s` : "—"}
-                        </td>
-                        <td className="py-2 pr-4 text-slate-600 break-all max-w-[180px]">
-                          {r.referrer || "—"}
-                        </td>
-                        <td className="py-2 pr-4 text-slate-500 text-xs break-all max-w-[200px]" title={r.userAgent || ""}>
-                          {r.userAgent ? `${r.userAgent.slice(0, 80)}${r.userAgent.length > 80 ? "…" : ""}` : "—"}
-                        </td>
-                        <td className="py-2">
-                          <button
-                            type="button"
-                            onClick={() => setFilterIP(r.ip)}
-                            className="font-mono text-slate-700 hover:text-blue-600 hover:underline text-left"
-                            title="Show only this IP"
-                          >
-                            {r.ip}
-                          </button>
-                        </td>
-                      </tr>
-                    ))}
-                  </tbody>
-                </table>
-              </div>
             </CardContent>
           </Card>
 

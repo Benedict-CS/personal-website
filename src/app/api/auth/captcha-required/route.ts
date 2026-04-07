@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
-import { getClientIP, getAttemptCount, CAPTCHA_REQUIRED_AFTER } from "@/lib/login-rate-limit";
+import { getClientIP, getAttemptCountAsync, CAPTCHA_REQUIRED_AFTER } from "@/lib/login-rate-limit";
 
 /**
  * GET /api/auth/captcha-required
@@ -8,7 +8,7 @@ import { getClientIP, getAttemptCount, CAPTCHA_REQUIRED_AFTER } from "@/lib/logi
  */
 export async function GET(request: NextRequest) {
   const ip = getClientIP(request.headers);
-  const count = getAttemptCount(ip);
+  const count = await getAttemptCountAsync(ip);
   const captchaRequired = count >= CAPTCHA_REQUIRED_AFTER;
   return NextResponse.json({ captchaRequired });
 }

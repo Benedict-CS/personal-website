@@ -18,6 +18,10 @@ jest.mock("@/lib/prisma", () => ({
 
 jest.mock("@/lib/auth", () => ({
   requireSession: jest.fn(),
+  authOptions: {},
+}));
+jest.mock("next-auth", () => ({
+  getServerSession: jest.fn(),
 }));
 jest.mock("next/cache", () => ({
   revalidatePath: jest.fn(),
@@ -27,7 +31,10 @@ jest.mock("@/lib/audit", () => ({
 }));
 
 import { requireSession } from "@/lib/auth";
+import { getServerSession } from "next-auth";
+
 const mockRequireSession = requireSession as jest.MockedFunction<typeof requireSession>;
+const mockGetServerSession = getServerSession as jest.MockedFunction<typeof getServerSession>;
 
 function createGetRequest(searchParams?: Record<string, string>) {
   const url = new URL("http://localhost/api/posts");
@@ -40,6 +47,7 @@ function createGetRequest(searchParams?: Record<string, string>) {
 describe("GET /api/posts", () => {
   beforeEach(() => {
     jest.clearAllMocks();
+    mockGetServerSession.mockResolvedValue(null);
   });
 
   it("returns empty array when no posts", async () => {
@@ -82,6 +90,32 @@ describe("GET /api/posts", () => {
         where: expect.objectContaining({
           OR: expect.arrayContaining([{ published: true }]),
         }),
+      })
+    );
+  });
+
+  it("public GET never omits published filter (no draft leak)", async () => {
+    mockFindMany.mockResolvedValue([]);
+    const req = createGetRequest();
+    await GET(req);
+    expect(mockGetServerSession).toHaveBeenCalled();
+    expect(mockFindMany).toHaveBeenCalledWith(
+      expect.objectContaining({
+        where: expect.objectContaining({
+          OR: expect.arrayContaining([{ published: true }, { publishedAt: expect.any(Object) }]),
+        }),
+      })
+    );
+  });
+
+  it("authenticated GET without published param can list all posts", async () => {
+    mockGetServerSession.mockResolvedValue({ user: { name: "Admin" } } as never);
+    mockFindMany.mockResolvedValue([]);
+    const req = createGetRequest();
+    await GET(req);
+    expect(mockFindMany).toHaveBeenCalledWith(
+      expect.objectContaining({
+        where: {},
       })
     );
   });

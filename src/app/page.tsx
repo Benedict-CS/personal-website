@@ -21,6 +21,7 @@ export async function generateMetadata(): Promise<Metadata> {
   return {
     title: "Home",
     description: description || undefined,
+    alternates: { canonical: config.url },
     openGraph: {
       title: "Home",
       description: description || undefined,

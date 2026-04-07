@@ -1,13 +1,23 @@
 import { NextRequest, NextResponse } from "next/server";
 import { revalidatePath } from "next/cache";
-import { requireSession } from "@/lib/auth";
+import { getServerSession } from "next-auth";
+import { requireSession, authOptions } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 import { Prisma } from "@prisma/client";
 import { auditLog } from "@/lib/audit";
 import { getClientIP } from "@/lib/rate-limit";
 
+function publishedPublicWhere(now: Date): Prisma.PostWhereInput {
+  return {
+    OR: [{ published: true }, { publishedAt: { lte: now } }],
+  };
+}
+
 export async function GET(request: NextRequest) {
   try {
+    const session = await getServerSession(authOptions);
+    const authed = !!session;
+
     const searchParams = request.nextUrl.searchParams;
     const published = searchParams.get("published");
     const search = searchParams.get("search");
@@ -15,13 +25,11 @@ export async function GET(request: NextRequest) {
 
     const now = new Date();
     const where: Prisma.PostWhereInput = {};
-    if (published !== null) {
+    if (!authed) {
+      Object.assign(where, publishedPublicWhere(now));
+    } else if (published !== null) {
       if (published === "true") {
-        // Show posts that are published OR have publishedAt <= now (scheduled publish)
-        where.OR = [
-          { published: true },
-          { publishedAt: { lte: now } },
-        ];
+        Object.assign(where, publishedPublicWhere(now));
       } else {
         where.published = false;
       }
@@ -37,7 +45,7 @@ export async function GET(request: NextRequest) {
     // Full-text search: use PostgreSQL FTS + tag match, then merge by relevance
     if (search && search.trim()) {
       const searchTerm = search.trim().replace(/'/g, " ").trim();
-      const publishedOnly = published === "true";
+      const publishedOnly = !authed || published === "true";
 
       let ftsIds: string[] = [];
       try {

@@ -28,11 +28,11 @@ type Action = {
 };
 
 const ACTIONS: Action[] = [
-  { id: "dashboard-overview", label: "Dashboard overview", keywords: ["dashboard", "overview", "home"], href: "/dashboard", icon: LayoutDashboard, section: "actions" },
+  { id: "dashboard-home", label: "Dashboard (traffic & IPs)", keywords: ["dashboard", "home", "analytics", "traffic", "ips"], href: "/dashboard/analytics", icon: BarChart3, section: "actions" },
+  { id: "site-overview", label: "Site overview (posts & audits)", keywords: ["overview", "metrics", "posts", "dashboard"], href: "/dashboard/overview", icon: LayoutDashboard, section: "actions" },
   { id: "create-post", label: "Create new post", keywords: ["new", "post", "write", "create"], href: "/dashboard/posts/new", icon: FilePlus2, section: "create" },
   { id: "editor-home", label: "Open visual editor", keywords: ["editor", "home", "visual"], href: "/editor/home", icon: PenSquare, section: "actions" },
   { id: "editor-blog", label: "Blog editor", keywords: ["editor", "blog", "posts"], href: "/editor/blog", icon: PenSquare, section: "actions" },
-  { id: "analytics", label: "Analytics", keywords: ["analytics", "stats", "views"], href: "/dashboard/analytics", icon: BarChart3, section: "actions" },
   { id: "content-site", label: "Site settings", keywords: ["site", "settings", "navigation"], href: "/dashboard/content/site", icon: Settings, section: "actions" },
   { id: "content-custom-pages", label: "Custom pages", keywords: ["custom", "pages", "additional"], href: "/dashboard/content/pages", icon: Layers, section: "actions" },
   { id: "notes", label: "Notes", keywords: ["notes"], href: "/dashboard/notes", icon: StickyNote, section: "actions" },

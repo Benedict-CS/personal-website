@@ -4,6 +4,7 @@ import { GetObjectCommand } from "@aws-sdk/client-s3";
 import { prisma } from "@/lib/prisma";
 import { s3Client, S3_BUCKET } from "@/lib/s3";
 import { isPrivateIP } from "@/lib/is-private-url";
+import { getCvDownloadFilename } from "@/lib/cv-download-filename";
 
 export const dynamic = "force-dynamic";
 
@@ -63,11 +64,12 @@ export async function GET(request: NextRequest) {
     }
     const buffer = Buffer.concat(chunks);
     const contentType = response.ContentType || "application/pdf";
+    const filename = getCvDownloadFilename();
 
     return new NextResponse(buffer, {
       headers: {
         "Content-Type": contentType,
-        "Content-Disposition": 'attachment; filename="site-owner-cv.pdf"',
+        "Content-Disposition": `attachment; filename="${filename}"`,
         "Cache-Control": "private, no-cache",
       },
     });

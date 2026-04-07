@@ -13,6 +13,7 @@ import { CountryFlag } from "@/components/country-flag";
 import { PublicBreadcrumbs } from "@/components/public-breadcrumbs";
 import { AboutSkillsAchievementsEditor } from "@/components/about-skills-achievements-editor";
 import { Suspense } from "react";
+import { getCvDownloadFilename } from "@/lib/cv-download-filename";
 
 export const revalidate = 30;
 export const dynamic = "force-dynamic";
@@ -323,6 +324,7 @@ export default async function AboutPage() {
       : rawCvHref;
   const isOurServeCv = cvPath === "/api/media/serve/cv.pdf";
   const downloadCvHref = rawCvHref && !isOurServeCv ? rawCvHref : "/api/cv/download";
+  const cvDownloadFilename = getCvDownloadFilename();
   const aboutVisible = (id: string) => sectionVisibility?.[id] !== false;
   const customSectionIds = (Array.isArray(customSections) ? customSections : [])
     .map((section) => `custom:${String(section.id ?? "").trim()}`)
@@ -449,7 +451,11 @@ export default async function AboutPage() {
                 </p>
               )}
               <div className="flex justify-center gap-3 mt-6">
-                <a href={downloadCvHref} download="site-owner-cv.pdf" data-editor-button="about.downloadCv">
+                <a
+                  href={downloadCvHref}
+                  download={downloadCvHref === "/api/cv/download" ? cvDownloadFilename : undefined}
+                  data-editor-button="about.downloadCv"
+                >
                   <Button variant="default" className="gap-2 shadow-md">
                     <Download className="h-4 w-4" />
                     <span data-editor-button-label>{downloadCvLabel}</span>

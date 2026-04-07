@@ -61,7 +61,8 @@ describe("proxy dashboard/editor split", () => {
       method: "GET",
     };
     const res = await proxy(request as never, {} as never);
-    expect(res.status).toBe(403);
+    expect(res).toBeDefined();
+    expect(res!.status).toBe(403);
     expect(withAuthMock).not.toHaveBeenCalled();
   });
 
@@ -77,7 +78,8 @@ describe("proxy dashboard/editor split", () => {
       method: "POST",
     };
     const res = await proxy(request as never, {} as never);
-    expect(res.status).not.toBe(403);
+    expect(res).toBeDefined();
+    expect(res!.status).not.toBe(403);
   });
 
   it("still returns 403 for blocked IP on GET /api/analytics/access-block-log", async () => {
@@ -92,7 +94,8 @@ describe("proxy dashboard/editor split", () => {
       method: "GET",
     };
     const res = await proxy(request as never, {} as never);
-    expect(res.status).toBe(403);
+    expect(res).toBeDefined();
+    expect(res!.status).toBe(403);
   });
 
   it("returns 403 using CF-Connecting-IP when present", async () => {
@@ -108,7 +111,8 @@ describe("proxy dashboard/editor split", () => {
       method: "GET",
     };
     const res = await proxy(request as never, {} as never);
-    expect(res.status).toBe(403);
+    expect(res).toBeDefined();
+    expect(res!.status).toBe(403);
   });
 
   it("allows allowlisted IP through to dashboard auth", async () => {

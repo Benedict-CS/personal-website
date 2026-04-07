@@ -25,6 +25,20 @@ function getSocialOrder(): string[] {
   return ["twitter", "x", "instagram", "linkedin", "github", "youtube"];
 }
 
+/** RSS routes return XML, not RSC — Next.js <Link> would request ?_rsc= and break (504 / preload warnings). */
+function rssHrefNeedsPlainAnchor(href: string): boolean {
+  const raw = href.trim().split("?")[0];
+  if (raw.startsWith("http://") || raw.startsWith("https://")) {
+    try {
+      const p = new URL(raw).pathname;
+      return p === "/feed.xml" || p.startsWith("/feed/");
+    } catch {
+      return false;
+    }
+  }
+  return raw === "/feed.xml" || raw.startsWith("/feed/");
+}
+
 export function Footer({
   siteConfig: config,
 }: {
@@ -111,19 +125,35 @@ export function Footer({
                 </Link>
               );
             })}
-            <Link
-              href={rss}
-              target="_blank"
-              rel="noopener noreferrer"
-              data-editor-button="footer.rss"
-              className="flex items-center gap-1 min-h-[40px] px-1.5 rounded-lg hover:text-[var(--foreground)] transition-colors duration-200 focus:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
-              title="Subscribe via RSS"
-            >
-              <Rss className="h-5 w-5" />
-              <span className="text-xs sm:text-sm" data-editor-button-label>
-                RSS
-              </span>
-            </Link>
+            {rssHrefNeedsPlainAnchor(rss) ? (
+              <a
+                href={rss}
+                target="_blank"
+                rel="noopener noreferrer"
+                data-editor-button="footer.rss"
+                className="flex items-center gap-1 min-h-[40px] px-1.5 rounded-lg hover:text-[var(--foreground)] transition-colors duration-200 focus:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
+                title="Subscribe via RSS"
+              >
+                <Rss className="h-5 w-5" />
+                <span className="text-xs sm:text-sm" data-editor-button-label>
+                  RSS
+                </span>
+              </a>
+            ) : (
+              <Link
+                href={rss}
+                target="_blank"
+                rel="noopener noreferrer"
+                data-editor-button="footer.rss"
+                className="flex items-center gap-1 min-h-[40px] px-1.5 rounded-lg hover:text-[var(--foreground)] transition-colors duration-200 focus:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
+                title="Subscribe via RSS"
+              >
+                <Rss className="h-5 w-5" />
+                <span className="text-xs sm:text-sm" data-editor-button-label>
+                  RSS
+                </span>
+              </Link>
+            )}
           </div>
           <p
             className="text-xs sm:text-sm leading-tight text-[var(--muted-foreground)] text-center sm:text-right min-w-0"

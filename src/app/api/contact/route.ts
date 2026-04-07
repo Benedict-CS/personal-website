@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { Resend } from "resend";
 import nodemailer from "nodemailer";
-import { checkRateLimit, getClientIP } from "@/lib/rate-limit";
+import { checkRateLimitAsync, getClientIP } from "@/lib/rate-limit";
 import { prisma } from "@/lib/prisma";
 
 const CC = process.env.CONTACT_CC ? process.env.CONTACT_CC.split(",").map((e) => e.trim()).filter(Boolean) : undefined;
@@ -39,7 +39,7 @@ async function getContactRecipient(): Promise<string | null> {
 
 export async function POST(request: NextRequest) {
   const ip = getClientIP(request);
-  const { ok: allowed, remaining } = checkRateLimit(ip, "contact");
+  const { ok: allowed, remaining } = await checkRateLimitAsync(ip, "contact");
   if (!allowed) {
     return NextResponse.json(
       { error: "Too many requests. Please try again in a minute." },

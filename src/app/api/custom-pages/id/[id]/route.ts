@@ -3,6 +3,7 @@ import { requireSession } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 import { getScheduledPublishAt, setScheduledPublishAt } from "@/lib/custom-page-schedule";
 import { auditLog } from "@/lib/audit";
+import { revalidateSiteConfigRenderCache } from "@/lib/site-config";
 
 /** PATCH: update custom page (dashboard only) */
 export async function PATCH(
@@ -75,6 +76,7 @@ export async function PATCH(
     }),
     ip: request.headers.get("x-forwarded-for") ?? null,
   });
+  revalidateSiteConfigRenderCache();
   return NextResponse.json(page);
 }
 
@@ -94,5 +96,6 @@ export async function DELETE(
     details: null,
     ip: _request.headers.get("x-forwarded-for") ?? null,
   });
+  revalidateSiteConfigRenderCache();
   return new NextResponse(null, { status: 204 });
 }

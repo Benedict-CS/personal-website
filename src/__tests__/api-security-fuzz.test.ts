@@ -114,6 +114,14 @@ describe("API security fuzz cases", () => {
   });
 
   it("custom-pages PATCH ignores empty sanitized slug and still updates safe fields", async () => {
+    (prisma.customPage.findUnique as jest.Mock).mockResolvedValueOnce({
+      id: "1",
+      slug: "old",
+      title: "Old",
+      order: 0,
+      published: true,
+      content: "",
+    });
     const req = new Request("http://localhost/api/custom-pages/id/1", {
       method: "PATCH",
       body: JSON.stringify({ slug: "!!!", title: "Safe title" }),
@@ -128,6 +136,14 @@ describe("API security fuzz cases", () => {
   });
 
   it("custom-pages PATCH blocks conflicting slug", async () => {
+    (prisma.customPage.findUnique as jest.Mock).mockResolvedValueOnce({
+      id: "1",
+      slug: "mine",
+      title: "Mine",
+      order: 0,
+      published: true,
+      content: "",
+    });
     (prisma.customPage.findFirst as jest.Mock).mockResolvedValue({ id: "other" });
     const req = new Request("http://localhost/api/custom-pages/id/1", {
       method: "PATCH",

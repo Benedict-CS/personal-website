@@ -11,7 +11,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { InsertMediaModal } from "@/components/insert-media-modal";
 import { ImageIcon } from "lucide-react";
 import type { SiteConfigResponse, NavItem } from "@/types/site";
-import { DEFAULT_NAV_ITEMS } from "@/app/api/site-config/route";
+import { DEFAULT_NAV_ITEMS } from "@/lib/site-config-defaults";
 import { NavItemsEditor } from "@/components/nav-items-editor";
 import { FieldHelp } from "@/components/ui/field-help";
 
@@ -21,6 +21,7 @@ const defaults: SiteConfigResponse = {
   faviconUrl: null,
   metaTitle: "",
   metaDescription: null,
+  metaKeywords: null,
   authorName: null,
   links: { email: "", github: "", linkedin: "" },
   socialLinks: {},
@@ -338,6 +339,18 @@ export default function SiteSettingsPage() {
             />
           </div>
           <div className="space-y-2">
+            <div className="flex items-center gap-2">
+              <Label htmlFor="metaKeywords">Default meta keywords (optional)</Label>
+              <FieldHelp text="Comma-separated terms for your niche or personal brand (e.g. machine learning, open source, Taiwan). Used only in the root layout; blog posts keep their own SEO fields." />
+            </div>
+            <Input
+              id="metaKeywords"
+              value={config.metaKeywords ?? ""}
+              onChange={(e) => setConfig((c) => ({ ...c, metaKeywords: e.target.value.trim() ? e.target.value : null }))}
+              placeholder="e.g. software engineering, blog, your name"
+            />
+          </div>
+          <div className="space-y-2">
             <Label htmlFor="authorName">Author name (footer © line)</Label>
             <Input
               id="authorName"
@@ -481,6 +494,48 @@ export default function SiteSettingsPage() {
             />
             <p className="text-xs text-[var(--muted-foreground)]">Shown below the © line. Leave empty for default &quot;All rights reserved.&quot;</p>
           </div>
+        </CardContent>
+      </Card>
+
+      <Card>
+        <CardHeader>
+          <CardTitle>Discovery &amp; CDN</CardTitle>
+          <p className="text-sm font-normal text-[var(--muted-foreground)]">
+            Search engines and edge networks use your public URLs. Submit the sitemap in{" "}
+            <a
+              href="https://search.google.com/search-console"
+              target="_blank"
+              rel="noopener noreferrer"
+              className="text-[var(--primary)] underline font-medium"
+            >
+              Google Search Console
+            </a>{" "}
+            (property → Sitemaps → add URL below). Use a CDN (e.g. Cloudflare) in front of your domain to cache static assets, sitemap, and filter abusive traffic.
+          </p>
+        </CardHeader>
+        <CardContent className="space-y-2 text-sm">
+          {siteUrl ? (
+            <>
+              <p>
+                <span className="text-[var(--muted-foreground)]">Sitemap: </span>
+                <a
+                  href={`${siteUrl.replace(/\/$/, "")}/sitemap.xml`}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="text-[var(--primary)] underline break-all"
+                >
+                  {`${siteUrl.replace(/\/$/, "")}/sitemap.xml`}
+                </a>
+              </p>
+              <p className="text-xs text-[var(--muted-foreground)]">
+                Rate limiting for the contact form and admin login uses <code className="rounded bg-[var(--muted)] px-1">REDIS_URL</code> when set (shared across server instances).
+              </p>
+            </>
+          ) : (
+            <p className="text-[var(--muted-foreground)]">
+              Set <code className="rounded bg-[var(--muted)] px-1">NEXT_PUBLIC_SITE_URL</code> to show your sitemap link here.
+            </p>
+          )}
         </CardContent>
       </Card>
 

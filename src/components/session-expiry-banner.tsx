@@ -34,7 +34,7 @@ export function SessionExpiryBanner() {
         <AlertTriangle className="h-4 w-4 shrink-0 text-amber-600" aria-hidden />
         Session expiring in {minutes} min. Sign in again to stay in.
       </span>
-      <Link href={`/auth/signin?callbackUrl=${encodeURIComponent("/dashboard")}`}>
+      <Link href={`/auth/signin?callbackUrl=${encodeURIComponent("/dashboard/analytics")}`}>
         <Button size="sm" variant="outline" className="border-amber-300 bg-[var(--card)] hover:bg-amber-100 text-amber-900 rounded-lg transition-colors duration-200">
           Sign in again
         </Button>

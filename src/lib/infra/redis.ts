@@ -77,3 +77,15 @@ export async function setString(key: string, value: string, ttlSeconds?: number)
   }
 }
 
+export async function deleteKey(key: string): Promise<void> {
+  const redis = getRedisClient();
+  if (redis) {
+    try {
+      if (redis.status === "wait") await redis.connect();
+      await redis.del(key);
+    } catch {
+      /* ignore */
+    }
+  }
+}
+

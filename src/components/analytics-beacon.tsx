@@ -2,6 +2,7 @@
 
 import { usePathname } from "next/navigation";
 import { useEffect, useRef } from "react";
+import { isAnalyticsOptedOutInBrowser } from "@/lib/analytics-client-opt-out";
 
 /** Sends page view on load and duration when leaving (for analytics). */
 export function AnalyticsBeacon() {
@@ -11,6 +12,7 @@ export function AnalyticsBeacon() {
 
   useEffect(() => {
     if (!pathname || pathname.startsWith("/dashboard") || pathname.startsWith("/api")) return;
+    if (isAnalyticsOptedOutInBrowser()) return;
     startRef.current = Date.now();
     if (sent.current !== pathname) {
       sent.current = pathname;

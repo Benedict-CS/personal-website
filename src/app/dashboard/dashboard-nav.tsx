@@ -19,7 +19,7 @@ type NavChildItem = {
 type NavItem = {
   id: string;
   href: string;
-  label: "Overview" | "Manage" | "Insights";
+  label: "Analytics" | "Manage" | "Insights";
   icon: typeof Settings2 | typeof LineChart | typeof LayoutDashboard;
   exact: boolean;
   children?: readonly NavChildItem[];
@@ -32,27 +32,26 @@ const manageSubItems = [
 ] as const;
 
 const insightsSubItems = [
-  { href: "/dashboard/analytics", label: "Analytics" },
   { href: "/dashboard/notes", label: "Notes" },
   { href: "/dashboard/tags", label: "Tags" },
   { href: "/dashboard/audit", label: "Audit" },
 ] as const;
 
 const navItems: readonly NavItem[] = [
-  { id: "overview", href: "/dashboard", label: "Overview", icon: LayoutDashboard, exact: true },
-  { id: "insights", href: "/dashboard/analytics", label: "Insights", icon: LineChart, exact: false, children: insightsSubItems },
+  { id: "analytics", href: "/dashboard/analytics", label: "Analytics", icon: LineChart, exact: true },
+  { id: "insights", href: "/dashboard/notes", label: "Insights", icon: LayoutDashboard, exact: false, children: insightsSubItems },
   { id: "manage", href: "/dashboard/content/site", label: "Manage", icon: Settings2, exact: false, children: manageSubItems },
 ] as const;
 
 export const DASHBOARD_NAV_ITEMS = [
-  { href: "/dashboard", label: "Overview" },
+  { href: "/dashboard/analytics", label: "Analytics" },
   { href: "/dashboard/media", label: "Media" },
   { href: "/dashboard/content/site", label: "Site settings" },
   { href: "/dashboard/content/pages", label: "Custom pages" },
-  { href: "/dashboard/analytics", label: "Analytics" },
   { href: "/dashboard/notes", label: "Notes" },
   { href: "/dashboard/tags", label: "Tags" },
   { href: "/dashboard/audit", label: "Audit" },
+  { href: "/dashboard/overview", label: "Site overview" },
 ] as const;
 
 interface DashboardNavProps {

@@ -3,7 +3,7 @@
 import { useEffect } from "react";
 import Link from "next/link";
 import { Button } from "@/components/ui/button";
-import { LayoutDashboard, RefreshCw } from "lucide-react";
+import { BarChart3, RefreshCw } from "lucide-react";
 
 export default function DashboardError({
   error,
@@ -24,7 +24,7 @@ export default function DashboardError({
         </p>
         <h1 className="mb-2 text-xl font-bold text-[var(--foreground)]">Error</h1>
         <p className="mb-6 text-center text-sm text-[var(--muted-foreground)]">
-          An unexpected error occurred in the dashboard. You can try again or return to the overview.
+          An unexpected error occurred in the dashboard. You can try again or return to analytics.
         </p>
         <div className="flex flex-wrap justify-center gap-3">
           <Button onClick={reset} className="gap-2">
@@ -32,9 +32,9 @@ export default function DashboardError({
             Try again
           </Button>
           <Button variant="outline" asChild className="gap-2">
-            <Link href="/dashboard">
-              <LayoutDashboard className="h-4 w-4" />
-              Dashboard
+            <Link href="/dashboard/analytics">
+              <BarChart3 className="h-4 w-4" />
+              Analytics
             </Link>
           </Button>
         </div>

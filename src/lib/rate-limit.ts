@@ -1,10 +1,12 @@
 /**
- * In-memory rate limiter (per key, e.g. IP).
- * Resets on server restart. For production at scale, use Redis (e.g. @upstash/ratelimit).
+ * Rate limit per IP: fixed window (first hit starts the window).
+ * Prefer `checkRateLimitAsync` when REDIS_URL is set so limits are shared across instances.
  */
 
-const windowMs = 60 * 1000; // 1 minute
-const maxPerWindow = 10; // e.g. 10 contact submissions or 10 sign-in attempts per minute per IP
+import { incrementWithExpiry } from "@/lib/infra/redis";
+
+const windowSeconds = 60;
+const maxPerWindow = 10;
 
 const store = new Map<string, { count: number; resetAt: number }>();
 
@@ -14,6 +16,7 @@ function getKey(identifier: string, prefix: string): string {
 
 export function checkRateLimit(identifier: string, prefix: string = "default"): { ok: boolean; remaining: number } {
   const now = Date.now();
+  const windowMs = windowSeconds * 1000;
   const key = getKey(identifier, prefix);
   let entry = store.get(key);
   if (!entry) {
@@ -29,6 +32,16 @@ export function checkRateLimit(identifier: string, prefix: string = "default"): 
   entry.count += 1;
   const remaining = Math.max(0, maxPerWindow - entry.count);
   return { ok: entry.count <= maxPerWindow, remaining };
+}
+
+export async function checkRateLimitAsync(
+  identifier: string,
+  prefix: string = "default"
+): Promise<{ ok: boolean; remaining: number }> {
+  const key = `rl:${prefix}:${identifier}`;
+  const count = await incrementWithExpiry(key, windowSeconds);
+  const remaining = Math.max(0, maxPerWindow - count);
+  return { ok: count <= maxPerWindow, remaining };
 }
 
 export function getClientIP(request: Request): string {

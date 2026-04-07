@@ -191,6 +191,14 @@ describe("Import/Export/Custom Pages API", () => {
   });
 
   it("patches custom page and checks slug conflict", async () => {
+    (prisma.customPage.findUnique as jest.Mock).mockResolvedValueOnce({
+      id: "p1",
+      slug: "old",
+      title: "Old",
+      order: 0,
+      published: true,
+      content: "",
+    });
     (prisma.customPage.findFirst as jest.Mock).mockResolvedValue(null);
     (prisma.customPage.update as jest.Mock).mockResolvedValue({ id: "p1", slug: "new" });
     const req = new Request("http://localhost/api/custom-pages/id/p1", {
@@ -203,6 +211,14 @@ describe("Import/Export/Custom Pages API", () => {
   });
 
   it("returns 409 on page PATCH slug conflict", async () => {
+    (prisma.customPage.findUnique as jest.Mock).mockResolvedValueOnce({
+      id: "p1",
+      slug: "mine",
+      title: "Mine",
+      order: 0,
+      published: true,
+      content: "",
+    });
     (prisma.customPage.findFirst as jest.Mock).mockResolvedValue({ id: "other" });
     const req = new Request("http://localhost/api/custom-pages/id/p1", {
       method: "PATCH",

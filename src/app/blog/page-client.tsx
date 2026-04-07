@@ -181,14 +181,14 @@ export default function BlogPageClient() {
       <div className="mb-8 flex flex-wrap items-center gap-x-2 gap-y-1 text-sm text-[var(--muted-foreground)]">
         <Rss className="h-4 w-4 flex-shrink-0" aria-hidden />
         <span>Subscribe via RSS:</span>
-        <Link
+        <a
           href="/feed.xml"
           target="_blank"
           rel="noopener noreferrer"
           className="font-medium text-[var(--foreground)] underline hover:text-[var(--primary)]"
         >
           feed.xml
-        </Link>
+        </a>
         <span className="hidden sm:inline">— Add to Feedly, Inoreader, or any RSS reader.</span>
       </div>
 

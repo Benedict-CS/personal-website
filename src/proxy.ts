@@ -8,6 +8,9 @@ import { logRequest } from "@/lib/logger";
 import { isAccessBlocked } from "@/lib/access-blocked-ips";
 import { getTrustedClientIp } from "@/lib/client-ip";
 import { getInternalAppOrigin } from "@/lib/internal-app-origin";
+import { shouldSkipMiddlewareAnalytics } from "@/lib/analytics-skip-middleware";
+import { ANALYTICS_OPT_OUT_COOKIE_NAME } from "@/lib/analytics-client-opt-out";
+import { isPrimarySiteHost } from "@/lib/primary-site-host";
 
 export async function proxy(request: NextRequest, event: NextFetchEvent) {
   const internalOrigin = getInternalAppOrigin(request);
@@ -65,7 +68,8 @@ export async function proxy(request: NextRequest, event: NextFetchEvent) {
     !pathname.startsWith("/_next") &&
     !pathname.startsWith("/s/");
 
-  if (hostName && shouldRouteTenant) {
+  // Custom-domain SaaS routing only; primary blog host skips DB/Redis on every navigation.
+  if (hostName && shouldRouteTenant && !isPrimarySiteHost(host)) {
     try {
       const edgeRes = await fetch(`${internalOrigin}/api/infra/edge`, {
         method: "POST",
@@ -112,9 +116,14 @@ export async function proxy(request: NextRequest, event: NextFetchEvent) {
     return response;
   }
 
-  // Log page view for analytics (non-dashboard pages only)
+  // Log page view for analytics (skip crawlers, /api, sitemap, feeds — less noise, less work)
   const secret = process.env.ANALYTICS_SECRET;
-  if (secret) {
+  const analyticsOptOutCookie = request.cookies.get(ANALYTICS_OPT_OUT_COOKIE_NAME)?.value === "1";
+  if (
+    !analyticsOptOutCookie &&
+    secret &&
+    !shouldSkipMiddlewareAnalytics(pathname, request.headers.get("user-agent"))
+  ) {
     const clientIp = getTrustedClientIp(request) || "unknown";
     fetch(`${internalOrigin}/api/analytics/view`, {
       method: "POST",

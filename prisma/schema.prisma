@@ -812,6 +812,7 @@ model SiteConfig {
   faviconUrl      String?
   metaTitle       String   @default("")
   metaDescription String?
+  metaKeywords    String?  // Comma-separated; used in root layout metadata when set
   authorName      String?
   links           Json     @default("{}") // { email?, github?, linkedin?, rss? }
   socialLinks     Json     @default("{}") // { twitter?, instagram?, linkedin?, github?, youtube?, etc. } for footer icons

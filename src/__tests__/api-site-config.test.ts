@@ -1,6 +1,11 @@
 /**
  * API route test: GET /api/site-config returns expected shape (with mocked DB).
  */
+jest.mock("next/cache", () => ({
+  unstable_cache: (fn: () => Promise<unknown>) => fn,
+  revalidateTag: jest.fn(),
+}));
+
 import { GET } from "@/app/api/site-config/route";
 
 const mockFindUnique = jest.fn();

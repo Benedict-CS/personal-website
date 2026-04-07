@@ -5,6 +5,7 @@ import { isPrivateIP } from "@/lib/is-private-url";
 import { isExcludedIP, normalizeIP } from "@/lib/analytics-excluded-ips";
 import { getRequestOrigin } from "@/lib/get-request-origin";
 import { getBlogPostSlugFromPath, incrementPublishedPostViewCount } from "@/lib/blog-analytics";
+import { sanitizeReferrerForAnalytics } from "@/lib/analytics-referrer";
 
 export const dynamic = "force-dynamic";
 
@@ -57,7 +58,7 @@ export async function POST(request: NextRequest) {
   }
 
   const viewPath = typeof body.path === "string" ? body.path : "/";
-  const referrer = truncateMeta(body.referrer, 512);
+  const referrer = truncateMeta(sanitizeReferrerForAnalytics(body.referrer), 512);
   const userAgent = truncateMeta(body.userAgent, 512);
 
   let ip: string;

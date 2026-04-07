@@ -1,12 +1,11 @@
 import sharp from "sharp";
 
 const MAX_WIDTH = 1920;
-const JPEG_QUALITY = 85;
-const PNG_COMPRESSION = 6; // 0–9, higher = smaller file
+const WEBP_QUALITY = 85;
 
 /**
- * Resize and compress image for web. Keeps original format (JPEG, PNG, WebP, GIF).
- * GIF is passed through to preserve animation. Others are resized (max width 1920) and compressed.
+ * Resize and compress image for web. GIF is passed through to preserve animation.
+ * Raster images (JPEG, PNG, WebP) are resized (max width 1920) and encoded as WebP.
  */
 export async function processImage(
   buffer: Buffer,
@@ -33,32 +32,12 @@ export async function processImage(
       pipeline = pipeline.resize(MAX_WIDTH, null, { fit: "inside" });
     }
 
-    const ext = fileName.replace(/^.*\.([^.]+)$/i, "$1").toLowerCase();
     const baseName = fileName.replace(/\.[^.]+$/i, "");
-
-    if (contentType === "image/png" || ext === "png") {
-      const out = await pipeline.png({ compressionLevel: PNG_COMPRESSION }).toBuffer();
-      return {
-        buffer: out,
-        contentType: "image/png",
-        fileName: `${baseName}.png`,
-      };
-    }
-    if (contentType === "image/webp" || ext === "webp") {
-      const out = await pipeline.webp({ quality: JPEG_QUALITY }).toBuffer();
-      return {
-        buffer: out,
-        contentType: "image/webp",
-        fileName: `${baseName}.webp`,
-      };
-    }
-    // JPEG / jpg
-    const out = await pipeline.jpeg({ quality: JPEG_QUALITY }).toBuffer();
-    const jpegExt = ext === "jpeg" ? "jpeg" : "jpg";
+    const out = await pipeline.webp({ quality: WEBP_QUALITY }).toBuffer();
     return {
       buffer: out,
-      contentType: "image/jpeg",
-      fileName: `${baseName}.${jpegExt}`,
+      contentType: "image/webp",
+      fileName: `${baseName}.webp`,
     };
   } catch (err) {
     console.warn("Image processing failed, uploading original:", err);

@@ -223,7 +223,7 @@ export function DashboardQuickActions() {
   }, []);
 
   useEffect(() => {
-    if (pathname !== "/dashboard") return;
+    if (pathname !== "/dashboard" && pathname !== "/dashboard/analytics") return;
     const onKeyDown = (event: KeyboardEvent) => {
       if (!event.altKey || event.ctrlKey || event.metaKey || event.shiftKey) return;
       if (isEditableTarget(event.target)) return;

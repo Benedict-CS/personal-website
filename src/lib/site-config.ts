@@ -1,9 +1,14 @@
-import { unstable_noStore } from "next/cache";
+import { unstable_cache, revalidateTag } from "next/cache";
 import { prisma } from "@/lib/prisma";
 import { siteUrl } from "@/config/site";
 import type { NavItem, SiteConfigForRender, SocialLinksMap } from "@/types/site";
 
 export type { NavItem, SiteConfigForRender } from "@/types/site";
+
+/** Invalidate after Site settings or custom pages that affect merged nav change. */
+export const SITE_CONFIG_RENDER_CACHE_TAG = "site-config-render";
+
+const SITE_CONFIG_CACHE_REVALIDATE_SEC = 60;
 
 const DEFAULT_NAV: NavItem[] = [
   { label: "Home", href: "/" },
@@ -19,6 +24,7 @@ const fallback: SiteConfigForRender = {
   faviconUrl: null,
   metaTitle: "My Site",
   metaDescription: null,
+  metaKeywords: null,
   authorName: null,
   links: {},
   socialLinks: {},
@@ -39,6 +45,7 @@ const SITE_CONFIG_SELECT = {
   faviconUrl: true,
   metaTitle: true,
   metaDescription: true,
+  metaKeywords: true,
   authorName: true,
   links: true,
   socialLinks: true,
@@ -71,8 +78,7 @@ async function mergeCustomPagesIntoNav(navItems: NavItem[]): Promise<NavItem[]> 
   }
 }
 
-export async function getSiteConfigForRender(): Promise<SiteConfigForRender> {
-  unstable_noStore(); // Ensure layout is never cached so navbar always has latest custom pages
+async function loadSiteConfigForRenderUncached(): Promise<SiteConfigForRender> {
   try {
     const row = await prisma.siteConfig.findUnique({
       where: { id: 1 },
@@ -100,6 +106,7 @@ export async function getSiteConfigForRender(): Promise<SiteConfigForRender> {
       faviconUrl: row.faviconUrl,
       metaTitle: row.metaTitle || fallback.metaTitle,
       metaDescription: row.metaDescription,
+      metaKeywords: row.metaKeywords?.trim() ? row.metaKeywords.trim() : null,
       authorName: row.authorName,
       links: { ...links },
       socialLinks: { ...socialLinks },
@@ -115,5 +122,24 @@ export async function getSiteConfigForRender(): Promise<SiteConfigForRender> {
     };
   } catch {
     return fallback;
+  }
+}
+
+const getCachedSiteConfigForRender = unstable_cache(
+  async () => loadSiteConfigForRenderUncached(),
+  ["site-config-for-render", siteUrl],
+  { revalidate: SITE_CONFIG_CACHE_REVALIDATE_SEC, tags: [SITE_CONFIG_RENDER_CACHE_TAG] }
+);
+
+export async function getSiteConfigForRender(): Promise<SiteConfigForRender> {
+  return getCachedSiteConfigForRender();
+}
+
+/** Call from API routes after mutations that affect layout metadata or merged nav. */
+export function revalidateSiteConfigRenderCache(): void {
+  try {
+    revalidateTag(SITE_CONFIG_RENDER_CACHE_TAG, "max");
+  } catch {
+    /* No Next.js cache context (e.g. unit tests). */
   }
 }

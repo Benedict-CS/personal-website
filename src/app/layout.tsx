@@ -10,16 +10,27 @@ import { RssAutodiscovery } from "@/components/rss-autodiscovery";
 import { FloatingEditButton } from "@/components/floating-edit-button";
 import { GoogleAnalyticsScript } from "@/components/google-analytics-script";
 import { getSiteConfigForRender } from "@/lib/site-config";
+import { JsonLdRoot } from "@/components/json-ld-root";
 
 const geistSans = Geist({
   variable: "--font-geist-sans",
   subsets: ["latin"],
+  display: "swap",
+  adjustFontFallback: true,
 });
 
 const geistMono = Geist_Mono({
   variable: "--font-geist-mono",
   subsets: ["latin"],
+  display: "swap",
+  adjustFontFallback: true,
 });
+
+function metaKeywordsFromConfig(raw: string | null | undefined): string[] | undefined {
+  if (!raw?.trim()) return undefined;
+  const parts = raw.split(",").map((s) => s.trim()).filter(Boolean);
+  return parts.length > 0 ? parts : undefined;
+}
 
 export async function generateMetadata(): Promise<Metadata> {
   const config = await getSiteConfigForRender();
@@ -32,17 +43,7 @@ export async function generateMetadata(): Promise<Metadata> {
       template: `%s | ${config.siteName}`,
     },
     description: description || undefined,
-    keywords: [
-      "Website Builder",
-      "WYSIWYG",
-      "Page Builder",
-      "No-Code Website",
-      "Content Management",
-      "Headless CMS",
-      "Next.js",
-      "TypeScript",
-      "Prisma",
-    ],
+    keywords: metaKeywordsFromConfig(config.metaKeywords),
     authors: config.authorName ? [{ name: config.authorName, url: config.links?.linkedin }] : undefined,
     creator: config.authorName ?? undefined,
     openGraph: {
@@ -82,15 +83,15 @@ export async function generateMetadata(): Promise<Metadata> {
     icons: config.faviconUrl
       ? { icon: config.faviconUrl, shortcut: config.faviconUrl }
       : { icon: "/favicon.ico", shortcut: "/favicon.ico" },
+    ...(process.env.GOOGLE_SITE_VERIFICATION?.trim() && {
+      verification: { google: process.env.GOOGLE_SITE_VERIFICATION.trim() },
+    }),
   };
 }
 
 export const viewport = {
   themeColor: "#f8fafc",
 };
-
-// Always read site config from DB on each request (no static cache)
-export const dynamic = "force-dynamic";
 
 export default async function RootLayout({
   children,
@@ -104,6 +105,7 @@ export default async function RootLayout({
         className={`${geistSans.variable} ${geistMono.variable} antialiased flex min-h-screen flex-col`}
         data-template={siteConfigForRender.templateId ?? "default"}
       >
+        <JsonLdRoot config={siteConfigForRender} />
         <ThemeApplier themeMode={siteConfigForRender.themeMode ?? "light"} />
         {siteConfigForRender.googleAnalyticsId && (
           <GoogleAnalyticsScript measurementId={siteConfigForRender.googleAnalyticsId} />

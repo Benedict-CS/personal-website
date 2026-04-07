@@ -5,10 +5,10 @@ import CredentialsProvider from "next-auth/providers/credentials";
 import type { NextAuthOptions } from "next-auth";
 import {
   getClientIP,
-  assertNotLocked,
-  recordFailedAttempt,
-  clearAttempts,
-  getAttemptCount,
+  assertNotLockedAsync,
+  recordFailedAttemptAsync,
+  clearAttemptsAsync,
+  getAttemptCountAsync,
   CAPTCHA_REQUIRED_AFTER,
 } from "@/lib/login-rate-limit";
 import { verifyTurnstileToken } from "@/lib/verify-turnstile";
@@ -42,16 +42,16 @@ export const authOptions: NextAuthOptions = {
         if (!credentials?.password) return null;
 
         const ip = getClientIP(req?.headers);
-        assertNotLocked(ip);
+        await assertNotLockedAsync(ip);
 
-        const needCaptcha = getAttemptCount(ip) >= CAPTCHA_REQUIRED_AFTER;
+        const needCaptcha = (await getAttemptCountAsync(ip)) >= CAPTCHA_REQUIRED_AFTER;
         if (needCaptcha) {
           const ok = await verifyTurnstileToken(credentials.captchaToken, ip);
           if (!ok) return null; // CAPTCHA missing or invalid
         }
 
         if (credentials.password === process.env.ADMIN_PASSWORD) {
-          clearAttempts(ip);
+          await clearAttemptsAsync(ip);
           return {
             id: "1",
             name: "Administrator",
@@ -59,7 +59,7 @@ export const authOptions: NextAuthOptions = {
           };
         }
 
-        recordFailedAttempt(ip);
+        await recordFailedAttemptAsync(ip);
         return null;
       },
     }),

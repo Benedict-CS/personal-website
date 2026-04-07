@@ -14,6 +14,8 @@ export type SiteConfigForRender = {
   faviconUrl: string | null;
   metaTitle: string;
   metaDescription: string | null;
+  /** Comma-separated keywords for default layout metadata; omit empty. */
+  metaKeywords: string | null;
   authorName: string | null;
   links: { email?: string; github?: string; linkedin?: string; rss?: string };
   socialLinks: SocialLinksMap;
@@ -35,6 +37,8 @@ export type SiteConfigResponse = {
   faviconUrl: string | null;
   metaTitle: string;
   metaDescription: string | null;
+  /** Comma-separated keywords for default layout metadata; omit empty. */
+  metaKeywords: string | null;
   authorName: string | null;
   links: { email?: string; github?: string; linkedin?: string; rss?: string };
   socialLinks: SocialLinksMap;

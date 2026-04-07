@@ -7,6 +7,7 @@ import { LeaveGuardLink } from "@/components/leave-guard-link";
 const SEGMENT_LABELS: Record<string, string> = {
   dashboard: "Dashboard",
   analytics: "Analytics",
+  overview: "Site overview",
   posts: "Posts",
   new: "New",
   edit: "Edit",

@@ -3,6 +3,7 @@ import { requireSession } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 import { getScheduledPublishAt, isScheduledLive, setScheduledPublishAt } from "@/lib/custom-page-schedule";
 import { auditLog } from "@/lib/audit";
+import { revalidateSiteConfigRenderCache } from "@/lib/site-config";
 
 export const dynamic = "force-dynamic";
 
@@ -63,5 +64,6 @@ export async function POST(request: Request) {
     details: JSON.stringify({ slug: page.slug }),
     ip: request.headers.get("x-forwarded-for") ?? null,
   });
+  revalidateSiteConfigRenderCache();
   return NextResponse.json(page);
 }

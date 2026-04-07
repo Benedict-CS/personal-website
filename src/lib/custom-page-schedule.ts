@@ -1,8 +1,9 @@
 const SCHEDULE_MARKER = "<!-- custom-page:publish-at:";
 const SCHEDULE_REGEX = /^<!--\s*custom-page:publish-at:([^\s]+)\s*-->\s*\n?/i;
 
-export function getScheduledPublishAt(content: string): string | null {
-  const match = content.match(SCHEDULE_REGEX);
+export function getScheduledPublishAt(content: string | null | undefined): string | null {
+  const c = typeof content === "string" ? content : "";
+  const match = c.match(SCHEDULE_REGEX);
   if (!match?.[1]) return null;
   const raw = match[1].trim();
   const date = new Date(raw);

@@ -2,18 +2,11 @@ import { NextResponse } from "next/server";
 import { requireSession } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 import { auditLog } from "@/lib/audit";
+import { revalidateSiteConfigRenderCache } from "@/lib/site-config";
 import type { NavItem, SiteConfigResponse } from "@/types/site";
-
-const DEFAULT_LINKS = { email: "", github: "", linkedin: "", rss: "" };
+import { DEFAULT_NAV_ITEMS, DEFAULT_SITE_CONFIG_LINKS } from "@/lib/site-config-defaults";
 
 export type { NavItem, SiteConfigResponse } from "@/types/site";
-
-export const DEFAULT_NAV_ITEMS: NavItem[] = [
-  { label: "Home", href: "/" },
-  { label: "About", href: "/about" },
-  { label: "Blog", href: "/blog" },
-  { label: "Contact", href: "/contact" },
-];
 
 const CACHE_60 = { "Cache-Control": "public, s-maxage=60, stale-while-revalidate=120" };
 
@@ -23,8 +16,9 @@ const defaultResponse: SiteConfigResponse = {
   faviconUrl: null,
   metaTitle: "",
   metaDescription: null,
+  metaKeywords: null,
   authorName: null,
-  links: DEFAULT_LINKS,
+  links: { ...DEFAULT_SITE_CONFIG_LINKS },
   socialLinks: {},
   navItems: DEFAULT_NAV_ITEMS,
   footerText: null,
@@ -44,6 +38,7 @@ const SITE_CONFIG_SAFE_SELECT = {
   faviconUrl: true,
   metaTitle: true,
   metaDescription: true,
+  metaKeywords: true,
   authorName: true,
   links: true,
   socialLinks: true,
@@ -94,8 +89,9 @@ export async function GET() {
         faviconUrl: row.faviconUrl,
         metaTitle: row.metaTitle,
         metaDescription: row.metaDescription,
+        metaKeywords: row.metaKeywords ?? null,
         authorName: row.authorName,
-        links: { ...DEFAULT_LINKS, ...links },
+        links: { ...DEFAULT_SITE_CONFIG_LINKS, ...links },
         socialLinks: { ...socialLinks },
         navItems,
         footerText: row.footerText ?? null,
@@ -125,6 +121,7 @@ export async function PATCH(request: Request) {
     faviconUrl,
     metaTitle,
     metaDescription,
+    metaKeywords,
     authorName,
     links,
     socialLinks,
@@ -154,6 +151,7 @@ export async function PATCH(request: Request) {
         faviconUrl: faviconUrl ?? null,
         metaTitle: typeof metaTitle === "string" ? metaTitle : "",
         metaDescription: metaDescription ?? null,
+        metaKeywords: typeof metaKeywords === "string" ? metaKeywords.trim() || null : null,
         authorName: authorName ?? null,
         links: links && typeof links === "object" ? links : {},
         socialLinks: socialLinks && typeof socialLinks === "object" ? socialLinks : {},
@@ -175,6 +173,9 @@ export async function PATCH(request: Request) {
         ...(faviconUrl !== undefined && { faviconUrl: faviconUrl || null }),
         ...(typeof metaTitle === "string" && { metaTitle }),
         ...(metaDescription !== undefined && { metaDescription: metaDescription || null }),
+        ...(metaKeywords !== undefined && {
+          metaKeywords: typeof metaKeywords === "string" ? metaKeywords.trim() || null : null,
+        }),
         ...(authorName !== undefined && { authorName: authorName || null }),
         ...(links && typeof links === "object" && { links }),
         ...(socialLinks && typeof socialLinks === "object" && { socialLinks }),
@@ -200,6 +201,7 @@ export async function PATCH(request: Request) {
       }),
       ip: request.headers.get("x-forwarded-for") ?? null,
     });
+    revalidateSiteConfigRenderCache();
     return NextResponse.json({ ok: true });
   } catch (e) {
     console.error("Error updating site config:", e);

@@ -6,7 +6,7 @@ import { NextRequest } from "next/server";
 import { POST } from "@/app/api/contact/route";
 
 jest.mock("@/lib/rate-limit", () => ({
-  checkRateLimit: jest.fn(() => ({ ok: true, remaining: 5 })),
+  checkRateLimitAsync: jest.fn(async () => ({ ok: true, remaining: 5 })),
   getClientIP: jest.fn(() => "127.0.0.1"),
 }));
 

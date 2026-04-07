@@ -74,7 +74,7 @@ export function Navbar({ siteConfig }: { siteConfig?: SiteConfigForRender | null
     <nav className="sticky top-0 z-50 w-full border-b border-[var(--border)] bg-[var(--glass-bg)] backdrop-blur-md shadow-[var(--shadow-sm)]">
       <div className="container mx-auto max-w-6xl flex h-14 sm:h-16 items-center justify-between px-4 sm:px-6 lg:px-8">
         <Link
-          href={isDashboard ? "/dashboard" : isEditor ? "/editor/home" : "/"}
+          href={isDashboard ? "/dashboard/analytics" : isEditor ? "/editor/home" : "/"}
           data-editor-site="navbar.brand"
           className="text-lg sm:text-xl font-bold text-[var(--foreground)] hover:text-[var(--primary)] transition-colors duration-200 whitespace-nowrap flex items-center gap-1.5"
         >
@@ -91,7 +91,7 @@ export function Navbar({ siteConfig }: { siteConfig?: SiteConfigForRender | null
           {isLoggedIn && (
             <>
               {!isDashboard && (
-                <Link href="/dashboard">
+                <Link href="/dashboard/analytics">
                   <Button variant="ghost" size="sm" className="text-[var(--foreground)] hover:text-[var(--primary)] hover:bg-[var(--accent)]/60 text-xs sm:text-sm rounded-lg transition-colors duration-200">
                     Dashboard
                   </Button>
@@ -145,7 +145,7 @@ export function Navbar({ siteConfig }: { siteConfig?: SiteConfigForRender | null
               {isLoggedIn && (
                 <>
                   {!isDashboard && (
-                    <Link href="/dashboard" onClick={() => setMobileOpen(false)} className="block">
+                    <Link href="/dashboard/analytics" onClick={() => setMobileOpen(false)} className="block">
                       <Button variant="ghost" size="sm" className="text-[var(--foreground)] hover:bg-[var(--accent)]/60 w-full justify-center min-h-[44px] py-3 rounded-lg transition-colors duration-200">Dashboard</Button>
                     </Link>
                   )}

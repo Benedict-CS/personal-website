@@ -279,7 +279,9 @@ export default function ContactPage() {
                   disabled={status === "sending"}
                   className="min-h-[44px]"
                   aria-busy={status === "sending"}
-                  aria-describedby={status === "error" ? "contact-form-status" : undefined}
+                  aria-describedby={
+                    status === "success" || status === "error" ? "contact-form-status" : undefined
+                  }
                 >
                   {status === "sending" ? "Sending..." : "Send"}
                 </Button>
