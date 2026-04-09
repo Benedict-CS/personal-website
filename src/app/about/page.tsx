@@ -8,7 +8,11 @@ import { Mail, Linkedin, Github, GraduationCap, Briefcase, HeartHandshake, Award
 import { getSiteConfigForRender } from "@/lib/site-config";
 import { prisma } from "@/lib/prisma";
 import { AboutHighlightScroll } from "@/components/about-highlight-scroll";
-import { MarkdownRenderer } from "@/components/markdown-renderer";
+import { MarkdownBodyServer } from "@/components/markdown/markdown-body-server";
+import {
+  markdownArticleClassNameProseSm,
+  markdownArticleClassNameProseSlate,
+} from "@/lib/markdown-pipeline";
 import { CountryFlag } from "@/components/country-flag";
 import { PublicBreadcrumbs } from "@/components/public-breadcrumbs";
 import { AboutSkillsAchievementsEditor } from "@/components/about-skills-achievements-editor";
@@ -564,9 +568,10 @@ export default async function AboutPage({
                         </div>
                         {entry.content && (
                           <div className="mt-0.5" data-about-edit={`educationBlocks.${i}.content`}>
-                            <div className="prose prose-slate prose-sm max-w-none text-sm">
-                              <MarkdownRenderer content={normalizeBlockMarkdown(entry.content)} />
-                            </div>
+                            <MarkdownBodyServer
+                              content={normalizeBlockMarkdown(entry.content)}
+                              className={markdownArticleClassNameProseSm}
+                            />
                           </div>
                         )}
                       </div>
@@ -636,9 +641,10 @@ export default async function AboutPage({
                         </div>
                         {entry.content && (
                           <div className="mt-0.5" data-about-edit={`experienceBlocks.${i}.content`}>
-                            <div className="prose prose-slate prose-sm max-w-none text-sm">
-                              <MarkdownRenderer content={normalizeBlockMarkdown(entry.content)} />
-                            </div>
+                            <MarkdownBodyServer
+                              content={normalizeBlockMarkdown(entry.content)}
+                              className={markdownArticleClassNameProseSm}
+                            />
                           </div>
                         )}
                       </div>
@@ -709,9 +715,10 @@ export default async function AboutPage({
                         </div>
                         {entry.content && (
                           <div className="mt-0.5" data-about-edit={`volunteerBlocks.${i}.content`}>
-                            <div className="prose prose-slate prose-sm max-w-none text-sm">
-                              <MarkdownRenderer content={normalizeBlockMarkdown(entry.content)} />
-                            </div>
+                            <MarkdownBodyServer
+                              content={normalizeBlockMarkdown(entry.content)}
+                              className={markdownArticleClassNameProseSm}
+                            />
                           </div>
                         )}
                       </div>
@@ -793,9 +800,10 @@ export default async function AboutPage({
                               </div>
                               {entry.content && (
                                 <div className="mt-0.5" data-about-edit={`${blockPrefix}.${i}.content`}>
-                                  <div className="prose prose-slate prose-sm max-w-none text-sm">
-                                    <MarkdownRenderer content={normalizeBlockMarkdown(entry.content)} />
-                                  </div>
+                                  <MarkdownBodyServer
+                                    content={normalizeBlockMarkdown(entry.content)}
+                                    className={markdownArticleClassNameProseSm}
+                                  />
                                 </div>
                               )}
                             </div>
@@ -844,9 +852,10 @@ export default async function AboutPage({
                             </div>
                             {entry.content && (
                               <div className="mt-0.5" data-about-edit={`projectBlocks.${i}.content`}>
-                                <div className="prose prose-slate prose-sm max-w-none text-sm">
-                                  <MarkdownRenderer content={normalizeBlockMarkdown(entry.content)} />
-                                </div>
+                                <MarkdownBodyServer
+                                  content={normalizeBlockMarkdown(entry.content)}
+                                  className={markdownArticleClassNameProseSm}
+                                />
                               </div>
                             )}
                         </div>
@@ -887,8 +896,8 @@ export default async function AboutPage({
         {/* Legacy: one markdown block when no structured blocks */}
         {!useStructuredBlocks && aboutMainContent && aboutMainContent.trim() && (
           <Card className="shadow-lg">
-            <CardContent className="pt-6 pb-6 prose prose-slate max-w-none">
-              <MarkdownRenderer content={aboutMainContent} />
+            <CardContent className="pt-6 pb-6">
+              <MarkdownBodyServer content={aboutMainContent} className={markdownArticleClassNameProseSlate} />
             </CardContent>
           </Card>
         )}

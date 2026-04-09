@@ -15,18 +15,22 @@ describe("proxy dashboard/editor split", () => {
   const origBlock = process.env.ACCESS_BLOCK_IP_PREFIXES;
   const origAllow = process.env.ACCESS_ALLOW_IPS;
   const origEnableHsts = process.env.ENABLE_HSTS;
+  const origBlockPublic = process.env.ACCESS_BLOCK_PUBLIC;
 
   beforeEach(() => {
     jest.clearAllMocks();
     withAuthMock.mockReturnValue(() => NextResponse.next());
     delete process.env.ACCESS_BLOCK_IP_PREFIXES;
     delete process.env.ACCESS_ALLOW_IPS;
+    delete process.env.ACCESS_BLOCK_PUBLIC;
     delete process.env.ENABLE_HSTS;
   });
 
   afterAll(() => {
     process.env.ACCESS_BLOCK_IP_PREFIXES = origBlock;
     process.env.ACCESS_ALLOW_IPS = origAllow;
+    if (origBlockPublic === undefined) delete process.env.ACCESS_BLOCK_PUBLIC;
+    else process.env.ACCESS_BLOCK_PUBLIC = origBlockPublic;
     if (origEnableHsts === undefined) delete process.env.ENABLE_HSTS;
     else process.env.ENABLE_HSTS = origEnableHsts;
   });
@@ -114,7 +118,7 @@ describe("proxy dashboard/editor split", () => {
     headers.set("cf-connecting-ip", "140.113.194.10");
     headers.set("x-forwarded-for", "10.0.0.1");
     const request = {
-      nextUrl: { pathname: "/", origin: "http://localhost" },
+      nextUrl: { pathname: "/dashboard", origin: "http://localhost" },
       headers,
       cookies: { get: () => undefined },
       method: "GET",
@@ -122,6 +126,40 @@ describe("proxy dashboard/editor split", () => {
     const res = await proxy(request as never, {} as never);
     expect(res).toBeDefined();
     expect(res!.status).toBe(403);
+  });
+
+  it("returns 403 for blocked IP on /blog when ACCESS_BLOCK_PUBLIC=1", async () => {
+    process.env.ACCESS_BLOCK_IP_PREFIXES = "140.113.194.";
+    process.env.ACCESS_BLOCK_PUBLIC = "1";
+    delete process.env.ACCESS_ALLOW_IPS;
+    const headers = new Headers();
+    headers.set("x-forwarded-for", "140.113.194.10");
+    const request = {
+      nextUrl: { pathname: "/blog", origin: "http://localhost" },
+      headers,
+      cookies: { get: () => undefined },
+      method: "GET",
+    };
+    const res = await proxy(request as never, {} as never);
+    expect(res).toBeDefined();
+    expect(res!.status).toBe(403);
+  });
+
+  it("allows blocked IP to reach public blog and its GET APIs (not admin)", async () => {
+    process.env.ACCESS_BLOCK_IP_PREFIXES = "140.113.194.";
+    delete process.env.ACCESS_ALLOW_IPS;
+    const headers = new Headers();
+    headers.set("x-forwarded-for", "140.113.194.10");
+    for (const pathname of ["/blog", "/api/posts", "/api/tags"]) {
+      const request = {
+        nextUrl: { pathname, origin: "http://localhost" },
+        headers,
+        cookies: { get: () => undefined },
+        method: "GET",
+      };
+      const res = await proxy(request as never, {} as never);
+      expect(res!.status).not.toBe(403);
+    }
   });
 
   it("sets x-request-id on public HTML routes", async () => {

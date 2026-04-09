@@ -5,7 +5,7 @@ import { withAuth } from "next-auth/middleware";
 import { NextResponse } from "next/server";
 import type { NextRequest, NextFetchEvent } from "next/server";
 import { logRequest } from "@/lib/logger";
-import { isAccessBlocked } from "@/lib/access-blocked-ips";
+import { isAccessBlocked, shouldEnforceAccessBlockIp } from "@/lib/access-blocked-ips";
 import { getTrustedClientIp } from "@/lib/client-ip";
 import { getInternalAppOrigin } from "@/lib/internal-app-origin";
 import { shouldSkipMiddlewareAnalytics } from "@/lib/analytics-skip-middleware";
@@ -52,7 +52,7 @@ export async function proxy(request: NextRequest, event: NextFetchEvent) {
   const accessBlockLogPost =
     request.method === "POST" && pathname === "/api/analytics/access-block-log";
 
-  if (!accessBlockLogPost && isAccessBlocked(ip)) {
+  if (!accessBlockLogPost && isAccessBlocked(ip) && shouldEnforceAccessBlockIp(request)) {
     const logSecret =
       (process.env.ACCESS_BLOCK_LOG_SECRET || process.env.ANALYTICS_SECRET || "").trim();
     if (logSecret) {

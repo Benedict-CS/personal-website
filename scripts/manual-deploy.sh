@@ -45,10 +45,14 @@ else
     }
 fi
 
-# Build Docker image
+# Build Docker image (DOCKER_BUILD_NO_CACHE=1 forces a clean rebuild if a bad layer cached assets)
 echo ""
 echo "🔨 Building Docker image..."
-sudo docker compose build app
+if [ -n "${DOCKER_BUILD_NO_CACHE:-}" ]; then
+    sudo docker compose build --no-cache app
+else
+    sudo docker compose build app
+fi
 
 # Ensure services are up (migrate runs inside app container)
 echo ""
@@ -79,20 +83,26 @@ sudo docker compose ps
 
 echo ""
 echo "Checking health endpoints..."
+HEALTH_PORT="3000"
+if PUBLISHED=$(sudo docker compose port app 3000 2>/dev/null); then
+    HEALTH_PORT="${PUBLISHED##*:}"
+elif [ -n "${APP_HOST_PORT:-}" ]; then
+    HEALTH_PORT="$APP_HOST_PORT"
+fi
 LIVE_OK=0
 HEALTH_OK=0
-if curl -fsS "http://127.0.0.1:3000/api/live" > /dev/null 2>&1; then
+if curl -fsS "http://127.0.0.1:${HEALTH_PORT}/api/live" > /dev/null 2>&1; then
     LIVE_OK=1
 fi
-if curl -fsS "http://127.0.0.1:3000/api/health" > /dev/null 2>&1; then
+if curl -fsS "http://127.0.0.1:${HEALTH_PORT}/api/health" > /dev/null 2>&1; then
     HEALTH_OK=1
 fi
 if [ "$LIVE_OK" -eq 1 ] && [ "$HEALTH_OK" -eq 1 ]; then
-    echo "OK: GET /api/live and GET /api/health succeeded."
+    echo "OK: GET /api/live and GET /api/health succeeded (host port ${HEALTH_PORT})."
 else
     echo "Warning: liveness or readiness check failed (app may still be starting)."
-    echo "  /api/live ok=$LIVE_OK  /api/health ok=$HEALTH_OK"
-    echo "  Retry: curl -fsS http://127.0.0.1:3000/api/health"
+    echo "  /api/live ok=$LIVE_OK  /api/health ok=$HEALTH_OK  port=${HEALTH_PORT}"
+    echo "  Retry: curl -fsS http://127.0.0.1:${HEALTH_PORT}/api/health"
 fi
 
 echo ""

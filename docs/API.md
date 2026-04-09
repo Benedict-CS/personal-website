@@ -146,7 +146,7 @@ Responses may include **`x-request-id`** for log correlation. SaaS builder and t
 
 | Situation | Status | Notable headers |
 |-----------|--------|-----------------|
-| IP blocked (`ACCESS_BLOCK_IP_PREFIXES` / `ACCESS_ALLOW_IPS`) | **403** | `Cache-Control: no-store, private` |
+| IP blocked (`ACCESS_BLOCK_IP_PREFIXES` / `ACCESS_ALLOW_IPS`; optional **`ACCESS_BLOCK_PUBLIC=1`** for 403 on all routes) | **403** (selective by default; see [ENVIRONMENT.md](ENVIRONMENT.md)) | `Cache-Control: no-store, private` |
 | SaaS tenant rate limit (custom host → `/api/infra/edge` returns 429) | **429** | `Cache-Control: no-store, private`, **`Retry-After: 60`** |
 
 **HSTS:** `Strict-Transport-Security` is added by middleware only when **`ENABLE_HSTS=true`** and the request is served over HTTPS (see [ENVIRONMENT.md](ENVIRONMENT.md)). This matches `next.config.ts` static headers.

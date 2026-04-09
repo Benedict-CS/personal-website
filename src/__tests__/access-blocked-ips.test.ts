@@ -1,4 +1,4 @@
-import { isAccessBlocked } from "@/lib/access-blocked-ips";
+import { isAccessBlocked, shouldEnforceAccessBlockIp } from "@/lib/access-blocked-ips";
 
 describe("isAccessBlocked", () => {
   const origBlock = process.env.ACCESS_BLOCK_IP_PREFIXES;
@@ -47,5 +47,41 @@ describe("isAccessBlocked", () => {
     process.env.ACCESS_ALLOW_IPS = "140.113.194.249\r";
     expect(isAccessBlocked("140.113.194.88")).toBe(true);
     expect(isAccessBlocked("140.113.194.249")).toBe(false);
+  });
+});
+
+function req(pathname: string, method = "GET") {
+  return { nextUrl: { pathname }, method };
+}
+
+describe("shouldEnforceAccessBlockIp", () => {
+  const origPublic = process.env.ACCESS_BLOCK_PUBLIC;
+
+  afterEach(() => {
+    if (origPublic === undefined) delete process.env.ACCESS_BLOCK_PUBLIC;
+    else process.env.ACCESS_BLOCK_PUBLIC = origPublic;
+  });
+
+  it("enforces every path when ACCESS_BLOCK_PUBLIC=1", () => {
+    process.env.ACCESS_BLOCK_PUBLIC = "1";
+    expect(shouldEnforceAccessBlockIp(req("/"))).toBe(true);
+    expect(shouldEnforceAccessBlockIp(req("/blog"))).toBe(true);
+    expect(shouldEnforceAccessBlockIp(req("/api/posts", "GET"))).toBe(true);
+  });
+
+  it("enforces dashboard, editor, auth, and non-public API", () => {
+    expect(shouldEnforceAccessBlockIp(req("/dashboard"))).toBe(true);
+    expect(shouldEnforceAccessBlockIp(req("/editor/home"))).toBe(true);
+    expect(shouldEnforceAccessBlockIp(req("/auth/signin"))).toBe(true);
+    expect(shouldEnforceAccessBlockIp(req("/api/upload", "POST"))).toBe(true);
+    expect(shouldEnforceAccessBlockIp(req("/api/analytics/stats", "GET"))).toBe(true);
+  });
+
+  it("does not enforce public pages or blog list APIs", () => {
+    expect(shouldEnforceAccessBlockIp(req("/blog"))).toBe(false);
+    expect(shouldEnforceAccessBlockIp(req("/blog/my-post"))).toBe(false);
+    expect(shouldEnforceAccessBlockIp(req("/api/posts", "GET"))).toBe(false);
+    expect(shouldEnforceAccessBlockIp(req("/api/tags", "GET"))).toBe(false);
+    expect(shouldEnforceAccessBlockIp(req("/"))).toBe(false);
   });
 });

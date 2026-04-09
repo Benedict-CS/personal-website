@@ -44,6 +44,8 @@ services:
     build:
       context: .
       dockerfile: Dockerfile
+      args:
+        NEXT_USE_TURBOPACK: ${NEXT_USE_TURBOPACK:-0}
     container_name: personal-website-app
     restart: unless-stopped
     depends_on:
@@ -52,7 +54,7 @@ services:
       rustfs:
         condition: service_healthy
     ports:
-      - "3000:3000"
+      - "${APP_HOST_PORT:-3000}:3000"
     volumes:
       # Mount public directory for CV and image uploads (persistent storage)
       - ./public:/app/public
@@ -71,6 +73,7 @@ services:
       - S3_BUCKET=${S3_BUCKET:-uploads}
       # Optional: copy from .env — Compose only passes variables listed here into the container
       - ACCESS_BLOCK_IP_PREFIXES=${ACCESS_BLOCK_IP_PREFIXES:-}
+      - ACCESS_BLOCK_PUBLIC=${ACCESS_BLOCK_PUBLIC:-}
       - ACCESS_ALLOW_IPS=${ACCESS_ALLOW_IPS:-}
       - ANALYTICS_SECRET=${ANALYTICS_SECRET:-}
       - ANALYTICS_EXCLUDED_IPS=${ANALYTICS_EXCLUDED_IPS:-}

@@ -4,7 +4,7 @@ import { notFound } from "next/navigation";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import { MarkdownRenderer } from "@/components/markdown-renderer";
+import { MarkdownBodyServer } from "@/components/markdown/markdown-body-server";
 import { prisma } from "@/lib/prisma";
 import { verifyCustomPagePreviewToken } from "@/lib/custom-page-preview";
 import { getScheduledPublishAt, stripScheduledPublishAt } from "@/lib/custom-page-schedule";
@@ -51,7 +51,7 @@ export default async function CustomPagePreview({ searchParams }: PreviewProps) 
         </CardHeader>
         <CardContent>
           <div className="prose prose-slate max-w-none">
-            <MarkdownRenderer content={cleanContent} />
+            <MarkdownBodyServer content={cleanContent} />
           </div>
           <div className="mt-6 flex flex-wrap gap-3 border-t border-slate-200 pt-4">
             <Link href={`/editor/page/${encodeURIComponent(page.slug)}`}>

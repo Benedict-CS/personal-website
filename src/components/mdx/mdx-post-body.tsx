@@ -3,6 +3,7 @@ import remarkGfm from "remark-gfm";
 import remarkMath from "remark-math";
 import remarkSmartypants from "remark-smartypants";
 import { MarkdownRenderer } from "@/components/markdown-renderer";
+import { MarkdownBodyServer } from "@/components/markdown/markdown-body-server";
 import { CodePlayground } from "@/components/mdx/embeds/code-playground";
 import { AbTestStats } from "@/components/mdx/embeds/ab-test-stats";
 import { TechStackGrid } from "@/components/mdx/embeds/tech-stack-grid";
@@ -35,7 +36,10 @@ export async function MdxPostBody({ content, postId, editable = false }: Props) 
       },
     });
   } catch {
-    return <MarkdownRenderer content={content} postId={postId} editable={editable} />;
+    if (editable) {
+      return <MarkdownRenderer content={content} postId={postId} editable />;
+    }
+    return <MarkdownBodyServer content={content} />;
   }
 
   return (

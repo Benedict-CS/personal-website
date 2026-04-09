@@ -14,8 +14,17 @@ run_build() {
   return 1
 }
 
+# Next.js 16 defaults to Turbopack for `next build`. Some reverse proxies (e.g. OpenResty with strict
+# location/WAF rules) return 500 + text/plain for certain Turbopack chunk names (~, turbopack-*, etc.).
+# Webpack output uses safer filenames. Set NEXT_USE_TURBOPACK=1 to prefer Turbopack when you control
+# the edge config and want faster CI builds.
+build_cmd=(npx next build --webpack)
+if [ "${NEXT_USE_TURBOPACK:-}" = "1" ]; then
+  build_cmd=(npx next build)
+fi
+
 LOG1="$(mktemp)"
-if run_build "$LOG1" npx next build; then
+if run_build "$LOG1" "${build_cmd[@]}"; then
   exit 0
 fi
 
@@ -24,17 +33,17 @@ if rg "ENOENT: no such file or directory, open '.+_buildManifest\\.js\\.tmp" "$L
   echo "Detected transient build-manifest race. Cleaning .next and retrying once..."
   rm -rf "$ROOT/.next"
   LOG2="$(mktemp)"
-  if run_build "$LOG2" npx next build; then
+  if run_build "$LOG2" "${build_cmd[@]}"; then
     exit 0
   fi
 fi
 
-# If Turbopack build is OOM-killed, retry with webpack and more Node memory.
+# OOM during build: retry with more Node heap (webpack is heavier than Turbopack).
 if rg "Killed" "$LOG1" >/dev/null 2>&1; then
-  echo "Detected OOM kill during build. Retrying with webpack fallback..."
-  export NODE_OPTIONS="${NODE_OPTIONS:-} --max-old-space-size=4096"
+  echo "Detected OOM kill during build. Retrying with more Node memory..."
+  export NODE_OPTIONS="${NODE_OPTIONS:-} --max-old-space-size=8192"
   LOG3="$(mktemp)"
-  if run_build "$LOG3" npx next build --webpack; then
+  if run_build "$LOG3" "${build_cmd[@]}"; then
     exit 0
   fi
 fi

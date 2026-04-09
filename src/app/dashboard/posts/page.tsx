@@ -55,7 +55,17 @@ export default async function PostsPage({ searchParams }: PostsPageProps) {
   const [posts, total] = await Promise.all([
     prisma.post.findMany({
       where,
-      include: { tags: true },
+      select: {
+        id: true,
+        title: true,
+        slug: true,
+        published: true,
+        publishedAt: true,
+        viewCount: true,
+        createdAt: true,
+        updatedAt: true,
+        tags: { select: { name: true, slug: true } },
+      },
       orderBy,
       take: POSTS_PER_PAGE,
       skip: (page - 1) * POSTS_PER_PAGE,
@@ -69,6 +79,8 @@ export default async function PostsPage({ searchParams }: PostsPageProps) {
     title: p.title,
     slug: p.slug,
     published: p.published,
+    publishedAt: p.publishedAt?.toISOString() ?? null,
+    viewCount: p.viewCount,
     createdAt: p.createdAt.toISOString(),
     updatedAt: p.updatedAt.toISOString(),
     tags: p.tags.map((t) => ({ name: t.name, slug: t.slug })),

@@ -178,37 +178,48 @@ export default async function Home() {
         ) : (
           <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-3">
             {latestPosts.map((post) => (
-              <Link key={post.id} href={`/blog/${post.slug}`} className="block focus:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 rounded-xl">
-                <Card className="h-full border-[var(--border)] shadow-[var(--shadow-sm)] transition-all duration-200 hover:shadow-[var(--shadow-md)] hover:border-[oklch(0.91_0.012_255)]">
-                  <CardHeader className="gap-3">
-                    <CardTitle className="line-clamp-2 text-[var(--foreground)] leading-relaxed flex items-start gap-1.5">
-                      {post.pinned && <Pin className="h-4 w-4 mt-0.5 flex-shrink-0 text-amber-500" aria-hidden />}
-                      <span>{post.title}</span>
-                    </CardTitle>
-                    <div className="flex items-center gap-2 text-sm text-[var(--muted-foreground)]">
-                      <span>{formatDate(post.createdAt)}</span>
-                      <span>•</span>
-                      <span>{formatReadingTime(calculateReadingTime(post.content))}</span>
+              <Card
+                key={post.id}
+                className="relative h-full border-[var(--border)] shadow-[var(--shadow-sm)] transition-all duration-200 hover:shadow-[var(--shadow-md)] hover:border-[oklch(0.91_0.012_255)]"
+              >
+                {/* Single full-card hit target — avoids invalid nested <a> from tag links inside */}
+                <Link
+                  href={`/blog/${post.slug}`}
+                  className="absolute inset-0 z-0 rounded-xl focus:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
+                  aria-label={`Read article: ${post.title}`}
+                />
+                <CardHeader className="relative z-10 gap-3 pointer-events-none">
+                  <CardTitle className="line-clamp-2 text-[var(--foreground)] leading-relaxed flex items-start gap-1.5">
+                    {post.pinned && <Pin className="h-4 w-4 mt-0.5 flex-shrink-0 text-amber-500" aria-hidden />}
+                    <span>{post.title}</span>
+                  </CardTitle>
+                  <div className="flex items-center gap-2 text-sm text-[var(--muted-foreground)]">
+                    <span>{formatDate(post.createdAt)}</span>
+                    <span>•</span>
+                    <span>{formatReadingTime(calculateReadingTime(post.content))}</span>
+                  </div>
+                  {post.tags && post.tags.length > 0 && (
+                    <div className="flex flex-wrap gap-2">
+                      {post.tags.map((tag) => (
+                        <Link
+                          key={tag.id}
+                          href={`/blog/tag/${tag.slug}`}
+                          className="pointer-events-auto inline-block"
+                        >
+                          <Badge variant="secondary" className="text-xs cursor-pointer hover:bg-[var(--accent)] transition-colors duration-150" title={`View all posts tagged "${tag.name}"`}>
+                            {tag.name}
+                          </Badge>
+                        </Link>
+                      ))}
                     </div>
-                    {post.tags && post.tags.length > 0 && (
-                      <div className="flex flex-wrap gap-2">
-                        {post.tags.map((tag) => (
-                          <Link key={tag.id} href={`/blog/tag/${tag.slug}`} className="inline-block">
-                            <Badge variant="secondary" className="text-xs cursor-pointer hover:bg-[var(--accent)] transition-colors duration-150" title={`View all posts tagged "${tag.name}"`}>
-                              {tag.name}
-                            </Badge>
-                          </Link>
-                        ))}
-                      </div>
-                    )}
-                  </CardHeader>
-                  <CardContent>
-                    <p className="text-sm text-[var(--muted-foreground)] line-clamp-3 leading-relaxed">
-                      {post.description || truncateContent(post.content)}
-                    </p>
-                  </CardContent>
-                </Card>
-              </Link>
+                  )}
+                </CardHeader>
+                <CardContent className="relative z-10 pointer-events-none">
+                  <p className="text-sm text-[var(--muted-foreground)] line-clamp-3 leading-relaxed">
+                    {post.description || truncateContent(post.content)}
+                  </p>
+                </CardContent>
+              </Card>
             ))}
           </div>
         )}

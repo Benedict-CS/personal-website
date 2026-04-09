@@ -1,35 +1,20 @@
 "use client";
 
 import React, { useState, useEffect, useMemo } from "react";
+import type { PluggableList } from "unified";
 import ReactMarkdown from "react-markdown";
-import rehypeShiki from "@shikijs/rehype";
-import rehypeRaw from "rehype-raw";
-import rehypeSanitize, { defaultSchema } from "rehype-sanitize";
-import rehypeSlug from "rehype-slug";
-import rehypeKatex from "rehype-katex";
-import remarkGfm from "remark-gfm";
-import remarkMath from "remark-math";
-import remarkSmartypants from "remark-smartypants";
 import type { Components } from "react-markdown";
+import {
+  markdownArticleClassName,
+  markdownRemarkPlugins,
+  markdownRehypePlugins,
+} from "@/lib/markdown-pipeline";
 import { expandDevEmbeds } from "@/lib/markdown-dev-embeds";
 import { GitHubStatsBlock } from "@/components/dev-blocks/github-stats-block";
 import { LeetCodeStatsBlock } from "@/components/dev-blocks/leetcode-stats-block";
 import { BlogMarkdownPre } from "@/components/markdown/blog-markdown-pre";
 import { BlogMarkdownImage } from "@/components/markdown/blog-markdown-image";
-import { rehypePanguSpacing } from "@/lib/rehype-pangu-spacing";
-
-/** Schema that allows <style>, class, and inline style so blog posts match editor preview. */
-const blogPostSchema = {
-  ...defaultSchema,
-  tagNames: [...(defaultSchema.tagNames ?? []), "style"],
-  attributes: {
-    ...defaultSchema.attributes,
-    div: [...(defaultSchema.attributes?.div ?? []), "className", "data-user", "data-variant"],
-    span: [...(defaultSchema.attributes?.span ?? []), "className"],
-    img: [...(defaultSchema.attributes?.img ?? []), "title", "loading", "decoding", "sizes", "srcSet"],
-    "*": [...(defaultSchema.attributes?.["*"] ?? []), "style"],
-  },
-};
+import "highlight.js/styles/github.css";
 import "katex/dist/katex.min.css";
 
 interface MarkdownRendererProps {
@@ -367,26 +352,10 @@ export function MarkdownRenderer({ content, postId, editable = false }: Markdown
 
   return (
     <>
-      <article
-        data-markdown-article
-        className="prose prose-lg max-w-none markdown-renderer font-[family-name:var(--font-geist-sans)] [&_code]:font-[family-name:var(--font-geist-mono)] [&_pre]:font-[family-name:var(--font-geist-mono)]"
-      >
+      <article data-markdown-article className={markdownArticleClassName}>
         <ReactMarkdown
-          remarkPlugins={[remarkGfm, remarkMath, remarkSmartypants]}
-          rehypePlugins={[
-            rehypeRaw,
-            [rehypeSanitize, blogPostSchema],
-            rehypeSlug,
-            rehypeKatex,
-            [
-              rehypeShiki,
-              {
-                theme: "github-light",
-                addLanguageClass: true,
-              },
-            ],
-            rehypePanguSpacing,
-          ]}
+          remarkPlugins={markdownRemarkPlugins}
+          rehypePlugins={markdownRehypePlugins as PluggableList}
           components={components}
         >
           {markdownBody}

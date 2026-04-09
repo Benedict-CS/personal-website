@@ -751,7 +751,9 @@ export default function AnalyticsPage() {
               <CardContent>
                 <p className={dashboardMetricValueClassName()}>{stats.accessBlockTotal ?? 0}</p>
                 <p className="text-xs text-muted-foreground mt-1">
-                  Blocked requests in date range (one log row per IP per minute)
+                  Blocked requests in date range (one log row per IP per minute). Rows for{" "}
+                  <code className="rounded bg-muted px-1 text-xs">/api/analytics/access-block-log</code> are omitted — they are
+                  artifacts of loading this dashboard, not public traffic.
                 </p>
               </CardContent>
             </Card>
@@ -967,7 +969,8 @@ export default function AnalyticsPage() {
               <p className="text-sm text-muted-foreground mb-3">
                 Logged when the proxy returns 403 for forbidden IPs. Enable with{" "}
                 <span className="font-mono text-xs">ANALYTICS_SECRET</span> or{" "}
-                <span className="font-mono text-xs">ACCESS_BLOCK_LOG_SECRET</span>.
+                <span className="font-mono text-xs">ACCESS_BLOCK_LOG_SECRET</span>. Same filters as the 403 total above (internal
+                access-block-log requests are hidden).
               </p>
               {(stats.accessBlockedRecent?.length ?? 0) === 0 ? (
                 <p className="text-sm text-muted-foreground">No entries in this range.</p>

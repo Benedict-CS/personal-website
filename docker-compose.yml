@@ -59,6 +59,8 @@ services:
       dockerfile: Dockerfile
       args:
         APP_VERSION: ${APP_VERSION:-local}
+        # Keep webpack output unless you explicitly opt into Turbopack (OpenResty-safe chunk URLs).
+        NEXT_USE_TURBOPACK: ${NEXT_USE_TURBOPACK:-0}
     container_name: personal-website-app
     restart: unless-stopped
     # Allow Node to finish in-flight requests before SIGKILL (default 10s).
@@ -68,8 +70,9 @@ services:
         condition: service_healthy
       rustfs:
         condition: service_healthy
+    # Host port (left side): change if 3000 is already in use (set APP_HOST_PORT in .env). OpenResty must proxy to the same host port.
     ports:
-      - "3000:3000"
+      - "${APP_HOST_PORT:-3000}:3000"
     volumes:
       # Mount public directory for CV and image uploads (persistent storage)
       - ./public:/app/public
@@ -108,6 +111,7 @@ services:
       - TURNSTILE_SECRET_KEY=${TURNSTILE_SECRET_KEY:-}
       # Site-wide IP block (proxy) and analytics — must be listed here or the container never sees host .env keys
       - ACCESS_BLOCK_IP_PREFIXES=${ACCESS_BLOCK_IP_PREFIXES:-}
+      - ACCESS_BLOCK_PUBLIC=${ACCESS_BLOCK_PUBLIC:-}
       - ACCESS_ALLOW_IPS=${ACCESS_ALLOW_IPS:-}
       - ACCESS_BLOCK_LOG_SECRET=${ACCESS_BLOCK_LOG_SECRET:-}
       - ANALYTICS_SECRET=${ANALYTICS_SECRET:-}

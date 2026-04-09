@@ -2,7 +2,7 @@ import type { Metadata } from "next";
 import { notFound } from "next/navigation";
 import { prisma } from "@/lib/prisma";
 import { getSiteConfigForRender } from "@/lib/site-config";
-import { MarkdownRenderer } from "@/components/markdown-renderer";
+import { MarkdownBodyServer } from "@/components/markdown/markdown-body-server";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import {
   isCustomPagePublicOnSite,
@@ -101,7 +101,7 @@ export default async function CustomPageRoute({ params }: Props) {
         </CardHeader>
         <CardContent>
           <div className="prose prose-slate max-w-none">
-            <MarkdownRenderer content={content} />
+            <MarkdownBodyServer content={content} />
           </div>
         </CardContent>
       </Card>

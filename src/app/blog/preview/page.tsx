@@ -7,7 +7,7 @@ import { Badge } from "@/components/ui/badge";
 import { Card, CardContent } from "@/components/ui/card";
 import { TableOfContents } from "@/components/toc";
 import { ArticleReadingChrome } from "@/components/article-reading-chrome";
-import { MarkdownRenderer } from "@/components/markdown-renderer";
+import { MarkdownBodyServer } from "@/components/markdown/markdown-body-server";
 import { MdxPostBody } from "@/components/mdx/mdx-post-body";
 import { shouldRenderAsMdx } from "@/lib/mdx-content-detect";
 import { calculateReadingTime, formatReadingTime } from "@/lib/reading-time";
@@ -127,7 +127,7 @@ export default async function BlogPreviewPage({ searchParams }: PreviewPageProps
                     {shouldRenderAsMdx(post.content) ? (
                       <MdxPostBody content={post.content} postId={post.id} editable={false} />
                     ) : (
-                      <MarkdownRenderer content={post.content} postId={post.id} editable={false} />
+                      <MarkdownBodyServer content={post.content} />
                     )}
                   </div>
 

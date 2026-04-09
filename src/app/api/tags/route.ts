@@ -1,7 +1,14 @@
 import { NextRequest, NextResponse } from "next/server";
 import { getServerSession } from "next-auth";
 import { prisma } from "@/lib/prisma";
+import type { Prisma } from "@prisma/client";
 import { authOptions } from "@/lib/auth";
+
+function publishedPostsSomeFilter(now: Date): Prisma.PostWhereInput {
+  return {
+    OR: [{ published: true }, { publishedAt: { lte: now } }],
+  };
+}
 
 /**
  * GET /api/tags
@@ -17,8 +24,9 @@ export async function GET(request: NextRequest) {
         return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
       }
     }
+    const now = new Date();
     const tags = await prisma.tag.findMany({
-      where: all ? undefined : { posts: { some: { published: true } } },
+      where: all ? undefined : { posts: { some: publishedPostsSomeFilter(now) } },
       select: { id: true, name: true, slug: true },
       orderBy: { name: "asc" },
     });

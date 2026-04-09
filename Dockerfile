@@ -26,6 +26,12 @@ RUN npx prisma generate
 # Set dummy DATABASE_URL for build (prevents Prisma from trying to connect during build)
 ENV DATABASE_URL="postgresql://dummy:dummy@localhost:5432/dummy"
 
+# Default: webpack build (see scripts/build-safe.sh). Turbopack chunk names (~, turbopack-*) often break
+# OpenResty/nginx when a regex location steals /_next requests. Override with NEXT_USE_TURBOPACK=1 only
+# if your edge config is safe for those URLs.
+ARG NEXT_USE_TURBOPACK=0
+ENV NEXT_USE_TURBOPACK=${NEXT_USE_TURBOPACK}
+
 # Build Next.js application
 RUN npm run build
 

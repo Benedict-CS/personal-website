@@ -11,7 +11,7 @@ import { TableOfContents } from "@/components/toc";
 import { ShareButtons } from "@/components/share-buttons";
 import { ArticleReadingChrome } from "@/components/article-reading-chrome";
 import { PrevNextKeys } from "@/components/prev-next-keys";
-import { MarkdownRenderer } from "@/components/markdown-renderer";
+import { MarkdownBodyServer } from "@/components/markdown/markdown-body-server";
 import { MdxPostBody } from "@/components/mdx/mdx-post-body";
 import { shouldRenderAsMdx } from "@/lib/mdx-content-detect";
 import { HighlightScroll } from "@/components/highlight-scroll";
@@ -294,7 +294,7 @@ export default async function BlogPostPage({
                   {shouldRenderAsMdx(post.content) ? (
                     <MdxPostBody content={post.content} postId={post.id} editable={!!session} />
                   ) : (
-                    <MarkdownRenderer content={post.content} postId={post.id} editable={!!session} />
+                    <MarkdownBodyServer content={post.content} />
                   )}
                 </div>
                 <HighlightScroll highlight={highlight} occurrence={occurrence} contentSelector="[data-post-content]" />

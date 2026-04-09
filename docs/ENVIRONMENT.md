@@ -160,7 +160,8 @@ Restart the app (or rebuild) after changing these. Comments will appear at the b
 |----------|-------------|---------|
 | `ANALYTICS_SECRET` | Secret for server-side analytics beacon (middleware calls `/api/analytics/view`). | Not set |
 | `ANALYTICS_EXCLUDED_IPS` | Comma-separated IPs or prefixes to exclude from counts. Trailing dot = subnet (e.g. `140.113.` excludes 140.113.x.x). | Not set |
-| `ACCESS_BLOCK_IP_PREFIXES` | Comma-separated IPv4 prefixes; blocked clients get **403** on all routes (including `/api`). Use a trailing dot per octet group, e.g. `140.113.194.` blocks `140.113.194.0–255` only. Empty = no blocking. Restart the Node process after changing. **Docker:** pass these into the container (`env_file` or `-e`), not only on the host. | Not set |
+| `ACCESS_BLOCK_IP_PREFIXES` | Comma-separated IPv4 prefixes for blocked clients. **Default behavior:** **403** on `/dashboard`, `/editor`, `/auth`, and most `/api/*` — **not** on public pages (`/`, `/blog`, …) or the small set of public GET APIs (posts, tags, media serve, …) so the blog can still render. Use a trailing dot, e.g. `140.113.194.` for that /24 only. Empty = no blocking. Restart after changing. **Docker:** pass into the container (`docker-compose` `environment`), not only on the host. | Not set |
+| `ACCESS_BLOCK_PUBLIC` | If `1`, `true`, or `yes`: blocked IPs get **403 on every path** (full public-site ban; middleware will not record their page views). If unset/false: use the selective rules above. | Not set |
 | `ACCESS_ALLOW_IPS` | Comma-separated exact IPs always allowed, even if they match `ACCESS_BLOCK_IP_PREFIXES`. Supports `::ffff:` form. | Not set |
 | `EDGE_CONTROL_SECRET` | Optional. Shared secret for middleware → `/api/infra/edge` (SaaS custom-domain routing). Omit on a single-site personal deployment. | Not set |
 | `SENTRY_DSN` | Sentry DSN for error reporting. When set, Sentry is enabled (client/server/edge configs). | Not set |

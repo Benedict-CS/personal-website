@@ -53,11 +53,18 @@ export async function GET(request: NextRequest) {
   }
   const where: Prisma.PageViewWhereInput = { AND: whereParts };
 
-  const blockWhere: Prisma.AccessBlockLogWhereInput = {};
+  /** Blocked-access log: exclude the internal logging endpoint (otherwise dashboard refresh inflates counts). */
+  const blockWhereParts: Prisma.AccessBlockLogWhereInput[] = [
+    { path: { not: "/api/analytics/access-block-log" } },
+  ];
   if (filterIP) {
-    blockWhere.ip = filterIP;
+    blockWhereParts.push({ ip: filterIP });
   }
-  if (Object.keys(dateFilter).length) blockWhere.createdAt = dateFilter;
+  if (Object.keys(dateFilter).length) {
+    blockWhereParts.push({ createdAt: dateFilter });
+  }
+  const blockWhere: Prisma.AccessBlockLogWhereInput =
+    blockWhereParts.length === 1 ? blockWhereParts[0]! : { AND: blockWhereParts };
 
   const now = new Date();
   const publishedPostsWhere: Prisma.PostWhereInput = {

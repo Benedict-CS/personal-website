@@ -248,48 +248,50 @@ export default function BlogPageClient() {
                     animate={{ opacity: 1, y: 0 }}
                     transition={{ duration: 0.3, delay: Math.min(cardIndex * 0.05, 0.25), ease: [0.25, 0.46, 0.45, 0.94] }}
                   >
-                    <Link href={`/blog/${post.slug}`} className="block focus:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 rounded-xl transition-opacity hover:opacity-95">
-                      <Card className="h-full border-[var(--border)] shadow-[var(--shadow-sm)] transition-all duration-200 hover:shadow-[var(--shadow-md)] hover:border-slate-300">
-                        <CardHeader className="gap-2 p-5 sm:gap-3 sm:p-6">
-                          <CardTitle className="line-clamp-2 text-[var(--foreground)] leading-relaxed flex items-start gap-1.5">
-                            {post.pinned && (
-                              <Pin className="h-4 w-4 mt-0.5 flex-shrink-0 text-amber-500" aria-hidden />
-                            )}
-                            <span>{post.title}</span>
-                          </CardTitle>
-                          <div className="flex items-center gap-2 text-sm text-[var(--muted-foreground)]">
-                            <span>{formatDate(post.createdAt)}</span>
-                            <span>•</span>
-                            <span>{formatReadingTime(calculateReadingTime(post.content))}</span>
-                          </div>
-                          {post.tags && post.tags.length > 0 && (
-                            <div className="flex flex-wrap gap-2">
-                              {post.tags.map((tag) => (
-                                <Link
-                                  key={tag.id}
-                                  href={`/blog/tag/${tag.slug}`}
-                                  onClick={(e) => e.stopPropagation()}
-                                  className="inline-block"
-                                >
-                                  <Badge
-                                    variant="secondary"
-                                    className="text-xs cursor-pointer hover:bg-[var(--accent)] transition-colors duration-150"
-                                    title={`View all posts tagged "${tag.name}"`}
-                                  >
-                                    {tag.name}
-                                  </Badge>
-                                </Link>
-                              ))}
-                            </div>
+                    <Card className="relative h-full border-[var(--border)] shadow-[var(--shadow-sm)] transition-all duration-200 hover:shadow-[var(--shadow-md)] hover:border-slate-300">
+                      <Link
+                        href={`/blog/${post.slug}`}
+                        className="absolute inset-0 z-0 rounded-xl focus:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
+                        aria-label={`Read article: ${post.title}`}
+                      />
+                      <CardHeader className="relative z-10 gap-2 p-5 sm:gap-3 sm:p-6 pointer-events-none">
+                        <CardTitle className="line-clamp-2 text-[var(--foreground)] leading-relaxed flex items-start gap-1.5">
+                          {post.pinned && (
+                            <Pin className="h-4 w-4 mt-0.5 flex-shrink-0 text-amber-500" aria-hidden />
                           )}
-                        </CardHeader>
-                        <CardContent className="px-5 pb-5 sm:px-6 sm:pb-6 pt-0">
-                          <p className="text-sm text-[var(--muted-foreground)] line-clamp-3 leading-relaxed">
-                            {post.description || truncateContent(post.content)}
-                          </p>
-                        </CardContent>
-                      </Card>
-                    </Link>
+                          <span>{post.title}</span>
+                        </CardTitle>
+                        <div className="flex items-center gap-2 text-sm text-[var(--muted-foreground)]">
+                          <span>{formatDate(post.createdAt)}</span>
+                          <span>•</span>
+                          <span>{formatReadingTime(calculateReadingTime(post.content))}</span>
+                        </div>
+                        {post.tags && post.tags.length > 0 && (
+                          <div className="flex flex-wrap gap-2">
+                            {post.tags.map((tag) => (
+                              <Link
+                                key={tag.id}
+                                href={`/blog/tag/${tag.slug}`}
+                                className="pointer-events-auto inline-block"
+                              >
+                                <Badge
+                                  variant="secondary"
+                                  className="text-xs cursor-pointer hover:bg-[var(--accent)] transition-colors duration-150"
+                                  title={`View all posts tagged "${tag.name}"`}
+                                >
+                                  {tag.name}
+                                </Badge>
+                              </Link>
+                            ))}
+                          </div>
+                        )}
+                      </CardHeader>
+                      <CardContent className="relative z-10 px-5 pb-5 sm:px-6 sm:pb-6 pt-0 pointer-events-none">
+                        <p className="text-sm text-[var(--muted-foreground)] line-clamp-3 leading-relaxed">
+                          {post.description || truncateContent(post.content)}
+                        </p>
+                      </CardContent>
+                    </Card>
                   </motion.div>
                 ))}
               </div>
