@@ -1,13 +1,21 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, useCallback } from "react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
-import { Download, Upload, FileText, CheckCircle2, XCircle } from "lucide-react";
+import { Download, Upload, FileText, CheckCircle2, XCircle, Loader2 } from "lucide-react";
 import Link from "next/link";
+import { DashboardPageHeader } from "@/components/dashboard/dashboard-ui";
+import { formatAbsoluteDateTime, formatRelativeTime } from "@/lib/relative-time";
 
 export const dynamic = "force-dynamic";
+
+type CvStatusPayload = {
+  exists: boolean;
+  lastModified: string | null;
+  contentLength: number | null;
+};
 
 export default function CVPage() {
   const [file, setFile] = useState<File | null>(null);
@@ -16,20 +24,29 @@ export default function CVPage() {
     type: "success" | "error" | null;
     message: string;
   }>({ type: null, message: "" });
-  const [cvExists, setCvExists] = useState(false);
+  const [cvStatus, setCvStatus] = useState<CvStatusPayload | null>(null);
 
-  // Check if CV exists
-  useEffect(() => {
-    const checkCVExists = async () => {
-      try {
-        const response = await fetch("/api/media/serve/cv.pdf", { method: "HEAD", credentials: "include" });
-        setCvExists(response.ok);
-      } catch {
-        setCvExists(false);
+  const refreshCvStatus = useCallback(async () => {
+    try {
+      const response = await fetch("/api/cv/status", { credentials: "include", cache: "no-store" });
+      if (!response.ok) {
+        setCvStatus({ exists: false, lastModified: null, contentLength: null });
+        return;
       }
-    };
-    checkCVExists();
+      const data = (await response.json()) as Record<string, unknown>;
+      setCvStatus({
+        exists: data.exists === true,
+        lastModified: typeof data.lastModified === "string" ? data.lastModified : null,
+        contentLength: typeof data.contentLength === "number" ? data.contentLength : null,
+      });
+    } catch {
+      setCvStatus({ exists: false, lastModified: null, contentLength: null });
+    }
   }, []);
+
+  useEffect(() => {
+    void refreshCvStatus();
+  }, [refreshCvStatus]);
 
   const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const selectedFile = e.target.files?.[0];
@@ -78,7 +95,7 @@ export default function CVPage() {
         message: "CV uploaded successfully!",
       });
       setFile(null);
-      setCvExists(true);
+      await refreshCvStatus();
       
       // Reset file input
       const fileInput = document.getElementById("cv-file") as HTMLInputElement;
@@ -97,11 +114,24 @@ export default function CVPage() {
 
   return (
     <div className="space-y-6">
-      <div className="flex items-center justify-between">
-        <h2 className="text-3xl font-bold text-slate-900">
-          Manage CV
-        </h2>
-      </div>
+      <DashboardPageHeader title="Manage CV" description="Upload a PDF for the public CV download, or print your About page." />
+
+      <Card>
+        <CardHeader>
+          <CardTitle>Web resume → PDF</CardTitle>
+        </CardHeader>
+        <CardContent className="space-y-3">
+          <p className="text-sm text-muted-foreground">
+            Export your public About page as a PDF using the browser print dialog (Save as PDF).
+          </p>
+          <Link href="/about?print=1" target="_blank" rel="noopener noreferrer">
+            <Button variant="outline" className="gap-2">
+              <FileText className="h-4 w-4" />
+              Open printable About page
+            </Button>
+          </Link>
+        </CardContent>
+      </Card>
 
       <Card>
         <CardHeader>
@@ -109,7 +139,7 @@ export default function CVPage() {
         </CardHeader>
         <CardContent className="space-y-4">
           <div className="space-y-2">
-            <label className="text-sm font-medium text-slate-700">
+            <label className="text-sm font-medium text-foreground">
               Select PDF File
             </label>
             <Input
@@ -120,7 +150,7 @@ export default function CVPage() {
               className="cursor-pointer"
             />
             {file && (
-              <p className="text-sm text-slate-600">
+              <p className="text-sm text-muted-foreground">
                 Selected: {file.name} ({(file.size / 1024).toFixed(2)} KB)
               </p>
             )}
@@ -155,15 +185,37 @@ export default function CVPage() {
         </CardContent>
       </Card>
 
-      {cvExists && (
+      {cvStatus === null ? (
+        <p className="flex items-center gap-2 text-sm text-muted-foreground" aria-live="polite">
+          <Loader2 className="h-4 w-4 shrink-0 animate-spin text-muted-foreground" aria-hidden />
+          Checking whether a CV is on file…
+        </p>
+      ) : !cvStatus.exists ? (
+        <p className="text-sm text-muted-foreground" role="status">
+          No CV PDF is stored yet. Upload one above to enable public download links.
+        </p>
+      ) : null}
+
+      {cvStatus?.exists && (
         <Card>
           <CardHeader>
             <CardTitle>Current CV</CardTitle>
           </CardHeader>
           <CardContent className="space-y-4">
-            <p className="text-sm text-slate-600 text-slate-400">
+            <p className="text-sm text-muted-foreground">
               A CV is currently available. You can preview or download it below.
             </p>
+            {cvStatus.lastModified ? (
+              <p className="text-sm text-muted-foreground">
+                Last uploaded{" "}
+                <span className="tabular-nums" title={formatAbsoluteDateTime(cvStatus.lastModified)}>
+                  {formatRelativeTime(cvStatus.lastModified)}
+                </span>
+                {cvStatus.contentLength != null
+                  ? ` · ${(cvStatus.contentLength / 1024).toFixed(1)} KB`
+                  : null}
+              </p>
+            ) : null}
             <div className="flex gap-3">
               <Link href="/api/cv/download" target="_blank" prefetch={false}>
                 <Button variant="outline" className="gap-2">

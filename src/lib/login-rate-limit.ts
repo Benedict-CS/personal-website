@@ -20,7 +20,7 @@ const memoryStore = new Map<string, Entry>();
 
 const STATE_TTL_SEC = 24 * 60 * 60;
 
-function useRedis(): boolean {
+function isRedisConfigured(): boolean {
   return Boolean(process.env.REDIS_URL?.trim());
 }
 
@@ -30,7 +30,7 @@ function redisKey(ip: string): string {
 }
 
 async function readEntry(ip: string): Promise<Entry | undefined> {
-  if (useRedis()) {
+  if (isRedisConfigured()) {
     const raw = await getString(redisKey(ip));
     if (!raw) return undefined;
     try {
@@ -45,7 +45,7 @@ async function readEntry(ip: string): Promise<Entry | undefined> {
 }
 
 async function writeEntry(ip: string, entry: Entry): Promise<void> {
-  if (useRedis()) {
+  if (isRedisConfigured()) {
     await setString(redisKey(ip), JSON.stringify(entry), STATE_TTL_SEC);
     return;
   }
@@ -53,7 +53,7 @@ async function writeEntry(ip: string, entry: Entry): Promise<void> {
 }
 
 async function removeEntry(ip: string): Promise<void> {
-  if (useRedis()) {
+  if (isRedisConfigured()) {
     await deleteKey(redisKey(ip));
     return;
   }

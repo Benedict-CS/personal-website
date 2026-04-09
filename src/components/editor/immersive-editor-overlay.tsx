@@ -2,10 +2,13 @@
 
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import Link from "next/link";
+import { useRouter } from "next/navigation";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import { ConfirmDialog } from "@/components/ui/confirm-dialog";
 import { Move, Redo2, Save, Undo2 } from "lucide-react";
 import { InsertMediaModal } from "@/components/insert-media-modal";
+import { IMMERSIVE_OVERLAY_PANEL_SCROLLABLE } from "@/components/editor/immersive-surface-classes";
 
 type EditorSlug = "home" | "about" | "blog" | "contact";
 type TextBinding = { key: string; selector: string };
@@ -187,6 +190,7 @@ function mergeBlocksPreservingMeta(
 }
 
 export function ImmersiveEditorOverlay({ slug }: { slug: EditorSlug }) {
+  const router = useRouter();
   const [status, setStatus] = useState<string>("");
   const [saving, setSaving] = useState(false);
   const [cvUploading, setCvUploading] = useState(false);
@@ -230,6 +234,17 @@ export function ImmersiveEditorOverlay({ slug }: { slug: EditorSlug }) {
   const [lastAutoSavedAt, setLastAutoSavedAt] = useState<number | null>(null);
   const [panelPosition, setPanelPosition] = useState<{ x: number; y: number } | null>(null);
   const [isDraggingPanel, setIsDraggingPanel] = useState(false);
+  const pendingDeleteAboutBlockRef = useRef<(() => void) | null>(null);
+  const [aboutBlockDeleteOpen, setAboutBlockDeleteOpen] = useState(false);
+  const [exitWithoutSaveOpen, setExitWithoutSaveOpen] = useState(false);
+  const [restoreLocalOpen, setRestoreLocalOpen] = useState(false);
+  const [restoreLocalItem, setRestoreLocalItem] = useState<LocalEditorVersion | null>(null);
+  const [restoreServerOpen, setRestoreServerOpen] = useState(false);
+  const [restoreServerItem, setRestoreServerItem] = useState<ServerEditorRevision | null>(null);
+  const [restoreServerLoading, setRestoreServerLoading] = useState(false);
+  const [deleteCustomSectionOpen, setDeleteCustomSectionOpen] = useState(false);
+  const [deleteCustomSectionKey, setDeleteCustomSectionKey] = useState<string | null>(null);
+  const [deleteCustomSectionLoading, setDeleteCustomSectionLoading] = useState(false);
   const cvInputRef = useRef<HTMLInputElement | null>(null);
   const initialTextSnapshotRef = useRef<string>("");
   const lastVersionSnapshotAtRef = useRef<number>(0);
@@ -409,8 +424,8 @@ export function ImmersiveEditorOverlay({ slug }: { slug: EditorSlug }) {
           btn.setAttribute("aria-label", title);
           btn.className =
             variant === "danger"
-              ? "inline-flex h-6 w-6 items-center justify-center rounded border border-rose-200 bg-[var(--background)] text-[11px] font-semibold text-rose-600 hover:bg-rose-50"
-              : "inline-flex h-6 w-6 items-center justify-center rounded border border-[var(--border)] bg-[var(--background)] text-[11px] font-semibold text-[var(--foreground)] hover:bg-[var(--muted)]";
+              ? "inline-flex h-6 w-6 items-center justify-center rounded border border-rose-200 bg-background text-[11px] font-semibold text-rose-600 hover:bg-rose-50"
+              : "inline-flex h-6 w-6 items-center justify-center rounded border border-border bg-background text-[11px] font-semibold text-foreground hover:bg-muted";
           const handler = (event: Event) => {
             event.preventDefault();
             event.stopPropagation();
@@ -510,13 +525,14 @@ export function ImmersiveEditorOverlay({ slug }: { slug: EditorSlug }) {
               setStatus("Keep at least one block in this section.");
               return;
             }
-            const ok = window.confirm("Delete this block?");
-            if (!ok) return;
-            blockNode.remove();
-            renumberAboutSectionNodes(section, blockGroup);
-            updateAboutAddControlVisibility(blockGroup);
-            setHasTextChanges(true);
-            setStatus("About block deleted. Click Save Changes.");
+            pendingDeleteAboutBlockRef.current = () => {
+              blockNode.remove();
+              renumberAboutSectionNodes(section, blockGroup);
+              updateAboutAddControlVisibility(blockGroup);
+              setHasTextChanges(true);
+              setStatus("About block deleted. Click Save Changes.");
+            };
+            setAboutBlockDeleteOpen(true);
           }, "danger")
         );
         blockNode.appendChild(controls);
@@ -1290,14 +1306,90 @@ export function ImmersiveEditorOverlay({ slug }: { slug: EditorSlug }) {
     return () => window.removeEventListener("beforeunload", onBeforeUnload);
   }, [hasPendingChanges, persistLocalDraft]);
 
-  const handleExit = useCallback(
-    (event: React.MouseEvent) => {
+  const handleExitLinkClick = useCallback(
+    (event: React.MouseEvent<HTMLAnchorElement>) => {
       if (!hasPendingChanges) return;
-      const ok = window.confirm("You have unsaved changes. Leave without saving?");
-      if (!ok) event.preventDefault();
+      event.preventDefault();
+      setExitWithoutSaveOpen(true);
     },
     [hasPendingChanges]
   );
+
+  const performDeleteCustomSection = useCallback(async (sectionLayoutKey: string) => {
+    const sectionId = sectionLayoutKey.replace(/^custom:/, "");
+    const existingRes = await fetch("/api/about/config", { cache: "no-store" });
+    const existing = existingRes.ok ? await existingRes.json() : {};
+    const currentSections = Array.isArray(existing.customSections) ? existing.customSections : [];
+    const nextSections = currentSections.filter((item: unknown) => {
+      if (!item || typeof item !== "object") return false;
+      return String((item as { id?: unknown }).id ?? "") !== sectionId;
+    });
+    const existingOrder = Array.isArray(existing.sectionOrder) ? existing.sectionOrder : [];
+    const nextOrder = existingOrder.filter((value: unknown) => String(value) !== sectionLayoutKey);
+    const existingVisibility =
+      existing.sectionVisibility && typeof existing.sectionVisibility === "object"
+        ? (existing.sectionVisibility as Record<string, boolean>)
+        : {};
+    const nextVisibility = { ...existingVisibility };
+    delete nextVisibility[sectionLayoutKey];
+    const saveRes = await fetch("/api/about/config", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        ...existing,
+        customSections: nextSections,
+        sectionOrder: nextOrder,
+        sectionVisibility: nextVisibility,
+      }),
+    });
+    if (!saveRes.ok) {
+      setStatus("Failed to delete custom section.");
+      return;
+    }
+    setStatus("Custom section deleted.");
+    window.location.reload();
+  }, []);
+
+  const confirmRestoreServerRevision = useCallback(async () => {
+    const item = restoreServerItem;
+    if (!item) return;
+    setRestoreServerLoading(true);
+    try {
+      const res = await fetch(`/api/editor/revisions/${item.id}`, { cache: "no-store" });
+      if (!res.ok) {
+        setStatus("Failed to restore server revision.");
+        return;
+      }
+      const data = (await res.json()) as { snapshot?: LocalEditorDraft };
+      if (!data?.snapshot) {
+        setStatus("Revision snapshot is empty.");
+        return;
+      }
+      restoreFromLocalDraft(data.snapshot, "server revision");
+    } finally {
+      setRestoreServerLoading(false);
+      setRestoreServerOpen(false);
+      setRestoreServerItem(null);
+    }
+  }, [restoreFromLocalDraft, restoreServerItem]);
+
+  const confirmDeleteAboutBlock = useCallback(() => {
+    setAboutBlockDeleteOpen(false);
+    pendingDeleteAboutBlockRef.current?.();
+    pendingDeleteAboutBlockRef.current = null;
+  }, []);
+
+  const confirmDeleteCustomSection = useCallback(async () => {
+    if (!deleteCustomSectionKey) return;
+    setDeleteCustomSectionLoading(true);
+    try {
+      await performDeleteCustomSection(deleteCustomSectionKey);
+    } finally {
+      setDeleteCustomSectionLoading(false);
+      setDeleteCustomSectionOpen(false);
+      setDeleteCustomSectionKey(null);
+    }
+  }, [deleteCustomSectionKey, performDeleteCustomSection]);
 
   const runUndo = useCallback(() => {
     const ok = document.execCommand("undo");
@@ -1663,14 +1755,14 @@ export function ImmersiveEditorOverlay({ slug }: { slug: EditorSlug }) {
   return (
     <div
       ref={panelRef}
-      className={`fixed z-[100] max-h-[calc(100vh-16px)] overflow-y-auto rounded-xl border border-[var(--border)] bg-[var(--glass-bg)] p-2.5 shadow-[var(--glass-shadow-hover)] backdrop-blur-xl ${isDraggingPanel ? "cursor-grabbing select-none" : ""}`}
+      className={`fixed z-[100] ${IMMERSIVE_OVERLAY_PANEL_SCROLLABLE} ${isDraggingPanel ? "cursor-grabbing select-none" : ""}`}
       style={panelPosition ? { left: panelPosition.x, top: panelPosition.y } : { right: 16, bottom: 16 }}
     >
       <div className="flex items-center gap-2">
         <button
           type="button"
           onPointerDown={startPanelDrag}
-          className="inline-flex h-7 w-7 items-center justify-center rounded-md border border-[var(--border)] bg-[var(--muted)] text-[var(--muted-foreground)] hover:text-[var(--foreground)] cursor-grab active:cursor-grabbing touch-none"
+          className="inline-flex h-7 w-7 items-center justify-center rounded-md border border-border bg-muted text-muted-foreground hover:text-foreground cursor-grab active:cursor-grabbing touch-none"
           title="Drag panel"
           aria-label="Drag editor panel"
         >
@@ -1796,7 +1888,7 @@ export function ImmersiveEditorOverlay({ slug }: { slug: EditorSlug }) {
             {saving ? "Publishing..." : "Publish"}
           </Button>
         ) : null}
-        <Link href={exitHref} onClick={handleExit}>
+        <Link href={exitHref} onClick={handleExitLinkClick}>
           <Button size="sm" variant="outline" className="text-xs">
             Exit
           </Button>
@@ -1828,9 +1920,9 @@ export function ImmersiveEditorOverlay({ slug }: { slug: EditorSlug }) {
         </div>
       )}
       {historyOpen && (
-        <div className="mt-2 max-h-64 space-y-2 overflow-y-auto rounded-md border border-[var(--border)] bg-[var(--background)] p-2">
+        <div className="mt-2 max-h-64 space-y-2 overflow-y-auto rounded-md border border-border bg-background p-2">
           <div className="flex items-center justify-between gap-2">
-            <p className="text-xs font-semibold text-[var(--foreground)]">Version history (local)</p>
+            <p className="text-xs font-semibold text-foreground">Version history (local)</p>
             <Button
               size="sm"
               variant="outline"
@@ -1846,19 +1938,18 @@ export function ImmersiveEditorOverlay({ slug }: { slug: EditorSlug }) {
             </Button>
           </div>
           {historyItems.length === 0 ? (
-            <p className="text-xs text-[var(--muted-foreground)]">No local versions yet. Save Draft to create one.</p>
+            <p className="text-xs text-muted-foreground">No local versions yet. Save Draft to create one.</p>
           ) : (
             historyItems.map((item) => (
-              <div key={item.id} className="flex items-center justify-between gap-2 rounded border border-[var(--border)] px-2 py-1">
-                <span className="text-[11px] text-[var(--muted-foreground)]">{new Date(item.savedAt).toLocaleString()}</span>
+              <div key={item.id} className="flex items-center justify-between gap-2 rounded border border-border px-2 py-1">
+                <span className="text-[11px] text-muted-foreground">{new Date(item.savedAt).toLocaleString()}</span>
                 <Button
                   size="sm"
                   variant="outline"
                   className="h-6 px-2 text-[11px]"
                   onClick={() => {
-                    const ok = window.confirm("Restore this version?");
-                    if (!ok) return;
-                    restoreFromLocalDraft(item.draft, "version snapshot");
+                    setRestoreLocalItem(item);
+                    setRestoreLocalOpen(true);
                   }}
                 >
                   Restore
@@ -1866,36 +1957,25 @@ export function ImmersiveEditorOverlay({ slug }: { slug: EditorSlug }) {
               </div>
             ))
           )}
-          <div className="mt-2 border-t border-[var(--border)] pt-2">
-            <p className="mb-1 text-xs font-semibold text-[var(--foreground)]">Version history (server)</p>
+          <div className="mt-2 border-t border-border pt-2">
+            <p className="mb-1 text-xs font-semibold text-foreground">Version history (server)</p>
             {serverHistoryLoading ? (
-              <p className="text-xs text-[var(--muted-foreground)]">Loading server history...</p>
+              <p className="text-xs text-muted-foreground">Loading server history...</p>
             ) : serverHistoryItems.length === 0 ? (
-              <p className="text-xs text-[var(--muted-foreground)]">No server revisions yet.</p>
+              <p className="text-xs text-muted-foreground">No server revisions yet.</p>
             ) : (
               serverHistoryItems.map((item) => (
-                <div key={item.id} className="mb-1 flex items-center justify-between gap-2 rounded border border-[var(--border)] px-2 py-1 last:mb-0">
-                  <span className="text-[11px] text-[var(--muted-foreground)]">
+                <div key={item.id} className="mb-1 flex items-center justify-between gap-2 rounded border border-border px-2 py-1 last:mb-0">
+                  <span className="text-[11px] text-muted-foreground">
                     {new Date(item.createdAt).toLocaleString()} ({item.mode})
                   </span>
                   <Button
                     size="sm"
                     variant="outline"
                     className="h-6 px-2 text-[11px]"
-                    onClick={async () => {
-                      const ok = window.confirm("Restore this server revision?");
-                      if (!ok) return;
-                      const res = await fetch(`/api/editor/revisions/${item.id}`, { cache: "no-store" });
-                      if (!res.ok) {
-                        setStatus("Failed to restore server revision.");
-                        return;
-                      }
-                      const data = (await res.json()) as { snapshot?: LocalEditorDraft };
-                      if (!data?.snapshot) {
-                        setStatus("Revision snapshot is empty.");
-                        return;
-                      }
-                      restoreFromLocalDraft(data.snapshot, "server revision");
+                    onClick={() => {
+                      setRestoreServerItem(item);
+                      setRestoreServerOpen(true);
                     }}
                   >
                     Restore
@@ -1907,8 +1987,8 @@ export function ImmersiveEditorOverlay({ slug }: { slug: EditorSlug }) {
         </div>
       )}
       {siteEditorOpen && (
-        <div className="mt-2 space-y-2 rounded-md border border-[var(--border)] bg-[var(--background)] p-2">
-          <p className="text-xs font-semibold text-[var(--foreground)]">Edit logo + names</p>
+        <div className="mt-2 space-y-2 rounded-md border border-border bg-background p-2">
+          <p className="text-xs font-semibold text-foreground">Edit logo + names</p>
           <Input
             value={siteNameInput}
             onChange={(event) => setSiteNameInput(event.target.value)}
@@ -1968,11 +2048,11 @@ export function ImmersiveEditorOverlay({ slug }: { slug: EditorSlug }) {
         </div>
       )}
       {homeLayoutEditorOpen && slug === "home" && homeLayoutDraft && (
-        <div className="mt-2 space-y-2 rounded-md border border-[var(--border)] bg-[var(--background)] p-2">
-          <p className="text-xs font-semibold text-[var(--foreground)]">Home sections</p>
+        <div className="mt-2 space-y-2 rounded-md border border-border bg-background p-2">
+          <p className="text-xs font-semibold text-foreground">Home sections</p>
           {homeLayoutDraft.sectionOrder.map((id, index) => (
-            <div key={id} className="flex items-center justify-between gap-1 rounded border border-[var(--border)] px-2 py-1">
-              <span className="text-xs text-[var(--foreground)]">
+            <div key={id} className="flex items-center justify-between gap-1 rounded border border-border px-2 py-1">
+              <span className="text-xs text-foreground">
                 {id === "latestPosts" ? "Latest posts" : id === "skills" ? "Skills" : "Hero"}
               </span>
               <div className="flex items-center gap-1">
@@ -2045,8 +2125,8 @@ export function ImmersiveEditorOverlay({ slug }: { slug: EditorSlug }) {
         </div>
       )}
       {homeSkillsEditorOpen && slug === "home" && homeSkillsDraft && (
-        <div className="mt-2 space-y-2 rounded-md border border-[var(--border)] bg-[var(--background)] p-2">
-          <p className="text-xs font-semibold text-[var(--foreground)]">Home skills</p>
+        <div className="mt-2 space-y-2 rounded-md border border-border bg-background p-2">
+          <p className="text-xs font-semibold text-foreground">Home skills</p>
           {homeSkillsDraft.map((skill, index) => (
             <div key={`${skill}-${index}`} className="flex items-center gap-1">
               <Input
@@ -2125,11 +2205,11 @@ export function ImmersiveEditorOverlay({ slug }: { slug: EditorSlug }) {
         </div>
       )}
       {contactLayoutEditorOpen && slug === "contact" && contactLayoutDraft && (
-        <div className="mt-2 space-y-2 rounded-md border border-[var(--border)] bg-[var(--background)] p-2">
-          <p className="text-xs font-semibold text-[var(--foreground)]">Contact blocks</p>
+        <div className="mt-2 space-y-2 rounded-md border border-border bg-background p-2">
+          <p className="text-xs font-semibold text-foreground">Contact blocks</p>
           {contactLayoutDraft.buttonOrder.map((id, index) => (
-            <div key={id} className="flex items-center justify-between gap-1 rounded border border-[var(--border)] px-2 py-1">
-              <span className="text-xs text-[var(--foreground)]">
+            <div key={id} className="flex items-center justify-between gap-1 rounded border border-border px-2 py-1">
+              <span className="text-xs text-foreground">
                 {id === "linkedin" ? "LinkedIn" : id === "github" ? "GitHub" : "Email"}
               </span>
               <div className="flex items-center gap-1">
@@ -2200,9 +2280,9 @@ export function ImmersiveEditorOverlay({ slug }: { slug: EditorSlug }) {
         </div>
       )}
       {aboutLayoutEditorOpen && slug === "about" && aboutLayoutDraft && (
-        <div className="mt-2 space-y-2 rounded-md border border-[var(--border)] bg-[var(--background)] p-2">
+        <div className="mt-2 space-y-2 rounded-md border border-border bg-background p-2">
           <div className="flex items-center justify-between gap-2">
-            <p className="text-xs font-semibold text-[var(--foreground)]">About sections</p>
+            <p className="text-xs font-semibold text-foreground">About sections</p>
             <Button
               size="sm"
               variant="outline"
@@ -2275,8 +2355,8 @@ export function ImmersiveEditorOverlay({ slug }: { slug: EditorSlug }) {
             </Button>
           </div>
           {aboutLayoutDraft.sectionOrder.map((id, index) => (
-            <div key={id} className="flex items-center justify-between gap-1 rounded border border-[var(--border)] px-2 py-1">
-              <span className="text-xs text-[var(--foreground)]">
+            <div key={id} className="flex items-center justify-between gap-1 rounded border border-border px-2 py-1">
+              <span className="text-xs text-foreground">
                 {(() => {
                   if (id === "education") return "Education";
                   if (id === "experience") return "Experience";
@@ -2360,41 +2440,9 @@ export function ImmersiveEditorOverlay({ slug }: { slug: EditorSlug }) {
                     size="sm"
                     variant="destructive"
                     className="h-6 px-1.5 text-[11px]"
-                    onClick={async () => {
-                      const ok = window.confirm("Delete this custom section and all its blocks?");
-                      if (!ok) return;
-                      const sectionId = id.replace(/^custom:/, "");
-                      const existingRes = await fetch("/api/about/config", { cache: "no-store" });
-                      const existing = existingRes.ok ? await existingRes.json() : {};
-                      const currentSections = Array.isArray(existing.customSections) ? existing.customSections : [];
-                      const nextSections = currentSections.filter((item: unknown) => {
-                        if (!item || typeof item !== "object") return false;
-                        return String((item as { id?: unknown }).id ?? "") !== sectionId;
-                      });
-                      const existingOrder = Array.isArray(existing.sectionOrder) ? existing.sectionOrder : [];
-                      const nextOrder = existingOrder.filter((value: unknown) => String(value) !== id);
-                      const existingVisibility =
-                        existing.sectionVisibility && typeof existing.sectionVisibility === "object"
-                          ? (existing.sectionVisibility as Record<string, boolean>)
-                          : {};
-                      const nextVisibility = { ...existingVisibility };
-                      delete nextVisibility[id];
-                      const saveRes = await fetch("/api/about/config", {
-                        method: "POST",
-                        headers: { "Content-Type": "application/json" },
-                        body: JSON.stringify({
-                          ...existing,
-                          customSections: nextSections,
-                          sectionOrder: nextOrder,
-                          sectionVisibility: nextVisibility,
-                        }),
-                      });
-                      if (!saveRes.ok) {
-                        setStatus("Failed to delete custom section.");
-                        return;
-                      }
-                      setStatus("Custom section deleted.");
-                      window.location.reload();
+                    onClick={() => {
+                      setDeleteCustomSectionKey(id);
+                      setDeleteCustomSectionOpen(true);
                     }}
                   >
                     Del
@@ -2406,8 +2454,8 @@ export function ImmersiveEditorOverlay({ slug }: { slug: EditorSlug }) {
         </div>
       )}
       {buttonEditorOpen && (
-        <div className="mt-2 space-y-2 rounded-md border border-[var(--border)] bg-[var(--background)] p-2">
-          <p className="text-xs font-semibold text-[var(--foreground)]">Edit button</p>
+        <div className="mt-2 space-y-2 rounded-md border border-border bg-background p-2">
+          <p className="text-xs font-semibold text-foreground">Edit button</p>
           <Input
             value={buttonEditorLabel}
             onChange={(event) => setButtonEditorLabel(event.target.value)}
@@ -2461,8 +2509,8 @@ export function ImmersiveEditorOverlay({ slug }: { slug: EditorSlug }) {
         </div>
       )}
       {logoEditorOpen && slug === "about" && (
-        <div className="mt-2 space-y-2 rounded-md border border-[var(--border)] bg-[var(--background)] p-2">
-          <p className="text-xs font-semibold text-[var(--foreground)]">Edit block logo</p>
+        <div className="mt-2 space-y-2 rounded-md border border-border bg-background p-2">
+          <p className="text-xs font-semibold text-foreground">Edit block logo</p>
           <div className="flex items-center gap-1">
             <Button
               size="sm"
@@ -2501,8 +2549,8 @@ export function ImmersiveEditorOverlay({ slug }: { slug: EditorSlug }) {
         </div>
       )}
       {footerEditorOpen && (
-        <div className="mt-2 space-y-2 rounded-md border border-[var(--border)] bg-[var(--background)] p-2">
-          <p className="text-xs font-semibold text-[var(--foreground)]">Edit footer copyright text</p>
+        <div className="mt-2 space-y-2 rounded-md border border-border bg-background p-2">
+          <p className="text-xs font-semibold text-foreground">Edit footer copyright text</p>
           <Input
             value={footerTextInput}
             onChange={(event) => setFooterTextInput(event.target.value)}
@@ -2534,11 +2582,81 @@ export function ImmersiveEditorOverlay({ slug }: { slug: EditorSlug }) {
           </div>
         </div>
       )}
-      {status ? <p className="mt-1 text-xs text-[var(--muted-foreground)]">{status}</p> : null}
+      {status ? <p className="mt-1 text-xs text-muted-foreground">{status}</p> : null}
       {lastAutoSavedAt ? (
-        <p className="mt-1 text-xs text-[var(--muted-foreground)]">Auto-saved: {new Date(lastAutoSavedAt).toLocaleTimeString()}</p>
+        <p className="mt-1 text-xs text-muted-foreground">Auto-saved: {new Date(lastAutoSavedAt).toLocaleTimeString()}</p>
       ) : null}
       {hasPendingChanges ? <p className="mt-1 text-xs text-amber-700">Unsaved changes</p> : null}
+      <ConfirmDialog
+        open={aboutBlockDeleteOpen}
+        onClose={() => {
+          setAboutBlockDeleteOpen(false);
+          pendingDeleteAboutBlockRef.current = null;
+        }}
+        title="Delete this block?"
+        description="This removes the block from the page. Save or publish to persist the change."
+        confirmLabel="Delete"
+        variant="danger"
+        onConfirm={confirmDeleteAboutBlock}
+      />
+      <ConfirmDialog
+        open={exitWithoutSaveOpen}
+        onClose={() => setExitWithoutSaveOpen(false)}
+        title="Leave without saving?"
+        description="You have unsaved changes. A local draft may still exist in this browser."
+        confirmLabel="Leave"
+        variant="danger"
+        onConfirm={() => {
+          setExitWithoutSaveOpen(false);
+          router.push(exitHref);
+        }}
+      />
+      <ConfirmDialog
+        open={restoreLocalOpen}
+        onClose={() => {
+          setRestoreLocalOpen(false);
+          setRestoreLocalItem(null);
+        }}
+        title="Restore this version?"
+        description="Replace the current editor content with this local snapshot."
+        confirmLabel="Restore"
+        variant="danger"
+        onConfirm={() => {
+          if (restoreLocalItem) {
+            restoreFromLocalDraft(restoreLocalItem.draft, "version snapshot");
+          }
+          setRestoreLocalOpen(false);
+          setRestoreLocalItem(null);
+        }}
+      />
+      <ConfirmDialog
+        open={restoreServerOpen}
+        onClose={() => {
+          if (restoreServerLoading) return;
+          setRestoreServerOpen(false);
+          setRestoreServerItem(null);
+        }}
+        title="Restore this server revision?"
+        description="Replace the current editor content with the saved server snapshot."
+        confirmLabel="Restore"
+        variant="danger"
+        loading={restoreServerLoading}
+        onConfirm={() => void confirmRestoreServerRevision()}
+      />
+      <ConfirmDialog
+        open={deleteCustomSectionOpen}
+        onClose={() => {
+          if (deleteCustomSectionLoading) return;
+          setDeleteCustomSectionOpen(false);
+          setDeleteCustomSectionKey(null);
+        }}
+        title="Delete this custom section?"
+        description="This removes the section and all its blocks from the about page configuration."
+        confirmLabel="Delete"
+        variant="danger"
+        loading={deleteCustomSectionLoading}
+        onConfirm={() => void confirmDeleteCustomSection()}
+      />
       <InsertMediaModal
         open={mediaOpen}
         onClose={() => {

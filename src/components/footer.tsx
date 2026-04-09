@@ -75,35 +75,34 @@ export function Footer({
       });
     }
   }
-  if (!socialEntries.length) {
-    if (socialLinks.linkedin || links?.linkedin)
-      socialEntries.push({
-        key: "linkedin",
-        url: (socialLinks.linkedin || links?.linkedin) as string,
-        title: "LinkedIn",
-      });
-    if (socialLinks.github || links?.github)
-      socialEntries.push({
-        key: "github",
-        url: (socialLinks.github || links?.github) as string,
-        title: "GitHub",
-      });
-  }
+  /** Merge legacy `links.linkedin` / `links.github` even when other socialLinks exist (e.g. Twitter only in socialLinks). */
+  const pushIfNew = (key: "linkedin" | "github", url: string | null | undefined) => {
+    const t = typeof url === "string" ? url.trim() : "";
+    if (!t || seen.has(key)) return;
+    seen.add(key);
+    socialEntries.push({
+      key,
+      url: t,
+      title: key === "linkedin" ? "LinkedIn" : "GitHub",
+    });
+  };
+  pushIfNew("linkedin", socialLinks.linkedin || links?.linkedin);
+  pushIfNew("github", socialLinks.github || links?.github);
 
   const copyrightLine = copyrightText
     ? copyrightText.replace(/\{year\}/g, String(year))
     : `© ${year} ${name}. ${footerText}`;
 
   return (
-    <footer className="relative z-20 mt-auto border-t border-[var(--border)] bg-[var(--muted)]/50">
+    <footer className="relative z-20 mt-auto border-t border-border bg-muted/50">
       <div className="container mx-auto max-w-6xl px-4 py-4 sm:px-6 lg:px-8">
         <div className="flex flex-col items-center gap-3 sm:flex-row sm:justify-between sm:items-center">
-          <div className="flex flex-wrap items-center justify-center gap-1.5 sm:gap-4 text-[var(--muted-foreground)] shrink-0">
+          <div className="flex flex-wrap items-center justify-center gap-1.5 sm:gap-4 text-muted-foreground shrink-0">
             {email ? (
               <Link
                 href={emailHref || "/contact"}
                 data-editor-button="footer.email"
-                className="inline-flex items-center justify-center min-w-[40px] min-h-[40px] rounded-lg hover:text-[var(--foreground)] transition-colors duration-200 focus:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
+                className="inline-flex items-center justify-center min-w-[40px] min-h-[40px] rounded-lg hover:text-foreground transition-colors duration-200 focus:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
                 title="Contact"
               >
                 <Mail className="h-5 w-5" />
@@ -118,7 +117,7 @@ export function Footer({
                   target="_blank"
                   rel="noopener noreferrer"
                   data-editor-button={`footer.${key}`}
-                  className="inline-flex items-center justify-center min-w-[40px] min-h-[40px] rounded-lg hover:text-[var(--foreground)] transition-colors duration-200 focus:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
+                  className="inline-flex items-center justify-center min-w-[40px] min-h-[40px] rounded-lg hover:text-foreground transition-colors duration-200 focus:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
                   title={title}
                 >
                   <Icon className="h-5 w-5" />
@@ -131,7 +130,7 @@ export function Footer({
                 target="_blank"
                 rel="noopener noreferrer"
                 data-editor-button="footer.rss"
-                className="flex items-center gap-1 min-h-[40px] px-1.5 rounded-lg hover:text-[var(--foreground)] transition-colors duration-200 focus:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
+                className="flex items-center gap-1 min-h-[40px] px-1.5 rounded-lg hover:text-foreground transition-colors duration-200 focus:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
                 title="Subscribe via RSS"
               >
                 <Rss className="h-5 w-5" />
@@ -145,7 +144,7 @@ export function Footer({
                 target="_blank"
                 rel="noopener noreferrer"
                 data-editor-button="footer.rss"
-                className="flex items-center gap-1 min-h-[40px] px-1.5 rounded-lg hover:text-[var(--foreground)] transition-colors duration-200 focus:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
+                className="flex items-center gap-1 min-h-[40px] px-1.5 rounded-lg hover:text-foreground transition-colors duration-200 focus:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
                 title="Subscribe via RSS"
               >
                 <Rss className="h-5 w-5" />
@@ -156,7 +155,7 @@ export function Footer({
             )}
           </div>
           <p
-            className="text-xs sm:text-sm leading-tight text-[var(--muted-foreground)] text-center sm:text-right min-w-0"
+            className="text-xs sm:text-sm leading-tight text-muted-foreground text-center sm:text-right min-w-0"
             data-editor-site="footer.author"
           >
             {copyrightLine}

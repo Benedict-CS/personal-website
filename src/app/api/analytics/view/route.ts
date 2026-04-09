@@ -6,6 +6,7 @@ import { isExcludedIP, normalizeIP } from "@/lib/analytics-excluded-ips";
 import { getRequestOrigin } from "@/lib/get-request-origin";
 import { getBlogPostSlugFromPath, incrementPublishedPostViewCount } from "@/lib/blog-analytics";
 import { sanitizeReferrerForAnalytics } from "@/lib/analytics-referrer";
+import { isJunkAnalyticsPath, isLikelyScannerUserAgent } from "@/lib/analytics-noise";
 
 export const dynamic = "force-dynamic";
 
@@ -61,6 +62,13 @@ export async function POST(request: NextRequest) {
   const referrer = truncateMeta(sanitizeReferrerForAnalytics(body.referrer), 512);
   const userAgent = truncateMeta(body.userAgent, 512);
 
+  if (isJunkAnalyticsPath(viewPath)) {
+    return NextResponse.json({ ok: true, skipped: "junk_path" });
+  }
+  if (isLikelyScannerUserAgent(userAgent)) {
+    return NextResponse.json({ ok: true, skipped: "scanner_ua" });
+  }
+
   let ip: string;
   const fromMiddleware = !!secret && request.headers.get("x-analytics-secret") === secret;
 
@@ -86,23 +94,24 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({ ok: true, skipped: "private_ip" });
   }
   const canonicalIP = normalizeIP(ip);
+  if (!canonicalIP || canonicalIP === "unknown") {
+    return NextResponse.json({ ok: true, skipped: "no_client_ip" });
+  }
   if (await isRecentDuplicate(canonicalIP, viewPath)) {
     return NextResponse.json({ ok: true, skipped: "dedup" });
   }
   let country: string | null = null;
   let city: string | null = null;
-  if (ip && ip !== "unknown") {
-    try {
-      ensureGeoIPDataDir();
-      const geoip = (await import("geoip-lite")).default;
-      const geo = geoip.lookup(ip);
-      if (geo) {
-        country = (geo.country ?? "").trim() || null;
-        city = (geo.city ?? "").trim() || null;
-      }
-    } catch {
-      // GeoIP data not available (e.g. at build time)
+  try {
+    ensureGeoIPDataDir();
+    const geoip = (await import("geoip-lite")).default;
+    const geo = geoip.lookup(canonicalIP);
+    if (geo) {
+      country = (geo.country ?? "").trim() || null;
+      city = (geo.city ?? "").trim() || null;
     }
+  } catch {
+    // GeoIP data not available (e.g. at build time)
   }
   try {
     await prisma.pageView.create({

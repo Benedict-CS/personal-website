@@ -13,6 +13,8 @@ import { ImageIcon, ArrowRight, ArrowLeft, Check } from "lucide-react";
 import type { SiteConfigResponse } from "@/types/site";
 import { DEFAULT_NAV_ITEMS } from "@/lib/site-config-defaults";
 import { NavItemsEditor } from "@/components/nav-items-editor";
+import { Skeleton } from "@/components/ui/skeleton";
+import { DashboardPageHeader } from "@/components/dashboard/dashboard-ui";
 
 const defaults: SiteConfigResponse = {
   siteName: "My Site",
@@ -34,6 +36,9 @@ const defaults: SiteConfigResponse = {
   themeMode: "light",
   autoAddCustomPagesToNav: true,
   contactEmail: null,
+  contactWebhookUrl: null,
+  backupRsyncTarget: null,
+  backupPostHookUrl: null,
 };
 
 const STEPS = [
@@ -55,7 +60,10 @@ export default function SetupWizardPage() {
 
   useEffect(() => {
     fetch("/api/site-config", { credentials: "include" })
-      .then((r) => r.json())
+      .then(async (r) => {
+        if (!r.ok) throw new Error("Failed to load site config");
+        return r.json() as Promise<Partial<SiteConfigResponse>>;
+      })
       .then((data) => {
         const merged = { ...defaults, ...data };
         if (!Array.isArray(merged.navItems) || merged.navItems.length === 0) merged.navItems = DEFAULT_NAV_ITEMS;
@@ -91,21 +99,49 @@ export default function SetupWizardPage() {
   const completeSetup = () => saveAndGo(true);
   const skipWizard = () => saveAndGo(true);
 
-  if (loading) return <p className="text-[var(--muted-foreground)]">Loading...</p>;
+  if (loading) {
+    return (
+      <div className="max-w-2xl mx-auto space-y-8" aria-busy="true" aria-label="Loading setup">
+        <div>
+          <Skeleton className="h-8 w-64 mb-2" />
+          <Skeleton className="h-4 w-full max-w-xl" />
+        </div>
+        <div className="flex gap-2 flex-wrap">
+          {Array.from({ length: 4 }).map((_, i) => (
+            <Skeleton key={i} className="h-8 w-20 rounded-full" />
+          ))}
+        </div>
+        <Card>
+          <CardHeader>
+            <Skeleton className="h-6 w-48" />
+          </CardHeader>
+          <CardContent className="space-y-4">
+            <Skeleton className="h-10 w-full" />
+            <Skeleton className="h-10 w-full" />
+            <Skeleton className="h-24 w-full" />
+          </CardContent>
+        </Card>
+      </div>
+    );
+  }
 
   return (
     <div className="max-w-2xl mx-auto space-y-8">
-      <div>
-        <h2 className="text-2xl font-bold text-[var(--foreground)]">First-time setup</h2>
-        <p className="text-[var(--muted-foreground)] mt-1">A few steps to get your site ready. You can change any of this later in Content → Site settings.</p>
-      </div>
+      <DashboardPageHeader
+        title="First-time setup"
+        description="A few steps to get your site ready. You can change any of this later in Content → Site settings."
+      />
 
       <div className="flex gap-2 flex-wrap">
         {STEPS.map((s) => (
           <span
             key={s.id}
             className={`inline-flex items-center gap-1 rounded-full px-3 py-1 text-sm font-medium ${
-              step === s.id ? "bg-[var(--primary)] text-[var(--primary-foreground)]" : step > s.id ? "bg-[var(--muted)] text-[var(--foreground)]" : "bg-[var(--muted)]/60 text-[var(--muted-foreground)]"
+              step === s.id
+                ? "bg-primary text-primary-foreground"
+                : step > s.id
+                  ? "bg-muted text-foreground"
+                  : "bg-muted/60 text-muted-foreground"
             }`}
           >
             {step > s.id ? <Check className="h-4 w-4" /> : null}
@@ -177,7 +213,7 @@ export default function SetupWizardPage() {
 
           {step === 3 && (
             <div className="space-y-3">
-              <p className="text-sm text-[var(--muted-foreground)]">Add the links that appear in the top menu. Drag the handle to change the order.</p>
+              <p className="text-sm text-muted-foreground">Add the links that appear in the top menu. Drag the handle to change the order.</p>
               <NavItemsEditor
                 items={config.navItems}
                 onChange={(navItems) => setConfig((c) => ({ ...c, navItems }))}
@@ -210,7 +246,18 @@ export default function SetupWizardPage() {
 
           {step === 5 && (
             <div className="space-y-4">
-              <p className="text-[var(--muted-foreground)]">Your site name is <strong>{config.siteName}</strong> and you have {config.navItems.length} menu links. Everything will be saved; you can change it anytime in <Link href="/dashboard/content/site" className="text-blue-600 underline">Site settings</Link> or open the <Link href="/editor/home" className="text-blue-600 underline">visual editor</Link>.</p>
+              <p className="text-sm leading-relaxed text-muted-foreground">
+                Your site name is <strong className="text-foreground">{config.siteName}</strong> and you have {config.navItems.length}{" "}
+                menu links. Everything will be saved; you can change it anytime in{" "}
+                <Link href="/dashboard/content/site" className="font-medium text-primary underline underline-offset-2">
+                  Site settings
+                </Link>{" "}
+                or open the{" "}
+                <Link href="/editor/home" className="font-medium text-primary underline underline-offset-2">
+                  visual editor
+                </Link>
+                .
+              </p>
               {error && <p className="text-red-600 text-sm">{error}</p>}
             </div>
           )}

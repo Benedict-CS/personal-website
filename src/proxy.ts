@@ -11,12 +11,41 @@ import { getInternalAppOrigin } from "@/lib/internal-app-origin";
 import { shouldSkipMiddlewareAnalytics } from "@/lib/analytics-skip-middleware";
 import { ANALYTICS_OPT_OUT_COOKIE_NAME } from "@/lib/analytics-client-opt-out";
 import { isPrimarySiteHost } from "@/lib/primary-site-host";
+import { getOrCreateRequestId } from "@/lib/request-id";
+import {
+  negotiatePlatformLocale,
+  SAAS_LOCALE_COOKIE,
+  isPlatformLocale,
+} from "@/i18n/platform";
+
+function maybeSetSaasLocaleCookie(request: NextRequest, response: Response): Response {
+  if (!(response instanceof NextResponse)) {
+    return response;
+  }
+  const pathname = request.nextUrl.pathname;
+  if (!pathname.startsWith("/s/") && !pathname.startsWith("/dashboard/sites")) {
+    return response;
+  }
+  const current = request.cookies.get(SAAS_LOCALE_COOKIE)?.value;
+  if (current && isPlatformLocale(current)) {
+    return response;
+  }
+  const negotiated = negotiatePlatformLocale(request.headers.get("accept-language"));
+  response.cookies.set(SAAS_LOCALE_COOKIE, negotiated, {
+    path: "/",
+    maxAge: 60 * 60 * 24 * 365,
+    sameSite: "lax",
+    secure: process.env.NODE_ENV === "production",
+  });
+  return response;
+}
 
 export async function proxy(request: NextRequest, event: NextFetchEvent) {
   const internalOrigin = getInternalAppOrigin(request);
   const pathname = request.nextUrl.pathname;
+  const requestId = getOrCreateRequestId(request.headers);
   const ip = getTrustedClientIp(request);
-  logRequest(request.method, pathname, { ip: ip || undefined });
+  logRequest(request.method, pathname, { ip: ip || undefined, requestId });
 
   // Internal fetch from the block handler re-enters middleware with the same client IP in
   // X-Forwarded-For on some hosts; without this bypass the log API never runs.
@@ -46,16 +75,29 @@ export async function proxy(request: NextRequest, event: NextFetchEvent) {
         void logPromise;
       }
     }
-    return new NextResponse("Forbidden", {
-      status: 403,
-      headers: { "Content-Type": "text/plain; charset=utf-8" },
-    });
+    return maybeSetSaasLocaleCookie(
+      request,
+      new NextResponse("Forbidden", {
+        status: 403,
+        headers: {
+          "Content-Type": "text/plain; charset=utf-8",
+          "x-request-id": requestId,
+          "Cache-Control": "no-store, private",
+        },
+      })
+    );
   }
 
   if (pathname.startsWith("/dashboard") || pathname.startsWith("/editor")) {
-    return withAuth({
+    const authHandler = withAuth({
       pages: { signIn: "/auth/signin" },
-    })(request as never, event);
+    });
+    const authRes = await authHandler(request as never, event);
+    const authResponse = authRes ?? NextResponse.next();
+    if (authResponse instanceof NextResponse) {
+      authResponse.headers.set("x-request-id", requestId);
+    }
+    return maybeSetSaasLocaleCookie(request, authResponse);
   }
 
   // Edge control plane: custom domain routing + tenant rate limiting.
@@ -82,14 +124,29 @@ export async function proxy(request: NextRequest, event: NextFetchEvent) {
         body: JSON.stringify({ host: hostName, ip: ip || "unknown" }),
       });
       if (edgeRes.status === 429) {
-        return NextResponse.json({ error: "Too many requests for this tenant" }, { status: 429 });
+        return maybeSetSaasLocaleCookie(
+          request,
+          NextResponse.json(
+            { error: "Too many requests for this tenant" },
+            {
+              status: 429,
+              headers: {
+                "x-request-id": requestId,
+                "Cache-Control": "no-store, private",
+                "Retry-After": "60",
+              },
+            }
+          )
+        );
       }
       if (edgeRes.ok) {
         const edgeData = (await edgeRes.json()) as { allowed?: boolean; siteSlug?: string };
         if (edgeData.allowed && edgeData.siteSlug) {
           const target = request.nextUrl.clone();
           target.pathname = `/s/${edgeData.siteSlug}${pathname === "/" ? "" : pathname}`;
-          return NextResponse.rewrite(target);
+          const rewriteRes = NextResponse.rewrite(target);
+          rewriteRes.headers.set("x-request-id", requestId);
+          return maybeSetSaasLocaleCookie(request, rewriteRes);
         }
       }
     } catch {
@@ -105,6 +162,7 @@ export async function proxy(request: NextRequest, event: NextFetchEvent) {
     const existingVariant = request.cookies.get(cookieKey)?.value;
     const variant = existingVariant === "A" || existingVariant === "B" ? existingVariant : Math.random() < 0.5 ? "A" : "B";
     const response = NextResponse.next();
+    response.headers.set("x-request-id", requestId);
     if (!existingVariant) {
       response.cookies.set(cookieKey, variant, {
         path: "/",
@@ -113,7 +171,7 @@ export async function proxy(request: NextRequest, event: NextFetchEvent) {
         maxAge: 60 * 60 * 24 * 30,
       });
     }
-    return response;
+    return maybeSetSaasLocaleCookie(request, response);
   }
 
   // Log page view for analytics (skip crawlers, /api, sitemap, feeds — less noise, less work)
@@ -124,31 +182,39 @@ export async function proxy(request: NextRequest, event: NextFetchEvent) {
     secret &&
     !shouldSkipMiddlewareAnalytics(pathname, request.headers.get("user-agent"))
   ) {
-    const clientIp = getTrustedClientIp(request) || "unknown";
-    fetch(`${internalOrigin}/api/analytics/view`, {
-      method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-        "X-Analytics-Secret": secret,
-      },
-      body: JSON.stringify({
-        path: pathname,
-        ip: clientIp,
-        referrer: request.headers.get("referer") || "",
-        userAgent: request.headers.get("user-agent") || "",
-      }),
-    }).catch(() => {});
+    const clientIp = getTrustedClientIp(request);
+    // Do not log when the edge cannot determine a public client IP (avoids polluting DB with "unknown").
+    if (clientIp) {
+      fetch(`${internalOrigin}/api/analytics/view`, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          "X-Analytics-Secret": secret,
+        },
+        body: JSON.stringify({
+          path: pathname,
+          ip: clientIp,
+          referrer: request.headers.get("referer") || "",
+          userAgent: request.headers.get("user-agent") || "",
+        }),
+      }).catch(() => {});
+    }
   }
 
   const res = NextResponse.next();
+  res.headers.set("x-request-id", requestId);
   res.headers.set("X-Frame-Options", "DENY");
   res.headers.set("X-Content-Type-Options", "nosniff");
   res.headers.set("Referrer-Policy", "strict-origin-when-cross-origin");
   res.headers.set("Permissions-Policy", "camera=(), microphone=(), geolocation=()");
-  if (request.headers.get("x-forwarded-proto") === "https") {
+  // Match next.config.ts: only send HSTS when explicitly enabled (production HTTPS).
+  if (
+    process.env.ENABLE_HSTS === "true" &&
+    request.headers.get("x-forwarded-proto") === "https"
+  ) {
     res.headers.set("Strict-Transport-Security", "max-age=31536000; includeSubDomains; preload");
   }
-  return res;
+  return maybeSetSaasLocaleCookie(request, res);
 }
 
 export const config = {

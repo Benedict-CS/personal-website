@@ -53,6 +53,16 @@ Under high concurrency, you may hit PostgreSQL connection limits. Two options:
 
 No code changes are required; only `DATABASE_URL` (and optionally infrastructure) change.
 
+For load balancing, health checks, backups, and multi-instance notes, see [OPERATIONS_AND_RELIABILITY.md](OPERATIONS_AND_RELIABILITY.md).
+
+| Variable | Description |
+|----------|-------------|
+| `ENABLE_HSTS` | When `true`, sends `Strict-Transport-Security` via `next.config.ts` and via **`src/proxy.ts`** for HTTPS requests (`x-forwarded-proto: https`). **Only** enable when the site is always served over HTTPS (production). Never enable for local HTTP development. |
+| `SECURITY_TXT_CONTACT` | Optional. RFC 9116 `Contact:` line for `/.well-known/security.txt` (e.g. `mailto:security@example.com`). | — |
+| `SECURITY_TXT_POLICY` | Optional. Policy URL for the same file (e.g. responsible disclosure page). | — |
+| `APP_VERSION` | Optional. Shown as `appVersion` in `GET /api/health` / dashboard (release label). | — |
+| `GIT_COMMIT` | Optional. Fallback for `appVersion` if `APP_VERSION` is unset (long values truncated in JSON). | — |
+
 ---
 
 ## RustFS (S3-compatible storage)
@@ -152,14 +162,34 @@ Restart the app (or rebuild) after changing these. Comments will appear at the b
 | `ANALYTICS_EXCLUDED_IPS` | Comma-separated IPs or prefixes to exclude from counts. Trailing dot = subnet (e.g. `140.113.` excludes 140.113.x.x). | Not set |
 | `ACCESS_BLOCK_IP_PREFIXES` | Comma-separated IPv4 prefixes; blocked clients get **403** on all routes (including `/api`). Use a trailing dot per octet group, e.g. `140.113.194.` blocks `140.113.194.0–255` only. Empty = no blocking. Restart the Node process after changing. **Docker:** pass these into the container (`env_file` or `-e`), not only on the host. | Not set |
 | `ACCESS_ALLOW_IPS` | Comma-separated exact IPs always allowed, even if they match `ACCESS_BLOCK_IP_PREFIXES`. Supports `::ffff:` form. | Not set |
-
-Client IP is taken in order from **`CF-Connecting-IP`** (Cloudflare), **`True-Client-IP`**, **`Fly-Client-IP`**, **`X-Real-IP`**, then the first **`X-Forwarded-For`** hop. Your reverse proxy should set one of these to the real visitor address.
-
-**Docker Compose:** Variables in the host `.env` file are **not** visible inside the `app` container unless they appear under `services.app.environment` in `docker-compose.yml`. `ACCESS_BLOCK_*`, `ANALYTICS_SECRET`, and `ANALYTICS_EXCLUDED_IPS` are wired there; add any other keys the same way, then `docker compose up -d --force-recreate app`.
+| `EDGE_CONTROL_SECRET` | Optional. Shared secret for middleware → `/api/infra/edge` (SaaS custom-domain routing). Omit on a single-site personal deployment. | Not set |
 | `SENTRY_DSN` | Sentry DSN for error reporting. When set, Sentry is enabled (client/server/edge configs). | Not set |
 | `NEXT_PUBLIC_SENTRY_DSN` | Optional; can be used by client config if different from `SENTRY_DSN`. | — |
 | `SENTRY_ORG` | Sentry organization (for source maps upload in build). | Optional |
 | `SENTRY_PROJECT` | Sentry project name. | Optional |
+
+Client IP is taken in order from **`CF-Connecting-IP`** (Cloudflare), **`True-Client-IP`**, **`Fly-Client-IP`**, **`X-Real-IP`**, then the first **`X-Forwarded-For`** hop. Your reverse proxy should set one of these to the real visitor address.
+
+**Docker Compose:** Variables in the host `.env` file are **not** visible inside the `app` container unless they appear under `services.app.environment` in `docker-compose.yml`. `ACCESS_BLOCK_*`, `ANALYTICS_SECRET`, and `ANALYTICS_EXCLUDED_IPS` are wired there; add any other keys the same way, then `docker compose up -d --force-recreate app`.
+
+---
+
+## SaaS billing (optional, Phase 5)
+
+Set these when enabling Stripe Checkout or Lemon Squeezy for tenant sites. See [PHASE5_SAAS_I18N_AND_BILLING.md](PHASE5_SAAS_I18N_AND_BILLING.md).
+
+| Variable | Description |
+|----------|-------------|
+| `STRIPE_SECRET_KEY` | Server-side Stripe API key for Checkout. |
+| `STRIPE_WEBHOOK_SECRET` | Signing secret for `POST /api/saas/billing/webhooks/stripe`. |
+| `STRIPE_PRICE_ID_PRO` | Price ID for the PRO tier (matches `SitePlan.PRO`). |
+| `STRIPE_PRICE_ID_BUSINESS` | Price ID for BUSINESS. |
+| `STRIPE_PRICE_ID_ENTERPRISE` | Price ID for ENTERPRISE. |
+| `LEMON_SQUEEZY_WEBHOOK_SECRET` | HMAC secret for Lemon webhooks. |
+| `LEMON_SQUEEZY_VARIANT_ID_PRO` | Variant ID for hosted checkout links (optional). |
+| `LEMON_SQUEEZY_VARIANT_ID_BUSINESS` | Optional mid-tier variant. |
+| `LEMON_SQUEEZY_VARIANT_ID_ENTERPRISE` | Optional enterprise variant. |
+| `LEMON_SQUEEZY_CHECKOUT_BASE_URL` | Store base URL (e.g. `https://yourstore.lemonsqueezy.com`). |
 
 ---
 

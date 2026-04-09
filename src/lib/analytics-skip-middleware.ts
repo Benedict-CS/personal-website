@@ -3,6 +3,8 @@
  * Reduces dashboard noise and avoids extra internal fetch + DB work.
  */
 
+import { isJunkAnalyticsPath, isLikelyScannerUserAgent } from "@/lib/analytics-noise";
+
 const UA_MARKERS = [
   "ahrefsbot",
   "bingbot",
@@ -30,12 +32,15 @@ const UA_MARKERS = [
   "perplexitybot",
   "crawler",
   "spider",
+  "netcraftsurvey",
 ];
 
 export function shouldSkipMiddlewareAnalytics(pathname: string, userAgent: string | null): boolean {
   if (pathname.startsWith("/api/") || pathname.startsWith("/_next")) return true;
   if (pathname === "/robots.txt" || pathname === "/sitemap.xml") return true;
   if (pathname.startsWith("/sitemap") || pathname.startsWith("/feed")) return true;
+  if (isJunkAnalyticsPath(pathname)) return true;
+  if (isLikelyScannerUserAgent(userAgent)) return true;
   const ua = (userAgent || "").toLowerCase();
   if (!ua) return false;
   return UA_MARKERS.some((m) => ua.includes(m));

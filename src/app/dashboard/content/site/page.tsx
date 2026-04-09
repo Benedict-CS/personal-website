@@ -14,6 +14,7 @@ import type { SiteConfigResponse, NavItem } from "@/types/site";
 import { DEFAULT_NAV_ITEMS } from "@/lib/site-config-defaults";
 import { NavItemsEditor } from "@/components/nav-items-editor";
 import { FieldHelp } from "@/components/ui/field-help";
+import { DashboardPageHeader } from "@/components/dashboard/dashboard-ui";
 
 const defaults: SiteConfigResponse = {
   siteName: "My Site",
@@ -35,6 +36,9 @@ const defaults: SiteConfigResponse = {
   themeMode: "light",
   autoAddCustomPagesToNav: true,
   contactEmail: null,
+  contactWebhookUrl: null,
+  backupRsyncTarget: null,
+  backupPostHookUrl: null,
 };
 
 export default function SiteSettingsPage() {
@@ -171,12 +175,12 @@ export default function SiteSettingsPage() {
   if (loading) {
     return (
       <div className="space-y-8 animate-pulse">
-        <div className="h-10 w-56 rounded bg-[var(--muted)]" />
-        <div className="h-5 w-full max-w-md rounded bg-[var(--muted)]" />
-        <div className="rounded-lg border border-[var(--border)] p-6 space-y-4">
-          <div className="h-6 w-40 rounded bg-[var(--muted)]" />
-          <div className="h-10 w-full rounded bg-[var(--muted)]/70" />
-          <div className="h-10 w-full rounded bg-[var(--muted)]/70" />
+        <div className="h-10 w-56 rounded bg-muted" />
+        <div className="h-5 w-full max-w-md rounded bg-muted" />
+        <div className="rounded-lg border border-border p-6 space-y-4">
+          <div className="h-6 w-40 rounded bg-muted" />
+          <div className="h-10 w-full rounded bg-muted/70" />
+          <div className="h-10 w-full rounded bg-muted/70" />
         </div>
       </div>
     );
@@ -186,27 +190,23 @@ export default function SiteSettingsPage() {
 
   return (
     <div className="space-y-8">
-      <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
-        <div>
-          <h2 className="text-3xl font-bold text-[var(--foreground)]">Site settings</h2>
-          <p className="mt-1 text-[var(--muted-foreground)]">Site name, favicon, logo, meta, navigation, footer, and OG image. All visible on the site.</p>
-        </div>
-        {siteUrl && (
-          <a
-            href={siteUrl}
-            target="_blank"
-            rel="noopener noreferrer"
-            className="text-sm font-medium text-[var(--primary)] hover:underline shrink-0"
-          >
-            View site →
-          </a>
-        )}
-      </div>
+      <DashboardPageHeader
+        title="Site settings"
+        description="Site name, favicon, logo, meta, navigation, footer, and OG image. All visible on the site."
+      >
+        {siteUrl ? (
+          <Button variant="outline" size="sm" asChild>
+            <a href={siteUrl} target="_blank" rel="noopener noreferrer">
+              View site
+            </a>
+          </Button>
+        ) : null}
+      </DashboardPageHeader>
 
       <Card>
         <CardHeader>
           <CardTitle>Templates</CardTitle>
-          <p className="text-sm text-[var(--muted-foreground)]">One-click apply: set navigation and layout style. You can still edit everything after.</p>
+          <p className="text-sm text-muted-foreground">One-click apply: set navigation and layout style. You can still edit everything after.</p>
         </CardHeader>
         <CardContent className="flex flex-wrap gap-2">
           <Button variant="outline" onClick={() => applyTemplate("personal")} disabled={saving}>
@@ -224,10 +224,10 @@ export default function SiteSettingsPage() {
       <Card>
         <CardHeader>
           <CardTitle>Custom pages</CardTitle>
-          <p className="text-sm font-normal text-[var(--muted-foreground)]">Custom pages are managed in a dedicated screen so they stay separate from core site settings.</p>
+          <p className="text-sm font-normal text-muted-foreground">Custom pages are managed in a dedicated screen so they stay separate from core site settings.</p>
         </CardHeader>
         <CardContent className="flex items-center justify-between gap-3">
-          <p className="text-sm text-[var(--muted-foreground)]">Create, publish, reorder, and edit custom pages from one place.</p>
+          <p className="text-sm text-muted-foreground">Create, publish, reorder, and edit custom pages from one place.</p>
           <Link href="/dashboard/content/pages">
             <Button variant="outline">Open custom pages</Button>
           </Link>
@@ -238,7 +238,7 @@ export default function SiteSettingsPage() {
         <Card className="border-amber-200 bg-amber-50">
           <CardHeader>
             <CardTitle className="text-lg">First-time setup</CardTitle>
-            <p className="text-sm font-normal text-[var(--muted-foreground)]">Use the step-by-step wizard or fill this page and mark complete.</p>
+            <p className="text-sm font-normal text-muted-foreground">Use the step-by-step wizard or fill this page and mark complete.</p>
           </CardHeader>
           <CardContent className="flex flex-wrap gap-2">
             <Link href="/dashboard/setup">
@@ -273,7 +273,7 @@ export default function SiteSettingsPage() {
       <Card>
         <CardHeader>
           <CardTitle>Branding & meta</CardTitle>
-          <p className="text-sm font-normal text-[var(--muted-foreground)]">Navbar name, logo, favicon, browser tab title.</p>
+          <p className="text-sm font-normal text-muted-foreground">Navbar name, logo, favicon, browser tab title.</p>
         </CardHeader>
         <CardContent className="space-y-4">
           <div className="space-y-2">
@@ -368,7 +368,7 @@ export default function SiteSettingsPage() {
             <CardTitle>Navigation (navbar links)</CardTitle>
             <FieldHelp text="Label = text shown in the menu. Link = web address: use /about for About page, /blog for the blog. Start with / for pages on your site." />
           </div>
-          <p className="text-sm font-normal text-[var(--muted-foreground)]">Core pages should stay explicit: Home, About, Blog (Posts), Contact. Custom pages are additional items and can be appended automatically.</p>
+          <p className="text-sm font-normal text-muted-foreground">Core pages should stay explicit: Home, About, Blog (Posts), Contact. Custom pages are additional items and can be appended automatically.</p>
         </CardHeader>
         <CardContent className="space-y-3">
           <label className="flex items-center gap-2 cursor-pointer">
@@ -376,9 +376,9 @@ export default function SiteSettingsPage() {
               type="checkbox"
               checked={config.autoAddCustomPagesToNav !== false}
               onChange={(e) => setConfig((c) => ({ ...c, autoAddCustomPagesToNav: e.target.checked }))}
-              className="rounded border-[var(--border)]"
+              className="rounded border-border"
             />
-            <span className="text-sm text-[var(--foreground)]">Auto-add custom pages to navigation</span>
+            <span className="text-sm text-foreground">Auto-add custom pages to navigation</span>
           </label>
           <NavItemsEditor
             items={config.navItems}
@@ -387,17 +387,91 @@ export default function SiteSettingsPage() {
             helpText="Drag the handle to reorder. Label = text in menu, Link = URL (e.g. /about, /blog)."
           />
           {config.autoAddCustomPagesToNav !== false && customPagesForNav.length > 0 && (
-            <p className="text-xs text-[var(--muted-foreground)] mt-2">Custom pages are merged into the list above when auto-add is ON. Reorder or remove as needed, then Save.</p>
+            <p className="text-xs text-muted-foreground mt-2">Custom pages are merged into the list above when auto-add is ON. Reorder or remove as needed, then Save.</p>
           )}
         </CardContent>
       </Card>
 
-      {/* Contact form receiving email hidden for now: sending is limited to verified domains / own address; solution TBD. */}
+      <Card>
+        <CardHeader>
+          <CardTitle>Contact form & webhooks</CardTitle>
+          <p className="text-sm font-normal text-muted-foreground">
+            Messages are sent to the recipient email. Optionally POST a JSON payload to a custom HTTPS URL (Discord incoming
+            webhook, Telegram bot API, LINE Notify bridge, or your own worker).
+          </p>
+        </CardHeader>
+        <CardContent className="space-y-4">
+          <div className="space-y-2">
+            <Label htmlFor="contactEmail">Recipient email</Label>
+            <Input
+              id="contactEmail"
+              type="email"
+              value={config.contactEmail ?? ""}
+              onChange={(e) => setConfig((c) => ({ ...c, contactEmail: e.target.value.trim() || null }))}
+              placeholder="you@example.com"
+            />
+          </div>
+          <div className="space-y-2">
+            <Label htmlFor="contactWebhookUrl">Webhook URL (optional)</Label>
+            <Input
+              id="contactWebhookUrl"
+              value={config.contactWebhookUrl ?? ""}
+              onChange={(e) => setConfig((c) => ({ ...c, contactWebhookUrl: e.target.value.trim() || null }))}
+              placeholder="https://discord.com/api/webhooks/…"
+            />
+            <p className="text-xs text-muted-foreground">
+              Payload: <code className="rounded bg-muted px-1 text-foreground">event</code> ={" "}
+              <code className="rounded bg-muted px-1">contact.form_submitted</code>, plus{" "}
+              <code className="rounded bg-muted px-1">data</code> with name, email, subject, message, and{" "}
+              <code className="rounded bg-muted px-1">submittedAt</code>.
+            </p>
+          </div>
+        </CardContent>
+      </Card>
+
+      <Card>
+        <CardHeader>
+          <CardTitle>Backup targets</CardTitle>
+          <p className="text-sm font-normal text-muted-foreground">
+            Used by <code className="rounded bg-muted px-1 text-foreground">scripts/backup-data.sh</code> when the
+            corresponding environment variables are set, or values are synced here for documentation. Rsync pushes the archive;
+            post-hook notifies your NAS or automation.
+          </p>
+        </CardHeader>
+        <CardContent className="space-y-4">
+          <div className="space-y-2">
+            <Label htmlFor="backupRsyncTarget">Rsync destination (optional)</Label>
+            <Input
+              id="backupRsyncTarget"
+              value={config.backupRsyncTarget ?? ""}
+              onChange={(e) => setConfig((c) => ({ ...c, backupRsyncTarget: e.target.value.trim() || null }))}
+              placeholder="user@nas.local::backups/site/"
+            />
+            <p className="text-xs text-muted-foreground">
+              Also set <code className="rounded bg-muted px-1">BACKUP_RSYNC_TARGET</code> on the server to match, or export
+              it before running the backup script.
+            </p>
+          </div>
+          <div className="space-y-2">
+            <Label htmlFor="backupPostHookUrl">Post-backup webhook (optional)</Label>
+            <Input
+              id="backupPostHookUrl"
+              value={config.backupPostHookUrl ?? ""}
+              onChange={(e) => setConfig((c) => ({ ...c, backupPostHookUrl: e.target.value.trim() || null }))}
+              placeholder="https://nas.example.com/hooks/backup-done"
+            />
+            <p className="text-xs text-muted-foreground">
+              Script POSTs JSON when an archive is created. Set <code className="rounded bg-muted px-1">BACKUP_POST_HOOK_URL</code>{" "}
+              in the server environment for automation.
+            </p>
+          </div>
+        </CardContent>
+      </Card>
 
       <Card>
         <CardHeader>
           <CardTitle>Copyright</CardTitle>
-          <p className="text-sm font-normal text-[var(--muted-foreground)]">Shown in the footer. Use {"{year}"} for the current year.</p>
+          <p className="text-sm font-normal text-muted-foreground">Shown in the footer. Use {"{year}"} for the current year.</p>
         </CardHeader>
         <CardContent className="space-y-2">
           <Input
@@ -412,7 +486,7 @@ export default function SiteSettingsPage() {
       <Card>
         <CardHeader>
           <CardTitle>Social links (footer)</CardTitle>
-          <p className="text-sm font-normal text-[var(--muted-foreground)]">URLs for social icons in the footer. Leave empty to hide.</p>
+          <p className="text-sm font-normal text-muted-foreground">URLs for social icons in the footer. Leave empty to hide.</p>
         </CardHeader>
         <CardContent className="space-y-4">
           {(["twitter", "instagram", "linkedin", "github", "youtube"] as const).map((key) => (
@@ -437,7 +511,7 @@ export default function SiteSettingsPage() {
       <Card>
         <CardHeader>
           <CardTitle>Google Analytics</CardTitle>
-          <p className="text-sm font-normal text-[var(--muted-foreground)]">Optional. Enter a GA4 Measurement ID (e.g. G-XXXXXXXXXX) to enable Google Analytics on all pages.</p>
+          <p className="text-sm font-normal text-muted-foreground">Optional. Enter a GA4 Measurement ID (e.g. G-XXXXXXXXXX) to enable Google Analytics on all pages.</p>
         </CardHeader>
         <CardContent className="space-y-2">
           <Input
@@ -452,7 +526,7 @@ export default function SiteSettingsPage() {
       <Card>
         <CardHeader>
           <CardTitle>Footer links</CardTitle>
-          <p className="text-sm font-normal text-[var(--muted-foreground)]">Email, GitHub, LinkedIn icons in the footer.</p>
+          <p className="text-sm font-normal text-muted-foreground">Email, GitHub, LinkedIn icons in the footer.</p>
         </CardHeader>
         <CardContent className="space-y-4">
           <div className="space-y-2">
@@ -492,7 +566,7 @@ export default function SiteSettingsPage() {
               placeholder="e.g. All rights reserved. Or a second line."
               rows={2}
             />
-            <p className="text-xs text-[var(--muted-foreground)]">Shown below the © line. Leave empty for default &quot;All rights reserved.&quot;</p>
+            <p className="text-xs text-muted-foreground">Shown below the © line. Leave empty for default &quot;All rights reserved.&quot;</p>
           </div>
         </CardContent>
       </Card>
@@ -500,13 +574,13 @@ export default function SiteSettingsPage() {
       <Card>
         <CardHeader>
           <CardTitle>Discovery &amp; CDN</CardTitle>
-          <p className="text-sm font-normal text-[var(--muted-foreground)]">
+          <p className="text-sm font-normal text-muted-foreground">
             Search engines and edge networks use your public URLs. Submit the sitemap in{" "}
             <a
               href="https://search.google.com/search-console"
               target="_blank"
               rel="noopener noreferrer"
-              className="text-[var(--primary)] underline font-medium"
+              className="text-primary underline font-medium"
             >
               Google Search Console
             </a>{" "}
@@ -517,23 +591,23 @@ export default function SiteSettingsPage() {
           {siteUrl ? (
             <>
               <p>
-                <span className="text-[var(--muted-foreground)]">Sitemap: </span>
+                <span className="text-muted-foreground">Sitemap: </span>
                 <a
                   href={`${siteUrl.replace(/\/$/, "")}/sitemap.xml`}
                   target="_blank"
                   rel="noopener noreferrer"
-                  className="text-[var(--primary)] underline break-all"
+                  className="text-primary underline break-all"
                 >
                   {`${siteUrl.replace(/\/$/, "")}/sitemap.xml`}
                 </a>
               </p>
-              <p className="text-xs text-[var(--muted-foreground)]">
-                Rate limiting for the contact form and admin login uses <code className="rounded bg-[var(--muted)] px-1">REDIS_URL</code> when set (shared across server instances).
+              <p className="text-xs text-muted-foreground">
+                Rate limiting for the contact form and admin login uses <code className="rounded bg-muted px-1">REDIS_URL</code> when set (shared across server instances).
               </p>
             </>
           ) : (
-            <p className="text-[var(--muted-foreground)]">
-              Set <code className="rounded bg-[var(--muted)] px-1">NEXT_PUBLIC_SITE_URL</code> to show your sitemap link here.
+            <p className="text-muted-foreground">
+              Set <code className="rounded bg-muted px-1">NEXT_PUBLIC_SITE_URL</code> to show your sitemap link here.
             </p>
           )}
         </CardContent>
@@ -545,7 +619,7 @@ export default function SiteSettingsPage() {
             <CardTitle>OG image (social share)</CardTitle>
             <FieldHelp text="Image shown when someone shares your site on Facebook, Twitter, etc. Use a square or 1200×630 image for best results. Optional." />
           </div>
-          <p className="text-sm font-normal text-[var(--muted-foreground)]">Image when sharing the site on social media.</p>
+          <p className="text-sm font-normal text-muted-foreground">Image when sharing the site on social media.</p>
         </CardHeader>
         <CardContent className="space-y-2">
           <div className="flex gap-2 flex-wrap">

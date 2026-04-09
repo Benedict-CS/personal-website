@@ -15,24 +15,31 @@ export const dynamic = "force-dynamic";
 export async function generateMetadata(): Promise<Metadata> {
   const config = await getSiteConfigForRender();
   const description = config.metaDescription ?? "";
+  const base = config.url.replace(/\/$/, "");
   const ogUrl = config.ogImageUrl
     ? (config.ogImageUrl.startsWith("http") ? config.ogImageUrl : new URL(config.ogImageUrl, config.url).toString())
     : undefined;
   return {
     title: "Home",
     description: description || undefined,
-    alternates: { canonical: config.url },
+    alternates: { canonical: base },
     openGraph: {
       title: "Home",
       description: description || undefined,
-      url: config.url,
+      url: base,
+      type: "website",
+      ...(ogUrl && { images: [ogUrl] }),
+    },
+    twitter: {
+      card: "summary_large_image",
+      title: `${config.siteName} — Home`,
+      description: description || undefined,
       ...(ogUrl && { images: [ogUrl] }),
     },
   };
 }
 
 const HOME_SECTION_IDS = ["hero", "latestPosts", "skills"] as const;
-type HomeSectionId = (typeof HOME_SECTION_IDS)[number];
 
 type HomeContent = {
   heroTitle?: string;

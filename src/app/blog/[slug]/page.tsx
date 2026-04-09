@@ -9,17 +9,20 @@ import { Badge } from "@/components/ui/badge";
 import { Card, CardContent } from "@/components/ui/card";
 import { TableOfContents } from "@/components/toc";
 import { ShareButtons } from "@/components/share-buttons";
-import { ReadingProgress } from "@/components/reading-progress";
+import { ArticleReadingChrome } from "@/components/article-reading-chrome";
 import { PrevNextKeys } from "@/components/prev-next-keys";
 import { MarkdownRenderer } from "@/components/markdown-renderer";
+import { MdxPostBody } from "@/components/mdx/mdx-post-body";
+import { shouldRenderAsMdx } from "@/lib/mdx-content-detect";
 import { HighlightScroll } from "@/components/highlight-scroll";
 import { BackToTop } from "@/components/back-to-top";
 import { GiscusComments } from "@/components/giscus-comments";
 import { PublicBreadcrumbs } from "@/components/public-breadcrumbs";
-import { stripMarkdown } from "@/lib/utils";
+import { metaDescriptionFromMarkdown } from "@/lib/meta-description";
 import { Pencil } from "lucide-react";
 import { calculateReadingTime, formatReadingTime } from "@/lib/reading-time";
 import { getSiteConfigForRender } from "@/lib/site-config";
+import { extractTocHeadingsFromMarkdown } from "@/lib/markdown-toc";
 
 export const revalidate = 60;
 
@@ -56,18 +59,18 @@ export async function generateMetadata({
   }
 
   const config = await getSiteConfigForRender();
-  const description = stripMarkdown(post.content).substring(0, 160) + "...";
+  const description = metaDescriptionFromMarkdown(post.content, 160);
   const canonicalUrl = `${config.url}/blog/${slug}`;
   const tagNames = post.tags.map((t) => t.name).filter(Boolean);
 
   return {
     title: post.title,
-    description: description,
+    description: description || undefined,
     alternates: { canonical: canonicalUrl },
     ...(tagNames.length > 0 && { keywords: tagNames }),
     openGraph: {
       title: post.title,
-      description: description,
+      description: description || undefined,
       url: canonicalUrl,
       type: "article",
       publishedTime: post.createdAt.toISOString(),
@@ -76,7 +79,8 @@ export async function generateMetadata({
     twitter: {
       card: "summary_large_image",
       title: post.title,
-      description: description,
+      description: description || undefined,
+      images: [`${config.url}/blog/${slug}/opengraph-image`],
     },
   };
 }
@@ -113,7 +117,7 @@ export default async function BlogPostPage({
 
   // Prev/next and related (by tag)
   const tagIds = post.tags.map((t) => t.id);
-  const [prevPost, nextPost, relatedPosts] = await Promise.all([
+  const [prevPost, nextPost, relatedCandidates] = await Promise.all([
     prisma.post.findFirst({
       where: {
         ...publishedWhere(),
@@ -137,12 +141,32 @@ export default async function BlogPostPage({
             id: { not: post.id },
             tags: { some: { id: { in: tagIds } } },
           },
-          orderBy: { updatedAt: "desc" },
-          take: 5,
-          select: { id: true, title: true, slug: true },
+          select: {
+            id: true,
+            title: true,
+            slug: true,
+            updatedAt: true,
+            tags: { select: { id: true } },
+          },
+          take: 24,
         })
       : Promise.resolve([]),
   ]);
+
+  const relatedPosts =
+    tagIds.length === 0
+      ? []
+      : relatedCandidates
+          .map((p) => ({
+            id: p.id,
+            title: p.title,
+            slug: p.slug,
+            score: p.tags.filter((t) => tagIds.includes(t.id)).length,
+            updatedAt: p.updatedAt.getTime(),
+          }))
+          .sort((a, b) => b.score - a.score || b.updatedAt - a.updatedAt)
+          .slice(0, 5)
+          .map(({ id, title, slug }) => ({ id, title, slug }));
 
   const formatDate = (date: Date) => {
     return new Date(date).toLocaleDateString("en-US", {
@@ -153,6 +177,7 @@ export default async function BlogPostPage({
   };
 
   const readingTime = calculateReadingTime(post.content);
+  const tocHeadings = extractTocHeadingsFromMarkdown(post.content);
 
   const configForRender = await getSiteConfigForRender();
   const canonicalUrl = `${configForRender.url}/blog/${post.slug}`;
@@ -161,11 +186,11 @@ export default async function BlogPostPage({
         ? configForRender.ogImageUrl
         : new URL(configForRender.ogImageUrl, configForRender.url).toString())
     : undefined;
-  const jsonLd = {
-    "@context": "https://schema.org",
+  const baseUrl = configForRender.url.replace(/\/$/, "");
+  const articleLd = {
     "@type": "Article",
     headline: post.title,
-    description: stripMarkdown(post.content).substring(0, 160),
+    description: metaDescriptionFromMarkdown(post.content, 160) || post.title,
     datePublished: post.createdAt.toISOString(),
     dateModified: post.updatedAt.toISOString(),
     author: {
@@ -184,14 +209,26 @@ export default async function BlogPostPage({
       "@id": canonicalUrl,
     },
   };
+  const breadcrumbLd = {
+    "@type": "BreadcrumbList",
+    itemListElement: [
+      { "@type": "ListItem", position: 1, name: "Home", item: `${baseUrl}/` },
+      { "@type": "ListItem", position: 2, name: "Blog", item: `${baseUrl}/blog` },
+      { "@type": "ListItem", position: 3, name: post.title, item: canonicalUrl },
+    ],
+  };
+  const jsonLdGraph = {
+    "@context": "https://schema.org",
+    "@graph": [articleLd, breadcrumbLd],
+  };
 
   return (
     <>
       <script
         type="application/ld+json"
-        dangerouslySetInnerHTML={{ __html: JSON.stringify(jsonLd) }}
+        dangerouslySetInnerHTML={{ __html: JSON.stringify(jsonLdGraph) }}
       />
-      <ReadingProgress />
+      <ArticleReadingChrome title={post.title} />
       <PrevNextKeys
         prevHref={prevPost ? `/blog/${prevPost.slug}` : null}
         nextHref={nextPost ? `/blog/${nextPost.slug}` : null}
@@ -200,7 +237,7 @@ export default async function BlogPostPage({
       <PublicBreadcrumbs items={[{ label: "Home", href: "/" }, { label: "Blog", href: "/blog" }, { label: post.title }]} />
       <div className="grid grid-cols-1 gap-8 lg:grid-cols-[1fr_260px] lg:gap-12">
         {/* Main content */}
-        <div className="min-w-0">
+        <div className="order-2 min-w-0 lg:order-1">
           <Card className="overflow-hidden">
             <CardContent className="px-4 pt-6 pb-8 sm:px-6 sm:pt-8 sm:pb-10 lg:px-8">
               <div className="space-y-8 overflow-hidden">
@@ -233,7 +270,7 @@ export default async function BlogPostPage({
                     <ShareButtons
                       title={post.title}
                       url={`/blog/${post.slug}`}
-                      description={stripMarkdown(post.content).substring(0, 100)}
+                      description={metaDescriptionFromMarkdown(post.content, 100)}
                     />
                   </div>
 
@@ -250,15 +287,24 @@ export default async function BlogPostPage({
                   )}
                 </header>
 
-                <div data-post-content className="prose-reading prose-reading-full mt-8">
-                  <MarkdownRenderer content={post.content} postId={post.id} editable={!!session} />
+                <div
+                  data-post-content
+                  className="prose-reading prose-reading-article mx-auto mt-8 w-full max-w-[70ch]"
+                >
+                  {shouldRenderAsMdx(post.content) ? (
+                    <MdxPostBody content={post.content} postId={post.id} editable={!!session} />
+                  ) : (
+                    <MarkdownRenderer content={post.content} postId={post.id} editable={!!session} />
+                  )}
                 </div>
                 <HighlightScroll highlight={highlight} occurrence={occurrence} contentSelector="[data-post-content]" />
 
                 {/* Related posts (by tag) */}
                 {relatedPosts.length > 0 && (
                   <div className="border-t border-slate-200 pt-8">
-                    <h3 className="mb-3 text-sm font-medium uppercase tracking-wider text-slate-500">Related</h3>
+                    <h3 className="mb-3 text-sm font-medium uppercase tracking-wider text-slate-500">
+                      Related posts
+                    </h3>
                     <ul className="space-y-2">
                       {relatedPosts.map((r) => (
                         <li key={r.id}>
@@ -325,9 +371,13 @@ export default async function BlogPostPage({
           </Card>
         </div>
 
-        {/* TOC sidebar */}
-        <aside className="lg:sticky lg:top-20 lg:self-start w-full lg:w-[260px]">
-          <TableOfContents content={post.content} />
+        {/* TOC: mobile first in layout; sticky sidebar on large screens */}
+        <aside className="order-1 w-full lg:sticky lg:top-20 lg:order-2 lg:w-[260px] lg:self-start">
+          <TableOfContents
+            key={post.id}
+            content={post.content}
+            initialHeadings={tocHeadings}
+          />
         </aside>
       </div>
       <BackToTop />

@@ -22,6 +22,12 @@ enum SubscriptionStatus {
   CANCELED
 }
 
+enum BillingProvider {
+  NONE
+  STRIPE
+  LEMON_SQUEEZY
+}
+
 enum SiteStatus {
   DRAFT
   ACTIVE
@@ -105,9 +111,13 @@ model Subscription {
   user                     User               @relation(fields: [userId], references: [id], onDelete: Cascade)
   siteId                   String?
   site                     TenantSite?        @relation(fields: [siteId], references: [id], onDelete: SetNull)
+  billingProvider          BillingProvider    @default(NONE)
   stripeCustomerId         String?            @unique
   stripeSubscriptionId     String?            @unique
   stripePriceId            String?
+  lemonCustomerId          String?            @unique
+  lemonSubscriptionId      String?            @unique
+  lemonVariantId           String?
   plan                     SitePlan           @default(FREE)
   status                   SubscriptionStatus @default(TRIALING)
   currentPeriodStart       DateTime?
@@ -125,6 +135,8 @@ model TenantSite {
   slug              String            @unique
   name              String
   status            SiteStatus        @default(DRAFT)
+  /// BCP 47 language tag for storefront chrome (builder + public tenant pages).
+  defaultLocale     String            @default("en")
   customDomain      String?           @unique
   subdomain         String?           @unique
   logoUrl           String?
@@ -828,6 +840,12 @@ model SiteConfig {
   themeMode               String   @default("light") // Light-only mode
   autoAddCustomPagesToNav  Boolean  @default(true) // when true, custom pages are appended to navbar
   contactEmail            String?  // Destination for contact form submissions (platform-managed; Resend sends here)
+  // Optional HTTPS POST URL for contact notifications (Discord, Telegram, LINE bridges).
+  contactWebhookUrl       String?
+  // Optional rsync destination for backup archives; see scripts/backup-data.sh.
+  backupRsyncTarget       String?
+  // Optional POST URL after backup completes (self-hosted hooks).
+  backupPostHookUrl       String?
   updatedAt               DateTime @updatedAt
 }
 

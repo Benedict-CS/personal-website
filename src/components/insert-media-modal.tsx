@@ -7,6 +7,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Card, CardContent } from "@/components/ui/card";
 import { ImageIcon, Loader2, Upload } from "lucide-react";
+import { useToast } from "@/contexts/toast-context";
 
 interface MediaFile {
   name: string;
@@ -26,6 +27,7 @@ export function InsertMediaModal({
   onClose,
   onSelect,
 }: InsertMediaModalProps) {
+  const { toast } = useToast();
   const [files, setFiles] = useState<MediaFile[]>([]);
   const [search, setSearch] = useState("");
   const [loading, setLoading] = useState(false);
@@ -109,7 +111,7 @@ export function InsertMediaModal({
 
     const allowed = ["image/jpeg", "image/jpg", "image/png", "image/gif", "image/webp"];
     if (!allowed.includes(file.type)) {
-      window.alert("Please upload JPEG, PNG, GIF, or WebP images.");
+      toast("Please upload JPEG, PNG, GIF, or WebP images.", "error");
       event.target.value = "";
       return;
     }
@@ -127,7 +129,7 @@ export function InsertMediaModal({
       onSelect(data.url, file.name);
       onClose();
     } catch (error) {
-      window.alert(error instanceof Error ? error.message : "Upload failed");
+      toast(error instanceof Error ? error.message : "Upload failed", "error");
     } finally {
       setUploading(false);
       event.target.value = "";

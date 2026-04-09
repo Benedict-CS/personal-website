@@ -16,6 +16,7 @@ import {
 import { ConfirmDialog } from "@/components/ui/confirm-dialog";
 import { useToast } from "@/contexts/toast-context";
 import type { PostRow } from "@/types/post";
+import { formatAbsoluteDateTime, formatRelativeTime } from "@/lib/relative-time";
 
 type SortKey = "updatedAt" | "createdAt" | "title";
 type Order = "asc" | "desc";
@@ -42,6 +43,11 @@ export function PostsTableClient({
   const pathname = usePathname();
   const searchParams = useSearchParams();
   const { toast } = useToast();
+  /** Optimistic list; resets when server `posts` change after refresh. */
+  const [listPosts, setListPosts] = useState<PostRow[]>(posts);
+  useEffect(() => {
+    setListPosts(posts);
+  }, [posts]);
   const [selected, setSelected] = useState<Set<string>>(new Set());
   const [bulkLoading, setBulkLoading] = useState(false);
   const [bulkConfirm, setBulkConfirm] = useState<"publish" | "unpublish" | "delete" | null>(null);
@@ -56,9 +62,9 @@ export function PostsTableClient({
     const el = selectAllRef.current;
     if (!el) return;
     if (selected.size === 0) el.indeterminate = false;
-    else if (selected.size === posts.length) el.indeterminate = false;
+    else if (selected.size === listPosts.length) el.indeterminate = false;
     else el.indeterminate = true;
-  }, [selected.size, posts.length]);
+  }, [selected.size, listPosts.length]);
 
   useEffect(() => {
     if (!bulkEditOpen) return;
@@ -80,13 +86,6 @@ export function PostsTableClient({
     return `${pathname}?${p.toString()}`;
   };
 
-  const formatDate = (dateStr: string) =>
-    new Date(dateStr).toLocaleDateString("en-US", {
-      year: "numeric",
-      month: "short",
-      day: "numeric",
-    });
-
   const isPostPublic = (post: PostRow) => {
     if (post.published) return true;
     if (!post.publishedAt) return false;
@@ -103,8 +102,8 @@ export function PostsTableClient({
   };
 
   const toggleAll = () => {
-    if (selected.size === posts.length) setSelected(new Set());
-    else setSelected(new Set(posts.map((p) => p.id)));
+    if (selected.size === listPosts.length) setSelected(new Set());
+    else setSelected(new Set(listPosts.map((p) => p.id)));
   };
 
   const handleDuplicate = async (postId: string) => {
@@ -125,10 +124,21 @@ export function PostsTableClient({
     }
   };
 
+  const applyOptimisticBulk = (action: "publish" | "unpublish" | "delete", ids: string[]) => {
+    const idSet = new Set(ids);
+    setListPosts((prev) => {
+      if (action === "delete") return prev.filter((p) => !idSet.has(p.id));
+      if (action === "unpublish") return prev.filter((p) => !idSet.has(p.id));
+      return prev.map((p) => (idSet.has(p.id) ? { ...p, published: true } : p));
+    });
+    setSelected(new Set());
+  };
+
   const runBulk = async (action: "publish" | "unpublish" | "delete") => {
     if (selected.size === 0) return;
     const ids = Array.from(selected);
     setBulkConfirm(null);
+    applyOptimisticBulk(action, ids);
     setBulkLoading(true);
     try {
       const res = await fetch("/api/posts/bulk", {
@@ -138,13 +148,16 @@ export function PostsTableClient({
       });
       const data = await res.json().catch(() => ({}));
       if (!res.ok) {
+        setListPosts(posts);
+        setSelected(new Set(ids));
         toast(data.error || "Bulk action failed", "error");
         return;
       }
       toast(`${action} completed: ${data.updated} post(s)`, "success");
-      setSelected(new Set());
       router.refresh();
     } catch (e) {
+      setListPosts(posts);
+      setSelected(new Set(ids));
       toast((e as Error).message || "Request failed", "error");
     } finally {
       setBulkLoading(false);
@@ -220,8 +233,8 @@ export function PostsTableClient({
         loading={bulkLoading}
       />
       {selected.size > 0 && (
-        <div className="flex flex-wrap items-center gap-2 rounded-lg border border-slate-200 bg-slate-50 px-4 py-3">
-          <span className="text-sm font-medium text-[var(--foreground)]">
+        <div className="flex flex-wrap items-center gap-2 rounded-lg border border-border bg-muted/40 px-4 py-3">
+          <span className="text-sm font-medium text-foreground">
             {selected.size} selected
           </span>
           <Button
@@ -276,43 +289,43 @@ export function PostsTableClient({
           onClick={() => setBulkEditOpen(false)}
         >
           <div
-            className="w-full max-w-md rounded-xl border border-[var(--border)] bg-card p-6 shadow-[var(--shadow-lg)] max-h-[90vh] overflow-y-auto"
+            className="w-full max-w-md rounded-xl border border-border bg-card p-6 shadow-lg max-h-[90vh] overflow-y-auto"
             onClick={(e) => e.stopPropagation()}
           >
-            <h2 id="bulk-edit-title" className="text-lg font-semibold text-[var(--foreground)]">
+            <h2 id="bulk-edit-title" className="text-lg font-semibold text-foreground">
               Bulk edit {selected.size} post(s)
             </h2>
-            <p className="mt-1 text-sm text-[var(--muted-foreground)]">Leave a field empty to keep current value.</p>
+            <p className="mt-1 text-sm text-muted-foreground">Leave a field empty to keep current value.</p>
             <div className="mt-4 space-y-4">
               <div>
-                <label htmlFor="bulk-category" className="block text-sm font-medium text-[var(--foreground)]">Category</label>
+                <label htmlFor="bulk-category" className="block text-sm font-medium text-foreground">Category</label>
                 <input
                   id="bulk-category"
                   type="text"
                   value={bulkEditCategory}
                   onChange={(e) => setBulkEditCategory(e.target.value)}
                   placeholder="e.g. LeetCode/Array"
-                  className="mt-1 w-full rounded-lg border border-input bg-background px-3 py-2 text-sm text-foreground shadow-[var(--shadow-sm)]"
+                  className="mt-1 w-full rounded-lg border border-input bg-background px-3 py-2 text-sm text-foreground shadow-sm"
                 />
               </div>
               <div>
-                <label htmlFor="bulk-tags" className="block text-sm font-medium text-[var(--foreground)]">Tags (comma-separated)</label>
+                <label htmlFor="bulk-tags" className="block text-sm font-medium text-foreground">Tags (comma-separated)</label>
                 <input
                   id="bulk-tags"
                   type="text"
                   value={bulkEditTags}
                   onChange={(e) => setBulkEditTags(e.target.value)}
                   placeholder="tag1, tag2"
-                  className="mt-1 w-full rounded-lg border border-input bg-background px-3 py-2 text-sm text-foreground shadow-[var(--shadow-sm)]"
+                  className="mt-1 w-full rounded-lg border border-input bg-background px-3 py-2 text-sm text-foreground shadow-sm"
                 />
               </div>
               <div>
-                <label htmlFor="bulk-published" className="block text-sm font-medium text-[var(--foreground)]">Published</label>
+                <label htmlFor="bulk-published" className="block text-sm font-medium text-foreground">Published</label>
                 <select
                   id="bulk-published"
                   value={bulkEditPublished}
                   onChange={(e) => setBulkEditPublished((e.target.value || "") as "" | "publish" | "unpublish")}
-                  className="mt-1 w-full rounded-lg border border-input bg-background px-3 py-2 text-sm text-foreground shadow-[var(--shadow-sm)]"
+                  className="mt-1 w-full rounded-lg border border-input bg-background px-3 py-2 text-sm text-foreground shadow-sm"
                 >
                   <option value="">No change</option>
                   <option value="publish">Publish</option>
@@ -333,14 +346,14 @@ export function PostsTableClient({
       )}
 
       <div className="flex flex-wrap items-center gap-4">
-        <label className="text-sm text-[var(--muted-foreground)]">Sort:</label>
+        <label className="text-sm text-muted-foreground">Sort:</label>
         <select
           value={`${sort}_${order}`}
           onChange={(e) => {
             const [s, o] = e.target.value.split("_") as [SortKey, Order];
             router.push(buildUrl(s, o));
           }}
-          className="rounded-lg border border-input bg-background px-3 py-1.5 text-sm text-foreground shadow-[var(--shadow-sm)]"
+          className="rounded-lg border border-input bg-background px-3 py-1.5 text-sm text-foreground shadow-sm"
         >
           {SORT_OPTIONS.map((opt) => (
             <option key={opt.value} value={opt.value}>
@@ -351,21 +364,22 @@ export function PostsTableClient({
       </div>
 
       {/* Desktop: table */}
-      <div className="hidden md:block rounded-xl border border-[var(--border)] bg-card overflow-x-auto shadow-[var(--shadow-sm)]">
-        <Table className="min-w-[600px]">
+      <div className="hidden md:block rounded-xl border border-border bg-card overflow-x-auto shadow-sm">
+        <Table className="min-w-[720px]">
           <TableHeader>
-            <TableRow className="hover:bg-transparent border-[var(--border)]">
+            <TableRow className="hover:bg-transparent border-border">
               <TableHead className="w-10">
                 <input
                   ref={selectAllRef}
                   type="checkbox"
-                  checked={posts.length > 0 && selected.size === posts.length}
+                  checked={listPosts.length > 0 && selected.size === listPosts.length}
                   onChange={toggleAll}
                   className="h-4 w-4 rounded border-input"
                   aria-label="Select all"
                 />
               </TableHead>
               <TableHead>Title</TableHead>
+              <TableHead className="w-[min(11rem,22vw)] max-w-[13rem]">Slug</TableHead>
               <TableHead>Published Status</TableHead>
               <TableHead className="text-right tabular-nums">Views</TableHead>
               <TableHead>Published Date</TableHead>
@@ -374,8 +388,8 @@ export function PostsTableClient({
             </TableRow>
           </TableHeader>
           <TableBody>
-            {posts.map((post) => (
-              <TableRow key={post.id} className="transition-[background-color] duration-150 hover:bg-[var(--accent)]/50 border-[var(--border)]">
+            {listPosts.map((post) => (
+              <TableRow key={post.id} className="transition-[background-color] duration-150 hover:bg-accent/50 border-border">
                 <TableCell>
                   <input
                     type="checkbox"
@@ -385,24 +399,38 @@ export function PostsTableClient({
                     aria-label={`Select ${post.title}`}
                   />
                 </TableCell>
-                <TableCell className="font-medium text-[var(--foreground)]">{post.title}</TableCell>
+                <TableCell className="font-medium text-foreground">{post.title}</TableCell>
+                <TableCell
+                  className="max-w-[13rem] truncate font-mono text-xs text-muted-foreground"
+                  title={post.slug}
+                >
+                  {post.slug}
+                </TableCell>
                 <TableCell>
                   {post.published ? (
                     <span className="inline-flex items-center rounded-full bg-emerald-100 px-2.5 py-0.5 text-xs font-medium text-emerald-800">
                       Published
                     </span>
                   ) : (
-                    <span className="inline-flex items-center rounded-full bg-[var(--muted)] px-2.5 py-0.5 text-xs font-medium text-[var(--muted-foreground)]">
+                    <span className="inline-flex items-center rounded-full bg-muted px-2.5 py-0.5 text-xs font-medium text-muted-foreground">
                       Draft
                     </span>
                   )}
                 </TableCell>
-                <TableCell className="text-right tabular-nums text-[var(--muted-foreground)]">
+                <TableCell className="text-right tabular-nums text-muted-foreground">
                   {isPostPublic(post) ? (post.viewCount ?? 0).toLocaleString() : "—"}
                 </TableCell>
-                <TableCell className="text-[var(--muted-foreground)]">{formatDate(post.createdAt)}</TableCell>
-                <TableCell className="text-xs text-[var(--muted-foreground)]">
-                  {formatDate(post.updatedAt)}
+                <TableCell
+                  className="text-muted-foreground"
+                  title={formatAbsoluteDateTime(post.createdAt)}
+                >
+                  <span className="tabular-nums">{formatRelativeTime(post.createdAt)}</span>
+                </TableCell>
+                <TableCell
+                  className="text-xs text-muted-foreground"
+                  title={formatAbsoluteDateTime(post.updatedAt)}
+                >
+                  <span className="tabular-nums">{formatRelativeTime(post.updatedAt)}</span>
                 </TableCell>
                 <TableCell className="text-right">
                   <div className="flex justify-end gap-1">
@@ -440,10 +468,10 @@ export function PostsTableClient({
 
       {/* Mobile: cards */}
       <div className="md:hidden space-y-3">
-        {posts.map((post) => (
+        {listPosts.map((post) => (
           <div
             key={post.id}
-            className="rounded-xl border border-[var(--border)] bg-card p-4 shadow-[var(--shadow-sm)] flex flex-col gap-3 transition-shadow duration-200 hover:shadow-[var(--shadow-md)]"
+            className="rounded-xl border border-border bg-card p-4 shadow-sm flex flex-col gap-3 transition-shadow duration-200 hover:shadow-md"
           >
             <div className="flex items-start gap-3">
               <input
@@ -454,17 +482,25 @@ export function PostsTableClient({
                 aria-label={`Select ${post.title}`}
               />
               <div className="min-w-0 flex-1">
-                <p className="font-medium text-[var(--foreground)] truncate">{post.title}</p>
-                <div className="flex flex-wrap items-center gap-2 mt-1 text-xs text-[var(--muted-foreground)]">
+                <p className="font-medium text-foreground truncate">{post.title}</p>
+                <p
+                  className="mt-0.5 truncate font-mono text-xs text-muted-foreground"
+                  title={post.slug}
+                >
+                  {post.slug}
+                </p>
+                <div className="flex flex-wrap items-center gap-2 mt-1 text-xs text-muted-foreground">
                   {post.published ? (
                     <span className="rounded-full bg-emerald-100 px-2 py-0.5 font-medium text-emerald-800">Published</span>
                   ) : (
-                    <span className="rounded-full bg-[var(--muted)] px-2 py-0.5 font-medium text-[var(--muted-foreground)]">Draft</span>
+                    <span className="rounded-full bg-muted px-2 py-0.5 font-medium text-muted-foreground">Draft</span>
                   )}
                   {isPostPublic(post) && (
                     <span className="tabular-nums">{(post.viewCount ?? 0).toLocaleString()} views</span>
                   )}
-                  <span>{formatDate(post.updatedAt)}</span>
+                  <span title={formatAbsoluteDateTime(post.updatedAt)} className="tabular-nums">
+                    Edited {formatRelativeTime(post.updatedAt)}
+                  </span>
                 </div>
               </div>
             </div>

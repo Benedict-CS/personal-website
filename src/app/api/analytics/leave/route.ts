@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
+import { normalizeIP } from "@/lib/analytics-excluded-ips";
 import { getRequestOrigin } from "@/lib/get-request-origin";
 
 const siteOrigin = process.env.NEXT_PUBLIC_SITE_URL || process.env.NEXTAUTH_URL || "";
@@ -32,7 +33,11 @@ export async function POST(request: NextRequest) {
   if (duration === null || duration < 0) {
     return NextResponse.json({ ok: true });
   }
-  const ip = getClientIP(request);
+  const ipRaw = getClientIP(request);
+  const ip = normalizeIP(ipRaw);
+  if (!ip || ip === "unknown") {
+    return NextResponse.json({ ok: true });
+  }
   const since = new Date(Date.now() - 30 * 60 * 1000);
   try {
     const row = await prisma.pageView.findFirst({

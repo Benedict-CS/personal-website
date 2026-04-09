@@ -12,8 +12,8 @@ export default async function SiteEditorPage({
     <div className="space-y-4">
       <div className="flex items-center justify-between">
         <div>
-          <h1 className="text-2xl font-bold text-slate-900">True WYSIWYG Editor</h1>
-          <p className="text-slate-600">Drag, style, version, and publish with tenant-level isolation.</p>
+          <h1 className="text-2xl font-bold text-foreground">True WYSIWYG Editor</h1>
+          <p className="text-muted-foreground">Drag, style, version, and publish with tenant-level isolation.</p>
         </div>
         <Link href={`/dashboard/sites/${siteId}/pages`}>
           <Button variant="outline">Back to Pages</Button>

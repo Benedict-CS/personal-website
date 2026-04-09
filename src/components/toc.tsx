@@ -2,71 +2,81 @@
 
 import { useEffect, useState } from "react";
 import Link from "next/link";
+import type { MarkdownTocHeading } from "@/lib/markdown-toc";
+import { markdownTocToNavItems } from "@/lib/markdown-toc";
 
 interface TocItem {
   id: string;
   text: string;
   level: number;
-  parentId?: string; // Which h2 this h3 belongs to
+  parentId?: string;
 }
 
 interface TableOfContentsProps {
   content: string;
+  /** Server-parsed headings (matches rehype-slug); enables mobile TOC and faster first paint */
+  initialHeadings?: MarkdownTocHeading[];
 }
 
-export function TableOfContents({ content }: TableOfContentsProps) {
-  const [headings, setHeadings] = useState<TocItem[]>([]);
+export function TableOfContents({ content, initialHeadings }: TableOfContentsProps) {
+  const [headings, setHeadings] = useState<TocItem[]>(() =>
+    initialHeadings?.length ? markdownTocToNavItems(initialHeadings) : []
+  );
   const [activeId, setActiveId] = useState<string>("");
   const [expandedH2, setExpandedH2] = useState<string>("");
   const [sectionProgress, setSectionProgress] = useState(0);
 
-  // Read headings from DOM after markdown has rendered
+  // Refine from DOM after markdown renders (math, HTML, etc.)
   useEffect(() => {
     const timer = setTimeout(() => {
-      const articleElement = document.querySelector("article") || document.body;
-      const headingElements = articleElement.querySelectorAll("h1[id], h2[id], h3[id]");
-      
+      const root =
+        document.querySelector("[data-markdown-article]") ||
+        document.querySelector("article") ||
+        document.body;
+      const headingElements = root.querySelectorAll("h1[id], h2[id], h3[id]");
+
       const matches: TocItem[] = [];
       let lastH2Id = "";
 
       Array.from(headingElements).forEach((element) => {
         const tagName = element.tagName.toLowerCase();
-        const level = parseInt(tagName.substring(1));
+        const level = parseInt(tagName.substring(1), 10);
         const text = element.textContent || "";
         const id = element.id;
 
-        // Track which h2 each h3 belongs to
         if (level === 2) {
           lastH2Id = id;
         }
 
-        matches.push({ 
-          id, 
-          text, 
+        matches.push({
+          id,
+          text,
           level,
-          parentId: level === 3 ? lastH2Id : undefined
+          parentId: level === 3 ? lastH2Id : undefined,
         });
       });
 
-      setHeadings(matches);
+      if (matches.length > 0) {
+        setHeadings(matches);
+      }
     }, 100);
 
     return () => clearTimeout(timer);
   }, [content]);
 
-  // Scroll listener to highlight current heading and section progress
   useEffect(() => {
     if (headings.length === 0) return;
 
     const handleScroll = () => {
-      const headingElements = headings.map((h) => {
-        const element = document.getElementById(h.id);
-        return element ? { id: h.id, offsetTop: element.offsetTop } : null;
-      }).filter(Boolean) as { id: string; offsetTop: number }[];
+      const headingElements = headings
+        .map((h) => {
+          const element = document.getElementById(h.id);
+          return element ? { id: h.id, offsetTop: element.offsetTop } : null;
+        })
+        .filter(Boolean) as { id: string; offsetTop: number }[];
 
       const scrollPosition = window.scrollY + 100;
 
-      // Find heading to highlight
       let currentId = "";
       let currentIndex = 0;
       for (let i = headingElements.length - 1; i >= 0; i--) {
@@ -79,14 +89,13 @@ export function TableOfContents({ content }: TableOfContentsProps) {
 
       setActiveId(currentId || headings[0]?.id || "");
 
-      // Section progress: 0–100% through the list
-      const progress = headingElements.length > 1
-        ? Math.round((currentIndex / (headingElements.length - 1)) * 100)
-        : 100;
+      const progress =
+        headingElements.length > 1
+          ? Math.round((currentIndex / (headingElements.length - 1)) * 100)
+          : 100;
       setSectionProgress(progress);
 
-      // Expand h2 based on activeId
-      const activeHeading = headings.find(h => h.id === currentId);
+      const activeHeading = headings.find((h) => h.id === currentId);
       if (activeHeading) {
         if (activeHeading.level === 2) {
           setExpandedH2(activeHeading.id);
@@ -108,71 +117,95 @@ export function TableOfContents({ content }: TableOfContentsProps) {
     return null;
   }
 
-  return (
-    <div className="hidden lg:block w-full">
-      <div className="max-h-[calc(100vh-5rem)] overflow-y-auto">
-        <div className="rounded-lg border border-slate-200 bg-white p-4">
-          <div className="mb-4 flex items-center justify-between gap-2">
-            <h2 className="text-sm font-semibold text-slate-900">
-              On This Page
-            </h2>
-            {headings.length > 1 && (
-              <span className="text-xs text-slate-400 tabular-nums" aria-hidden>
-                {sectionProgress}%
-              </span>
-            )}
-          </div>
+  const tocPanel = (variant: "sidebar" | "drawer") => (
+    <div className={variant === "sidebar" ? "rounded-lg border border-slate-200 bg-white p-4" : "px-4 pb-1"}>
+      {variant === "sidebar" && (
+        <div className="mb-4 flex items-center justify-between gap-2">
+          <h2 className="text-sm font-semibold text-slate-900">On this page</h2>
           {headings.length > 1 && (
-            <div className="mb-4 h-1 w-full rounded-full bg-slate-100 overflow-hidden">
-              <div
-                className="h-full rounded-full bg-slate-300 transition-all duration-200 ease-out"
-                style={{ width: `${sectionProgress}%` }}
-              />
-            </div>
+            <span className="text-xs text-slate-400 tabular-nums" aria-hidden>
+              {sectionProgress}%
+            </span>
           )}
-          <nav className="space-y-1">
-            {headings.map((heading) => {
-              // Show h3 only when parent h2 is expanded
-              if (heading.level === 3) {
-                if (heading.parentId !== expandedH2) {
-                  return null;
-                }
-              }
-
-              return (
-                <Link
-                  key={heading.id}
-                  href={`#${heading.id}`}
-                  className={`block text-sm transition-all duration-200 py-1 border-l-2 ${
-                    heading.level === 1
-                      ? "pl-3 font-medium"
-                      : heading.level === 2
-                      ? "pl-5"
-                      : "pl-7"
-                  } ${
-                    activeId === heading.id
-                      ? "text-slate-900 font-semibold border-slate-700 bg-slate-100"
-                      : "text-slate-600 hover:text-slate-900 border-transparent hover:border-slate-300"
-                  }`}
-                  onClick={(e) => {
-                    e.preventDefault();
-                    const element = document.getElementById(heading.id);
-                    if (element) {
-                      const offsetTop = element.offsetTop - 80;
-                      window.scrollTo({
-                        top: offsetTop,
-                        behavior: "smooth",
-                      });
-                    }
-                  }}
-                >
-                  {heading.text}
-                </Link>
-              );
-            })}
-          </nav>
         </div>
-      </div>
+      )}
+      {variant === "drawer" && headings.length > 1 && (
+        <div className="mb-3 flex justify-end">
+          <span className="text-xs text-slate-400 tabular-nums" aria-hidden>
+            {sectionProgress}%
+          </span>
+        </div>
+      )}
+      {headings.length > 1 && (
+        <div className="mb-4 h-1 w-full overflow-hidden rounded-full bg-slate-100">
+          <div
+            className="h-full rounded-full bg-slate-300 transition-all duration-200 ease-out"
+            style={{ width: `${sectionProgress}%` }}
+          />
+        </div>
+      )}
+      <nav className="space-y-1">
+        {headings.map((heading) => {
+          if (heading.level === 3) {
+            if (heading.parentId !== expandedH2) {
+              return null;
+            }
+          }
+
+          return (
+            <Link
+              key={heading.id}
+              href={`#${heading.id}`}
+              className={`block border-l-2 py-1 text-sm transition-all duration-200 ${
+                heading.level === 1
+                  ? "pl-3 font-medium"
+                  : heading.level === 2
+                    ? "pl-5"
+                    : "pl-7"
+              } ${
+                activeId === heading.id
+                  ? "border-slate-700 bg-slate-100 font-semibold text-slate-900"
+                  : "border-transparent text-slate-600 hover:border-slate-300 hover:text-slate-900"
+              }`}
+              onClick={(e) => {
+                e.preventDefault();
+                const element = document.getElementById(heading.id);
+                if (element) {
+                  const offsetTop = element.offsetTop - 80;
+                  window.scrollTo({
+                    top: offsetTop,
+                    behavior: "smooth",
+                  });
+                }
+              }}
+            >
+              {heading.text}
+            </Link>
+          );
+        })}
+      </nav>
     </div>
+  );
+
+  return (
+    <>
+      <div className="mb-6 w-full lg:hidden">
+        <details className="group rounded-lg border border-slate-200 bg-white open:shadow-sm">
+          <summary className="cursor-pointer list-none px-4 py-3 text-sm font-semibold text-slate-900 [&::-webkit-details-marker]:hidden">
+            <span className="flex items-center justify-between gap-2">
+              On this page
+              <span className="text-slate-400 transition-transform group-open:rotate-180" aria-hidden>
+                ▾
+              </span>
+            </span>
+          </summary>
+          <div className="border-t border-slate-100 pt-2">{tocPanel("drawer")}</div>
+        </details>
+      </div>
+
+      <div className="hidden w-full lg:block">
+        <div className="max-h-[calc(100vh-5rem)] w-full overflow-y-auto">{tocPanel("sidebar")}</div>
+      </div>
+    </>
   );
 }

@@ -36,4 +36,18 @@ describe("shouldSkipMiddlewareAnalytics", () => {
       )
     ).toBe(false);
   });
+
+  it("skips probe paths case-insensitively", () => {
+    expect(shouldSkipMiddlewareAnalytics("/.ENV", "Mozilla/5.0")).toBe(true);
+    expect(shouldSkipMiddlewareAnalytics("/.Git/HEAD", "curl/8")).toBe(true);
+  });
+
+  it("skips scanner user agents from shared noise list", () => {
+    expect(
+      shouldSkipMiddlewareAnalytics(
+        "/",
+        "Mozilla/5.0 (compatible; NetcraftSurveyAgent/1.0; +info@netcraft.com)"
+      )
+    ).toBe(true);
+  });
 });

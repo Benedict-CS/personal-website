@@ -34,21 +34,21 @@ export default function AiCopilotPage() {
     <div className="space-y-4">
       <div className="flex items-center justify-between">
         <div>
-          <h1 className="text-2xl font-bold text-slate-900">AI Copilot</h1>
-          <p className="text-slate-600">Prompt-driven website generation with auto pages and block seeding.</p>
+          <h1 className="text-2xl font-bold text-foreground">AI Copilot</h1>
+          <p className="text-muted-foreground">Prompt-driven website generation with auto pages and block seeding.</p>
         </div>
         <Link href={`/dashboard/sites/${siteId}/pages`}>
           <Button variant="outline">Back to Pages</Button>
         </Link>
       </div>
-      <div className="rounded border border-slate-200 bg-white p-4 space-y-3">
+      <div className="rounded border border-border bg-card p-4 space-y-3">
         <label className="text-sm font-medium">Prompt</label>
         <Textarea value={prompt} onChange={(e) => setPrompt(e.target.value)} rows={5} />
         <Button onClick={generate}>Generate Site with AI</Button>
-        {status ? <p className="text-sm text-slate-600">{status}</p> : null}
+        {status ? <p className="text-sm text-muted-foreground">{status}</p> : null}
       </div>
       {preview ? (
-        <pre className="rounded border border-slate-200 bg-slate-50 p-3 text-xs overflow-auto">{preview}</pre>
+        <pre className="rounded border border-border bg-muted/40 p-3 text-xs overflow-auto">{preview}</pre>
       ) : null}
     </div>
   );

@@ -1,12 +1,28 @@
 "use client";
 
-import { useState, useEffect, useMemo, useRef } from "react";
+import { useState, useEffect, useMemo, useRef, useCallback } from "react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { ConfirmDialog } from "@/components/ui/confirm-dialog";
-import { Trash2, Image as ImageIcon, Loader2, Upload, Copy, Check } from "lucide-react";
+import { Trash2, Image as ImageIcon, Loader2, Upload, Copy, Check, FileEdit } from "lucide-react";
+import {
+  broadcastCmsMediaMarkdown,
+  markdownImageFromMediaFile,
+} from "@/lib/cms-media-insert";
+import {
+  isMediaGridSort,
+  MEDIA_GRID_SORT_OPTIONS,
+  sortMediaFiles,
+  type MediaGridSort,
+} from "@/lib/media-grid-sort";
 import Image from "next/image";
+import { useToast } from "@/contexts/toast-context";
+import { DashboardPageHeader } from "@/components/dashboard/dashboard-ui";
+import {
+  DASHBOARD_DROP_ZONE_ACTIVE,
+  DASHBOARD_DROP_ZONE_IDLE,
+} from "@/components/dashboard/dashboard-drag-zone-classes";
 
 interface MediaFile {
   name: string;
@@ -78,6 +94,7 @@ function getDeltaTrend(delta: { candidateDelta: number; estimatedSavedBytesDelta
   return "mixed";
 }
 
+const MEDIA_GRID_SORT_PREF_KEY = "media-library-grid-sort-v1";
 const MEDIA_OPTIMIZE_SORT_PREF_KEY = "media-optimize-sort-pref-v1";
 const MEDIA_OPTIMIZE_FILTER_PREF_KEY = "media-optimize-filter-pref-v1";
 const MEDIA_OPTIMIZE_RUN_PREF_KEY = "media-optimize-run-pref-v1";
@@ -86,6 +103,7 @@ const DEFAULT_OPTIMIZE_MAX_ITEMS = 10;
 const DEFAULT_OPTIMIZE_ERROR_FILTER = "all";
 
 export default function MediaContent() {
+  const { toast } = useToast();
   const [files, setFiles] = useState<MediaFile[]>([]);
   const [search, setSearch] = useState("");
   const [isLoading, setIsLoading] = useState(true);
@@ -103,6 +121,9 @@ export default function MediaContent() {
   const [deleteConfirm, setDeleteConfirm] = useState(false);
   const [deleting, setDeleting] = useState(false);
   const [displayLimit, setDisplayLimit] = useState(24);
+  /** Roving keyboard focus index for the visible grid (arrow keys). */
+  const [mediaKbdIndex, setMediaKbdIndex] = useState<number | null>(null);
+  const mediaGridRef = useRef<HTMLDivElement>(null);
   const [uploadProgress, setUploadProgress] = useState<{ current: number; total: number; percent: number } | null>(null);
   const [isAssessingOptimize, setIsAssessingOptimize] = useState(false);
   const [isRunningOptimize, setIsRunningOptimize] = useState(false);
@@ -132,6 +153,12 @@ export default function MediaContent() {
     estimatedSavedBytes: number;
   } | null>(null);
   const inputRef = useRef<HTMLInputElement>(null);
+  const uploadFilesRef = useRef<((fileList: FileList | null) => Promise<void>) | null>(null);
+  const windowDragDepthRef = useRef(0);
+  const [fullWindowDrop, setFullWindowDrop] = useState(false);
+  const [insertedName, setInsertedName] = useState<string | null>(null);
+  const [gridSort, setGridSort] = useState<MediaGridSort>("newest");
+  const skipInitialGridSortPersist = useRef(true);
 
   const MEDIA_PAGE_SIZE = 24;
 
@@ -173,7 +200,7 @@ export default function MediaContent() {
     }
   };
 
-  const copyUrl = async (url: string, name: string) => {
+  const copyUrl = useCallback(async (url: string, name: string) => {
     try {
       await navigator.clipboard.writeText(url);
       setCopiedName(name);
@@ -182,6 +209,25 @@ export default function MediaContent() {
       setDeleteStatus({ show: true, message: "Copy failed", type: "error" });
       setTimeout(() => setDeleteStatus(null), 2000);
     }
+  }, []);
+
+  const insertIntoActivePost = async (file: MediaFile) => {
+    const md = markdownImageFromMediaFile(file.name, file.url);
+    try {
+      await navigator.clipboard.writeText(md);
+    } catch {
+      /* clipboard optional */
+    }
+    broadcastCmsMediaMarkdown(md);
+    setInsertedName(file.name);
+    setTimeout(() => setInsertedName(null), 2200);
+    setDeleteStatus({
+      show: true,
+      message:
+        "Markdown copied to clipboard and sent to open editor tabs. Paste in the post if no editor is open.",
+      type: "success",
+    });
+    setTimeout(() => setDeleteStatus(null), 4500);
   };
 
   // Load media list
@@ -216,6 +262,28 @@ export default function MediaContent() {
   useEffect(() => {
     setDisplayLimit(MEDIA_PAGE_SIZE);
   }, [search]);
+
+  useEffect(() => {
+    try {
+      const raw = localStorage.getItem(MEDIA_GRID_SORT_PREF_KEY);
+      if (!raw) return;
+      if (isMediaGridSort(raw)) setGridSort(raw);
+    } catch {
+      // Ignore malformed localStorage.
+    }
+  }, []);
+
+  useEffect(() => {
+    if (skipInitialGridSortPersist.current) {
+      skipInitialGridSortPersist.current = false;
+      return;
+    }
+    try {
+      localStorage.setItem(MEDIA_GRID_SORT_PREF_KEY, gridSort);
+    } catch {
+      // Ignore storage write failures.
+    }
+  }, [gridSort]);
 
   useEffect(() => {
     try {
@@ -390,7 +458,7 @@ export default function MediaContent() {
       const file = toUpload[i];
       setUploadProgress({ current: i + 1, total, percent: Math.round(((i + 1) / total) * 100) });
       try {
-        const result = await new Promise<boolean>((resolve) => {
+        const result = await new Promise<{ ok: boolean; url?: string }>((resolve) => {
           const form = new FormData();
           form.append("file", file);
           const xhr = new XMLHttpRequest();
@@ -400,13 +468,34 @@ export default function MediaContent() {
               setUploadProgress({ current: i + 1, total, percent: Math.round(pct * 100) });
             }
           });
-          xhr.addEventListener("load", () => resolve(xhr.status >= 200 && xhr.status < 300));
-          xhr.addEventListener("error", () => resolve(false));
+          xhr.addEventListener("load", () => {
+            if (xhr.status >= 200 && xhr.status < 300) {
+              try {
+                const data = JSON.parse(xhr.responseText) as { url?: string };
+                resolve({ ok: true, url: data.url });
+              } catch {
+                resolve({ ok: false });
+              }
+            } else {
+              resolve({ ok: false });
+            }
+          });
+          xhr.addEventListener("error", () => resolve({ ok: false }));
           xhr.open("POST", "/api/upload");
           xhr.send(form);
         });
-        if (result) ok++;
-        else err++;
+        if (result.ok && result.url) {
+          ok++;
+          setFiles((prev) => [
+            {
+              name: file.name,
+              size: file.size,
+              createdAt: new Date().toISOString(),
+              url: result.url!,
+            },
+            ...prev.filter((p) => p.url !== result.url),
+          ]);
+        } else err++;
       } catch {
         err++;
       }
@@ -414,6 +503,9 @@ export default function MediaContent() {
     setUploadProgress(null);
     setUploading(false);
     if (ok > 0) await fetchMediaFiles();
+    if (err > 0 && ok === 0) {
+      toast("Upload failed. Check file types (JPEG, PNG, GIF, WebP) and storage availability.", "error");
+    }
     setDeleteStatus({
       show: true,
       message: ok > 0 ? `Uploaded ${ok} image(s).${err ? ` ${err} failed.` : ""}` : err > 0 ? "Upload failed. Only JPEG, PNG, GIF, WebP are allowed." : "No files to upload.",
@@ -421,6 +513,8 @@ export default function MediaContent() {
     });
     setTimeout(() => setDeleteStatus(null), 4000);
   };
+
+  uploadFilesRef.current = uploadFiles;
 
   const handleDrop = (e: React.DragEvent) => {
     e.preventDefault();
@@ -922,8 +1016,55 @@ export default function MediaContent() {
     showOnlyCandidates && candidateKeySet.size > 0
       ? filteredFilesBase.filter((f) => candidateKeySet.has(f.name))
       : filteredFilesBase;
-  const visibleFiles = filteredFiles.slice(0, displayLimit);
-  const hasMore = filteredFiles.length > displayLimit;
+
+  const sortedFilteredFiles = useMemo(
+    () => sortMediaFiles(filteredFiles, gridSort),
+    [filteredFiles, gridSort]
+  );
+
+  const visibleFiles = sortedFilteredFiles.slice(0, displayLimit);
+  const hasMore = sortedFilteredFiles.length > displayLimit;
+
+  useEffect(() => {
+    setMediaKbdIndex(null);
+  }, [search, displayLimit, filteredFiles.length, gridSort]);
+
+  const handleMediaGridKeyDown = useCallback(
+    (e: React.KeyboardEvent<HTMLDivElement>) => {
+      if (visibleFiles.length === 0) return;
+      if (e.key === "ArrowDown" || e.key === "ArrowRight") {
+        e.preventDefault();
+        setMediaKbdIndex((i) => {
+          const cur = i === null ? -1 : i;
+          return Math.min(cur + 1, visibleFiles.length - 1);
+        });
+        return;
+      }
+      if (e.key === "ArrowUp" || e.key === "ArrowLeft") {
+        e.preventDefault();
+        setMediaKbdIndex((i) => {
+          if (i === null) return Math.max(0, visibleFiles.length - 1);
+          return Math.max(i - 1, 0);
+        });
+        return;
+      }
+      if (e.key === "Home") {
+        e.preventDefault();
+        setMediaKbdIndex(0);
+        return;
+      }
+      if (e.key === "End") {
+        e.preventDefault();
+        setMediaKbdIndex(visibleFiles.length - 1);
+        return;
+      }
+      if (e.key === "Enter" && mediaKbdIndex !== null) {
+        const f = visibleFiles[mediaKbdIndex];
+        if (f) void copyUrl(f.url, f.name);
+      }
+    },
+    [visibleFiles, mediaKbdIndex, copyUrl]
+  );
 
   useEffect(() => {
     return () => {
@@ -931,8 +1072,55 @@ export default function MediaContent() {
     };
   }, []);
 
+  useEffect(() => {
+    const hasFiles = (e: DragEvent) => Boolean(e.dataTransfer?.types && [...e.dataTransfer.types].includes("Files"));
+    const onDragEnter = (e: DragEvent) => {
+      if (!hasFiles(e)) return;
+      e.preventDefault();
+      windowDragDepthRef.current += 1;
+      setFullWindowDrop(true);
+    };
+    const onDragLeave = (e: DragEvent) => {
+      if (!hasFiles(e)) return;
+      e.preventDefault();
+      windowDragDepthRef.current = Math.max(0, windowDragDepthRef.current - 1);
+      if (windowDragDepthRef.current === 0) setFullWindowDrop(false);
+    };
+    const onDragOver = (e: DragEvent) => {
+      if (hasFiles(e)) e.preventDefault();
+    };
+    const onDropWindow = (e: DragEvent) => {
+      if (!hasFiles(e)) return;
+      e.preventDefault();
+      windowDragDepthRef.current = 0;
+      setFullWindowDrop(false);
+      if (e.dataTransfer?.files?.length) void uploadFilesRef.current?.(e.dataTransfer.files);
+    };
+    document.addEventListener("dragenter", onDragEnter);
+    document.addEventListener("dragleave", onDragLeave);
+    document.addEventListener("dragover", onDragOver);
+    document.addEventListener("drop", onDropWindow);
+    return () => {
+      document.removeEventListener("dragenter", onDragEnter);
+      document.removeEventListener("dragleave", onDragLeave);
+      document.removeEventListener("dragover", onDragOver);
+      document.removeEventListener("drop", onDropWindow);
+    };
+  }, []);
+
   return (
-    <div className="space-y-6">
+    <div className="relative min-h-[calc(100vh-8rem)] space-y-8">
+      {fullWindowDrop ? (
+        <div className="pointer-events-none fixed inset-0 z-[100] flex flex-col items-center justify-center border-4 border-dashed border-border bg-card/92 backdrop-blur-[3px] px-6 text-center">
+          <div className="rounded-2xl border border-border/90 bg-card p-10 shadow-lg max-w-md">
+            <Upload className="mx-auto h-12 w-12 text-muted-foreground" aria-hidden />
+            <p className="mt-4 text-lg font-semibold tracking-tight text-foreground">Drop images to upload</p>
+            <p className="mt-2 text-sm text-muted-foreground leading-relaxed">
+              JPEG, PNG, GIF, or WebP — multiple files supported.
+            </p>
+          </div>
+        </div>
+      ) : null}
       <ConfirmDialog
         open={showCleanupConfirm}
         onClose={() => setShowCleanupConfirm(false)}
@@ -943,8 +1131,10 @@ export default function MediaContent() {
         loading={isCleaning}
         onConfirm={handleCleanup}
       />
-      <div className="flex flex-wrap items-center justify-between gap-4">
-        <h2 className="text-3xl font-bold text-slate-900">Media</h2>
+      <DashboardPageHeader
+        title="Media library"
+        description="Drag and drop images anywhere on this page to upload. Copy a URL or send markdown to an open post editor."
+      >
         <div className="flex items-center gap-2 flex-wrap">
           <input
             ref={inputRef}
@@ -981,6 +1171,24 @@ export default function MediaContent() {
             onChange={(e) => setSearch(e.target.value)}
             className="max-w-[200px]"
           />
+          <label className="flex flex-col gap-1 text-xs text-muted-foreground">
+            Sort
+            <select
+              value={gridSort}
+              onChange={(e) => {
+                const v = e.target.value;
+                if (isMediaGridSort(v)) setGridSort(v);
+              }}
+              className="h-9 min-w-[140px] rounded-md border border-border bg-card px-2 text-sm text-foreground shadow-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+              aria-label="Sort media grid"
+            >
+              {MEDIA_GRID_SORT_OPTIONS.map((o) => (
+                <option key={o.value} value={o.value}>
+                  {o.label}
+                </option>
+              ))}
+            </select>
+          </label>
           <Button
             type="button"
             variant={showOnlyCandidates ? "default" : "outline"}
@@ -1021,7 +1229,7 @@ export default function MediaContent() {
             </Button>
           )}
         </div>
-      </div>
+      </DashboardPageHeader>
       <ConfirmDialog
         open={deleteConfirm}
         onClose={() => setDeleteConfirm(false)}
@@ -1034,7 +1242,7 @@ export default function MediaContent() {
       />
 
       {!isLoading && (
-        <p className="text-sm text-slate-600">
+        <p className="text-sm text-muted-foreground">
           {files.length} file{files.length !== 1 ? "s" : ""}
           {files.length > 0 && (
             <> · {formatFileSize(files.reduce((sum, f) => sum + f.size, 0))} total</>
@@ -1058,7 +1266,7 @@ export default function MediaContent() {
       <Card>
         <CardContent className="space-y-3 p-4">
           <div className="flex flex-wrap items-end gap-3">
-            <label className="text-xs text-slate-600">
+            <label className="text-xs text-muted-foreground">
               Min size (bytes)
               <Input
                 type="number"
@@ -1069,7 +1277,7 @@ export default function MediaContent() {
                 className="mt-1 w-[170px]"
               />
             </label>
-            <label className="text-xs text-slate-600">
+            <label className="text-xs text-muted-foreground">
               Max items per run
               <Input
                 type="number"
@@ -1139,13 +1347,13 @@ export default function MediaContent() {
             </Button>
           </div>
           {batchProgress ? (
-            <p className="text-xs text-slate-600">
+            <p className="text-xs text-muted-foreground">
               Batch progress: {batchProgress.current}/{batchProgress.total}
             </p>
           ) : null}
           {lastAssessmentRefreshedAt ? (
             <div className="flex flex-wrap items-center gap-2">
-              <p className="text-xs text-slate-500">
+              <p className="text-xs text-muted-foreground">
                 Candidates auto-refreshed at {new Date(lastAssessmentRefreshedAt).toLocaleTimeString()}
               </p>
               <span
@@ -1156,7 +1364,7 @@ export default function MediaContent() {
                       ? "bg-red-100 text-red-800"
                       : assessmentRefreshStatus === "running"
                         ? "bg-blue-100 text-blue-800"
-                        : "bg-slate-100 text-slate-700"
+                        : "bg-muted/40 text-foreground/90"
                 }`}
               >
                 {assessmentRefreshStatus === "success"
@@ -1182,7 +1390,7 @@ export default function MediaContent() {
                 <span
                   className={`rounded-full px-2 py-0.5 text-[11px] ${
                     trend === "unchanged"
-                      ? "bg-slate-100 text-slate-700"
+                      ? "bg-muted/40 text-foreground/90"
                       : trend === "improved"
                         ? "bg-green-100 text-green-800"
                         : trend === "regressed"
@@ -1203,7 +1411,7 @@ export default function MediaContent() {
             </div>
           ) : null}
           {optimizeSummary && (
-            <div className="rounded-lg border border-slate-200 bg-slate-50 p-3 text-sm text-slate-700">
+            <div className="rounded-lg border border-border bg-muted/25 p-3 text-sm text-foreground/90">
               <p>
                 Candidates: <span className="font-medium">{optimizeSummary.candidateCount}</span>
                 {" · "}
@@ -1218,7 +1426,7 @@ export default function MediaContent() {
                 ) : null}
               </p>
               {optimizeSummary.note ? (
-                <p className="mt-1 text-xs text-slate-500">{optimizeSummary.note}</p>
+                <p className="mt-1 text-xs text-muted-foreground">{optimizeSummary.note}</p>
               ) : null}
               {Array.isArray(optimizeSummary.results) && optimizeSummary.results.length > 0 ? (
                 <div className="mt-2">
@@ -1313,13 +1521,13 @@ export default function MediaContent() {
                 </div>
               ) : null}
               {Array.isArray(optimizeSummary.results) && optimizeSummary.results.length > 0 ? (
-                <div className="mt-2 max-h-40 overflow-auto rounded border border-slate-200 bg-white p-2">
+                <div className="mt-2 max-h-40 overflow-auto rounded border border-border bg-card p-2">
                   {visibleOptimizeResults.length === 0 ? (
-                    <p className="text-xs text-slate-500">No results for current error filter.</p>
+                    <p className="text-xs text-muted-foreground">No results for current error filter.</p>
                   ) : null}
                   {visibleOptimizeResults.slice(0, 30).map((result) => (
-                      <div key={result.key} className="mb-1 border-b border-slate-100 pb-1 last:mb-0 last:border-0 last:pb-0">
-                        <p className="text-xs text-slate-600">
+                      <div key={result.key} className="mb-1 border-b border-border/40 pb-1 last:mb-0 last:border-0 last:pb-0">
+                        <p className="text-xs text-muted-foreground">
                           {result.status === "optimized" ? "Optimized" : result.status === "skipped" ? "Skipped" : "Failed"}
                           {result.status === "failed" ? (
                             <span
@@ -1360,9 +1568,9 @@ export default function MediaContent() {
                 </div>
               ) : null}
               {Array.isArray(optimizeSummary.candidates) && optimizeSummary.candidates.length > 0 ? (
-                <div className="mt-2 max-h-40 overflow-auto rounded border border-slate-200 bg-white p-2">
+                <div className="mt-2 max-h-40 overflow-auto rounded border border-border bg-card p-2">
                   {optimizeSummary.candidates.slice(0, 30).map((candidate) => (
-                    <p key={candidate.key} className="text-xs text-slate-600">
+                    <p key={candidate.key} className="text-xs text-muted-foreground">
                       Candidate · {candidate.key} · {formatFileSize(candidate.sizeBytes)} · est save {formatFileSize(candidate.estimatedSavedBytes)}
                     </p>
                   ))}
@@ -1374,14 +1582,14 @@ export default function MediaContent() {
       </Card>
 
       {isLoading ? (
-        <div className="grid grid-cols-2 gap-4 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 animate-pulse">
+        <div className="columns-2 gap-4 sm:columns-3 lg:columns-4 xl:columns-5 [column-fill:_balance]">
           {[1, 2, 3, 4, 5, 6].map((i) => (
-            <Card key={i} className="overflow-hidden">
-              <div className="aspect-square w-full bg-slate-200" />
+            <Card key={i} className="mb-4 break-inside-avoid overflow-hidden">
+              <div className="aspect-square w-full bg-muted/55" />
               <CardContent className="p-3">
-                <div className="h-4 w-3/4 rounded bg-slate-200" />
-                <div className="mt-2 h-3 w-16 rounded bg-slate-100" />
-                <div className="mt-2 h-3 w-24 rounded bg-slate-100" />
+                <div className="h-4 w-3/4 rounded bg-muted/55" />
+                <div className="mt-2 h-3 w-16 rounded bg-muted/40" />
+                <div className="mt-2 h-3 w-24 rounded bg-muted/40" />
               </CardContent>
             </Card>
           ))}
@@ -1389,7 +1597,7 @@ export default function MediaContent() {
       ) : files.length === 0 ? (
         <Card
           className={`border-2 border-dashed transition-colors ${
-            dragOver ? "border-slate-400 bg-slate-50" : "border-slate-200"
+            dragOver ? DASHBOARD_DROP_ZONE_ACTIVE : DASHBOARD_DROP_ZONE_IDLE
           }`}
           onDragOver={(e) => {
             e.preventDefault();
@@ -1399,11 +1607,11 @@ export default function MediaContent() {
           onDrop={handleDrop}
         >
           <CardContent className="py-16 text-center">
-            <div className="mx-auto flex h-16 w-16 items-center justify-center rounded-full bg-slate-100">
-              <ImageIcon className="h-10 w-10 text-slate-500" />
+            <div className="mx-auto flex h-16 w-16 items-center justify-center rounded-full bg-muted/40">
+              <ImageIcon className="h-10 w-10 text-muted-foreground" />
             </div>
-            <p className="mt-6 text-lg font-medium text-slate-800">No media files yet</p>
-            <p className="mt-2 text-sm text-slate-500 max-w-sm mx-auto leading-relaxed">
+            <p className="mt-6 text-lg font-medium text-foreground">No media files yet</p>
+            <p className="mt-2 text-sm text-muted-foreground max-w-sm mx-auto leading-relaxed">
               Upload images to use in posts, or drag and drop here. Supported: JPEG, PNG, GIF, WebP.
             </p>
             <Button
@@ -1417,7 +1625,7 @@ export default function MediaContent() {
                 : "Upload images"}
             </Button>
             {uploading && uploadProgress && (
-              <div className="mt-4 w-full max-w-sm mx-auto h-2 rounded-full bg-slate-200 overflow-hidden">
+              <div className="mt-4 w-full max-w-sm mx-auto h-2 rounded-full bg-muted/55 overflow-hidden">
                 <div
                   className="h-full bg-primary transition-all duration-300"
                   style={{ width: `${uploadProgress.percent}%` }}
@@ -1430,7 +1638,7 @@ export default function MediaContent() {
         <>
           <div
             className={`rounded-lg border-2 border-dashed p-4 text-center transition-colors ${
-              dragOver ? "border-slate-400 bg-slate-50" : "border-slate-200"
+              dragOver ? DASHBOARD_DROP_ZONE_ACTIVE : DASHBOARD_DROP_ZONE_IDLE
             }`}
             onDragOver={(e) => {
               e.preventDefault();
@@ -1439,7 +1647,7 @@ export default function MediaContent() {
             onDragLeave={() => setDragOver(false)}
             onDrop={handleDrop}
           >
-            <p className="text-sm text-slate-600">Drag and drop images here, or</p>
+            <p className="text-sm text-muted-foreground">Drag and drop images here, or</p>
             <Button
               variant="outline"
               size="sm"
@@ -1453,7 +1661,7 @@ export default function MediaContent() {
                 : "Upload images"}
             </Button>
             {uploading && uploadProgress && (
-              <div className="mt-2 w-full max-w-xs h-2 rounded-full bg-slate-200 overflow-hidden">
+              <div className="mt-2 w-full max-w-xs h-2 rounded-full bg-muted/55 overflow-hidden">
                 <div
                   className="h-full bg-primary transition-all duration-300"
                   style={{ width: `${uploadProgress.percent}%` }}
@@ -1462,29 +1670,42 @@ export default function MediaContent() {
             )}
           </div>
           {search.trim() && (
-            <p className="text-sm text-slate-600">
-              {filteredFiles.length === 0
+            <p className="text-sm text-muted-foreground">
+              {sortedFilteredFiles.length === 0
                 ? "No files match your search."
-                : `Showing ${visibleFiles.length} of ${filteredFiles.length} (${files.length} total).`}
+                : `Showing ${visibleFiles.length} of ${sortedFilteredFiles.length} (${files.length} total).`}
             </p>
           )}
           {!search.trim() && files.length > MEDIA_PAGE_SIZE && (
-            <p className="text-sm text-slate-600">
-              Showing {visibleFiles.length} of {filteredFiles.length} files.
+            <p className="text-sm text-muted-foreground">
+              Showing {visibleFiles.length} of {sortedFilteredFiles.length} files.
             </p>
           )}
-          <div className="grid grid-cols-2 gap-4 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5">
-          {visibleFiles.map((file) => (
-            <Card key={file.name} className={`overflow-hidden transition-shadow hover:shadow-md ${selected.has(file.name) ? "ring-2 ring-primary" : ""}`}>
-              <div className="relative aspect-square w-full bg-slate-100 group">
+          <div
+            ref={mediaGridRef}
+            tabIndex={0}
+            role="grid"
+            aria-label="Media files"
+            aria-rowcount={visibleFiles.length}
+            onKeyDown={handleMediaGridKeyDown}
+            className="columns-2 gap-4 rounded-xl pb-1 outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 sm:columns-3 lg:columns-4 xl:columns-5 [column-fill:_balance]"
+          >
+          {visibleFiles.map((file, index) => (
+            <Card
+              key={file.name}
+              className={`mb-4 break-inside-avoid overflow-hidden border-border/90 shadow-sm transition-[box-shadow,transform] duration-200 hover:-translate-y-0.5 hover:shadow-md ${
+                selected.has(file.name) ? "ring-2 ring-muted-foreground/35" : ""
+              } ${mediaKbdIndex === index ? "ring-2 ring-ring ring-offset-2" : ""}`}
+            >
+              <div className="relative aspect-square w-full bg-muted/40">
                 <button
                   type="button"
                   onClick={() => toggleSelected(file.name)}
-                  className="absolute left-2 top-2 z-10 flex h-5 w-5 items-center justify-center rounded border bg-white shadow"
+                  className="absolute left-2 top-2 z-10 flex h-6 w-6 items-center justify-center rounded-md border border-border bg-card/95 shadow-sm hover:bg-card"
                   aria-label={selected.has(file.name) ? "Deselect" : "Select"}
                 >
                   {selected.has(file.name) ? (
-                    <span className="text-xs font-bold text-primary">✓</span>
+                    <span className="text-xs font-bold text-foreground">✓</span>
                   ) : null}
                 </button>
                 <Image
@@ -1493,30 +1714,40 @@ export default function MediaContent() {
                   fill
                   unoptimized
                   className="object-cover"
-                  sizes="(max-width: 768px) 50vw, (max-width: 1024px) 33vw, 20vw"
+                  sizes="(max-width: 640px) 45vw, (max-width: 1024px) 30vw, 22vw"
                 />
-                <div className="absolute inset-0 bg-slate-900/0 group-hover:bg-slate-900/40 transition-colors flex items-center justify-center opacity-0 group-hover:opacity-100">
+              </div>
+              <CardContent className="space-y-3 p-3">
+                <div>
+                  <p className="truncate text-xs font-medium text-foreground" title={file.name}>
+                    {file.name}
+                  </p>
+                  <p className="mt-0.5 text-[11px] text-muted-foreground">
+                    {formatFileSize(file.size)} · {formatDate(file.createdAt)}
+                  </p>
+                </div>
+                <div className="flex flex-col gap-1.5">
                   <Button
+                    type="button"
+                    size="sm"
+                    variant="outline"
+                    className="h-8 w-full justify-center gap-1.5 border-border text-xs font-medium"
+                    onClick={() => void copyUrl(file.url, file.name)}
+                  >
+                    {copiedName === file.name ? <Check className="h-3.5 w-3.5" /> : <Copy className="h-3.5 w-3.5" />}
+                    {copiedName === file.name ? "Copied URL" : "Copy URL"}
+                  </Button>
+                  <Button
+                    type="button"
                     size="sm"
                     variant="secondary"
-                    className="gap-1.5 shadow-lg"
-                    onClick={() => copyUrl(file.url, file.name)}
+                    className="h-8 w-full justify-center gap-1.5 bg-muted/40 text-xs font-medium text-foreground hover:bg-muted/65"
+                    onClick={() => void insertIntoActivePost(file)}
                   >
-                    {copiedName === file.name ? <Check className="h-4 w-4" /> : <Copy className="h-4 w-4" />}
-                    {copiedName === file.name ? "Copied" : "Copy URL"}
+                    {insertedName === file.name ? <Check className="h-3.5 w-3.5" /> : <FileEdit className="h-3.5 w-3.5" />}
+                    {insertedName === file.name ? "Sent" : "Insert into post"}
                   </Button>
                 </div>
-              </div>
-              <CardContent className="p-3">
-                <p className="truncate text-xs font-medium text-slate-900" title={file.name}>
-                  {file.name}
-                </p>
-                <p className="mt-1 text-xs text-slate-500">
-                  {formatFileSize(file.size)}
-                </p>
-                <p className="mt-1 text-xs text-slate-400">
-                  {formatDate(file.createdAt)}
-                </p>
               </CardContent>
             </Card>
           ))}
@@ -1527,7 +1758,7 @@ export default function MediaContent() {
                 variant="outline"
                 onClick={() => setDisplayLimit((n) => n + MEDIA_PAGE_SIZE)}
               >
-                Load more ({filteredFiles.length - displayLimit} remaining)
+                Load more ({sortedFilteredFiles.length - displayLimit} remaining)
               </Button>
             </div>
           )}

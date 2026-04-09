@@ -6,9 +6,12 @@ import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Card, CardContent } from "@/components/ui/card";
 import { TableOfContents } from "@/components/toc";
-import { ReadingProgress } from "@/components/reading-progress";
+import { ArticleReadingChrome } from "@/components/article-reading-chrome";
 import { MarkdownRenderer } from "@/components/markdown-renderer";
+import { MdxPostBody } from "@/components/mdx/mdx-post-body";
+import { shouldRenderAsMdx } from "@/lib/mdx-content-detect";
 import { calculateReadingTime, formatReadingTime } from "@/lib/reading-time";
+import { extractTocHeadingsFromMarkdown } from "@/lib/markdown-toc";
 
 export const dynamic = "force-dynamic";
 
@@ -27,7 +30,29 @@ export default async function BlogPreviewPage({ searchParams }: PreviewPageProps
     typeof resolved?.token === "string" ? resolved.token : undefined;
 
   if (!token) {
-    notFound();
+    return (
+      <div className="container mx-auto max-w-xl px-4 py-12 sm:px-6 sm:py-16">
+        <div className="rounded-xl border border-slate-200 bg-white p-6 shadow-sm sm:p-8">
+          <h1 className="text-2xl font-semibold text-slate-900">Draft preview</h1>
+          <p className="mt-3 text-slate-600 leading-relaxed">
+            A valid preview URL includes a secret token in the query string. Open your post in the dashboard and use
+            &quot;Copy preview link&quot; to generate a read-only link you can share.
+          </p>
+          <p className="mt-3 text-sm text-slate-500">
+            If you opened this page without a token, nothing is wrong—this route only serves draft previews when the
+            token is present.
+          </p>
+          <div className="mt-6 flex flex-wrap gap-3">
+            <Link href="/dashboard/posts">
+              <Button>Go to posts</Button>
+            </Link>
+            <Link href="/blog">
+              <Button variant="outline">Back to blog</Button>
+            </Link>
+          </div>
+        </div>
+      </div>
+    );
   }
 
   const post = await prisma.post.findUnique({
@@ -45,6 +70,8 @@ export default async function BlogPreviewPage({ searchParams }: PreviewPageProps
     notFound();
   }
 
+  const tocHeadings = extractTocHeadingsFromMarkdown(post.content);
+
   const formatDate = (date: Date) =>
     new Date(date).toLocaleDateString("en-US", {
       year: "numeric",
@@ -56,7 +83,7 @@ export default async function BlogPreviewPage({ searchParams }: PreviewPageProps
 
   return (
     <>
-      <ReadingProgress />
+      <ArticleReadingChrome title={post.title} />
       <div className="container mx-auto max-w-[90rem] px-4 py-12">
         <div className="grid grid-cols-1 gap-10 lg:grid-cols-[1fr_250px]">
           <div className="min-w-0">
@@ -93,13 +120,23 @@ export default async function BlogPreviewPage({ searchParams }: PreviewPageProps
                     )}
                   </div>
 
-                  <div data-post-content>
-                    <MarkdownRenderer content={post.content} postId={post.id} editable={false} />
+                  <div
+                    data-post-content
+                    className="prose-reading prose-reading-article mx-auto w-full max-w-[70ch]"
+                  >
+                    {shouldRenderAsMdx(post.content) ? (
+                      <MdxPostBody content={post.content} postId={post.id} editable={false} />
+                    ) : (
+                      <MarkdownRenderer content={post.content} postId={post.id} editable={false} />
+                    )}
                   </div>
 
-                  <div className="border-t border-slate-200 pt-6">
+                  <div className="flex flex-wrap gap-3 border-t border-slate-200 pt-6">
+                    <Link href={`/dashboard/posts/${post.id}`}>
+                      <Button>Edit in dashboard</Button>
+                    </Link>
                     <Link href="/blog">
-                      <Button variant="outline">Back to Blog</Button>
+                      <Button variant="outline">Back to blog</Button>
                     </Link>
                   </div>
                 </div>
@@ -108,7 +145,7 @@ export default async function BlogPreviewPage({ searchParams }: PreviewPageProps
           </div>
 
           <aside className="lg:sticky lg:top-20 lg:self-start">
-            <TableOfContents content={post.content} />
+            <TableOfContents content={post.content} initialHeadings={tocHeadings} />
           </aside>
         </div>
       </div>

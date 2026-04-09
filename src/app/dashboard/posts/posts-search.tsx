@@ -34,7 +34,7 @@ export function PostsSearch({ defaultValue }: { defaultValue: string }) {
         apply(value);
       }}
     >
-      <Search className="h-4 w-4 text-slate-500 shrink-0" />
+      <Search className="h-4 w-4 text-muted-foreground shrink-0" />
       <Input
         type="search"
         placeholder="Search by title or slug..."

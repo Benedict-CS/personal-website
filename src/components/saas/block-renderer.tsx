@@ -4,6 +4,16 @@ import { memo } from "react";
 import type { CSSProperties } from "react";
 import Image from "next/image";
 import type { VisualBlock } from "@/types/saas";
+import {
+  parseFormFieldsText,
+  parseProjectsText,
+  parseSkillsText,
+  parseTimelineText,
+} from "@/lib/personal-brand-blocks";
+import { SkillBlockIcon } from "@/components/personal-brand/skill-block-icon";
+import { CodeSnippetBlock } from "@/components/dev-blocks/code-snippet-block";
+import { GitHubStatsBlock } from "@/components/dev-blocks/github-stats-block";
+import { LeetCodeStatsBlock } from "@/components/dev-blocks/leetcode-stats-block";
 
 function styleFromMap(map: Record<string, unknown>): CSSProperties {
   return {
@@ -144,6 +154,179 @@ function BlockNode({ block }: { block: VisualBlock }) {
           </ul>
         </section>
       );
+    case "ProfessionalHero":
+    case "professionalHero": {
+      const img = text(content.profileImageUrl, "");
+      return (
+        <section style={style} className="overflow-hidden">
+          <div className="flex flex-col items-center gap-6 sm:flex-row sm:items-start">
+            <div className="relative h-28 w-28 shrink-0 overflow-hidden rounded-full border border-slate-200 bg-slate-100">
+              {img ? (
+                <Image src={img} alt={title} width={112} height={112} className="h-full w-full object-cover" />
+              ) : (
+                <div className="flex h-full w-full items-center justify-center text-xs text-slate-400">Photo</div>
+              )}
+            </div>
+            <div className="min-w-0 flex-1 text-center sm:text-left">
+              <h2 className="text-3xl font-bold tracking-tight text-slate-900">{title}</h2>
+              {content.tagline ? (
+                <p className="mt-1 text-sm font-medium text-slate-700">{String(content.tagline)}</p>
+              ) : null}
+              <p className="mt-2 text-slate-600">{subtitle}</p>
+              <div className="mt-4 flex flex-wrap justify-center gap-2 sm:justify-start">
+                {(content.ctaText ?? content.buttonText) ? (
+                  <span className="rounded-full bg-slate-900 px-4 py-2 text-sm font-medium text-white">
+                    {String(content.ctaText ?? content.buttonText)}
+                  </span>
+                ) : null}
+                {(content.secondaryCtaText ?? content.secondaryButtonText) ? (
+                  <span className="rounded-full border border-slate-300 bg-white px-4 py-2 text-sm font-medium text-slate-800">
+                    {String(content.secondaryCtaText ?? content.secondaryButtonText)}
+                  </span>
+                ) : null}
+              </div>
+            </div>
+          </div>
+        </section>
+      );
+    }
+    case "ResumeTimeline":
+    case "resumeTimeline": {
+      const entries = parseTimelineText(text(content.timelineText, ""));
+      return (
+        <section style={style}>
+          <h3 className="mb-4 text-2xl font-semibold text-slate-900">{title}</h3>
+          <ul className="space-y-4 border-l-2 border-slate-200 pl-5">
+            {entries.map((e, i) => (
+              <li key={`${e.period}-${i}`} className="relative">
+                <span className="absolute -left-[1.35rem] top-2 h-2 w-2 rounded-full bg-slate-400" />
+                <p className="text-xs font-medium uppercase tracking-wide text-slate-500">{e.period}</p>
+                <p className="font-semibold text-slate-900">{e.title}</p>
+                <p className="text-sm text-slate-600">{e.organization}</p>
+                {e.description ? <p className="mt-1 text-sm text-slate-600">{e.description}</p> : null}
+              </li>
+            ))}
+          </ul>
+        </section>
+      );
+    }
+    case "ProjectShowcase":
+    case "projectShowcase": {
+      const projects = parseProjectsText(text(content.projectsText, ""));
+      return (
+        <section style={style}>
+          <h3 className="mb-4 text-2xl font-semibold text-slate-900">{title}</h3>
+          <div className="grid gap-4 sm:grid-cols-2">
+            {projects.map((p, i) => (
+              <article
+                key={`${p.title}-${i}`}
+                className="flex flex-col overflow-hidden rounded-xl border border-slate-200 bg-white shadow-sm"
+              >
+                <div className="relative h-40 w-full bg-slate-100">
+                  {p.imageUrl ? (
+                    <Image
+                      src={p.imageUrl}
+                      alt={p.title}
+                      width={800}
+                      height={320}
+                      className="h-full w-full object-cover"
+                    />
+                  ) : null}
+                </div>
+                <div className="p-4">
+                  <h4 className="font-semibold text-slate-900">{p.title}</h4>
+                  <p className="mt-1 text-sm text-slate-600">{p.summary}</p>
+                  {p.link ? (
+                    <a href={p.link} className="mt-2 inline-block text-sm font-medium text-blue-700 underline">
+                      View project
+                    </a>
+                  ) : null}
+                </div>
+              </article>
+            ))}
+          </div>
+        </section>
+      );
+    }
+    case "SkillGrid":
+    case "skillGrid": {
+      const skills = parseSkillsText(text(content.skillsText, ""));
+      return (
+        <section style={style}>
+          <h3 className="mb-4 text-2xl font-semibold text-slate-900">{title}</h3>
+          <div className="flex flex-wrap gap-2">
+            {skills.map((s, i) => (
+              <span
+                key={`${s.name}-${i}`}
+                className="inline-flex items-center gap-2 rounded-full border border-slate-200 bg-white px-3 py-1.5 text-sm text-slate-800 shadow-sm"
+              >
+                <SkillBlockIcon iconKey={s.iconKey} />
+                {s.name}
+                {s.level ? <span className="text-slate-500">· {s.level}</span> : null}
+              </span>
+            ))}
+          </div>
+        </section>
+      );
+    }
+    case "ContactFormModular":
+    case "contactFormModular": {
+      const fields = parseFormFieldsText(text(content.formFieldsText, ""));
+      return (
+        <section style={style} className="space-y-3">
+          <h3 className="text-xl font-semibold text-slate-900">{title}</h3>
+          {content.intro || content.subtitle ? (
+            <p className="text-sm text-slate-600">{String(content.intro ?? content.subtitle)}</p>
+          ) : null}
+          <div className="grid gap-2">
+            {fields.map((f, i) => (
+              <label key={`${f.label}-${i}`} className="block text-sm text-slate-700">
+                {f.label}
+                {f.required ? <span className="text-red-500"> *</span> : null}
+                <span className="mt-1 block rounded border border-slate-200 bg-white px-3 py-2 text-slate-400">
+                  {f.fieldType} field
+                </span>
+              </label>
+            ))}
+          </div>
+        </section>
+      );
+    }
+    case "CodeSnippet":
+    case "codeSnippet": {
+      const code = text(content.codeText, '// Hello\nconsole.log("world");');
+      const lang = text(content.codeLanguage, "typescript");
+      const fn = content.codeFilename != null ? String(content.codeFilename) : "";
+      return (
+        <section style={style} className="space-y-2">
+          {title && title !== "CodeSnippet" && title !== "codeSnippet" ? (
+            <h3 className="text-xl font-semibold text-slate-900">{title}</h3>
+          ) : null}
+          <CodeSnippetBlock code={code} language={lang} filename={fn || undefined} />
+        </section>
+      );
+    }
+    case "GitHubStats":
+    case "githubStats": {
+      const user = text(content.githubUsername, "");
+      const variant = content.githubStatsVariant === "repos" ? "repos" : "overview";
+      return (
+        <section style={style} className="space-y-2">
+          <h3 className="text-xl font-semibold text-slate-900">{title || "GitHub"}</h3>
+          <GitHubStatsBlock username={user} variant={variant} />
+        </section>
+      );
+    }
+    case "LeetCodeStats":
+    case "leetcodeStats": {
+      const user = text(content.leetcodeUsername, "");
+      return (
+        <section style={style} className="space-y-2">
+          <h3 className="text-xl font-semibold text-slate-900">{title || "LeetCode"}</h3>
+          <LeetCodeStatsBlock username={user} />
+        </section>
+      );
+    }
     default:
       return (
         <section style={style}>

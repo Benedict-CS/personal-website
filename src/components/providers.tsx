@@ -2,6 +2,7 @@
 
 import { useEffect } from "react";
 import { SessionProvider } from "next-auth/react";
+import { ToastProvider } from "@/contexts/toast-context";
 
 const CHUNK_RELOAD_KEY = "chunk-load-reload";
 
@@ -44,8 +45,10 @@ function ChunkLoadRecovery() {
 export function Providers({ children }: { children: React.ReactNode }) {
   return (
     <SessionProvider>
-      <ChunkLoadRecovery />
-      {children}
+      <ToastProvider>
+        <ChunkLoadRecovery />
+        {children}
+      </ToastProvider>
     </SessionProvider>
   );
 }

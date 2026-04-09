@@ -1,16 +1,23 @@
-name: CI - Build and Test (Optional)
+name: CI - Lint, Test, and Build
 
-# This CI workflow is optional and primarily validates build health.
-# If you do not need it, you can remove this file.
+# Validates lint, unit tests, and production build on every PR to `test` and on demand.
 
 on:
   pull_request:
     branches: [test]
-  workflow_dispatch: # Manual trigger
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: true
 
 jobs:
-  build:
+  ci:
     runs-on: ubuntu-latest
+    timeout-minutes: 45
 
     steps:
       - name: Checkout code
@@ -19,8 +26,8 @@ jobs:
       - name: Setup Node.js
         uses: actions/setup-node@v4
         with:
-          node-version: '20'
-          cache: 'npm'
+          node-version: "20"
+          cache: "npm"
 
       - name: Install dependencies
         run: npm ci
@@ -28,22 +35,35 @@ jobs:
       - name: Generate Prisma Client
         run: npx prisma generate
 
-      - name: Run linter
-        run: npm run lint
-        continue-on-error: true  # Do not block build on lint errors
-
-      - name: Build application
-        run: npm run build
+      - name: Lint, unit tests, and production build
+        run: npm run verify
         env:
           DATABASE_URL: postgresql://dummy:dummy@localhost:5432/dummy
-          NEXTAUTH_SECRET: dummy-secret
+          NEXTAUTH_SECRET: dummy-secret-for-ci-only
           NEXTAUTH_URL: http://localhost:3000
+          NEXT_PUBLIC_SITE_URL: http://localhost:3000
 
-      - name: Check build artifacts
+      - name: Verify build output
         run: |
           if [ -d ".next" ]; then
-            echo "✅ Build successful"
+            echo "Build output present (.next)"
           else
-            echo "❌ Build failed - .next directory not found"
+            echo "Missing .next after build"
             exit 1
           fi
+
+      - name: Install Playwright Chromium
+        run: npx playwright install --with-deps chromium
+
+      - name: Playwright E2E
+        run: CI=true PLAYWRIGHT_SKIP_BUILD=1 npm run test:e2e
+        env:
+          DATABASE_URL: postgresql://dummy:dummy@localhost:5432/dummy
+          NEXTAUTH_SECRET: dummy-secret-for-ci-only
+          # Match `playwright.config.ts` CI baseURL (`127.0.0.1` + `PLAYWRIGHT_E2E_PORT`, default 3041).
+          NEXTAUTH_URL: http://127.0.0.1:3041
+          NEXT_PUBLIC_SITE_URL: http://127.0.0.1:3041
+
+      - name: npm audit (critical only, informational)
+        run: npm audit --audit-level=critical
+        continue-on-error: true

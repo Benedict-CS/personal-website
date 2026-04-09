@@ -1,7 +1,7 @@
 "use client";
 
 import React, { createContext, useCallback, useContext, useState } from "react";
-import { motion, AnimatePresence } from "framer-motion";
+import { motion, AnimatePresence, useReducedMotion } from "framer-motion";
 
 type ToastType = "success" | "error" | "info";
 
@@ -21,6 +21,7 @@ let id = 0;
 
 export function ToastProvider({ children }: { children: React.ReactNode }) {
   const [items, setItems] = useState<ToastItem[]>([]);
+  const reduceMotion = useReducedMotion();
 
   const toast = useCallback((message: string, type: ToastType = "info") => {
     const currentId = ++id;
@@ -38,10 +39,12 @@ export function ToastProvider({ children }: { children: React.ReactNode }) {
           {items.map((item) => (
             <motion.div
               key={item.id}
-              initial={{ opacity: 0, x: 16, scale: 0.96 }}
+              initial={reduceMotion ? false : { opacity: 0, x: 16, scale: 0.96 }}
               animate={{ opacity: 1, x: 0, scale: 1 }}
-              exit={{ opacity: 0, x: 16 }}
-              transition={{ duration: 0.2, ease: [0.25, 0.46, 0.45, 0.94] }}
+              exit={reduceMotion ? { opacity: 0 } : { opacity: 0, x: 16 }}
+              transition={
+                reduceMotion ? { duration: 0 } : { duration: 0.2, ease: [0.25, 0.46, 0.45, 0.94] }
+              }
               className={`pointer-events-auto rounded-xl border px-4 py-3 shadow-[var(--shadow-lg)] text-sm font-medium ${
                 item.type === "success"
                   ? "border-emerald-200 bg-emerald-50 text-emerald-800"

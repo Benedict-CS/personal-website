@@ -4,7 +4,12 @@ import { prisma } from "@/lib/prisma";
 import { getSiteConfigForRender } from "@/lib/site-config";
 import { MarkdownRenderer } from "@/components/markdown-renderer";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { isScheduledLive, stripScheduledPublishAt } from "@/lib/custom-page-schedule";
+import {
+  isCustomPagePublicOnSite,
+  stripCustomPageDecoratorsForSeo,
+  stripScheduledPublishAt,
+} from "@/lib/custom-page-schedule";
+import { metaDescriptionFromMarkdown } from "@/lib/meta-description";
 
 export const dynamic = "force-dynamic";
 
@@ -17,14 +22,25 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
     select: { title: true, published: true, content: true },
   });
   if (!page) return { title: "Not Found" };
-  const live = (page.published ?? true) || isScheduledLive(page.content);
-  if (!live) return { title: "Not Found" };
+  if (!isCustomPagePublicOnSite(page.published, page.content)) return { title: "Not Found" };
   const config = await getSiteConfigForRender();
+  const canonicalPath = `/page/${encodeURIComponent(slug)}`;
+  const canonicalUrl = `${config.url.replace(/\/$/, "")}${canonicalPath}`;
+  const description = metaDescriptionFromMarkdown(stripCustomPageDecoratorsForSeo(page.content ?? ""), 160);
   return {
     title: page.title,
+    description: description || undefined,
+    alternates: { canonical: canonicalUrl },
     openGraph: {
       title: page.title,
-      url: `${config.url}/page/${slug}`,
+      description: description || undefined,
+      url: canonicalUrl,
+      type: "website",
+    },
+    twitter: {
+      card: "summary_large_image",
+      title: page.title,
+      description: description || undefined,
     },
   };
 }
@@ -35,8 +51,7 @@ export default async function CustomPageRoute({ params }: Props) {
     where: { slug: slug.toLowerCase().trim() },
   });
   if (!page) notFound();
-  const live = (page.published ?? true) || isScheduledLive(page.content);
-  if (!live) notFound();
+  if (!isCustomPagePublicOnSite(page.published, page.content)) notFound();
   const cleanContent = stripScheduledPublishAt(page.content);
   const themeMatch = cleanContent.match(/^<!--\s*site-theme:(clean|soft|bold)\s*-->\s*\n?/i);
   const pageTheme = (themeMatch?.[1]?.toLowerCase() as "clean" | "soft" | "bold" | undefined) ?? "clean";
@@ -63,13 +78,14 @@ export default async function CustomPageRoute({ params }: Props) {
   }
   const content = brandMatch ? withoutTheme.replace(brandMatch[0], "") : withoutTheme;
 
+  // Light-only site: "bold" is high-contrast borders and shadow, not a dark panel.
   const containerClass =
     pageTheme === "bold"
-      ? "bg-slate-900 text-slate-100 border-slate-800"
+      ? "bg-white text-slate-900 border-2 border-slate-900 shadow-md"
       : pageTheme === "soft"
         ? "bg-slate-50 border-slate-200"
         : "bg-white border-slate-200";
-  const titleClass = pageTheme === "bold" ? "text-slate-100" : "text-slate-900";
+  const titleClass = "text-slate-900";
 
   return (
     <div className="container mx-auto max-w-4xl px-4 py-12">

@@ -1,4 +1,5 @@
 import { NextResponse } from "next/server";
+import type { Prisma } from "@prisma/client";
 import { requireSession } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 import { auditLog } from "@/lib/audit";
@@ -30,6 +31,9 @@ const defaultResponse: SiteConfigResponse = {
   themeMode: "light",
   autoAddCustomPagesToNav: true,
   contactEmail: null,
+  contactWebhookUrl: null,
+  backupRsyncTarget: null,
+  backupPostHookUrl: null,
 };
 
 const SITE_CONFIG_SAFE_SELECT = {
@@ -48,6 +52,9 @@ const SITE_CONFIG_SAFE_SELECT = {
   ogImageUrl: true,
   googleAnalyticsId: true,
   contactEmail: true,
+  contactWebhookUrl: true,
+  backupRsyncTarget: true,
+  backupPostHookUrl: true,
 } as const;
 
 export async function GET() {
@@ -103,6 +110,9 @@ export async function GET() {
         themeMode,
         autoAddCustomPagesToNav,
         contactEmail: resolvedContactEmail,
+        contactWebhookUrl: (row as { contactWebhookUrl?: string | null }).contactWebhookUrl ?? null,
+        backupRsyncTarget: (row as { backupRsyncTarget?: string | null }).backupRsyncTarget ?? null,
+        backupPostHookUrl: (row as { backupPostHookUrl?: string | null }).backupPostHookUrl ?? null,
       } satisfies SiteConfigResponse,
       { headers: CACHE_60 }
     );
@@ -111,10 +121,49 @@ export async function GET() {
   }
 }
 
+function normalizeOptionalHttpsUrl(v: unknown): string | null | undefined {
+  if (v === undefined) return undefined;
+  if (v === null || v === "") return null;
+  if (typeof v !== "string") return null;
+  const t = v.trim();
+  if (!t) return null;
+  try {
+    const u = new URL(t);
+    if (u.protocol !== "http:" && u.protocol !== "https:") return null;
+    return u.toString();
+  } catch {
+    return null;
+  }
+}
+
+function normalizeOptionalString(v: unknown): string | null | undefined {
+  if (v === undefined) return undefined;
+  if (v === null) return null;
+  if (typeof v !== "string") return null;
+  const t = v.trim();
+  return t.length > 0 ? t : null;
+}
+
+function optionalStringFromBody(v: unknown): string | null {
+  return typeof v === "string" ? v : null;
+}
+
+function jsonObjectFromBody(v: unknown): Prisma.InputJsonValue {
+  if (v !== null && typeof v === "object" && !Array.isArray(v)) {
+    return v as Prisma.InputJsonValue;
+  }
+  return {};
+}
+
 export async function PATCH(request: Request) {
   const auth = await requireSession();
   if ("unauthorized" in auth) return auth.unauthorized;
-  const body = await request.json();
+  let body: Record<string, unknown>;
+  try {
+    body = (await request.json()) as Record<string, unknown>;
+  } catch {
+    return NextResponse.json({ error: "Invalid JSON body" }, { status: 400 });
+  }
   const {
     siteName,
     logoUrl,
@@ -134,6 +183,9 @@ export async function PATCH(request: Request) {
     templateId,
     autoAddCustomPagesToNav,
     contactEmail: contactEmailBody,
+    contactWebhookUrl: contactWebhookUrlBody,
+    backupRsyncTarget: backupRsyncTargetBody,
+    backupPostHookUrl: backupPostHookUrlBody,
   } = body;
   const safeNavItems = Array.isArray(navItems)
     ? (navItems as unknown[]).filter((n): n is { label: string; href: string } =>
@@ -141,54 +193,66 @@ export async function PATCH(request: Request) {
       )
     : undefined;
   const now = new Date();
+  const contactWebhookNorm = normalizeOptionalHttpsUrl(contactWebhookUrlBody);
+  const backupPostHookNorm = normalizeOptionalHttpsUrl(backupPostHookUrlBody);
+  const backupRsyncNorm = normalizeOptionalString(backupRsyncTargetBody);
+
   try {
     await prisma.siteConfig.upsert({
       where: { id: 1 },
       create: {
         id: 1,
         siteName: typeof siteName === "string" ? siteName : "My Site",
-        logoUrl: logoUrl ?? null,
-        faviconUrl: faviconUrl ?? null,
+        logoUrl: optionalStringFromBody(logoUrl),
+        faviconUrl: optionalStringFromBody(faviconUrl),
         metaTitle: typeof metaTitle === "string" ? metaTitle : "",
-        metaDescription: metaDescription ?? null,
+        metaDescription: optionalStringFromBody(metaDescription),
         metaKeywords: typeof metaKeywords === "string" ? metaKeywords.trim() || null : null,
-        authorName: authorName ?? null,
-        links: links && typeof links === "object" ? links : {},
-        socialLinks: socialLinks && typeof socialLinks === "object" ? socialLinks : {},
+        authorName: optionalStringFromBody(authorName),
+        links: jsonObjectFromBody(links),
+        socialLinks: jsonObjectFromBody(socialLinks),
         navItems: safeNavItems && safeNavItems.length > 0 ? safeNavItems : DEFAULT_NAV_ITEMS,
-        footerText: footerText ?? null,
-        copyrightText: copyrightText ?? null,
-        ogImageUrl: ogImageUrl ?? null,
+        footerText: optionalStringFromBody(footerText),
+        copyrightText: optionalStringFromBody(copyrightText),
+        ogImageUrl: optionalStringFromBody(ogImageUrl),
         googleAnalyticsId: typeof googleAnalyticsId === "string" ? googleAnalyticsId : null,
         setupCompleted: setupCompleted === true,
         templateId: typeof templateId === "string" && ["default", "minimal", "card"].includes(templateId) ? templateId : "default",
         themeMode: "light",
         autoAddCustomPagesToNav: autoAddCustomPagesToNav !== false,
-        contactEmail: contactEmailBody ?? null,
+        contactEmail: normalizeOptionalString(contactEmailBody) ?? null,
+        contactWebhookUrl: contactWebhookNorm ?? null,
+        backupRsyncTarget: backupRsyncNorm ?? null,
+        backupPostHookUrl: backupPostHookNorm ?? null,
         updatedAt: now,
       },
       update: {
         ...(typeof siteName === "string" && { siteName }),
-        ...(logoUrl !== undefined && { logoUrl: logoUrl || null }),
-        ...(faviconUrl !== undefined && { faviconUrl: faviconUrl || null }),
+        ...(logoUrl !== undefined && { logoUrl: optionalStringFromBody(logoUrl) }),
+        ...(faviconUrl !== undefined && { faviconUrl: optionalStringFromBody(faviconUrl) }),
         ...(typeof metaTitle === "string" && { metaTitle }),
-        ...(metaDescription !== undefined && { metaDescription: metaDescription || null }),
+        ...(metaDescription !== undefined && { metaDescription: optionalStringFromBody(metaDescription) }),
         ...(metaKeywords !== undefined && {
           metaKeywords: typeof metaKeywords === "string" ? metaKeywords.trim() || null : null,
         }),
-        ...(authorName !== undefined && { authorName: authorName || null }),
-        ...(links && typeof links === "object" && { links }),
-        ...(socialLinks && typeof socialLinks === "object" && { socialLinks }),
+        ...(authorName !== undefined && { authorName: optionalStringFromBody(authorName) }),
+        ...(links !== undefined && { links: jsonObjectFromBody(links) }),
+        ...(socialLinks !== undefined && { socialLinks: jsonObjectFromBody(socialLinks) }),
         ...(safeNavItems && safeNavItems.length > 0 && { navItems: safeNavItems }),
-        ...(footerText !== undefined && { footerText: footerText || null }),
-        ...(copyrightText !== undefined && { copyrightText: copyrightText || null }),
-        ...(ogImageUrl !== undefined && { ogImageUrl: ogImageUrl || null }),
+        ...(footerText !== undefined && { footerText: optionalStringFromBody(footerText) }),
+        ...(copyrightText !== undefined && { copyrightText: optionalStringFromBody(copyrightText) }),
+        ...(ogImageUrl !== undefined && { ogImageUrl: optionalStringFromBody(ogImageUrl) }),
         ...(typeof googleAnalyticsId === "string" && { googleAnalyticsId }),
         ...(setupCompleted !== undefined && { setupCompleted: setupCompleted === true }),
         ...(typeof templateId === "string" && ["default", "minimal", "card"].includes(templateId) && { templateId }),
         themeMode: "light",
         ...(typeof autoAddCustomPagesToNav === "boolean" && { autoAddCustomPagesToNav }),
-        ...(contactEmailBody !== undefined && { contactEmail: contactEmailBody === "" ? null : contactEmailBody }),
+        ...(contactEmailBody !== undefined && {
+          contactEmail: normalizeOptionalString(contactEmailBody) ?? null,
+        }),
+        ...(contactWebhookUrlBody !== undefined && { contactWebhookUrl: contactWebhookNorm }),
+        ...(backupRsyncTargetBody !== undefined && { backupRsyncTarget: backupRsyncNorm }),
+        ...(backupPostHookUrlBody !== undefined && { backupPostHookUrl: backupPostHookNorm }),
         updatedAt: now,
       },
     });

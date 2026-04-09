@@ -1,10 +1,16 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, useMemo } from "react";
 import Link from "next/link";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { Loader2, CheckCircle2, XCircle, AlertCircle, Merge } from "lucide-react";
+import { ConfirmDialog } from "@/components/ui/confirm-dialog";
+import { Input } from "@/components/ui/input";
+import { Loader2, CheckCircle2, XCircle, AlertCircle, Merge, Search } from "lucide-react";
+import { useToast } from "@/contexts/toast-context";
+import { SkeletonLine } from "@/components/dashboard/dashboard-skeleton-primitives";
+import { DASHBOARD_NATIVE_SELECT_CLASS } from "@/components/dashboard/dashboard-form-classes";
+import { DashboardPageHeader } from "@/components/dashboard/dashboard-ui";
 
 interface CleanedTag {
   id: string;
@@ -26,25 +32,59 @@ interface TagRow {
 }
 
 export default function TagsPage() {
+  const { toast } = useToast();
+  const [tagsLoading, setTagsLoading] = useState(true);
   const [isCleaning, setIsCleaning] = useState(false);
   const [result, setResult] = useState<CleanupResult | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [allTags, setAllTags] = useState<TagRow[]>([]);
   const [mergeLoading, setMergeLoading] = useState<string | null>(null);
   const [mergeMessage, setMergeMessage] = useState<{ type: "success" | "error"; text: string } | null>(null);
+  const [cleanupConfirmOpen, setCleanupConfirmOpen] = useState(false);
+  const [mergeConfirm, setMergeConfirm] = useState<{
+    fromTagId: string;
+    toTagId: string;
+    fromName: string;
+    toName: string;
+  } | null>(null);
+  const [tagFilter, setTagFilter] = useState("");
+
+  const sortedTags = useMemo(
+    () => [...allTags].sort((a, b) => a.name.localeCompare(b.name, undefined, { sensitivity: "base" })),
+    [allTags]
+  );
+
+  const displayedTags = useMemo(() => {
+    const q = tagFilter.trim().toLowerCase();
+    if (!q) return sortedTags;
+    return sortedTags.filter(
+      (t) => t.name.toLowerCase().includes(q) || t.slug.toLowerCase().includes(q)
+    );
+  }, [sortedTags, tagFilter]);
 
   useEffect(() => {
+    let cancelled = false;
     fetch("/api/tags?all=1", { credentials: "include" })
-      .then((r) => r.json())
-      .then((data) => setAllTags(Array.isArray(data) ? data : []))
-      .catch(() => setAllTags([]));
+      .then(async (r) => {
+        if (!r.ok) throw new Error("Failed to load tags");
+        return r.json() as Promise<unknown>;
+      })
+      .then((data) => {
+        if (!cancelled) setAllTags(Array.isArray(data) ? data : []);
+      })
+      .catch(() => {
+        if (!cancelled) setAllTags([]);
+      })
+      .finally(() => {
+        if (!cancelled) setTagsLoading(false);
+      });
+    return () => {
+      cancelled = true;
+    };
   }, []);
 
-  const handleCleanup = async () => {
-    if (!confirm("Are you sure you want to clean up all tags with quotes? This will modify tag names in the database.")) {
-      return;
-    }
-
+  const runCleanup = async () => {
+    setCleanupConfirmOpen(false);
     setIsCleaning(true);
     setResult(null);
     setError(null);
@@ -62,18 +102,24 @@ export default function TagsPage() {
 
       const data: CleanupResult = await response.json();
       setResult(data);
+      toast(data.message || "Tag cleanup finished.", "success");
     } catch (err) {
       console.error("Error cleaning tags:", err);
-      setError(err instanceof Error ? err.message : "Error occurred while cleaning tags");
+      const msg = err instanceof Error ? err.message : "Error occurred while cleaning tags";
+      setError(msg);
+      toast(msg, "error");
     } finally {
       setIsCleaning(false);
     }
   };
 
-  const handleMerge = async (fromTagId: string, toTagId: string) => {
-    if (!confirm("Move all posts from the first tag into the second, then delete the first tag. Continue?")) return;
+  const runMerge = async () => {
+    if (!mergeConfirm) return;
+    const { fromTagId, toTagId, fromName, toName } = mergeConfirm;
+    setMergeConfirm(null);
     setMergeLoading(fromTagId);
     setMergeMessage(null);
+    setAllTags((prev) => prev.filter((t) => t.id !== fromTagId));
     try {
       const res = await fetch("/api/tags/merge", {
         method: "POST",
@@ -84,90 +130,177 @@ export default function TagsPage() {
       const data = await res.json().catch(() => ({}));
       if (!res.ok) throw new Error(data.error || "Merge failed");
       setMergeMessage({ type: "success", text: data.message ?? "Tags merged." });
-      setAllTags((prev) => prev.filter((t) => t.id !== fromTagId));
+      toast(`Merged “${fromName}” into “${toName}”.`, "success");
     } catch (e) {
       setMergeMessage({ type: "error", text: e instanceof Error ? e.message : "Merge failed" });
+      toast(e instanceof Error ? e.message : "Merge failed", "error");
+      fetch("/api/tags?all=1", { credentials: "include" })
+        .then(async (r) => {
+          if (!r.ok) throw new Error("reload failed");
+          return r.json() as Promise<unknown>;
+        })
+        .then((data) => setAllTags(Array.isArray(data) ? data : []))
+        .catch(() => {});
     } finally {
       setMergeLoading(null);
     }
   };
 
+  if (tagsLoading) {
+    return (
+      <div className="container mx-auto max-w-4xl px-4 py-8 space-y-6" role="status" aria-busy="true" aria-label="Loading tags">
+        <SkeletonLine className="h-5 w-full max-w-xl" />
+        <div className="rounded-xl border border-border bg-card p-6 shadow-sm">
+          <SkeletonLine className="mb-3 h-6 w-40" />
+          <div className="space-y-2">
+            {[1, 2, 3, 4].map((i) => (
+              <SkeletonLine key={i} className="h-10 w-full max-w-lg" />
+            ))}
+          </div>
+        </div>
+      </div>
+    );
+  }
+
   return (
     <div className="container mx-auto max-w-4xl px-4 py-8 space-y-6">
-      <p className="text-sm text-slate-600">
-        Tags are created when you add them to posts.{" "}
-        <Link href="/dashboard/posts" className="font-medium text-slate-900 hover:underline">
-          Go to Posts
-        </Link>
-      </p>
+      <DashboardPageHeader
+        title="Tags"
+        description={
+          <>
+            Tags are created when you add them to posts.{" "}
+            <Link
+              href="/dashboard/posts"
+              className="font-medium text-foreground underline-offset-2 hover:underline"
+            >
+              Go to Posts
+            </Link>
+          </>
+        }
+      />
+      <ConfirmDialog
+        open={cleanupConfirmOpen}
+        onClose={() => setCleanupConfirmOpen(false)}
+        title="Clean up tag quotes?"
+        description="This will remove single and double quotes from tag names in the database. Duplicate names may be merged automatically."
+        confirmLabel="Start cleanup"
+        variant="danger"
+        onConfirm={runCleanup}
+        loading={isCleaning}
+      />
+      <ConfirmDialog
+        open={mergeConfirm !== null}
+        onClose={() => setMergeConfirm(null)}
+        title="Merge tags?"
+        description={
+          mergeConfirm
+            ? `Move all posts from “${mergeConfirm.fromName}” into “${mergeConfirm.toName}”, then delete “${mergeConfirm.fromName}”.`
+            : undefined
+        }
+        confirmLabel="Merge"
+        variant="danger"
+        onConfirm={runMerge}
+        loading={mergeLoading !== null}
+      />
 
       {allTags.length > 0 && (
-        <Card>
+        <Card className="border-border shadow-sm">
           <CardHeader>
-            <CardTitle className="flex items-center gap-2">
+            <CardTitle className="flex items-center gap-2 text-foreground">
               <Merge className="h-5 w-5" />
               Merge tags
             </CardTitle>
           </CardHeader>
           <CardContent>
-            <p className="text-sm text-slate-600 mb-4">
+            <p className="mb-4 text-sm text-muted-foreground">
               Merge one tag into another: all posts get the target tag, then the source tag is removed.
             </p>
             {mergeMessage && (
-              <p className={`text-sm mb-3 ${mergeMessage.type === "success" ? "text-green-700" : "text-red-700"}`}>
+              <p
+                className={`text-sm mb-3 ${mergeMessage.type === "success" ? "text-emerald-800" : "text-red-700"}`}
+              >
                 {mergeMessage.text}
               </p>
             )}
-            <ul className="space-y-2">
-              {allTags.map((tag) => (
-                <li key={tag.id} className="flex flex-wrap items-center gap-2">
-                  <span className="font-medium text-slate-800">{tag.name}</span>
-                  <span className="text-slate-400">→</span>
-                  <select
-                    className="rounded border border-slate-300 bg-white px-2 py-1 text-sm"
-                    disabled={mergeLoading !== null || allTags.length < 2}
-                    onChange={(e) => {
-                      const toId = e.target.value;
-                      if (toId && toId !== tag.id) handleMerge(tag.id, toId);
-                      e.target.value = "";
-                    }}
-                  >
-                    <option value="">Merge into...</option>
-                    {allTags.filter((t) => t.id !== tag.id).map((t) => (
-                      <option key={t.id} value={t.id}>{t.name}</option>
-                    ))}
-                  </select>
-                  {mergeLoading === tag.id && <Loader2 className="h-4 w-4 animate-spin text-slate-500" />}
-                </li>
-              ))}
-            </ul>
+            <div className="relative mb-4 max-w-md">
+              <Search
+                className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground"
+                aria-hidden
+              />
+              <Input
+                type="search"
+                value={tagFilter}
+                onChange={(e) => setTagFilter(e.target.value)}
+                placeholder="Filter by name or slug…"
+                className="h-9 pl-9"
+                aria-label="Filter tags"
+              />
+            </div>
+            {displayedTags.length === 0 ? (
+              <p className="text-sm text-muted-foreground">No tags match your filter.</p>
+            ) : (
+              <ul className="space-y-2">
+                {displayedTags.map((tag) => (
+                  <li key={tag.id} className="flex flex-wrap items-center gap-2">
+                    <span className="font-medium text-foreground">{tag.name}</span>
+                    <span className="text-muted-foreground">→</span>
+                    <select
+                      className={DASHBOARD_NATIVE_SELECT_CLASS}
+                      disabled={mergeLoading !== null || allTags.length < 2}
+                      onChange={(e) => {
+                        const toId = e.target.value;
+                        if (toId && toId !== tag.id) {
+                          const target = allTags.find((t) => t.id === toId);
+                          if (target) {
+                            setMergeConfirm({
+                              fromTagId: tag.id,
+                              toTagId: toId,
+                              fromName: tag.name,
+                              toName: target.name,
+                            });
+                          }
+                        }
+                        e.target.value = "";
+                      }}
+                    >
+                      <option value="">Merge into...</option>
+                      {sortedTags
+                        .filter((t) => t.id !== tag.id)
+                        .map((t) => (
+                          <option key={t.id} value={t.id}>
+                            {t.name}
+                          </option>
+                        ))}
+                    </select>
+                    {mergeLoading === tag.id && <Loader2 className="h-4 w-4 animate-spin text-muted-foreground" />}
+                  </li>
+                ))}
+              </ul>
+            )}
           </CardContent>
         </Card>
       )}
 
-      <Card>
+      <Card className="border-border shadow-sm">
         <CardHeader>
-          <CardTitle>Tag Management - Clean Up Quotes</CardTitle>
+          <CardTitle className="text-foreground">Tag Management — Clean Up Quotes</CardTitle>
         </CardHeader>
         <CardContent className="space-y-6">
-          <div className="rounded-lg border border-slate-200 bg-slate-50 p-4">
+          <div className="rounded-lg border border-border bg-muted/30 p-4">
             <div className="flex items-start gap-3">
-              <AlertCircle className="h-5 w-5 text-slate-600 mt-0.5" />
-              <div className="flex-1">
-                <h3 className="font-medium text-slate-900 mb-1">Cleanup Instructions</h3>
-                <p className="text-sm text-slate-600">
-                  This feature will automatically clean up all quotes (single and double quotes) from tag names in the database.
-                  If the cleaned tag name duplicates an existing tag, the system will automatically merge the tags.
+              <AlertCircle className="mt-0.5 h-5 w-5 shrink-0 text-muted-foreground" />
+              <div className="min-w-0 flex-1">
+                <h3 className="mb-1 font-medium text-foreground">Cleanup instructions</h3>
+                <p className="text-sm text-muted-foreground">
+                  This feature will automatically clean up all quotes (single and double quotes) from tag names in the
+                  database. If the cleaned tag name duplicates an existing tag, the system will automatically merge the
+                  tags.
                 </p>
               </div>
             </div>
           </div>
 
-          <Button
-            onClick={handleCleanup}
-            disabled={isCleaning}
-            className="w-full sm:w-auto"
-          >
+          <Button onClick={() => setCleanupConfirmOpen(true)} disabled={isCleaning} className="w-full sm:w-auto">
             {isCleaning ? (
               <>
                 <Loader2 className="mr-2 h-4 w-4 animate-spin" />
@@ -181,8 +314,8 @@ export default function TagsPage() {
           {error && (
             <div className="rounded-lg border border-red-200 bg-red-50 p-4">
               <div className="flex items-start gap-3">
-                <XCircle className="h-5 w-5 text-red-600 mt-0.5" />
-                <div className="flex-1">
+                <XCircle className="h-5 w-5 text-red-600 mt-0.5 shrink-0" />
+                <div className="flex-1 min-w-0">
                   <h3 className="font-medium text-red-900 mb-1">Error</h3>
                   <p className="text-sm text-red-700">{error}</p>
                 </div>
@@ -191,35 +324,25 @@ export default function TagsPage() {
           )}
 
           {result && (
-            <div className="rounded-lg border border-green-200 bg-green-50 p-4">
+            <div className="rounded-lg border border-emerald-200 bg-emerald-50/90 p-4">
               <div className="flex items-start gap-3">
-                <CheckCircle2 className="h-5 w-5 text-green-600 mt-0.5" />
-                <div className="flex-1">
-                  <h3 className="font-medium text-green-900 mb-2">
-                    Cleanup Complete
-                  </h3>
-                  <p className="text-sm text-green-700 mb-4">
-                    {result.message}
-                  </p>
+                <CheckCircle2 className="h-5 w-5 text-emerald-700 mt-0.5 shrink-0" />
+                <div className="flex-1 min-w-0">
+                  <h3 className="font-medium text-emerald-900 mb-2">Cleanup complete</h3>
+                  <p className="text-sm text-emerald-800 mb-4">{result.message}</p>
 
                   {result.cleanedTags.length > 0 && (
                     <div className="mt-4">
-                      <h4 className="font-medium text-green-900 mb-2 text-sm">
-                        Cleaned Tags:
-                      </h4>
+                      <h4 className="font-medium text-emerald-900 mb-2 text-sm">Cleaned tags</h4>
                       <div className="space-y-2 max-h-60 overflow-y-auto">
                         {result.cleanedTags.map((tag) => (
                           <div
                             key={tag.id}
-                            className="flex items-center gap-2 text-sm bg-white rounded p-2 border border-green-200"
+                            className="flex items-center gap-2 rounded border border-emerald-200 bg-card p-2 text-sm"
                           >
-                            <span className="text-slate-600 line-through">
-                              {tag.oldName}
-                            </span>
-                            <span className="text-slate-400">→</span>
-                            <span className="font-medium text-green-700">
-                              {tag.newName}
-                            </span>
+                            <span className="text-muted-foreground line-through">{tag.oldName}</span>
+                            <span className="text-muted-foreground">→</span>
+                            <span className="font-medium text-emerald-800">{tag.newName}</span>
                           </div>
                         ))}
                       </div>
@@ -228,9 +351,7 @@ export default function TagsPage() {
 
                   {result.errors && result.errors.length > 0 && (
                     <div className="mt-4">
-                      <h4 className="font-medium text-red-900 mb-2 text-sm">
-                        Tags with Errors:
-                      </h4>
+                      <h4 className="font-medium text-red-900 mb-2 text-sm">Tags with errors</h4>
                       <ul className="list-disc list-inside text-sm text-red-700">
                         {result.errors.map((err, idx) => (
                           <li key={idx}>{err}</li>

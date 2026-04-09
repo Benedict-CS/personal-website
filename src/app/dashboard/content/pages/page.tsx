@@ -5,7 +5,10 @@ import Link from "next/link";
 import { useSearchParams } from "next/navigation";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { ConfirmDialog } from "@/components/ui/confirm-dialog";
 import { Input } from "@/components/ui/input";
+import { DashboardPageHeader } from "@/components/dashboard/dashboard-ui";
+import { formatAbsoluteDateTime, formatRelativeTime } from "@/lib/relative-time";
 
 type CustomPageItem = {
   id: string;
@@ -142,6 +145,7 @@ export default function CustomPagesPage() {
   const [reordering, setReordering] = useState(false);
   const [searchQuery, setSearchQuery] = useState("");
   const [statusFilter, setStatusFilter] = useState<"all" | "published" | "draft">("all");
+  const [deleteConfirmPage, setDeleteConfirmPage] = useState<CustomPageItem | null>(null);
 
   const slugify = (value: string): string =>
     value
@@ -301,8 +305,10 @@ export default function CustomPagesPage() {
     }
   };
 
-  const deletePage = async (page: CustomPageItem) => {
-    if (!window.confirm(`Delete custom page "${page.title || page.slug}"? This cannot be undone.`)) return;
+  const confirmDeletePage = async () => {
+    const page = deleteConfirmPage;
+    if (!page) return;
+    setDeleteConfirmPage(null);
     setDeletingId(page.id);
     setMessage(null);
     try {
@@ -418,13 +424,52 @@ export default function CustomPagesPage() {
     });
   }, [pages, searchQuery, statusFilter]);
 
-  if (loading) return <p className="text-slate-600">Loading custom pages...</p>;
+  if (loading) return <p className="text-muted-foreground">Loading custom pages...</p>;
 
   return (
     <div className="space-y-6">
-      <div>
-        <h2 className="text-3xl font-bold text-slate-900">Custom pages</h2>
-        <p className="mt-1 text-slate-600">Manage additional pages separate from core site settings.</p>
+      <ConfirmDialog
+        open={deleteConfirmPage !== null}
+        onClose={() => setDeleteConfirmPage(null)}
+        title="Delete custom page?"
+        description={
+          deleteConfirmPage
+            ? `“${deleteConfirmPage.title || deleteConfirmPage.slug}” will be removed permanently. This cannot be undone.`
+            : undefined
+        }
+        confirmLabel="Delete"
+        variant="danger"
+        onConfirm={() => void confirmDeletePage()}
+        loading={false}
+      />
+      <div className="space-y-3">
+        <DashboardPageHeader
+          title="Custom pages"
+          description="Manage additional pages separate from core site settings."
+        />
+        <details className="max-w-3xl rounded-lg border border-border bg-muted/50 px-3 py-2 text-sm text-foreground/90">
+          <summary className="cursor-pointer select-none font-medium text-foreground">
+            URLs, preview, and responsive layout
+          </summary>
+          <ul className="mt-2 list-disc space-y-1.5 pl-5 leading-relaxed">
+            <li>
+              <strong className="text-foreground">Public URL:</strong> <code className="rounded bg-card px-1 text-xs">/page/your-slug</code>{" "}
+              — responsive by default (Tailwind + site layout).
+            </li>
+            <li>
+              <strong className="text-foreground">Editor:</strong> use <strong>Open builder</strong> for the visual block
+              editor; publish when ready.
+            </li>
+            <li>
+              <strong className="text-foreground">Shareable preview:</strong> generate a time-limited link (copies to
+              clipboard) for reviewers without a login.
+            </li>
+            <li>
+              <strong className="text-foreground">Templates:</strong> quick-start Markdown bodies; refine blocks in the
+              builder.
+            </li>
+          </ul>
+        </details>
       </div>
 
       <Card>
@@ -454,9 +499,9 @@ export default function CustomPagesPage() {
         </CardHeader>
         <CardContent className="grid gap-3 md:grid-cols-2">
           {PAGE_TEMPLATES.map((template) => (
-            <div key={template.id} className="rounded-lg border border-slate-200 p-3">
-              <p className="text-sm font-semibold text-slate-900">{template.label}</p>
-              <p className="mt-1 text-xs text-slate-600">{template.description}</p>
+            <div key={template.id} className="rounded-lg border border-border p-3">
+              <p className="text-sm font-semibold text-foreground">{template.label}</p>
+              <p className="mt-1 text-xs text-muted-foreground">{template.description}</p>
               <Button
                 className="mt-3"
                 variant="outline"
@@ -476,7 +521,7 @@ export default function CustomPagesPage() {
           <CardTitle>All custom pages</CardTitle>
         </CardHeader>
         <CardContent className="space-y-3">
-          <div className="grid gap-2 rounded-lg border border-slate-200 p-3 md:grid-cols-[1fr_auto_auto]">
+          <div className="grid gap-2 rounded-lg border border-border p-3 md:grid-cols-[1fr_auto_auto]">
             <Input
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
@@ -508,22 +553,22 @@ export default function CustomPagesPage() {
                 Draft
               </Button>
             </div>
-            <div className="text-xs text-slate-600 md:text-right">
+            <div className="text-xs text-muted-foreground md:text-right">
               Showing {filteredPages.length} of {pages.length} pages
             </div>
           </div>
           {pages.length === 0 ? (
-            <div className="rounded-lg border border-dashed border-[var(--border)] bg-[var(--muted)]/30 p-8 text-center">
-              <p className="text-sm font-medium text-[var(--foreground)]">No custom pages yet</p>
-              <p className="mt-1 text-sm text-[var(--muted-foreground)]">Create one above (title + slug) or use a template, then edit content in the visual editor.</p>
+            <div className="rounded-lg border border-dashed border-border bg-muted/30 p-8 text-center">
+              <p className="text-sm font-medium text-foreground">No custom pages yet</p>
+              <p className="mt-1 text-sm text-muted-foreground">Create one above (title + slug) or use a template, then edit content in the visual editor.</p>
             </div>
           ) : filteredPages.length === 0 ? (
-            <p className="text-sm text-slate-500">No pages match your current filters.</p>
+            <p className="text-sm text-muted-foreground">No pages match your current filters.</p>
           ) : (
             filteredPages.map((page) => {
               const index = pages.findIndex((item) => item.id === page.id);
               return (
-              <div key={page.id} className="rounded-lg border border-slate-200 p-3">
+              <div key={page.id} className="rounded-lg border border-border p-3">
                 <div className="grid gap-2 md:grid-cols-[1fr_1fr_auto_auto_auto_auto_auto] md:items-center">
                   <Input
                     value={page.title}
@@ -543,9 +588,10 @@ export default function CustomPagesPage() {
                     }
                     placeholder="Slug"
                   />
-                  <label className="inline-flex items-center gap-2 text-sm text-slate-700">
+                  <label className="inline-flex items-center gap-2 text-sm text-foreground/90">
                     <input
                       type="checkbox"
+                      className="h-4 w-4 rounded border border-input bg-card accent-primary focus:ring-2 focus:ring-ring"
                       checked={page.published}
                       onChange={(e) =>
                         setPages((current) =>
@@ -555,7 +601,7 @@ export default function CustomPagesPage() {
                     />
                     Published
                   </label>
-                  <span className="text-xs text-slate-600">
+                  <span className="text-xs text-muted-foreground">
                     Live: {(page.effectivePublished ?? page.published) ? "Yes" : "No"}
                   </span>
                   <Input
@@ -613,9 +659,20 @@ export default function CustomPagesPage() {
                   </div>
                 </div>
                 <div className="mt-2 flex items-center justify-between">
-                  <p className="text-xs text-slate-500">
-                    {page.updatedAt ? `Last updated: ${new Date(page.updatedAt).toLocaleString()}` : "Not saved yet"}
-                    {page.scheduledPublishAt ? ` • Scheduled: ${new Date(page.scheduledPublishAt).toLocaleString()}` : ""}
+                  <p className="text-xs text-muted-foreground">
+                    {page.updatedAt ? (
+                      <>
+                        Last updated{" "}
+                        <span className="tabular-nums" title={formatAbsoluteDateTime(page.updatedAt)}>
+                          {formatRelativeTime(page.updatedAt)}
+                        </span>
+                      </>
+                    ) : (
+                      "Not saved yet"
+                    )}
+                    {page.scheduledPublishAt
+                      ? ` • Scheduled: ${formatAbsoluteDateTime(page.scheduledPublishAt)}`
+                      : ""}
                   </p>
                   <div className="flex items-center gap-2">
                     <Button
@@ -645,7 +702,7 @@ export default function CustomPagesPage() {
                     <Button
                       variant="destructive"
                       size="sm"
-                      onClick={() => void deletePage(page)}
+                      onClick={() => setDeleteConfirmPage(page)}
                       disabled={deletingId === page.id}
                     >
                       {deletingId === page.id ? "Deleting..." : "Delete"}

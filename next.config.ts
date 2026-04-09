@@ -24,16 +24,24 @@ const nextConfig: NextConfig = {
       "frame-ancestors 'none'",
       "upgrade-insecure-requests",
     ].join("; ");
+    const baseHeaders: { key: string; value: string }[] = [
+      { key: "X-Frame-Options", value: "DENY" },
+      { key: "X-Content-Type-Options", value: "nosniff" },
+      { key: "Referrer-Policy", value: "strict-origin-when-cross-origin" },
+      { key: "Permissions-Policy", value: "camera=(), microphone=(), geolocation=()" },
+      { key: "Content-Security-Policy", value: csp },
+    ];
+    // Set ENABLE_HSTS=true only behind HTTPS in production (avoid HSTS on plain HTTP dev).
+    if (process.env.ENABLE_HSTS === "true") {
+      baseHeaders.push({
+        key: "Strict-Transport-Security",
+        value: "max-age=31536000; includeSubDomains; preload",
+      });
+    }
     return [
       {
         source: "/:path*",
-        headers: [
-          { key: "X-Frame-Options", value: "DENY" },
-          { key: "X-Content-Type-Options", value: "nosniff" },
-          { key: "Referrer-Policy", value: "strict-origin-when-cross-origin" },
-          { key: "Permissions-Policy", value: "camera=(), microphone=(), geolocation=()" },
-          { key: "Content-Security-Policy", value: csp },
-        ],
+        headers: baseHeaders,
       },
     ];
   },

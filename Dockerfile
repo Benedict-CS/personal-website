@@ -7,6 +7,7 @@ RUN npm ci
 
 # Stage 2: Builder
 FROM node:20-alpine AS builder
+ENV NEXT_TELEMETRY_DISABLED=1
 RUN apk add --no-cache openssl bash
 WORKDIR /app
 
@@ -33,7 +34,16 @@ FROM node:20-alpine AS runner
 RUN apk add --no-cache bash openssl
 WORKDIR /app
 
+# OCI labels help operators and registries identify images without running them.
+LABEL org.opencontainers.image.title="personal-website" \
+      org.opencontainers.image.description="Next.js App Router site and CMS (standalone)" \
+      org.opencontainers.image.source="https://github.com/Benedict-CS/personal-website"
+
 ENV NODE_ENV=production
+
+# Optional: set at build time (e.g. git SHA) — surfaced in GET /api/health as `appVersion`.
+ARG APP_VERSION=dev
+ENV APP_VERSION=${APP_VERSION}
 
 RUN addgroup -g 1001 -S nodejs && adduser -S -u 1001 -G nodejs nextjs
 
@@ -66,6 +76,10 @@ EXPOSE 3000
 
 ENV PORT=3000
 ENV HOSTNAME="0.0.0.0"
+
+# Used by `docker run` without Compose; Compose overrides with a DB-aware check.
+HEALTHCHECK --interval=30s --timeout=10s --start-period=50s --retries=3 \
+  CMD node -e "require('http').get('http://127.0.0.1:3000/api/health',(r)=>process.exit(r.statusCode===200?0:1)).on('error',()=>process.exit(1))"
 
 # Run migrations on startup with retries, then start the app.
 CMD ["/bin/sh", "-c", "attempt=1; until [ \"$attempt\" -gt 30 ]; do npx prisma migrate deploy && break; echo \"Prisma migrate deploy failed (attempt $attempt/30). Retrying in 2s...\"; attempt=$((attempt + 1)); sleep 2; done; if [ \"$attempt\" -gt 30 ]; then echo \"Prisma migrate deploy failed after 30 attempts.\"; exit 1; fi; exec node server.js"]

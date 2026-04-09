@@ -6,7 +6,11 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Input } from "@/components/ui/input";
+import { Skeleton } from "@/components/ui/skeleton";
 import { FileText, Edit, ChevronDown, ChevronRight, Folder, Tag, Check, X, Search } from "lucide-react";
+import { useToast } from "@/contexts/toast-context";
+import { DashboardPageHeader } from "@/components/dashboard/dashboard-ui";
+import { formatAbsoluteDateTime, formatRelativeTime } from "@/lib/relative-time";
 
 interface Note {
   id: string;
@@ -27,6 +31,7 @@ interface CategoryNode {
 }
 
 export default function NotesPage() {
+  const { toast } = useToast();
   const [notes, setNotes] = useState<Note[]>([]);
   const [filteredNotes, setFilteredNotes] = useState<Note[]>([]);
   const [expandedCategories, setExpandedCategories] = useState<Set<string>>(new Set());
@@ -79,21 +84,22 @@ export default function NotesPage() {
     const query = searchQuery.toLowerCase();
     const filtered = notes.filter((note) => {
       const titleMatch = note.title.toLowerCase().includes(query);
+      const slugMatch = note.slug.toLowerCase().includes(query);
+      const descMatch = note.description?.toLowerCase().includes(query);
       const contentMatch = note.content.toLowerCase().includes(query);
       const tagMatch = note.tags.some((tag) => tag.name.toLowerCase().includes(query));
       const categoryMatch = note.category?.toLowerCase().includes(query);
-      return titleMatch || contentMatch || tagMatch || categoryMatch;
+      return (
+        titleMatch ||
+        slugMatch ||
+        !!descMatch ||
+        contentMatch ||
+        tagMatch ||
+        !!categoryMatch
+      );
     });
     setFilteredNotes(filtered);
   }, [searchQuery, notes]);
-
-  const formatDate = (dateString: string) => {
-    return new Date(dateString).toLocaleDateString("en-US", {
-      year: "numeric",
-      month: "short",
-      day: "numeric",
-    });
-  };
 
   const toggleCategory = (path: string) => {
     setExpandedCategories((prev) => {
@@ -130,15 +136,18 @@ export default function NotesPage() {
       });
 
       if (response.ok) {
+        const nextCategory = editingCategory.trim() || null;
+        setNotes((prev) =>
+          prev.map((n) => (n.id === noteId ? { ...n, category: nextCategory } : n))
+        );
         setEditingNoteId(null);
         setEditingCategory("");
-        
-        // Refresh to update grouping
+        toast("Category updated", "success");
+
         const refreshResponse = await fetch("/api/posts?published=false", { credentials: "include" });
         if (refreshResponse.ok) {
           const data = await refreshResponse.json();
           setNotes(data);
-          // Preserve expanded state
           const allPaths = new Set<string>();
           data.forEach((n: Note) => {
             if (n.category) {
@@ -155,11 +164,12 @@ export default function NotesPage() {
           setExpandedCategories(allPaths);
         }
       } else {
-        alert("Failed to update category");
+        const err = await response.json().catch(() => ({}));
+        toast((err as { error?: string }).error || "Failed to update category", "error");
       }
     } catch (error) {
       console.error("Failed to update category:", error);
-      alert("Failed to update category");
+      toast("Failed to update category", "error");
     }
   };
 
@@ -235,15 +245,15 @@ export default function NotesPage() {
           className="flex items-center gap-2 text-left w-full group"
         >
           {isExpanded ? (
-            <ChevronDown className="h-5 w-5 text-slate-600" />
+            <ChevronDown className="h-5 w-5 text-muted-foreground" />
           ) : (
-            <ChevronRight className="h-5 w-5 text-slate-600" />
+            <ChevronRight className="h-5 w-5 text-muted-foreground" />
           )}
-          <Folder className="h-5 w-5 text-slate-500" />
-          <h3 className={`${level === 0 ? "text-xl" : "text-lg"} font-semibold text-slate-900 group-hover:text-slate-700`}>
+          <Folder className="h-5 w-5 text-muted-foreground" />
+          <h3 className={`${level === 0 ? "text-xl" : "text-lg"} font-semibold text-foreground group-hover:text-foreground`}>
             {node.name}
           </h3>
-          <span className="text-sm text-slate-500">({totalNotes})</span>
+          <span className="text-sm text-muted-foreground">({totalNotes})</span>
         </button>
 
         {isExpanded && (
@@ -301,7 +311,7 @@ export default function NotesPage() {
                             <Button
                               size="sm"
                               variant="ghost"
-                              className="h-6 px-2 text-xs hover:bg-slate-100 text-slate-600"
+                              className="h-6 px-2 text-xs hover:bg-muted/70 text-muted-foreground"
                               onClick={() => handleStartEdit(note.id, note.category)}
                             >
                               <Tag className="h-3 w-3 mr-1" />
@@ -310,8 +320,10 @@ export default function NotesPage() {
                           </div>
                           
                           {/* Date and tags row */}
-                          <div className="flex items-center gap-2 text-xs text-slate-500 flex-wrap">
-                            <span>{formatDate(note.updatedAt)}</span>
+                          <div className="flex items-center gap-2 text-xs text-muted-foreground flex-wrap">
+                            <span title={formatAbsoluteDateTime(note.updatedAt)}>
+                              Updated {formatRelativeTime(note.updatedAt)}
+                            </span>
                             {note.tags && note.tags.length > 0 && (
                               <>
                                 <span>•</span>
@@ -329,7 +341,7 @@ export default function NotesPage() {
                       )}
                     </CardHeader>
                     <CardContent className="flex-1 flex flex-col justify-between">
-                      <p className="text-sm text-slate-600 line-clamp-3 mb-4">
+                      <p className="text-sm text-muted-foreground line-clamp-3 mb-4">
                         {note.description || `${note.content.substring(0, 150)}...`}
                       </p>
                       <div className="flex gap-2">
@@ -380,44 +392,52 @@ export default function NotesPage() {
 
   if (isLoading) {
     return (
-      <div className="space-y-6">
-        <div className="flex items-center justify-between">
-          <div>
-            <h2 className="text-3xl font-bold text-slate-900">My Notes</h2>
-            <p className="text-sm text-slate-600 mt-1">Private notes (unpublished posts)</p>
-          </div>
+      <div className="space-y-6" aria-busy="true" aria-label="Loading notes">
+        <DashboardPageHeader
+          title="My notes"
+          description="Private notes (unpublished posts)."
+        >
+          <Skeleton className="h-10 w-36 rounded-lg" />
+        </DashboardPageHeader>
+        <Skeleton className="h-10 w-full max-w-xl rounded-md" />
+        <div className="space-y-3">
+          {Array.from({ length: 5 }).map((_, i) => (
+            <Card key={i}>
+              <CardContent className="py-4">
+                <Skeleton className="h-5 w-2/3 max-w-md mb-2" />
+                <Skeleton className="h-4 w-24 mb-3" />
+                <Skeleton className="h-3 w-full max-w-lg" />
+              </CardContent>
+            </Card>
+          ))}
         </div>
-        <p className="text-slate-500">Loading...</p>
       </div>
     );
   }
 
   return (
     <div className="space-y-6">
-      <div className="flex items-center justify-between">
-        <div>
-          <h2 className="text-3xl font-bold text-slate-900">My Notes</h2>
-          <p className="text-sm text-slate-600 mt-1">Private notes (unpublished posts)</p>
-        </div>
-        <Link href="/dashboard/posts/new">
-          <Button>Create New Note</Button>
-        </Link>
-      </div>
+      <DashboardPageHeader title="My notes" description="Private notes (unpublished posts).">
+        <Button asChild>
+          <Link href="/dashboard/posts/new">Create new note</Link>
+        </Button>
+      </DashboardPageHeader>
 
       {/* Search */}
       <div className="relative">
-        <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-400" />
+        <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground/80" />
         <Input
-          type="text"
-          placeholder="Search notes by title, content, tags, category..."
+          type="search"
+          placeholder="Search by title, slug, description, content, tags, or category..."
           value={searchQuery}
           onChange={(e) => setSearchQuery(e.target.value)}
           className="pl-10"
+          aria-label="Search notes"
         />
         {searchQuery && (
           <button
             onClick={() => setSearchQuery("")}
-            className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600"
+            className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground/80 hover:text-muted-foreground"
           >
             <X className="h-4 w-4" />
           </button>
@@ -426,20 +446,20 @@ export default function NotesPage() {
 
       {/* Search result count */}
       {searchQuery && (
-        <div className="text-sm text-slate-600">
+        <div className="text-sm text-muted-foreground">
           Found {filteredNotes.length} {filteredNotes.length === 1 ? "note" : "notes"}
         </div>
       )}
 
       {notes.length === 0 ? (
-        <div className="rounded-lg border border-slate-200 bg-white p-12 text-center">
-          <FileText className="mx-auto h-12 w-12 text-slate-400 mb-4" />
-          <p className="text-slate-500">No notes yet</p>
-          <p className="text-sm text-slate-400 mt-2">Create a new post and keep it as Draft to use as a note</p>
+        <div className="rounded-lg border border-border bg-card p-12 text-center">
+          <FileText className="mx-auto h-12 w-12 text-muted-foreground/80 mb-4" />
+          <p className="text-muted-foreground">No notes yet</p>
+          <p className="text-sm text-muted-foreground/80 mt-2">Create a new post and keep it as Draft to use as a note</p>
         </div>
       ) : filteredNotes.length === 0 && searchQuery ? (
-        <div className="rounded-lg border border-slate-200 bg-white p-12 text-center">
-          <p className="text-slate-500">No notes found matching &quot;{searchQuery}&quot;</p>
+        <div className="rounded-lg border border-border bg-card p-12 text-center">
+          <p className="text-muted-foreground">No notes found matching &quot;{searchQuery}&quot;</p>
         </div>
       ) : (
         <div className="space-y-6">

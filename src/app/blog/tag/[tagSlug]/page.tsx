@@ -24,12 +24,27 @@ export async function generateMetadata({
   ]);
 
   if (!tag) {
-    return { title: "Tag Not Found" };
+    return { title: "Tag Not Found", robots: { index: false, follow: false } };
   }
 
+  const base = config.url.replace(/\/$/, "");
+  const path = `${base}/blog/tag/${encodeURIComponent(tag.slug)}`;
+  const desc = `All posts tagged with "${tag.name}".`;
   return {
     title: `Tag: ${tag.name} | ${config.siteName}`,
-    description: `All posts tagged with "${tag.name}"`,
+    description: desc,
+    alternates: { canonical: path },
+    openGraph: {
+      title: `Tag: ${tag.name}`,
+      description: desc,
+      url: path,
+      type: "website",
+    },
+    twitter: {
+      card: "summary_large_image",
+      title: `Tag: ${tag.name} | ${config.siteName}`,
+      description: desc,
+    },
   };
 }
 

@@ -12,8 +12,8 @@ export default async function SiteShowroomPage({
     <div className="space-y-4">
       <div className="flex items-center justify-between">
         <div>
-          <h1 className="text-2xl font-bold text-slate-900">3D Virtual Showroom</h1>
-          <p className="text-slate-600">
+          <h1 className="text-2xl font-bold text-foreground">3D Virtual Showroom</h1>
+          <p className="text-muted-foreground">
             Drag-in 3D assets, raycast-select objects, adjust transforms, and walk through the scene.
           </p>
         </div>

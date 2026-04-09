@@ -34,19 +34,39 @@ export async function POST(request: NextRequest) {
     const bytes = await file.arrayBuffer();
     const buffer = Buffer.from(bytes);
 
-    const { buffer: finalBuffer, contentType, fileName: finalFileName } = await processImage(
-      buffer,
-      file.type,
-      fileName
+    const processed = await processImage(buffer, file.type, fileName);
+
+    const variantPayload: Array<{ descriptor: number; url: string }> = [];
+    if (processed.variants?.length) {
+      for (const v of processed.variants) {
+        const vUrl = await uploadToS3(v.fileName, v.buffer, "image/webp");
+        variantPayload.push({ descriptor: v.descriptor, url: vUrl });
+      }
+    }
+
+    const url = await uploadToS3(processed.fileName, processed.buffer, processed.contentType);
+
+    return NextResponse.json(
+      {
+        url,
+        width: processed.width ?? null,
+        height: processed.height ?? null,
+        variants: variantPayload.length > 0 ? variantPayload : undefined,
+      },
+      { status: 200 }
     );
-
-    const url = await uploadToS3(finalFileName, finalBuffer, contentType);
-
-    return NextResponse.json({ url }, { status: 200 });
   } catch (error) {
     console.error("Error uploading file:", error);
+    const message = error instanceof Error ? error.message : String(error);
+    const isStorage = /S3|AWS|PutObject|Multipart|credentials|ENOTFOUND|ECONN|timeout|socket|rustfs|minio/i.test(
+      message
+    );
     return NextResponse.json(
-      { error: "Failed to upload file" },
+      {
+        error: isStorage
+          ? "Image storage is temporarily unavailable. Try again in a moment."
+          : "Failed to upload file",
+      },
       { status: 500 }
     );
   }

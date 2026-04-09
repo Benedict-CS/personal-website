@@ -3,6 +3,8 @@ import { Resend } from "resend";
 import nodemailer from "nodemailer";
 import { checkRateLimitAsync, getClientIP } from "@/lib/rate-limit";
 import { prisma } from "@/lib/prisma";
+import { postContactWebhook } from "@/lib/contact-webhook";
+import { siteUrl } from "@/config/site";
 
 const CC = process.env.CONTACT_CC ? process.env.CONTACT_CC.split(",").map((e) => e.trim()).filter(Boolean) : undefined;
 const BCC = process.env.CONTACT_BCC ? process.env.CONTACT_BCC.split(",").map((e) => e.trim()).filter(Boolean) : undefined;
@@ -43,7 +45,14 @@ export async function POST(request: NextRequest) {
   if (!allowed) {
     return NextResponse.json(
       { error: "Too many requests. Please try again in a minute." },
-      { status: 429, headers: { "X-RateLimit-Remaining": "0" } }
+      {
+        status: 429,
+        headers: {
+          "X-RateLimit-Remaining": "0",
+          "Retry-After": "60",
+          "Cache-Control": "no-store, private",
+        },
+      }
     );
   }
   try {
@@ -60,7 +69,7 @@ export async function POST(request: NextRequest) {
 
     const configRow = await prisma.siteConfig.findUnique({
       where: { id: 1 },
-      select: { tenantSiteId: true, contactEmail: true, links: true },
+      select: { tenantSiteId: true, contactEmail: true, links: true, contactWebhookUrl: true },
     });
     const tenantSiteId = configRow?.tenantSiteId ?? null;
 
@@ -113,6 +122,19 @@ export async function POST(request: NextRequest) {
           { status: 500 }
         );
       }
+      void postContactWebhook(configRow?.contactWebhookUrl, {
+        event: "contact.form_submitted",
+        version: 1,
+        submittedAt: new Date().toISOString(),
+        source: "contact",
+        siteUrl: process.env.NEXT_PUBLIC_SITE_URL?.trim() || siteUrl,
+        data: {
+          name: name.trim(),
+          email: email.trim(),
+          subject: subject?.trim() ?? "",
+          message: message.trim(),
+        },
+      });
       return NextResponse.json({ success: true, id: data?.id }, { headers: rateLimitHeaders });
     }
 
@@ -126,6 +148,19 @@ export async function POST(request: NextRequest) {
         bcc: BCC,
         subject: subjectLine,
         text: textBody,
+      });
+      void postContactWebhook(configRow?.contactWebhookUrl, {
+        event: "contact.form_submitted",
+        version: 1,
+        submittedAt: new Date().toISOString(),
+        source: "contact",
+        siteUrl: process.env.NEXT_PUBLIC_SITE_URL?.trim() || siteUrl,
+        data: {
+          name: name.trim(),
+          email: email.trim(),
+          subject: subject?.trim() ?? "",
+          message: message.trim(),
+        },
       });
       return NextResponse.json({ success: true }, { headers: rateLimitHeaders });
     }

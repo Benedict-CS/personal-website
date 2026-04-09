@@ -4,6 +4,7 @@ describe("dashboard navigation", () => {
   it("exposes expected sidebar destinations", () => {
     const hrefs = DASHBOARD_NAV_ITEMS.map((item) => item.href);
     expect(hrefs).toContain("/dashboard/analytics");
+    expect(hrefs).toContain("/dashboard/posts");
     expect(hrefs).toContain("/dashboard/media");
     expect(hrefs).toContain("/dashboard/content/site");
     expect(hrefs).toContain("/dashboard/content/pages");

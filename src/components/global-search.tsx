@@ -2,6 +2,7 @@
 
 import { useState, useEffect, useRef, useCallback, type ReactElement } from "react";
 import Link from "next/link";
+import { useSearchParams, usePathname, useRouter } from "next/navigation";
 import { Search, X, FileText, Globe } from "lucide-react";
 import { Button, buttonVariants } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -31,6 +32,9 @@ interface SearchResult {
 const DEBOUNCE_MS = 280;
 
 export function GlobalSearch() {
+  const searchParams = useSearchParams();
+  const pathname = usePathname();
+  const router = useRouter();
   const [open, setOpen] = useState(false);
   const [query, setQuery] = useState("");
   const [pendingQuery, setPendingQuery] = useState("");
@@ -71,6 +75,18 @@ export function GlobalSearch() {
     setOpen(true);
   }, []);
 
+  // Deep link: `/?search=open` strips the query then opens the panel (used by the 404 page).
+  useEffect(() => {
+    if (searchParams.get("search") !== "open") return;
+    const next = new URLSearchParams(searchParams.toString());
+    next.delete("search");
+    const qs = next.toString();
+    router.replace(qs ? `${pathname}?${qs}` : pathname, { scroll: false });
+    queueMicrotask(() => {
+      openPanel();
+    });
+  }, [searchParams, pathname, router, openPanel]);
+
   const close = useCallback(() => {
     setOpen(false);
     if (debounceRef.current) clearTimeout(debounceRef.current);
@@ -80,6 +96,7 @@ export function GlobalSearch() {
     if (!open) return;
     inputRef.current?.focus();
     const previouslyFocused = document.activeElement as HTMLElement | null;
+    const triggerForCleanup = triggerRef.current;
 
     const getFocusable = (): HTMLElement[] => {
       const panel = panelRef.current;
@@ -125,7 +142,7 @@ export function GlobalSearch() {
       ) {
         previouslyFocused.focus();
       } else {
-        triggerRef.current?.focus();
+        triggerForCleanup?.focus();
       }
     };
   }, [open, close]);

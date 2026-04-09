@@ -118,11 +118,27 @@ describe("POST /api/analytics/leave", () => {
     const POST = await loadRoute();
     const req = new NextRequest("http://localhost/api/analytics/leave", {
       method: "POST",
-      headers: { origin: "https://site.test", "content-type": "application/json" },
+      headers: {
+        origin: "https://site.test",
+        "content-type": "application/json",
+        "x-forwarded-for": "9.9.9.9",
+      },
       body: JSON.stringify({ path: "/x", durationSeconds: 10 }),
     });
     const res = await POST(req);
     expect(res.status).toBe(500);
+  });
+
+  it("returns ok without DB when client IP cannot be resolved", async () => {
+    const POST = await loadRoute();
+    const req = new NextRequest("http://localhost/api/analytics/leave", {
+      method: "POST",
+      headers: { origin: "https://site.test", "content-type": "application/json" },
+      body: JSON.stringify({ path: "/x", durationSeconds: 10 }),
+    });
+    const res = await POST(req);
+    expect(res.status).toBe(200);
+    expect(mockFindFirst).not.toHaveBeenCalled();
   });
 });
 

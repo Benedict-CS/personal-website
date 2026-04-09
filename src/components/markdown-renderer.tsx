@@ -1,19 +1,22 @@
 "use client";
 
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useMemo } from "react";
 import ReactMarkdown from "react-markdown";
-import rehypeHighlight from "rehype-highlight";
+import rehypeShiki from "@shikijs/rehype";
 import rehypeRaw from "rehype-raw";
 import rehypeSanitize, { defaultSchema } from "rehype-sanitize";
 import rehypeSlug from "rehype-slug";
 import rehypeKatex from "rehype-katex";
 import remarkGfm from "remark-gfm";
 import remarkMath from "remark-math";
-import { Copy, Check } from "lucide-react";
-import { Button } from "@/components/ui/button";
+import remarkSmartypants from "remark-smartypants";
 import type { Components } from "react-markdown";
-import { cn } from "@/lib/utils";
-import "highlight.js/styles/atom-one-light.css";
+import { expandDevEmbeds } from "@/lib/markdown-dev-embeds";
+import { GitHubStatsBlock } from "@/components/dev-blocks/github-stats-block";
+import { LeetCodeStatsBlock } from "@/components/dev-blocks/leetcode-stats-block";
+import { BlogMarkdownPre } from "@/components/markdown/blog-markdown-pre";
+import { BlogMarkdownImage } from "@/components/markdown/blog-markdown-image";
+import { rehypePanguSpacing } from "@/lib/rehype-pangu-spacing";
 
 /** Schema that allows <style>, class, and inline style so blog posts match editor preview. */
 const blogPostSchema = {
@@ -21,45 +24,12 @@ const blogPostSchema = {
   tagNames: [...(defaultSchema.tagNames ?? []), "style"],
   attributes: {
     ...defaultSchema.attributes,
-    div: [...(defaultSchema.attributes?.div ?? []), "className"],
+    div: [...(defaultSchema.attributes?.div ?? []), "className", "data-user", "data-variant"],
     span: [...(defaultSchema.attributes?.span ?? []), "className"],
+    img: [...(defaultSchema.attributes?.img ?? []), "title", "loading", "decoding", "sizes", "srcSet"],
     "*": [...(defaultSchema.attributes?.["*"] ?? []), "style"],
   },
 };
-
-/** Renders image at natural aspect ratio (no forced 16:9). White background for transparent PNGs. */
-function MarkdownImage({
-  src,
-  alt,
-  className,
-}: {
-  src: string;
-  alt?: string;
-  className?: string;
-}) {
-  const [loaded, setLoaded] = useState(false);
-  return (
-    <span className={cn("relative block w-full bg-white min-h-[80px]", className)}>
-      {!loaded && (
-        <span
-          className="absolute inset-0 block animate-pulse rounded bg-slate-200 min-h-[80px]"
-          aria-hidden
-        />
-      )}
-      {/* eslint-disable-next-line @next/next/no-img-element */}
-      <img
-        src={src}
-        alt={alt ?? ""}
-        className={cn(
-          "block max-w-full h-auto object-contain transition-opacity duration-200",
-          !loaded && "opacity-0 absolute"
-        )}
-        onLoad={() => setLoaded(true)}
-        loading="lazy"
-      />
-    </span>
-  );
-}
 import "katex/dist/katex.min.css";
 
 interface MarkdownRendererProps {
@@ -69,7 +39,6 @@ interface MarkdownRendererProps {
 }
 
 export function MarkdownRenderer({ content, postId, editable = false }: MarkdownRendererProps) {
-  const [copiedCode, setCopiedCode] = useState<string | null>(null);
   const [checkboxStates, setCheckboxStates] = useState<Record<number, boolean>>({});
   const [lightboxSrc, setLightboxSrc] = useState<string | null>(null);
 
@@ -114,32 +83,6 @@ export function MarkdownRenderer({ content, postId, editable = false }: Markdown
   };
 
 
-  // Inject styles to override highlight.js background (keep pre background only)
-  useEffect(() => {
-    const styleId = "hljs-override";
-    let styleEl = document.getElementById(styleId) as HTMLStyleElement;
-    
-    if (!styleEl) {
-      styleEl = document.createElement("style");
-      styleEl.id = styleId;
-      document.head.appendChild(styleEl);
-    }
-
-    styleEl.textContent = `
-      pre code.hljs,
-      pre .hljs {
-        background-color: transparent !important;
-        background: transparent !important;
-        color: inherit !important;
-      }
-      pre code.hljs *,
-      pre .hljs * {
-        background-color: transparent !important;
-        background: transparent !important;
-      }
-    `;
-  }, []);
-
   // Lightbox: close on Esc
   useEffect(() => {
     const onKeyDown = (e: KeyboardEvent) => {
@@ -173,155 +116,33 @@ export function MarkdownRenderer({ content, postId, editable = false }: Markdown
     `;
   }, []);
 
-  const handleCopyCode = async (code: string, codeId: string) => {
-    try {
-      if (navigator.clipboard && navigator.clipboard.writeText) {
-        await navigator.clipboard.writeText(code);
-      } else {
-        const textArea = document.createElement("textarea");
-        textArea.value = code;
-        textArea.style.position = "fixed";
-        textArea.style.left = "-999999px";
-        textArea.style.top = "-999999px";
-        document.body.appendChild(textArea);
-        textArea.focus();
-        textArea.select();
-        try {
-          document.execCommand("copy");
-        } catch (err) {
-          console.error("Fallback copy failed:", err);
-        }
-        document.body.removeChild(textArea);
-      }
-      setCopiedCode(codeId);
-      setTimeout(() => {
-        setCopiedCode(null);
-      }, 2000);
-    } catch (error) {
-      console.error("Failed to copy code:", error);
-      try {
-        const textArea = document.createElement("textarea");
-        textArea.value = code;
-        textArea.style.position = "fixed";
-        textArea.style.left = "-999999px";
-        textArea.style.top = "-999999px";
-        document.body.appendChild(textArea);
-        textArea.focus();
-        textArea.select();
-        document.execCommand("copy");
-        document.body.removeChild(textArea);
-        setCopiedCode(codeId);
-        setTimeout(() => {
-          setCopiedCode(null);
-        }, 2000);
-      } catch (fallbackError) {
-        console.error("Fallback copy also failed:", fallbackError);
-      }
-    }
-  };
-
   let checkboxCounter = 0;
 
+  const markdownBody = useMemo(() => expandDevEmbeds(content), [content]);
+
   const components: Components = {
-    pre: ({ children, ...props }) => {
-      let codeString = "";
-      if (children) {
-        if (React.isValidElement(children)) {
-          const codeBlock = children as React.ReactElement<{ children?: React.ReactNode }>;
-          const blockChildren = codeBlock.props?.children;
-          
-          if (typeof blockChildren === "string") {
-            codeString = blockChildren;
-          } else if (Array.isArray(blockChildren)) {
-            codeString = blockChildren
-              .map((child: React.ReactNode) => {
-                if (typeof child === "string") return child;
-                if (React.isValidElement(child)) {
-                  const childElement = child as React.ReactElement<{ children?: React.ReactNode }>;
-                  const childContent = childElement.props?.children;
-                  if (typeof childContent === "string") {
-                    return childContent;
-                  }
-                  if (Array.isArray(childContent)) {
-                    return childContent
-                      .map((c: React.ReactNode) => (typeof c === "string" ? c : ""))
-                      .join("");
-                  }
-                }
-                return "";
-              })
-              .join("");
-          } else if (React.isValidElement(blockChildren)) {
-            const nestedElement = blockChildren as React.ReactElement<{ children?: React.ReactNode }>;
-            const nestedContent = nestedElement.props?.children;
-            if (typeof nestedContent === "string") {
-              codeString = nestedContent;
-            }
-          }
-        } else if (Array.isArray(children)) {
-          codeString = children
-            .map((child: React.ReactNode) => {
-              if (typeof child === "string") return child;
-              if (React.isValidElement(child)) {
-                const childElement = child as React.ReactElement<{ children?: React.ReactNode }>;
-                const childContent = childElement.props?.children;
-                if (typeof childContent === "string") return childContent;
-              }
-              return "";
-            })
-            .join("");
-        } else if (typeof children === "string") {
-          codeString = children;
-        }
+    div: ({ className, children, ...props }) => {
+      const cls = String(className ?? "");
+      const data = props as Record<string, unknown>;
+      const du = String(data["data-user"] ?? "");
+      if (cls.includes("dev-embed-github") && du) {
+        const variant = data["data-variant"] === "repos" ? "repos" : "overview";
+        return (
+          <div className="not-prose my-6 max-w-3xl">
+            <GitHubStatsBlock username={du} variant={variant} />
+          </div>
+        );
       }
-
-      const codeId = `code-${Math.random().toString(36).substr(2, 9)}`;
-      const isCopied = copiedCode === codeId;
-
-      return (
-        <div className="relative group">
-          <pre
-            {...props}
-            className="bg-slate-50 text-slate-800 p-4 rounded-lg mb-4 border border-slate-200 [&_code]:!bg-transparent [&_code]:!text-inherit [&_.hljs]:!bg-transparent [&_.hljs]:!text-inherit"
-            style={{
-              overflowX: "auto",
-              overflowY: "hidden",
-              whiteSpace: "pre",
-              maxWidth: "100%",
-              minWidth: 0,
-            }}
-          >
-            {children}
-          </pre>
-          {codeString && (
-            <Button
-              type="button"
-              variant="ghost"
-              size="sm"
-              className="absolute top-2 right-2 opacity-0 group-hover:opacity-100 transition-opacity bg-slate-700/80 hover:bg-slate-600/80 text-white z-10"
-              onClick={() => handleCopyCode(codeString, codeId)}
-              style={{
-                position: "absolute",
-                top: "0.5rem",
-                right: "0.5rem",
-              }}
-            >
-              {isCopied ? (
-                <>
-                  <Check className="h-4 w-4 mr-1" />
-                  Copied
-                </>
-              ) : (
-                <>
-                  <Copy className="h-4 w-4 mr-1" />
-                  Copy
-                </>
-              )}
-            </Button>
-          )}
-        </div>
-      );
+      if (cls.includes("dev-embed-leetcode") && du) {
+        return (
+          <div className="not-prose my-6 max-w-md">
+            <LeetCodeStatsBlock username={du} />
+          </div>
+        );
+      }
+      return <div className={className}>{children}</div>;
     },
+    pre: ({ children, ...props }) => <BlogMarkdownPre {...props}>{children}</BlogMarkdownPre>,
     code: ({ className, children, ...props }) => {
       const match = /language-(\w+)/.exec(className || "");
       const isInline = !match;
@@ -343,20 +164,18 @@ export function MarkdownRenderer({ content, postId, editable = false }: Markdown
         </code>
       );
     },
-    img: ({ src, alt }) => {
+    img: ({ src, alt, title }) => {
       const srcStr = typeof src === "string" ? src : null;
       if (!srcStr) return null;
       const fullSrc = srcStr.startsWith("http") || srcStr.startsWith("/") ? srcStr : `/${srcStr}`;
       return (
-        <span className="image-block block mt-2 mb-0 relative w-full min-h-[120px]">
-          <button
-            type="button"
-            onClick={() => setLightboxSrc(fullSrc)}
-            className="inline-block w-full cursor-zoom-in focus:outline-none focus:ring-2 focus:ring-slate-400 focus:ring-offset-2 rounded overflow-hidden relative min-h-[120px] bg-white"
-            title="Click to enlarge"
-          >
-            <MarkdownImage src={fullSrc} alt={alt ?? ""} className="block" />
-          </button>
+        <span className="image-block my-6 block w-full">
+          <BlogMarkdownImage
+            src={fullSrc}
+            alt={alt ?? ""}
+            title={title}
+            onOpenLightbox={setLightboxSrc}
+          />
         </span>
       );
     },
@@ -399,11 +218,8 @@ export function MarkdownRenderer({ content, postId, editable = false }: Markdown
     },
     table: ({ children, ...props }) => {
       return (
-        <div className="overflow-x-auto my-4">
-          <table
-            {...props}
-            className="min-w-full border-collapse border border-slate-300"
-          >
+        <div className="markdown-table-shell my-6 w-full overflow-x-auto rounded-lg border border-slate-200/90 bg-white shadow-sm">
+          <table {...props} className="min-w-full border-collapse border-0 text-sm">
             {children}
           </table>
         </div>
@@ -421,7 +237,7 @@ export function MarkdownRenderer({ content, postId, editable = false }: Markdown
     },
     tr: ({ children, ...props }) => {
       return (
-        <tr {...props} className="border-b border-slate-300">
+        <tr {...props} className="border-b border-slate-200 last:border-b-0">
           {children}
         </tr>
       );
@@ -430,7 +246,7 @@ export function MarkdownRenderer({ content, postId, editable = false }: Markdown
       return (
         <th
           {...props}
-          className="border border-slate-300 px-4 py-2 text-left font-semibold text-slate-900"
+          className="border border-slate-200 bg-slate-50/90 px-4 py-2 text-left text-sm font-semibold text-slate-900"
         >
           {children}
         </th>
@@ -504,7 +320,7 @@ export function MarkdownRenderer({ content, postId, editable = false }: Markdown
           return (
             <td
               {...props}
-              className="border border-slate-300 px-4 py-2 text-center"
+              className="border border-slate-200 px-4 py-2 text-center"
             >
               <input
                 type="checkbox"
@@ -521,7 +337,7 @@ export function MarkdownRenderer({ content, postId, editable = false }: Markdown
         return (
           <td
             {...props}
-            className="border border-slate-300 px-4 py-2 text-slate-700"
+            className="border border-slate-200 px-4 py-2 text-slate-700"
           >
             <div className="flex items-start gap-2">
               <input
@@ -541,7 +357,7 @@ export function MarkdownRenderer({ content, postId, editable = false }: Markdown
       return (
         <td
           {...props}
-          className="border border-slate-300 px-4 py-2 text-slate-700"
+          className="border border-slate-200 px-4 py-2 text-slate-700"
         >
           {children}
         </td>
@@ -551,15 +367,31 @@ export function MarkdownRenderer({ content, postId, editable = false }: Markdown
 
   return (
     <>
-      <div className="prose prose-lg max-w-none markdown-renderer">
+      <article
+        data-markdown-article
+        className="prose prose-lg max-w-none markdown-renderer font-[family-name:var(--font-geist-sans)] [&_code]:font-[family-name:var(--font-geist-mono)] [&_pre]:font-[family-name:var(--font-geist-mono)]"
+      >
         <ReactMarkdown
-          remarkPlugins={[remarkGfm, remarkMath]}
-          rehypePlugins={[rehypeRaw, [rehypeSanitize, blogPostSchema], rehypeSlug, rehypeKatex, rehypeHighlight]}
+          remarkPlugins={[remarkGfm, remarkMath, remarkSmartypants]}
+          rehypePlugins={[
+            rehypeRaw,
+            [rehypeSanitize, blogPostSchema],
+            rehypeSlug,
+            rehypeKatex,
+            [
+              rehypeShiki,
+              {
+                theme: "github-light",
+                addLanguageClass: true,
+              },
+            ],
+            rehypePanguSpacing,
+          ]}
           components={components}
         >
-          {content}
+          {markdownBody}
         </ReactMarkdown>
-      </div>
+      </article>
       {lightboxSrc && (
         <div
           className="fixed inset-0 z-[100] flex items-center justify-center bg-black/80 p-4"

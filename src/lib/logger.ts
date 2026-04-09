@@ -34,7 +34,7 @@ export function logError(message: string, meta?: Record<string, unknown>): void 
 export function logRequest(
   method: string,
   path: string,
-  meta?: { status?: number; durationMs?: number; ip?: string }
+  meta?: { status?: number; durationMs?: number; ip?: string; requestId?: string }
 ): void {
   logInfo("request", { method, path, ...meta });
 }

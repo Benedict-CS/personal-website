@@ -4,6 +4,11 @@ services:
     image: postgres:15-alpine
     container_name: personal-website-postgres
     restart: unless-stopped
+    logging:
+      driver: "json-file"
+      options:
+        max-size: "10m"
+        max-file: "3"
     ports:
       - "5432:5432"  # Expose so host can run: npx prisma migrate deploy (with DATABASE_URL in .env)
     environment:
@@ -17,6 +22,7 @@ services:
       interval: 10s
       timeout: 5s
       retries: 5
+      start_period: 15s
 
   # RustFS S3-compatible Object Storage
   # RustFS is a high-performance, distributed object storage system built in Rust
@@ -25,6 +31,11 @@ services:
     image: rustfs/rustfs:latest
     container_name: personal-website-rustfs
     restart: unless-stopped
+    logging:
+      driver: "json-file"
+      options:
+        max-size: "10m"
+        max-file: "3"
     ports:
       - "9000:9000"  # S3 API
       - "9001:9001"  # Console
@@ -46,8 +57,12 @@ services:
     build:
       context: .
       dockerfile: Dockerfile
+      args:
+        APP_VERSION: ${APP_VERSION:-local}
     container_name: personal-website-app
     restart: unless-stopped
+    # Allow Node to finish in-flight requests before SIGKILL (default 10s).
+    stop_grace_period: 30s
     depends_on:
       postgres:
         condition: service_healthy
@@ -58,8 +73,15 @@ services:
     volumes:
       # Mount public directory for CV and image uploads (persistent storage)
       - ./public:/app/public
+    logging:
+      driver: "json-file"
+      options:
+        max-size: "20m"
+        max-file: "5"
     environment:
       - NODE_ENV=production
+      # Shown in GET /api/health (`appVersion`); override without rebuild if needed
+      - APP_VERSION=${APP_VERSION:-local}
       # Proxy self-fetch (block log, analytics view, edge): public origin is often unreachable from inside the container
       - INTERNAL_APP_ORIGIN=http://127.0.0.1:3000
       - DATABASE_URL=postgresql://${POSTGRES_USER:-ben}:${POSTGRES_PASSWORD}@postgres:5432/${POSTGRES_DB:-blog}
@@ -97,6 +119,10 @@ services:
       - NEXT_PUBLIC_GISCUS_CATEGORY_ID=${NEXT_PUBLIC_GISCUS_CATEGORY_ID}
       # Agent cron jobs (optional; without it, /api/agents/*/cron returns 503)
       - AGENT_CRON_SECRET=${AGENT_CRON_SECRET:-}
+      # Shared rate limits across replicas (optional; see docs/OPERATIONS_AND_RELIABILITY.md)
+      - REDIS_URL=${REDIS_URL:-}
+      # Optional: duplicate HSTS from next.config when not using a reverse proxy that sets it
+      - ENABLE_HSTS=${ENABLE_HSTS:-}
     command:
       - /bin/sh
       - -c

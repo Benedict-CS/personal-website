@@ -44,6 +44,11 @@
   --radius-4xl: calc(var(--radius) + 16px);
 }
 
+/* Light-only UI: no dark mode. Keeps browser form controls and scrollbars in light chrome. */
+html {
+  color-scheme: light;
+}
+
 :root {
   /* Typography (Geist metrics) */
   --font-sans: var(--font-geist-sans), ui-sans-serif, system-ui, sans-serif;
@@ -262,18 +267,70 @@
   @apply container mx-auto max-w-6xl px-4 sm:px-6 lg:px-8;
 }
 
-/* Article body: full width of column so each line fills (no narrow text column) */
+/* Article body: Inter + tracking tuned for screen reading (pairs with Geist for UI elsewhere) */
 .prose-reading {
-  line-height: 1.75;
+  font-family: var(--font-inter), var(--font-geist-sans), ui-sans-serif, system-ui, sans-serif;
+  letter-spacing: -0.011em;
+  line-height: 1.7;
+  font-feature-settings: "kern" 1, "liga" 1;
 }
 .prose-reading-full {
   max-width: none;
+}
+.prose-reading-article {
+  max-width: 70ch;
 }
 .prose-reading .prose {
   @apply max-w-none;
 }
 .prose-reading .prose > *:first-child {
   margin-top: 0;
+}
+
+/* GFM footnotes (remark-gfm) */
+.markdown-renderer section.footnotes,
+[data-markdown-article] section.footnotes {
+  @apply mt-10 border-t border-slate-200 pt-6 text-sm text-slate-600;
+}
+.markdown-renderer section.footnotes ol,
+[data-markdown-article] section.footnotes ol {
+  @apply list-decimal pl-5;
+}
+
+/* Code blocks: subtle custom scrollbar (WebKit + Firefox) */
+.markdown-code-scrollbar {
+  scrollbar-width: thin;
+  scrollbar-color: oklch(0.82 0.02 255) transparent;
+}
+.markdown-code-scrollbar::-webkit-scrollbar {
+  height: 8px;
+}
+.markdown-code-scrollbar::-webkit-scrollbar-thumb {
+  @apply rounded-full bg-slate-300/90;
+}
+.markdown-code-scrollbar::-webkit-scrollbar-track {
+  @apply rounded-full bg-transparent;
+}
+
+/* Code block copy: subtle success pop (respects reduced motion via Tailwind motion-safe on button) */
+@keyframes markdown-copy-pop {
+  0% {
+    transform: scale(1);
+  }
+  35% {
+    transform: scale(1.18);
+  }
+  100% {
+    transform: scale(1);
+  }
+}
+.markdown-copy-icon-pop {
+  animation: markdown-copy-pop 0.42s ease-out;
+}
+@media (prefers-reduced-motion: reduce) {
+  .markdown-copy-icon-pop {
+    animation: none;
+  }
 }
 
 /* Respect reduced motion preference */
@@ -588,6 +645,17 @@ pre .hljs[class*="language-"],
   background-color: transparent !important;
 }
 
+/* Shiki (blog markdown): theme colors are inline on spans; frame supplies outer chrome */
+.markdown-code-frame pre code.shiki,
+.prose pre code.shiki {
+  background: transparent !important;
+  background-color: transparent !important;
+}
+.markdown-code-frame pre code.shiki .line span {
+  background: transparent !important;
+  background-color: transparent !important;
+}
+
 /* --- Site template variants (data-template on body from layout) --- */
 
 /* Minimal: flat, no shadow on nav, plain white */
@@ -640,6 +708,8 @@ pre .hljs[class*="language-"],
   aside,
   .skip-link,
   nav[aria-label],
+  nav.sticky,
+  .no-print,
   [data-reading-progress] {
     display: none !important;
   }

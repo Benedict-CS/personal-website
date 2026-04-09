@@ -1,5 +1,11 @@
 import { Suspense } from "react";
+import type { Metadata } from "next";
 import { SignInForm } from "./sign-in-form";
+
+export const metadata: Metadata = {
+  title: "Admin sign-in",
+  description: "Sign in to access the dashboard and editor.",
+};
 
 export default function SignInPage() {
   return (

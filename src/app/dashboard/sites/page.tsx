@@ -4,6 +4,10 @@ import Link from "next/link";
 import { useCallback, useEffect, useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import { PlatformLocaleSwitcher } from "@/components/saas/platform-locale-switcher";
+import { usePlatformLocale } from "@/hooks/use-platform-locale";
+import { getPlatformMessages } from "@/i18n/messages";
+import { DashboardPageHeader, DashboardPanel } from "@/components/dashboard/dashboard-ui";
 
 type SiteSummary = {
   accountId: string;
@@ -26,6 +30,8 @@ const TEMPLATE_OPTIONS = [
 ];
 
 export default function DashboardSitesPage() {
+  const locale = usePlatformLocale();
+  const t = getPlatformMessages(locale);
   const [sites, setSites] = useState<SiteSummary[]>([]);
   const [name, setName] = useState("");
   const [slug, setSlug] = useState("");
@@ -67,18 +73,17 @@ export default function DashboardSitesPage() {
 
   return (
     <div className="space-y-6">
-      <div>
-        <h1 className="text-2xl font-bold text-slate-900">Multi-tenant SaaS Sites</h1>
-        <p className="text-slate-600">Create and manage isolated tenant websites with template onboarding.</p>
-      </div>
+      <DashboardPageHeader title={t.saasSitesTitle} description={t.saasSitesSubtitle}>
+        <PlatformLocaleSwitcher value={locale} label={t.locale} />
+      </DashboardPageHeader>
 
-      <div className="rounded border border-slate-200 bg-white p-4">
-        <h2 className="mb-3 font-semibold">Create New Site</h2>
+      <DashboardPanel padding="none" className="p-4">
+        <h2 className="mb-3 text-base font-semibold text-foreground">Create New Site</h2>
         <div className="grid gap-3 md:grid-cols-4">
           <Input value={name} onChange={(e) => setName(e.target.value)} placeholder="Site name" />
           <Input value={slug} onChange={(e) => setSlug(e.target.value)} placeholder="site-slug" />
           <select
-            className="rounded border border-slate-300 px-3 py-2"
+            className="rounded-md border border-input bg-background px-3 py-2 text-sm"
             value={templateKey}
             onChange={(e) => setTemplateKey(e.target.value)}
           >
@@ -88,18 +93,18 @@ export default function DashboardSitesPage() {
           </select>
           <Button onClick={createSite}>Create Site</Button>
         </div>
-        {status ? <p className="mt-2 text-sm text-slate-600">{status}</p> : null}
-      </div>
+        {status ? <p className="mt-2 text-sm text-muted-foreground">{status}</p> : null}
+      </DashboardPanel>
 
       <div className="grid gap-3 md:grid-cols-2">
         {sites.map((item) => (
-          <div key={item.site.id} className="rounded border border-slate-200 bg-white p-4">
+          <DashboardPanel key={item.site.id} padding="none" className="p-4">
             <div className="mb-2 flex items-center justify-between">
-              <h3 className="font-semibold">{item.site.name}</h3>
-              <span className="rounded bg-slate-100 px-2 py-1 text-xs">{item.role}</span>
+              <h3 className="font-semibold text-foreground">{item.site.name}</h3>
+              <span className="rounded-md bg-muted px-2 py-1 text-xs text-muted-foreground">{item.role}</span>
             </div>
-            <p className="text-sm text-slate-600">Slug: {item.site.slug}</p>
-            <p className="text-sm text-slate-600">Status: {item.site.status}</p>
+            <p className="text-sm text-muted-foreground">Slug: {item.site.slug}</p>
+            <p className="text-sm text-muted-foreground">Status: {item.site.status}</p>
             <div className="mt-3 flex flex-wrap gap-2">
               <Link href={`/dashboard/sites/${item.site.id}/pages`}>
                 <Button variant="outline">Pages</Button>
@@ -125,11 +130,14 @@ export default function DashboardSitesPage() {
               <Link href={`/dashboard/sites/${item.site.id}/experiments`}>
                 <Button variant="outline">Experiments</Button>
               </Link>
+              <Link href={`/dashboard/sites/${item.site.id}/billing`}>
+                <Button variant="outline">{t.billing}</Button>
+              </Link>
               <Link href={`/s/${item.site.slug}`}>
                 <Button variant="outline">Live Site</Button>
               </Link>
             </div>
-          </div>
+          </DashboardPanel>
         ))}
       </div>
     </div>

@@ -53,7 +53,13 @@ export default async function CustomPagePreview({ searchParams }: PreviewProps) 
           <div className="prose prose-slate max-w-none">
             <MarkdownRenderer content={cleanContent} />
           </div>
-          <div className="mt-6 border-t border-slate-200 pt-4">
+          <div className="mt-6 flex flex-wrap gap-3 border-t border-slate-200 pt-4">
+            <Link href={`/editor/page/${encodeURIComponent(page.slug)}`}>
+              <Button>Edit in visual editor</Button>
+            </Link>
+            <Link href={`/dashboard/content/pages`}>
+              <Button variant="outline">Custom pages list</Button>
+            </Link>
             <Link href={`/page/${encodeURIComponent(page.slug)}`}>
               <Button variant="outline">Open public page</Button>
             </Link>

@@ -13,10 +13,12 @@ This document lists REST API routes and their intended use. All routes are under
 | GET | `/api/site-content?page=contact` | Contact page content. |
 | GET | `/api/custom-pages/slug/[slug]` | Custom page by slug (public). |
 | GET | `/api/custom-pages/preview` | Preview token validation (query). |
-| POST | `/api/contact` | Contact form submit. Rate limited. |
+| POST | `/api/contact` | Contact form submit. Rate limited per IP; **429** returns `Retry-After: 60`, `Cache-Control: no-store`, `X-RateLimit-Remaining`. |
 | GET | `/api/search` | Global search (posts, pages). |
-| GET | `/api/health` | Health check. |
-| GET | `/api/v1/health` | Health check (v1). |
+| GET | `/.well-known/security.txt` | Security contact hints (RFC 9116); set `SECURITY_TXT_CONTACT` / `SECURITY_TXT_POLICY`. |
+| GET, HEAD | `/api/live` | Liveness (no DB). `HEAD` returns status only. |
+| GET, HEAD | `/api/health` | Readiness (DB ping). JSON includes `uptimeSeconds`, `node` (Node.js version), and may include `appVersion` (`APP_VERSION` / `GIT_COMMIT`). `Cache-Control: no-store`. |
+| GET, HEAD | `/api/v1/health` | Same as `/api/health`; `GET` JSON includes `version: "v1"` plus optional `appVersion` and `node`. |
 | GET | `/api/giscus-config` | Giscus comment widget config. |
 | POST | `/api/analytics/view` | Page view (requires `X-Analytics-Secret`). |
 | POST | `/api/analytics/leave` | Leave event (duration). |
@@ -107,6 +109,18 @@ All routes below require a valid NextAuth session (cookie). Return `401 Unauthor
 
 Routes under `/api/saas/sites/[siteId]/*` and `/api/builder/*` are used by the SaaS and builder layers (sites, pages, commerce, CRM, media, infra, AI, showroom). They require appropriate auth and tenant context.
 
+### Billing and locale (Phase 5)
+
+| Method | Path | Description |
+|--------|------|-------------|
+| GET | `/api/saas/sites/[siteId]/billing` | Plan, `billingProvider`, usage vs limits (session + tenant). |
+| PATCH | `/api/saas/sites/[siteId]/locale` | Body `{ "defaultLocale": "en" \| "es" \| "de" \| "ja" }` — storefront `lang` default. |
+| POST | `/api/saas/billing/checkout` | Body `{ siteId, targetPlan: "PRO" \| "BUSINESS" \| "ENTERPRISE", provider?: "stripe" \| "lemon_squeezy" }` — Stripe Checkout URL or Lemon redirect URL. |
+| POST | `/api/saas/billing/webhooks/stripe` | Stripe signed webhook (no session; uses `STRIPE_WEBHOOK_SECRET`). |
+| POST | `/api/saas/billing/webhooks/lemon-squeezy` | Lemon Squeezy `X-Signature` webhook (`LEMON_SQUEEZY_WEBHOOK_SECRET`). |
+
+See [PHASE5_SAAS_I18N_AND_BILLING.md](PHASE5_SAAS_I18N_AND_BILLING.md).
+
 ---
 
 ## Cron and agents
@@ -125,3 +139,14 @@ Set `AGENT_CRON_SECRET` and send it in the header for cron routes.
 - **Contact form:** Rate limited by IP.
 - **Sign-in:** Rate limited; CAPTCHA required after N failures (see login-rate-limit).
 - **APIs:** Session required for write and dashboard endpoints; validate and sanitize all inputs; Prisma parameterizes queries.
+
+### Middleware (`src/proxy.ts`)
+
+Responses may include **`x-request-id`** for log correlation. SaaS builder and tenant paths (`/dashboard/sites*`, `/s/*`) may set the **`saas_locale`** cookie (first visit) for UI language negotiation.
+
+| Situation | Status | Notable headers |
+|-----------|--------|-----------------|
+| IP blocked (`ACCESS_BLOCK_IP_PREFIXES` / `ACCESS_ALLOW_IPS`) | **403** | `Cache-Control: no-store, private` |
+| SaaS tenant rate limit (custom host → `/api/infra/edge` returns 429) | **429** | `Cache-Control: no-store, private`, **`Retry-After: 60`** |
+
+**HSTS:** `Strict-Transport-Security` is added by middleware only when **`ENABLE_HSTS=true`** and the request is served over HTTPS (see [ENVIRONMENT.md](ENVIRONMENT.md)). This matches `next.config.ts` static headers.

@@ -58,26 +58,26 @@ export default function TenantPagesPage() {
   return (
     <div className="space-y-6">
       <div>
-        <h1 className="text-2xl font-bold text-slate-900">Tenant Pages</h1>
-        <p className="text-slate-600">Manage draft and published pages for this tenant site.</p>
+        <h1 className="text-2xl font-bold text-foreground">Tenant Pages</h1>
+        <p className="text-muted-foreground">Manage draft and published pages for this tenant site.</p>
       </div>
-      <div className="rounded border border-slate-200 bg-white p-4">
+      <div className="rounded border border-border bg-card p-4">
         <h2 className="mb-3 font-semibold">Create Page</h2>
         <div className="grid gap-3 md:grid-cols-3">
           <Input value={title} onChange={(e) => setTitle(e.target.value)} placeholder="Page title" />
           <Input value={slug} onChange={(e) => setSlug(e.target.value)} placeholder="page-slug" />
           <Button onClick={createPage}>Create</Button>
         </div>
-        {status ? <p className="mt-2 text-sm text-slate-600">{status}</p> : null}
+        {status ? <p className="mt-2 text-sm text-muted-foreground">{status}</p> : null}
       </div>
 
       <div className="space-y-3">
         {pages.map((p) => (
-          <div key={p.id} className="rounded border border-slate-200 bg-white p-4">
+          <div key={p.id} className="rounded border border-border bg-card p-4">
             <div className="flex items-center justify-between">
               <div>
                 <h3 className="font-semibold">{p.title}</h3>
-                <p className="text-sm text-slate-600">/{p.slug} - {p.status}</p>
+                <p className="text-sm text-muted-foreground">/{p.slug} - {p.status}</p>
               </div>
               <div className="flex gap-2">
                 <Link href={`/dashboard/sites/${siteId}/editor/${p.id}`}>

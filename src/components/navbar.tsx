@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { Suspense, useCallback, useState } from "react";
 import Link from "next/link";
 import Image from "next/image";
 import { usePathname } from "next/navigation";
@@ -18,6 +18,14 @@ function isActivePath(pathname: string, href: string): boolean {
 }
 
 const FALLBACK_NAME = "My Site";
+
+function NavbarGlobalSearch() {
+  return (
+    <Suspense fallback={<div className="h-9 w-9 shrink-0" role="presentation" aria-hidden />}>
+      <GlobalSearch />
+    </Suspense>
+  );
+}
 
 const DEFAULT_NAV = [
   { label: "Home", href: "/" },
@@ -37,6 +45,13 @@ export function Navbar({ siteConfig }: { siteConfig?: SiteConfigForRender | null
   const isEditor = pathname?.startsWith("/editor");
   const expiresAt = (session as { expiresAt?: number } | null)?.expiresAt;
   const [mobileOpen, setMobileOpen] = useState(false);
+
+  const signOutAndGoHome = useCallback(() => {
+    void signOut({ redirect: false }).then(() => {
+      window.location.href = "/";
+    });
+  }, []);
+
   const mapToEditorHref = (href: string): string => {
     if (href === "/") return "/editor/home";
     if (href === "/about") return "/editor/about";
@@ -58,8 +73,8 @@ export function Navbar({ siteConfig }: { siteConfig?: SiteConfigForRender | null
               size="sm"
               className={`text-xs sm:text-sm w-full sm:w-auto justify-center sm:justify-start min-h-[44px] sm:min-h-0 py-3 sm:py-0 rounded-lg transition-colors duration-200 ${
                 active
-                  ? "text-[var(--primary)] font-medium bg-[var(--accent)] hover:bg-[var(--accent)] hover:text-[var(--primary)]"
-                  : "text-[var(--foreground)] hover:text-[var(--primary)] hover:bg-[var(--accent)]/60"
+                  ? "text-primary font-medium bg-accent hover:bg-accent hover:text-primary"
+                  : "text-foreground hover:text-primary hover:bg-accent/60"
               }`}
             >
               {item.label}
@@ -71,12 +86,12 @@ export function Navbar({ siteConfig }: { siteConfig?: SiteConfigForRender | null
   );
 
   return (
-    <nav className="sticky top-0 z-50 w-full border-b border-[var(--border)] bg-[var(--glass-bg)] backdrop-blur-md shadow-[var(--shadow-sm)]">
+    <nav className="sticky top-0 z-50 w-full border-b border-border bg-background/80 backdrop-blur-md shadow-sm">
       <div className="container mx-auto max-w-6xl flex h-14 sm:h-16 items-center justify-between px-4 sm:px-6 lg:px-8">
         <Link
           href={isDashboard ? "/dashboard/analytics" : isEditor ? "/editor/home" : "/"}
           data-editor-site="navbar.brand"
-          className="text-lg sm:text-xl font-bold text-[var(--foreground)] hover:text-[var(--primary)] transition-colors duration-200 whitespace-nowrap flex items-center gap-1.5"
+          className="text-lg sm:text-xl font-bold text-foreground hover:text-primary transition-colors duration-200 whitespace-nowrap flex items-center gap-1.5"
         >
           {logoUrl ? (
             <Image src={logoUrl} alt="" width={28} height={28} data-editor-site-logo className="rounded object-contain shrink-0" />
@@ -86,13 +101,13 @@ export function Navbar({ siteConfig }: { siteConfig?: SiteConfigForRender | null
         </Link>
         {/* Desktop: inline links */}
         <div className="hidden sm:flex items-center gap-1 sm:gap-2 flex-wrap justify-end">
-          {!isDashboard && !isEditor && <GlobalSearch />}
+          {!isDashboard && !isEditor && <NavbarGlobalSearch />}
           {!isDashboard && publicLinks}
           {isLoggedIn && (
             <>
               {!isDashboard && (
                 <Link href="/dashboard/analytics">
-                  <Button variant="ghost" size="sm" className="text-[var(--foreground)] hover:text-[var(--primary)] hover:bg-[var(--accent)]/60 text-xs sm:text-sm rounded-lg transition-colors duration-200">
+                  <Button variant="ghost" size="sm" className="text-foreground hover:text-primary hover:bg-accent/60 text-xs sm:text-sm rounded-lg transition-colors duration-200">
                     Dashboard
                   </Button>
                 </Link>
@@ -101,7 +116,7 @@ export function Navbar({ siteConfig }: { siteConfig?: SiteConfigForRender | null
                 <>
                   {typeof expiresAt === "number" && <SessionCountdown expiresAt={expiresAt} />}
                   <Link href="/" className="inline-flex items-center gap-1">
-                    <Button variant="ghost" size="sm" className="text-[var(--muted-foreground)] hover:text-[var(--foreground)] hover:bg-[var(--accent)]/60 text-xs sm:text-sm rounded-lg transition-colors duration-200">
+                    <Button variant="ghost" size="sm" className="text-muted-foreground hover:text-foreground hover:bg-accent/60 text-xs sm:text-sm rounded-lg transition-colors duration-200">
                       <ExternalLink className="h-3.5 w-3.5" />
                       View site
                     </Button>
@@ -111,12 +126,8 @@ export function Navbar({ siteConfig }: { siteConfig?: SiteConfigForRender | null
               <Button
                 variant="outline"
                 size="sm"
-                className="text-[var(--foreground)] text-xs sm:text-sm rounded-lg transition-colors duration-200"
-                onClick={() => {
-                  signOut({ redirect: false }).then(() => {
-                    window.location.href = "/";
-                  });
-                }}
+                className="text-foreground text-xs sm:text-sm rounded-lg transition-colors duration-200"
+                onClick={signOutAndGoHome}
               >
                 Sign Out
               </Button>
@@ -125,8 +136,8 @@ export function Navbar({ siteConfig }: { siteConfig?: SiteConfigForRender | null
         </div>
         {/* Mobile: hamburger + dropdown */}
         <div className="flex sm:hidden items-center gap-2">
-          {!isDashboard && !isEditor && <GlobalSearch />}
-          <Button variant="ghost" size="icon" className="h-9 w-9 rounded-lg text-[var(--foreground)]" onClick={() => setMobileOpen((o) => !o)} aria-label={mobileOpen ? "Close menu" : "Open menu"} aria-expanded={mobileOpen}>
+          {!isDashboard && !isEditor && <NavbarGlobalSearch />}
+          <Button variant="ghost" size="icon" className="h-9 w-9 rounded-lg text-foreground" onClick={() => setMobileOpen((o) => !o)} aria-label={mobileOpen ? "Close menu" : "Open menu"} aria-expanded={mobileOpen}>
             {mobileOpen ? <X className="h-5 w-5" /> : <Menu className="h-5 w-5" />}
           </Button>
         </div>
@@ -138,7 +149,7 @@ export function Navbar({ siteConfig }: { siteConfig?: SiteConfigForRender | null
             animate={{ height: "auto", opacity: 1 }}
             exit={{ height: 0, opacity: 0 }}
             transition={{ duration: 0.2, ease: [0.25, 0.46, 0.45, 0.94] }}
-            className="sm:hidden overflow-hidden border-t border-[var(--border)] bg-[var(--glass-bg)] backdrop-blur-md"
+            className="sm:hidden overflow-hidden border-t border-border bg-background/80 backdrop-blur-md"
           >
             <div className="container mx-auto max-w-6xl px-4 py-3 flex flex-col gap-0.5">
               {!isDashboard && publicLinks}
@@ -146,12 +157,12 @@ export function Navbar({ siteConfig }: { siteConfig?: SiteConfigForRender | null
                 <>
                   {!isDashboard && (
                     <Link href="/dashboard/analytics" onClick={() => setMobileOpen(false)} className="block">
-                      <Button variant="ghost" size="sm" className="text-[var(--foreground)] hover:bg-[var(--accent)]/60 w-full justify-center min-h-[44px] py-3 rounded-lg transition-colors duration-200">Dashboard</Button>
+                      <Button variant="ghost" size="sm" className="text-foreground hover:bg-accent/60 w-full justify-center min-h-[44px] py-3 rounded-lg transition-colors duration-200">Dashboard</Button>
                     </Link>
                   )}
                   {isDashboard && (
                     <Link href="/" onClick={() => setMobileOpen(false)} className="block">
-                      <Button variant="ghost" size="sm" className="text-[var(--muted-foreground)] hover:bg-[var(--accent)]/60 w-full justify-center gap-1 min-h-[44px] py-3 rounded-lg transition-colors duration-200">
+                      <Button variant="ghost" size="sm" className="text-muted-foreground hover:bg-accent/60 w-full justify-center gap-1 min-h-[44px] py-3 rounded-lg transition-colors duration-200">
                         <ExternalLink className="h-3.5 w-3.5" /> View site
                       </Button>
                     </Link>
@@ -159,12 +170,10 @@ export function Navbar({ siteConfig }: { siteConfig?: SiteConfigForRender | null
                   <Button
                     variant="outline"
                     size="sm"
-                    className="w-full justify-center min-h-[44px] py-3 rounded-lg text-[var(--foreground)]"
+                    className="w-full justify-center min-h-[44px] py-3 rounded-lg text-foreground"
                     onClick={() => {
                       setMobileOpen(false);
-                      signOut({ redirect: false }).then(() => {
-                        window.location.href = "/";
-                      });
+                      signOutAndGoHome();
                     }}
                   >
                     Sign Out

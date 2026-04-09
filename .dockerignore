@@ -31,9 +31,12 @@ dist
 .DS_Store
 Thumbs.db
 
-# Testing / coverage
+# Testing / coverage / e2e artifacts (not needed in the image)
 coverage
 .nyc_output
+playwright-report
+test-results
+e2e/.auth
 **/*.test.ts
 **/*.test.tsx
 **/*.spec.ts

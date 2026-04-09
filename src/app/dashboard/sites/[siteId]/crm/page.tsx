@@ -81,8 +81,8 @@ export default function SiteCrmPage() {
     <div className="space-y-4">
       <div className="flex items-center justify-between">
         <div>
-          <h1 className="text-2xl font-bold text-slate-900">CRM & Email Marketing</h1>
-          <p className="text-slate-600">Contacts, submissions, autonomous agents, and visual email campaigns.</p>
+          <h1 className="text-2xl font-bold text-foreground">CRM & Email Marketing</h1>
+          <p className="text-muted-foreground">Contacts, submissions, autonomous agents, and visual email campaigns.</p>
         </div>
         <Link href={`/dashboard/sites/${siteId}/pages`}>
           <Button variant="outline">Back to Pages</Button>
@@ -98,15 +98,15 @@ export default function SiteCrmPage() {
 
       {tab === "contacts" ? (
         <div className="space-y-3">
-          <div className="rounded border border-slate-200 bg-white p-3 flex gap-2">
+          <div className="rounded border border-border bg-card p-3 flex gap-2">
             <Input value={newContactEmail} onChange={(e) => setNewContactEmail(e.target.value)} placeholder="email@example.com" />
             <Button onClick={addContact}>Add Contact</Button>
           </div>
           <div className="space-y-2">
             {contacts.map((contact) => (
-              <div key={contact.id} className="rounded border border-slate-200 bg-white p-3">
+              <div key={contact.id} className="rounded border border-border bg-card p-3">
                 <p className="font-medium">{contact.email}</p>
-                <p className="text-xs text-slate-600">Source: {contact.source}</p>
+                <p className="text-xs text-muted-foreground">Source: {contact.source}</p>
               </div>
             ))}
           </div>
@@ -116,10 +116,10 @@ export default function SiteCrmPage() {
       {tab === "submissions" ? (
         <div className="space-y-2">
           {submissions.map((submission) => (
-            <div key={submission.id} className="rounded border border-slate-200 bg-white p-3">
+            <div key={submission.id} className="rounded border border-border bg-card p-3">
               <p className="font-medium">{submission.formName || "form"}</p>
-              <p className="text-xs text-slate-600">Page: {submission.pageSlug || "-"}</p>
-              <p className="text-xs text-slate-600">Email: {submission.contact?.email || "-"}</p>
+              <p className="text-xs text-muted-foreground">Page: {submission.pageSlug || "-"}</p>
+              <p className="text-xs text-muted-foreground">Email: {submission.contact?.email || "-"}</p>
             </div>
           ))}
         </div>
@@ -128,8 +128,8 @@ export default function SiteCrmPage() {
       {tab === "email" ? <EmailBuilder siteId={siteId} /> : null}
 
       {tab === "agents" ? (
-        <div className="rounded border border-slate-200 bg-white p-4 space-y-3">
-          <p className="text-sm text-slate-600">
+        <div className="rounded border border-border bg-card p-4 space-y-3">
+          <p className="text-sm text-muted-foreground">
             Autonomous agents can optimize low-performing pages and draft support replies from CRM + product knowledge.
           </p>
           <div className="flex gap-2">
@@ -139,7 +139,7 @@ export default function SiteCrmPage() {
         </div>
       ) : null}
 
-      {status ? <p className="text-sm text-slate-600">{status}</p> : null}
+      {status ? <p className="text-sm text-muted-foreground">{status}</p> : null}
     </div>
   );
 }

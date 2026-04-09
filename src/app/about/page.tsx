@@ -14,24 +14,34 @@ import { PublicBreadcrumbs } from "@/components/public-breadcrumbs";
 import { AboutSkillsAchievementsEditor } from "@/components/about-skills-achievements-editor";
 import { Suspense } from "react";
 import { getCvDownloadFilename } from "@/lib/cv-download-filename";
+import { AboutPrintToolbar } from "@/components/about-print-toolbar";
 
 export const revalidate = 30;
 export const dynamic = "force-dynamic";
 
 export async function generateMetadata(): Promise<Metadata> {
   const config = await getSiteConfigForRender();
+  const base = config.url.replace(/\/$/, "");
+  const desc =
+    "Learn more about the site owner, background, projects, and work experience.";
   const ogUrl = config.ogImageUrl
     ? (config.ogImageUrl.startsWith("http") ? config.ogImageUrl : new URL(config.ogImageUrl, config.url).toString())
     : undefined;
   return {
     title: "About Me",
-    description:
-      "Learn more about the site owner, background, projects, and work experience.",
+    description: desc,
+    alternates: { canonical: `${base}/about` },
     openGraph: {
       title: "About Me",
-      description:
-        "Learn more about the site owner, background, projects, and work experience.",
-      url: `${config.url}/about`,
+      description: desc,
+      url: `${base}/about`,
+      type: "website",
+      ...(ogUrl && { images: [ogUrl] }),
+    },
+    twitter: {
+      card: "summary_large_image",
+      title: "About Me",
+      description: desc,
       ...(ogUrl && { images: [ogUrl] }),
     },
   };
@@ -307,7 +317,16 @@ function normalizeBlockMarkdown(content: string): string {
   return lines.map((line) => `- ${line}`).join("\n");
 }
 
-export default async function AboutPage() {
+export default async function AboutPage({
+  searchParams,
+}: {
+  searchParams: Promise<{ print?: string | string[] }>;
+}) {
+  const sp = await searchParams;
+  const printRaw = sp?.print;
+  const printParam = Array.isArray(printRaw) ? printRaw[0] : printRaw;
+  const isPrintMode = printParam === "1" || printParam === "true";
+
   const config = await getAboutConfig();
   const { profileImage, heroName, heroTagline, heroPortfolioLabel, heroPortfolioUrl, introText, aboutMainContent, educationBlocks, experienceBlocks, volunteerBlocks, projectBlocks, schoolLogos, projectImages, companyLogos, technicalSkills, achievements, customSections, sectionOrder, sectionVisibility, sectionTitles } = config;
   const downloadCvLabel = heroPortfolioLabel?.trim() || "Download CV (PDF)";
@@ -410,7 +429,10 @@ export default async function AboutPage() {
 
   return (
     <div className="container mx-auto max-w-5xl px-6 py-12">
-      <PublicBreadcrumbs items={[{ label: "Home", href: "/" }, { label: "About" }]} />
+      {isPrintMode && <AboutPrintToolbar />}
+      {!isPrintMode && (
+        <PublicBreadcrumbs items={[{ label: "Home", href: "/" }, { label: "About" }]} />
+      )}
       <Suspense fallback={null}>
         <AboutHighlightScroll />
       </Suspense>

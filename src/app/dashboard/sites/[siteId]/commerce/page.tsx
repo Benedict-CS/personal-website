@@ -128,8 +128,8 @@ export default function CommerceDashboardPage() {
     <div className="space-y-6">
       <div className="flex items-center justify-between">
         <div>
-          <h1 className="text-2xl font-bold text-slate-900">E-commerce Admin</h1>
-          <p className="text-slate-600">Inventory, variants, stock, and fulfillment Kanban for this tenant.</p>
+          <h1 className="text-2xl font-bold text-foreground">E-commerce Admin</h1>
+          <p className="text-muted-foreground">Inventory, variants, stock, and fulfillment Kanban for this tenant.</p>
         </div>
         <div className="flex gap-2">
           <Link href={`/dashboard/sites/${siteId}/pages`}>
@@ -147,21 +147,21 @@ export default function CommerceDashboardPage() {
       {activeTab === "inventory" ? (
         <div className="space-y-4">
           <div className="grid gap-3 md:grid-cols-3">
-            <div className="rounded border border-slate-200 bg-white p-3">
-              <p className="text-sm text-slate-500">Products</p>
+            <div className="rounded border border-border bg-card p-3">
+              <p className="text-sm text-muted-foreground">Products</p>
               <p className="text-2xl font-semibold">{inventoryStats.productCount}</p>
             </div>
-            <div className="rounded border border-slate-200 bg-white p-3">
-              <p className="text-sm text-slate-500">SKUs</p>
+            <div className="rounded border border-border bg-card p-3">
+              <p className="text-sm text-muted-foreground">SKUs</p>
               <p className="text-2xl font-semibold">{inventoryStats.skuCount}</p>
             </div>
-            <div className="rounded border border-slate-200 bg-white p-3">
-              <p className="text-sm text-slate-500">Total stock units</p>
+            <div className="rounded border border-border bg-card p-3">
+              <p className="text-sm text-muted-foreground">Total stock units</p>
               <p className="text-2xl font-semibold">{inventoryStats.stock}</p>
             </div>
           </div>
 
-          <div className="rounded border border-slate-200 bg-white p-4 space-y-3">
+          <div className="rounded border border-border bg-card p-4 space-y-3">
             <h2 className="font-semibold">Create Product</h2>
             <div className="grid gap-3 md:grid-cols-4">
               <Input placeholder="Title" value={newProduct.title} onChange={(e) => setNewProduct((p) => ({ ...p, title: e.target.value }))} />
@@ -176,14 +176,14 @@ export default function CommerceDashboardPage() {
             {products.map((product) => {
               const draft = variantDraftByProduct[product.id] || { sku: "", title: "", priceCents: 0, stock: 0 };
               return (
-                <div key={product.id} className="rounded border border-slate-200 bg-white p-4 space-y-3">
+                <div key={product.id} className="rounded border border-border bg-card p-4 space-y-3">
                   <div className="grid gap-2 md:grid-cols-5">
                     <Input value={product.title} onChange={(e) => setProducts((prev) => prev.map((p) => (p.id === product.id ? { ...p, title: e.target.value } : p)))} />
                     <Input value={product.slug} onChange={(e) => setProducts((prev) => prev.map((p) => (p.id === product.id ? { ...p, slug: e.target.value } : p)))} />
                     <Input type="number" value={product.basePriceCents} onChange={(e) => setProducts((prev) => prev.map((p) => (p.id === product.id ? { ...p, basePriceCents: Number(e.target.value) } : p)))} />
                     <Input type="number" value={product.totalStock} onChange={(e) => setProducts((prev) => prev.map((p) => (p.id === product.id ? { ...p, totalStock: Number(e.target.value) } : p)))} />
                     <select
-                      className="rounded border border-slate-300 px-2"
+                      className="rounded border border-input px-2"
                       value={product.status}
                       onChange={(e) =>
                         setProducts((prev) => prev.map((p) => (p.id === product.id ? { ...p, status: e.target.value as Product["status"] } : p)))
@@ -200,11 +200,11 @@ export default function CommerceDashboardPage() {
                     </Button>
                   </div>
 
-                  <div className="rounded border border-slate-100 bg-slate-50 p-3">
+                  <div className="rounded border border-border/70 bg-muted/40 p-3">
                     <h3 className="mb-2 text-sm font-semibold">Variants</h3>
                     <div className="space-y-2">
                       {product.variants.map((variant) => (
-                        <div key={variant.id} className="grid gap-2 md:grid-cols-4 rounded border border-slate-200 bg-white p-2">
+                        <div key={variant.id} className="grid gap-2 md:grid-cols-4 rounded border border-border bg-card p-2">
                           <p className="text-sm">{variant.sku}</p>
                           <p className="text-sm">{variant.title}</p>
                           <p className="text-sm">{formatMoney(variant.priceCents)}</p>
@@ -228,21 +228,21 @@ export default function CommerceDashboardPage() {
       ) : (
         <div className="grid gap-3 lg:grid-cols-5">
           {KANBAN_STAGES.map((stage) => (
-            <div key={stage} className="rounded border border-slate-200 bg-slate-50 p-3">
+            <div key={stage} className="rounded border border-border bg-muted/40 p-3">
               <h2 className="mb-2 text-sm font-semibold">{stage}</h2>
               <div className="space-y-2">
                 {orders
                   .filter((o) => o.fulfillmentStage === stage)
                   .map((order) => (
-                    <div key={order.id} className="rounded border border-slate-200 bg-white p-2">
+                    <div key={order.id} className="rounded border border-border bg-card p-2">
                       <p className="font-medium text-sm">{order.orderNumber}</p>
-                      <p className="text-xs text-slate-600">{formatMoney(order.totalCents)}</p>
+                      <p className="text-xs text-muted-foreground">{formatMoney(order.totalCents)}</p>
                       <div className="mt-2 flex flex-wrap gap-1">
                         {KANBAN_STAGES.filter((x) => x !== stage).map((next) => (
                           <button
                             key={next}
                             type="button"
-                            className="rounded border border-slate-200 px-2 py-1 text-[10px] hover:bg-slate-50"
+                            className="rounded border border-border px-2 py-1 text-[10px] hover:bg-muted/40"
                             onClick={() => moveOrderStage(order.id, next)}
                           >
                             Move to {next}
@@ -257,7 +257,7 @@ export default function CommerceDashboardPage() {
         </div>
       )}
 
-      {statusText ? <p className="text-sm text-slate-600">{statusText}</p> : null}
+      {statusText ? <p className="text-sm text-muted-foreground">{statusText}</p> : null}
     </div>
   );
 }

@@ -12,9 +12,24 @@ export const dynamic = "force-dynamic";
 
 export async function generateMetadata(): Promise<Metadata> {
   const config = await getSiteConfigForRender();
+  const base = config.url.replace(/\/$/, "");
+  const desc = "Browse all blog posts by year.";
+  const path = `${base}/blog/archive`;
   return {
     title: `Archive | ${config.siteName}`,
-    description: "Browse all blog posts by year",
+    description: desc,
+    alternates: { canonical: path },
+    openGraph: {
+      title: `Archive | ${config.siteName}`,
+      description: desc,
+      url: path,
+      type: "website",
+    },
+    twitter: {
+      card: "summary_large_image",
+      title: `Archive | ${config.siteName}`,
+      description: desc,
+    },
   };
 }
 

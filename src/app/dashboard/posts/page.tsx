@@ -2,6 +2,7 @@ import Link from "next/link";
 import { redirect } from "next/navigation";
 import { prisma } from "@/lib/prisma";
 import { Button } from "@/components/ui/button";
+import { DashboardEmptyState, DashboardPageHeader } from "@/components/dashboard/dashboard-ui";
 import { PostsSearch } from "./posts-search";
 import { PostsTableClient } from "./posts-table-client";
 
@@ -75,33 +76,35 @@ export default async function PostsPage({ searchParams }: PostsPageProps) {
 
   return (
     <div className="space-y-6">
-      <div className="flex flex-wrap items-center justify-between gap-4">
-        <h2 className="text-3xl font-bold text-[var(--foreground)]">Published Posts {total > POSTS_PER_PAGE ? `(${total} total)` : ""}</h2>
-        <div className="flex items-center gap-4">
-          <PostsSearch defaultValue={search} />
-          <Link href="/dashboard/posts/new">
-            <Button>Create New</Button>
-          </Link>
-        </div>
-      </div>
+      <DashboardPageHeader
+        title={`Published posts${total > POSTS_PER_PAGE ? ` (${total} total)` : ""}`}
+        description="Live articles visible on the blog. Drafts live under Notes."
+      >
+        <PostsSearch defaultValue={search} />
+        <Button variant="outline" size="sm" asChild>
+          <Link href="/dashboard/posts/operations">Find &amp; replace</Link>
+        </Button>
+        <Button asChild>
+          <Link href="/dashboard/posts/new">Create new</Link>
+        </Button>
+      </DashboardPageHeader>
 
       {posts.length === 0 ? (
-        <div className="rounded-xl border border-[var(--border)] bg-card p-12 text-center shadow-[var(--shadow-sm)]">
-          {search ? (
-            <>
-              <p className="mb-2 text-[var(--foreground)]">No posts match your search.</p>
-              <p className="mb-6 text-sm text-[var(--muted-foreground)]">Try a different title or slug, or clear the search.</p>
-            </>
-          ) : (
-            <>
-              <p className="mb-2 text-[var(--foreground)] font-medium">No posts yet.</p>
-              <p className="mb-6 text-sm text-[var(--muted-foreground)]">Create your first post to get started.</p>
-              <Link href="/dashboard/posts/new">
-                <Button>Create New Post</Button>
-              </Link>
-            </>
-          )}
-        </div>
+        search ? (
+          <DashboardEmptyState
+            title="No posts match your search."
+            description="Try a different title or slug, or clear the search."
+          />
+        ) : (
+          <DashboardEmptyState
+            title="No posts yet."
+            description="Create your first post to get started."
+          >
+            <Button asChild>
+              <Link href="/dashboard/posts/new">Create new post</Link>
+            </Button>
+          </DashboardEmptyState>
+        )
       ) : (
         <>
           <PostsTableClient posts={serialized} sort={sort} order={order} />
@@ -121,7 +124,7 @@ export default async function PostsPage({ searchParams }: PostsPageProps) {
                   </Button>
                 </Link>
               ) : null}
-              <span className="text-sm text-[var(--muted-foreground)] px-2">
+              <span className="text-sm text-muted-foreground px-2">
                 Page {page} of {totalPages}
               </span>
               {page < totalPages ? (

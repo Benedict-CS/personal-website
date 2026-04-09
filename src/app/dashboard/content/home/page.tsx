@@ -21,6 +21,7 @@ import {
   Eye,
   EyeOff,
 } from "lucide-react";
+import { DashboardPageHeader } from "@/components/dashboard/dashboard-ui";
 
 const BUILTIN_IDS = ["hero", "latestPosts", "skills"] as const;
 const BUILTIN_LABELS: Record<string, string> = {
@@ -183,12 +184,12 @@ export default function DashboardHomeSectionsPage() {
   if (loading) {
     return (
       <div className="space-y-6 px-2 sm:px-0 max-w-4xl animate-pulse">
-        <div className="h-10 w-64 rounded bg-[var(--muted)]" />
-        <div className="h-5 w-full max-w-md rounded bg-[var(--muted)]" />
-        <div className="rounded-lg border border-[var(--border)] p-4 space-y-3">
-          <div className="h-5 w-48 rounded bg-[var(--muted)]" />
+        <div className="h-10 w-64 rounded bg-muted" />
+        <div className="h-5 w-full max-w-md rounded bg-muted" />
+        <div className="rounded-lg border border-border p-4 space-y-3">
+          <div className="h-5 w-48 rounded bg-muted" />
           {[1, 2, 3].map((i) => (
-            <div key={i} className="h-14 rounded bg-[var(--muted)]/70" />
+            <div key={i} className="h-14 rounded bg-muted/70" />
           ))}
         </div>
       </div>
@@ -197,37 +198,32 @@ export default function DashboardHomeSectionsPage() {
 
   return (
     <div className="space-y-6 px-2 sm:px-0 max-w-4xl">
-      <div className="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
-        <div className="min-w-0">
-          <h1 className="text-2xl font-semibold text-[var(--foreground)]">Home page sections</h1>
-          <p className="mt-1 text-sm text-[var(--muted-foreground)]">
-            Add, remove, and reorder sections. Edit hero, skills, and latest posts in the visual editor.
-          </p>
-        </div>
-        <div className="flex flex-wrap items-center gap-2 shrink-0">
-          <Button onClick={addSection} size="sm" className="gap-2">
-            <Plus className="h-4 w-4" />
-            Add section
-          </Button>
+      <DashboardPageHeader
+        title="Home page sections"
+        description="Add, remove, and reorder sections. Edit hero, skills, and latest posts in the visual editor."
+      >
+        <Button onClick={addSection} size="sm" className="gap-2">
+          <Plus className="h-4 w-4" />
+          Add section
+        </Button>
+        <Button variant="outline" size="sm" className="gap-2" asChild>
           <Link href="/editor/home">
-            <Button variant="outline" size="sm" className="gap-2">
-              <ExternalLink className="h-4 w-4" />
-              Visual editor
-            </Button>
+            <ExternalLink className="h-4 w-4" />
+            Visual editor
           </Link>
-        </div>
-      </div>
+        </Button>
+      </DashboardPageHeader>
 
       <Card>
         <CardHeader>
           <CardTitle className="text-base">Section order</CardTitle>
-          <p className="text-sm font-normal text-[var(--muted-foreground)]">
+          <p className="text-sm font-normal text-muted-foreground">
             Use <strong>Add section</strong> to add a custom Markdown block. Use Move up / Move down to reorder. Built-in sections (Hero, Latest posts, Skills) can only be edited in the visual editor.
           </p>
         </CardHeader>
         <CardContent className="space-y-2">
           {sectionOrder.length === 0 ? (
-            <p className="text-sm text-[var(--muted-foreground)] py-4">No sections. Click &quot;Add section&quot; to add one.</p>
+            <p className="text-sm text-muted-foreground py-4">No sections. Click &quot;Add section&quot; to add one.</p>
           ) : null}
           {sectionOrder.map((id, index) => {
             const isBuiltin = BUILTIN_IDS.includes(id as (typeof BUILTIN_IDS)[number]);
@@ -240,7 +236,7 @@ export default function DashboardHomeSectionsPage() {
             return (
               <div
                 key={id}
-                className={`flex flex-wrap items-center gap-2 rounded-lg border p-3 min-w-0 ${isVisible ? "border-[var(--border)] bg-[var(--card)]" : "border-amber-200 bg-amber-50/50"}`}
+                className={`flex flex-wrap items-center gap-2 rounded-lg border p-3 min-w-0 ${isVisible ? "border-border bg-card" : "border-amber-200 bg-amber-50/50"}`}
               >
                 <div className="flex items-center gap-1 shrink-0 order-first">
                   <Button
@@ -266,7 +262,7 @@ export default function DashboardHomeSectionsPage() {
                     <ChevronDown className="h-4 w-4" />
                   </Button>
                 </div>
-                <Icon className="h-4 w-4 text-[var(--muted-foreground)] shrink-0" />
+                <Icon className="h-4 w-4 text-muted-foreground shrink-0" />
                 <span className="flex-1 min-w-0 truncate text-sm font-medium">{label}</span>
                 {isBuiltin && (
                   <Button
@@ -317,7 +313,7 @@ export default function DashboardHomeSectionsPage() {
               </div>
             );
           })}
-          <div className="pt-2 border-t border-[var(--border)]">
+          <div className="pt-2 border-t border-border">
             <Button onClick={addSection} variant="outline" size="sm" className="gap-2 w-full sm:w-auto">
               <Plus className="h-4 w-4" />
               Add section

@@ -29,8 +29,8 @@ export function PostsFilterTabs() {
             href={href}
             className={`rounded-md px-3 py-1.5 text-sm font-medium transition-colors ${
               isActive
-                ? "bg-slate-200 text-slate-900"
-                : "text-slate-600 hover:bg-slate-100 hover:text-slate-900"
+                ? "bg-muted text-foreground"
+                : "text-muted-foreground hover:bg-muted/70 hover:text-foreground"
             }`}
           >
             {label}

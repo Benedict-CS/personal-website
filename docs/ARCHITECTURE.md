@@ -145,6 +145,21 @@ Migrations are run inside the app container so the same `DATABASE_URL` is used a
 ## Scaling and maintenance
 
 - **Vertical:** Increase container resources; tune Postgres and RustFS as needed.
-- **Horizontal:** Running multiple app instances would require shared session store (e.g. Redis) for NextAuth; not implemented by default.
+- **Horizontal:** Multiple app replicas are feasible when uploads use S3-compatible storage and `DATABASE_URL` (optionally via PgBouncer) is shared. Set **`REDIS_URL`** for shared rate limits across instances; see [ENVIRONMENT.md](ENVIRONMENT.md) and [OPERATIONS_AND_RELIABILITY.md](OPERATIONS_AND_RELIABILITY.md).
+- **Health:** `GET /api/health` probes database connectivity; Docker Compose uses it for container healthchecks.
+- **UI:** The product is **light-theme only** (no dark mode); see `ThemeApplier` and global CSS.
 - **Backups:** Postgres (pg_dump) and RustFS data (object backup or rclone); see [MAINTENANCE.md](MAINTENANCE.md).
 - **Updates:** Rebuild app image, run new migrations, restart containers; see [DEPLOYMENT.md](DEPLOYMENT.md) and [MAINTENANCE.md](MAINTENANCE.md).
+
+---
+
+## Documentation map
+
+| Doc | Purpose |
+|-----|---------|
+| [FEATURES.md](FEATURES.md) | Product and platform capabilities |
+| [OPERATIONS_QUICK_REFERENCE.md](OPERATIONS_QUICK_REFERENCE.md) | Commands, endpoints, env shortcuts |
+| [MIGRATION_CHECKLIST.md](MIGRATION_CHECKLIST.md) | Host migration and data portability |
+| [TROUBLESHOOTING.md](TROUBLESHOOTING.md) | Common failures |
+| [CI_CD.md](CI_CD.md) | GitHub Actions, Dependabot |
+| [Security policy](../.github/SECURITY.md) | Vulnerability reporting (repository root) |

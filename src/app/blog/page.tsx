@@ -7,18 +7,27 @@ export const revalidate = 60;
 
 export async function generateMetadata(): Promise<Metadata> {
   const config = await getSiteConfigForRender();
+  const base = config.url.replace(/\/$/, "");
+  const desc =
+    "Read articles about engineering, product, and website-building best practices.";
   const ogUrl = config.ogImageUrl
     ? (config.ogImageUrl.startsWith("http") ? config.ogImageUrl : new URL(config.ogImageUrl, config.url).toString())
     : undefined;
   return {
     title: "Blog",
-    description:
-      "Read articles about engineering, product, and website-building best practices.",
+    description: desc,
+    alternates: { canonical: `${base}/blog` },
     openGraph: {
       title: "Blog",
-      description:
-        "Read articles about engineering, product, and website-building best practices.",
-      url: `${config.url}/blog`,
+      description: desc,
+      url: `${base}/blog`,
+      type: "website",
+      ...(ogUrl && { images: [ogUrl] }),
+    },
+    twitter: {
+      card: "summary_large_image",
+      title: `Blog | ${config.siteName}`,
+      description: desc,
       ...(ogUrl && { images: [ogUrl] }),
     },
   };

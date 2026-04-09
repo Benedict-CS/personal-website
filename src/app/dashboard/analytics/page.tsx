@@ -5,12 +5,15 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { ConfirmDialog } from "@/components/ui/confirm-dialog";
 import { useToast } from "@/contexts/toast-context";
-import { Download } from "lucide-react";
+import { ChevronDown, Download, Server } from "lucide-react";
 import {
   ANALYTICS_OPT_OUT_STORAGE_KEY,
   setAnalyticsOptOutInBrowser,
   syncAnalyticsOptOutCookie,
 } from "@/lib/analytics-client-opt-out";
+import { AnalyticsPathBars } from "@/components/analytics-path-bars";
+import { AnalyticsStatsSkeleton } from "@/components/dashboard/analytics-stats-skeleton";
+import { DashboardPageHeader, dashboardMetricValueClassName } from "@/components/dashboard/dashboard-ui";
 
 type Stats = {
   total: number;
@@ -40,6 +43,8 @@ type Stats = {
     createdAt: string;
   }[];
   filterIP?: string;
+  /** When true, stats omit unknown / loopback / RFC1918 (unless Include dev IPs is on). */
+  excludingDevIps?: boolean;
   excludedIPs?: string[];
 };
 
@@ -135,6 +140,8 @@ export default function AnalyticsPage() {
   const [from, setFrom] = useState("2026-01-01");
   const [to, setTo] = useState(() => todayStr());
   const [filterIP, setFilterIP] = useState<string>("");
+  /** When true, stats API includes unknown / 127.0.0.1 / private LAN IPs (default off). */
+  const [includeDevIps, setIncludeDevIps] = useState(false);
   const [refreshKey, setRefreshKey] = useState(0);
 
   const [error, setError] = useState<string | null>(null);
@@ -147,6 +154,14 @@ export default function AnalyticsPage() {
   type ClearConfirmType = "before" | "onDate" | "byIP" | "all";
   const [clearConfirm, setClearConfirm] = useState<{ type: ClearConfirmType; value?: string } | null>(null);
   const [excludeThisBrowser, setExcludeThisBrowser] = useState(false);
+  const [healthSnapshot, setHealthSnapshot] = useState<{
+    ok: boolean;
+    db: string;
+    uptimeSeconds?: number;
+    appVersion?: string;
+    node?: string;
+    loaded: boolean;
+  }>({ ok: false, db: "—", loaded: false });
 
   useEffect(() => {
     try {
@@ -163,6 +178,7 @@ export default function AnalyticsPage() {
     if (from) params.set("from", from);
     if (to) params.set("to", to);
     if (filterIP.trim()) params.set("ip", filterIP.trim());
+    if (includeDevIps) params.set("includeDevIps", "1");
     setLoading(true);
     setError(null);
     fetch(`/api/analytics/stats?${params}`, { credentials: "include" })
@@ -180,7 +196,25 @@ export default function AnalyticsPage() {
         setStats(null);
       })
       .finally(() => setLoading(false));
-  }, [from, to, filterIP, refreshKey]);
+  }, [from, to, filterIP, includeDevIps, refreshKey]);
+
+  useEffect(() => {
+    fetch("/api/health", { cache: "no-store" })
+      .then((r) => r.json())
+      .then((d: { ok?: boolean; db?: string; uptimeSeconds?: number; appVersion?: string; node?: string }) => {
+        setHealthSnapshot({
+          ok: !!d.ok,
+          db: typeof d.db === "string" ? d.db : "—",
+          uptimeSeconds: typeof d.uptimeSeconds === "number" ? d.uptimeSeconds : undefined,
+          appVersion: typeof d.appVersion === "string" ? d.appVersion : undefined,
+          node: typeof d.node === "string" ? d.node : undefined,
+          loaded: true,
+        });
+      })
+      .catch(() => {
+        setHealthSnapshot({ ok: false, db: "unreachable", loaded: true });
+      });
+  }, [refreshKey]);
 
   const handleClearBefore = async () => {
     if (!clearBefore.trim()) return;
@@ -388,44 +422,139 @@ export default function AnalyticsPage() {
           else if (c.type === "all") void doClearAll();
         }}
       />
-      <h2 className="text-3xl font-bold text-slate-900">Analytics</h2>
+      <DashboardPageHeader
+        title="Analytics"
+        description="Traffic, paths, application health, privacy filters, and CSV exports."
+      />
 
-      <Card className="border-slate-200 bg-slate-50/80">
+      <Card className="border-border bg-card">
         <CardHeader className="pb-2">
-          <CardTitle className="text-base">Your own visits</CardTitle>
+          <CardTitle className="flex items-center gap-2 text-base">
+            <Server className="h-4 w-4 text-muted-foreground" aria-hidden />
+            Application health
+          </CardTitle>
         </CardHeader>
-        <CardContent className="space-y-3 text-sm text-slate-700">
-          <p>
-            Recent views mix real readers, bots (Ahrefs, GPTBot, Bingbot, etc.), and crawlers. Bursts of many URLs in
-            one second are usually not normal browsing.
-          </p>
-          <label className="flex cursor-pointer items-start gap-3 rounded-lg border border-slate-200 bg-white p-3">
-            <input
-              type="checkbox"
-              className="mt-1 rounded border-slate-300"
-              checked={excludeThisBrowser}
-              onChange={(e) => {
-                const on = e.target.checked;
-                setExcludeThisBrowser(on);
-                setAnalyticsOptOutInBrowser(on);
-                toast(
-                  on
-                    ? "This browser will no longer record page views or duration."
-                    : "This browser will record analytics again.",
-                  "success"
-                );
-              }}
-            />
-            <span>
-              <span className="font-medium text-slate-900">Do not count visits from this browser</span>
-              <span className="mt-1 block text-slate-600">
-                Sets localStorage and a cookie so both the in-browser beacon and edge middleware skip logging. Reload or
-                open a new tab on the public site for the cookie to apply on the next navigation. For fixed IPs, also set{" "}
-                <code className="rounded bg-slate-100 px-1 font-mono text-xs">ANALYTICS_EXCLUDED_IPS</code> in environment.
-              </span>
-            </span>
-          </label>
+        <CardContent className="text-sm text-foreground">
+          {!healthSnapshot.loaded ? (
+            <p className="text-muted-foreground">Checking /api/health…</p>
+          ) : (
+            <div className="flex flex-wrap items-baseline gap-x-6 gap-y-2">
+              <p>
+                <span className="text-muted-foreground">Database:</span>{" "}
+                <span
+                  className={
+                    healthSnapshot.db === "ok" ? "font-medium text-emerald-700" : "font-medium text-amber-800"
+                  }
+                >
+                  {healthSnapshot.db}
+                </span>
+              </p>
+              {healthSnapshot.uptimeSeconds != null && (
+                <p>
+                  <span className="text-muted-foreground">Process uptime:</span>{" "}
+                  <span className="font-mono text-foreground">
+                    {Math.floor(healthSnapshot.uptimeSeconds / 3600)}h{" "}
+                    {Math.floor((healthSnapshot.uptimeSeconds % 3600) / 60)}m
+                  </span>
+                </p>
+              )}
+              <p>
+                <span className="text-muted-foreground">Deployment:</span>{" "}
+                {healthSnapshot.appVersion ? (
+                  <span className="font-mono text-xs text-foreground break-all">{healthSnapshot.appVersion}</span>
+                ) : (
+                  <span className="text-muted-foreground">—</span>
+                )}
+              </p>
+              {healthSnapshot.node ? (
+                <p>
+                  <span className="text-muted-foreground">Node.js:</span>{" "}
+                  <span className="font-mono text-xs text-foreground">{healthSnapshot.node}</span>
+                </p>
+              ) : null}
+              <p className="text-muted-foreground">
+                Readiness / DB:{" "}
+                <code className="rounded bg-muted px-1 py-0.5 text-xs">GET /api/health</code>
+                {" · "}
+                Cheap liveness (no DB):{" "}
+                <code className="rounded bg-muted px-1 py-0.5 text-xs">GET /api/live</code>
+              </p>
+            </div>
+          )}
         </CardContent>
+      </Card>
+
+      <Card className="border-border bg-muted/50">
+        <details className="group">
+          <summary className="flex cursor-pointer list-none items-center justify-between gap-3 px-6 py-4 text-left hover:bg-muted/60 [&::-webkit-details-marker]:hidden">
+            <div className="min-w-0">
+              <p className="text-base font-semibold text-foreground">Privacy, filters &amp; opt-out</p>
+              <p className="mt-0.5 text-xs text-muted-foreground">
+                Collapsed by default · how noise is filtered · exclude this browser from counts
+              </p>
+            </div>
+            <div className="flex shrink-0 items-center gap-2">
+              {excludeThisBrowser ? (
+                <span className="hidden rounded-full bg-emerald-100 px-2 py-0.5 text-xs font-medium text-emerald-800 sm:inline">
+                  Browser excluded
+                </span>
+              ) : null}
+              <ChevronDown
+                className="h-5 w-5 text-muted-foreground transition-transform group-open:rotate-180"
+                aria-hidden
+              />
+            </div>
+          </summary>
+          <CardContent className="space-y-3 border-t border-border/80 pt-4 text-sm text-foreground">
+            <p>
+              Totals and breakdowns exclude obvious security probes (for example{" "}
+              <code className="rounded bg-muted px-1 font-mono text-xs">/.env</code>,{" "}
+              <code className="rounded bg-muted px-1 font-mono text-xs">/.git</code>, case variants) and known scanner user agents. Tools that spoof a normal
+              Chrome user-agent can still appear; crawlers may appear. By default, reported stats also omit{" "}
+              <code className="rounded bg-muted px-1 font-mono text-xs">unknown</code>, loopback, and private LAN IPs (enable &quot;Include local &amp; unknown
+              IPs&quot; above the chart to see them). IP shown as &quot;unknown&quot; means the edge could not read a client IP from headers.
+            </p>
+            <p className="text-muted-foreground">
+              <span className="font-medium text-foreground">Client IP required to log:</span> page views are not written when the edge cannot determine a client IP
+              (no <span className="font-mono text-xs">X-Forwarded-For</span> / trusted proxy headers). Configure your reverse proxy in production so real visits are
+              recorded.
+            </p>
+            <p className="text-muted-foreground">
+              <span className="font-medium text-foreground">Data retention:</span> nothing is deleted automatically. Old probe rows stay in the database until you use
+              Clear history below. New filter rules only change <span className="font-medium">reported</span> totals, not raw row deletion.
+            </p>
+            <p className="text-muted-foreground">
+              <span className="font-medium text-foreground">CV downloads:</span> same filters as other metrics. If your IP is listed under excluded IPs below, your own
+              downloads are not counted.
+            </p>
+            <label className="flex cursor-pointer items-start gap-3 rounded-lg border border-border bg-card p-3">
+              <input
+                type="checkbox"
+                className="mt-1 rounded border-input"
+                checked={excludeThisBrowser}
+                onChange={(e) => {
+                  const on = e.target.checked;
+                  setExcludeThisBrowser(on);
+                  setAnalyticsOptOutInBrowser(on);
+                  toast(
+                    on
+                      ? "This browser will no longer record page views or duration."
+                      : "This browser will record analytics again.",
+                    "success"
+                  );
+                }}
+              />
+              <span>
+                <span className="font-medium text-foreground">Do not count visits from this browser</span>
+                <span className="mt-1 block text-muted-foreground">
+                  Sets localStorage and a cookie so both the in-browser beacon and edge middleware skip logging. Reload or open a new tab on the public site for
+                  the cookie to apply on the next navigation. For fixed IPs, also set{" "}
+                  <code className="rounded bg-muted px-1 font-mono text-xs">ANALYTICS_EXCLUDED_IPS</code> in environment.
+                </span>
+              </span>
+            </label>
+          </CardContent>
+        </details>
       </Card>
 
       <div className="space-y-3">
@@ -473,32 +602,32 @@ export default function AnalyticsPage() {
         </div>
         <div className="flex flex-wrap gap-4 items-end">
           <div>
-            <label className="block text-sm font-medium text-slate-700 mb-1">From</label>
+            <label className="block text-sm font-medium text-foreground mb-1">From</label>
             <input
               type="date"
               value={from}
               onChange={(e) => setFrom(e.target.value)}
-              className="rounded border border-slate-300 px-3 py-2 text-sm"
+              className="rounded border border-input px-3 py-2 text-sm"
             />
           </div>
           <div>
-            <label className="block text-sm font-medium text-slate-700 mb-1">To</label>
+            <label className="block text-sm font-medium text-foreground mb-1">To</label>
             <input
               type="date"
               value={to}
               onChange={(e) => setTo(e.target.value)}
-              className="rounded border border-slate-300 px-3 py-2 text-sm"
+              className="rounded border border-input px-3 py-2 text-sm"
             />
           </div>
           <div>
-            <label className="block text-sm font-medium text-slate-700 mb-1">Filter by IP</label>
+            <label className="block text-sm font-medium text-foreground mb-1">Filter by IP</label>
             <div className="flex gap-2 items-center">
               <input
                 type="text"
                 placeholder="e.g. 140.113.128.3"
                 value={filterIP}
                 onChange={(e) => setFilterIP(e.target.value)}
-                className="rounded border border-slate-300 px-3 py-2 text-sm font-mono w-40"
+                className="rounded border border-input px-3 py-2 text-sm font-mono w-40"
               />
               {filterIP.trim() && (
                 <Button variant="ghost" size="sm" onClick={() => setFilterIP("")}>
@@ -507,6 +636,19 @@ export default function AnalyticsPage() {
               )}
             </div>
           </div>
+          <label className="flex cursor-pointer items-center gap-2 text-sm text-foreground max-w-md">
+            <input
+              type="checkbox"
+              className="rounded border-input"
+              checked={includeDevIps}
+              onChange={(e) => setIncludeDevIps(e.target.checked)}
+              disabled={!!filterIP.trim()}
+            />
+            <span>
+              Include local &amp; unknown IPs in stats{" "}
+              <span className="text-muted-foreground">(127.0.0.1, RFC1918, unknown — off by default)</span>
+            </span>
+          </label>
           {stats && !loading && (
             <Button
               variant="outline"
@@ -524,27 +666,54 @@ export default function AnalyticsPage() {
         </div>
       </div>
 
-      {loading && <p className="text-slate-500">Loading...</p>}
+      {loading && <AnalyticsStatsSkeleton />}
       {!loading && stats && (
         <>
           {stats.filterIP && (
-            <p className="text-sm text-slate-600 bg-slate-100 rounded px-3 py-2">
+            <p className="text-sm text-muted-foreground bg-muted rounded px-3 py-2">
               Showing only IP: <strong className="font-mono">{stats.filterIP}</strong> — all views and paths for this visitor.{" "}
               <button type="button" onClick={() => setFilterIP("")} className="text-blue-600 hover:underline">Clear filter</button>
             </p>
           )}
           {stats.excludedIPs && stats.excludedIPs.length > 0 && !stats.filterIP && (
-            <p className="text-sm text-slate-500">
+            <p className="text-sm text-muted-foreground">
               Excluded IPs (not counted): {stats.excludedIPs.join(", ")}
             </p>
           )}
-          <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
+          {stats.excludingDevIps && !stats.filterIP && (
+            <p className="text-sm text-muted-foreground">
+              Stats omit <span className="font-mono text-xs">unknown</span>, loopback, and private LAN IPs unless you enable the checkbox above.
+            </p>
+          )}
+          {stats.total === 0 && !stats.filterIP && (
+            <div
+              className="rounded-lg border border-dashed border-border bg-muted/60 px-4 py-5 text-center text-sm text-muted-foreground"
+              role="status"
+            >
+              <p className="font-medium text-foreground">No page views in this date range</p>
+              <p className="mt-1">
+                Traffic appears after visitors load public pages while <code className="rounded bg-card px-1 text-xs">ANALYTICS_SECRET</code>{" "}
+                is set. Widen the range, remove IP filters, or confirm middleware is logging views. If you only tested locally, turn on{" "}
+                <span className="font-medium">Include local &amp; unknown IPs</span> to see those rows.
+              </p>
+            </div>
+          )}
+          <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-5">
             <Card>
               <CardHeader>
                 <CardTitle>Total views</CardTitle>
               </CardHeader>
               <CardContent>
-                <p className="text-3xl font-bold text-slate-900">{stats.total}</p>
+                <p className={dashboardMetricValueClassName()}>{stats.total}</p>
+              </CardContent>
+            </Card>
+            <Card>
+              <CardHeader>
+                <CardTitle>Unique IPs (top list)</CardTitle>
+              </CardHeader>
+              <CardContent>
+                <p className={dashboardMetricValueClassName()}>{stats.byIP.length}</p>
+                <p className="text-xs text-muted-foreground mt-1">Distinct IPs in the grouped table below (capped at 50).</p>
               </CardContent>
             </Card>
             <Card>
@@ -552,7 +721,12 @@ export default function AnalyticsPage() {
                 <CardTitle>CV downloads</CardTitle>
               </CardHeader>
               <CardContent>
-                <p className="text-3xl font-bold text-slate-900">{stats.cvDownloads ?? 0}</p>
+                <p className={dashboardMetricValueClassName()}>{stats.cvDownloads ?? 0}</p>
+                {(stats.cvDownloads ?? 0) === 0 && stats.excludedIPs && stats.excludedIPs.length > 0 ? (
+                  <p className="mt-2 text-xs text-muted-foreground">
+                    Zero can mean no downloads in this range, or every hit was from an excluded IP (yours may be listed above).
+                  </p>
+                ) : null}
               </CardContent>
             </Card>
             <Card>
@@ -560,13 +734,13 @@ export default function AnalyticsPage() {
                 <CardTitle>Avg. time on page</CardTitle>
               </CardHeader>
               <CardContent>
-                <p className="text-2xl font-bold text-slate-900">
+                <p className="text-2xl font-bold text-foreground">
                   {stats.avgDurationSeconds != null
                     ? `${Math.floor(stats.avgDurationSeconds / 60)}m ${Math.round(stats.avgDurationSeconds % 60)}s`
                     : "—"}
                 </p>
                 {stats.durationSampleCount != null && stats.durationSampleCount > 0 && (
-                  <p className="text-xs text-slate-500">from {stats.durationSampleCount} sessions</p>
+                  <p className="text-xs text-muted-foreground">from {stats.durationSampleCount} sessions</p>
                 )}
               </CardContent>
             </Card>
@@ -575,8 +749,8 @@ export default function AnalyticsPage() {
                 <CardTitle>Access denied (403)</CardTitle>
               </CardHeader>
               <CardContent>
-                <p className="text-3xl font-bold text-slate-900">{stats.accessBlockTotal ?? 0}</p>
-                <p className="text-xs text-slate-500 mt-1">
+                <p className={dashboardMetricValueClassName()}>{stats.accessBlockTotal ?? 0}</p>
+                <p className="text-xs text-muted-foreground mt-1">
                   Blocked requests in date range (one log row per IP per minute)
                 </p>
               </CardContent>
@@ -590,9 +764,9 @@ export default function AnalyticsPage() {
               <CardContent>
                 <div className="flex flex-wrap gap-3">
                   {stats.byCountry.map((c) => (
-                    <span key={c.country} className="inline-flex items-center gap-1.5 rounded-full bg-slate-100 px-3 py-1 text-sm">
-                      <span className="font-medium text-slate-700">{c.country}</span>
-                      <span className="text-slate-500">{c.count}</span>
+                    <span key={c.country} className="inline-flex items-center gap-1.5 rounded-full bg-muted px-3 py-1 text-sm">
+                      <span className="font-medium text-foreground">{c.country}</span>
+                      <span className="text-muted-foreground">{c.count}</span>
                     </span>
                   ))}
                 </div>
@@ -615,8 +789,8 @@ export default function AnalyticsPage() {
                     </thead>
                     <tbody>
                       {stats.topBlogPosts.map((p) => (
-                        <tr key={p.slug} className="border-b border-slate-100">
-                          <td className="py-2 pr-4 text-slate-800">{p.title}</td>
+                        <tr key={p.slug} className="border-b border-border/70">
+                          <td className="py-2 pr-4 text-foreground">{p.title}</td>
                           <td className="py-2 tabular-nums">{p.viewCount.toLocaleString()}</td>
                         </tr>
                       ))}
@@ -642,8 +816,8 @@ export default function AnalyticsPage() {
                     </thead>
                     <tbody>
                       {stats.byReferrer.map((r) => (
-                        <tr key={r.referrer} className="border-b border-slate-100">
-                          <td className="py-2 pr-4 break-all text-slate-700">{r.referrer}</td>
+                        <tr key={r.referrer} className="border-b border-border/70">
+                          <td className="py-2 pr-4 break-all text-foreground">{r.referrer}</td>
                           <td className="py-2 tabular-nums">{r.count}</td>
                         </tr>
                       ))}
@@ -659,6 +833,7 @@ export default function AnalyticsPage() {
                 <CardTitle>By path</CardTitle>
               </CardHeader>
               <CardContent>
+                <AnalyticsPathBars rows={stats.byPath} />
                 <div className="max-h-80 overflow-auto">
                   <table className="w-full text-sm min-w-[200px]">
                     <thead>
@@ -669,8 +844,8 @@ export default function AnalyticsPage() {
                     </thead>
                     <tbody>
                       {stats.byPath.map((p) => (
-                        <tr key={p.path} className="border-b border-slate-100">
-                          <td className="py-2 pr-4 font-mono text-slate-700">{p.path}</td>
+                        <tr key={p.path} className="border-b border-border/70">
+                          <td className="py-2 pr-4 font-mono text-foreground">{p.path}</td>
                           <td className="py-2">{p.count}</td>
                         </tr>
                       ))}
@@ -696,18 +871,18 @@ export default function AnalyticsPage() {
                     </thead>
                     <tbody>
                       {stats.byIP.map((p) => (
-                        <tr key={p.ip} className="border-b border-slate-100">
+                        <tr key={p.ip} className="border-b border-border/70">
                           <td className="py-2 pr-4">
                             <button
                               type="button"
                               onClick={() => setFilterIP(p.ip)}
-                              className="font-mono text-slate-700 hover:text-blue-600 hover:underline text-left"
+                              className="font-mono text-foreground hover:text-primary hover:underline text-left"
                               title="Show only this IP"
                             >
                               {p.ip}
                             </button>
                           </td>
-                          <td className="py-2 pr-4 text-slate-600">
+                          <td className="py-2 pr-4 text-muted-foreground">
                             {p.lastVisit ? formatDate(p.lastVisit) : "—"}
                           </td>
                           <td className="py-2 pr-4">{p.count}</td>
@@ -752,26 +927,26 @@ export default function AnalyticsPage() {
                   </thead>
                   <tbody>
                     {stats.recent.map((r, i) => (
-                      <tr key={i} className="border-b border-slate-100">
-                        <td className="py-2 pr-4 text-slate-600">{formatDate(r.createdAt)}</td>
+                      <tr key={i} className="border-b border-border/70">
+                        <td className="py-2 pr-4 text-muted-foreground">{formatDate(r.createdAt)}</td>
                         <td className="py-2 pr-4 font-mono">{r.path}</td>
-                        <td className="py-2 pr-4 text-slate-600">
+                        <td className="py-2 pr-4 text-muted-foreground">
                           {[r.country, r.city].filter(Boolean).join(" / ") || "—"}
                         </td>
-                        <td className="py-2 pr-4 text-slate-600">
+                        <td className="py-2 pr-4 text-muted-foreground">
                           {r.durationSeconds != null ? `${Math.floor(r.durationSeconds / 60)}m ${r.durationSeconds % 60}s` : "—"}
                         </td>
-                        <td className="py-2 pr-4 text-slate-600 break-all max-w-[180px]">
+                        <td className="py-2 pr-4 text-muted-foreground break-all max-w-[180px]">
                           {r.referrer || "—"}
                         </td>
-                        <td className="py-2 pr-4 text-slate-500 text-xs break-all max-w-[200px]" title={r.userAgent || ""}>
+                        <td className="py-2 pr-4 text-muted-foreground text-xs break-all max-w-[200px]" title={r.userAgent || ""}>
                           {r.userAgent ? `${r.userAgent.slice(0, 80)}${r.userAgent.length > 80 ? "…" : ""}` : "—"}
                         </td>
                         <td className="py-2">
                           <button
                             type="button"
                             onClick={() => setFilterIP(r.ip)}
-                            className="font-mono text-slate-700 hover:text-blue-600 hover:underline text-left"
+                            className="font-mono text-foreground hover:text-primary hover:underline text-left"
                             title="Show only this IP"
                           >
                             {r.ip}
@@ -789,13 +964,13 @@ export default function AnalyticsPage() {
               <CardTitle>Blocked IP log</CardTitle>
             </CardHeader>
             <CardContent>
-              <p className="text-sm text-slate-500 mb-3">
+              <p className="text-sm text-muted-foreground mb-3">
                 Logged when the proxy returns 403 for forbidden IPs. Enable with{" "}
                 <span className="font-mono text-xs">ANALYTICS_SECRET</span> or{" "}
                 <span className="font-mono text-xs">ACCESS_BLOCK_LOG_SECRET</span>.
               </p>
               {(stats.accessBlockedRecent?.length ?? 0) === 0 ? (
-                <p className="text-sm text-slate-600">No entries in this range.</p>
+                <p className="text-sm text-muted-foreground">No entries in this range.</p>
               ) : (
                 <div className="max-h-72 overflow-auto">
                   <table className="w-full text-sm min-w-[280px]">
@@ -809,21 +984,21 @@ export default function AnalyticsPage() {
                     </thead>
                     <tbody>
                       {(stats.accessBlockedRecent ?? []).map((r, i) => (
-                        <tr key={`${r.createdAt}-${r.ip}-${i}`} className="border-b border-slate-100">
-                          <td className="py-2 pr-4 text-slate-600">{formatDate(r.createdAt)}</td>
+                        <tr key={`${r.createdAt}-${r.ip}-${i}`} className="border-b border-border/70">
+                          <td className="py-2 pr-4 text-muted-foreground">{formatDate(r.createdAt)}</td>
                           <td className="py-2 pr-4">
                             <button
                               type="button"
                               onClick={() => setFilterIP(r.ip)}
-                              className="font-mono text-slate-700 hover:text-blue-600 hover:underline text-left"
+                              className="font-mono text-foreground hover:text-primary hover:underline text-left"
                               title="Filter page views by this IP"
                             >
                               {r.ip}
                             </button>
                           </td>
-                          <td className="py-2 pr-4 font-mono text-slate-700">{r.path}</td>
+                          <td className="py-2 pr-4 font-mono text-foreground">{r.path}</td>
                           <td
-                            className="py-2 text-slate-500 text-xs break-all max-w-[200px]"
+                            className="py-2 text-muted-foreground text-xs break-all max-w-[200px]"
                             title={r.userAgent || ""}
                           >
                             {r.userAgent
@@ -844,20 +1019,20 @@ export default function AnalyticsPage() {
               <CardTitle>Clear history</CardTitle>
             </CardHeader>
             <CardContent className="space-y-4">
-              <p className="text-sm text-slate-600">
+              <p className="text-sm text-muted-foreground">
                 Remove page view records and matching blocked-access log rows (same filters). Analytics data is included in
                 daily DB backup (backup.sql). Requires login.
               </p>
               <div className="flex flex-wrap gap-4 items-end">
                 <div>
-                  <label className="block text-sm font-medium text-slate-700 mb-1">By IP</label>
+                  <label className="block text-sm font-medium text-foreground mb-1">By IP</label>
                   <div className="flex gap-2">
                     <input
                       type="text"
                       placeholder="e.g. 140.113.128.3"
                       value={clearByIP}
                       onChange={(e) => setClearByIP(e.target.value)}
-                      className="rounded border border-slate-300 px-3 py-2 text-sm font-mono w-36"
+                      className="rounded border border-input px-3 py-2 text-sm font-mono w-36"
                     />
                     <Button
                       variant="outline"
@@ -870,13 +1045,13 @@ export default function AnalyticsPage() {
                   </div>
                 </div>
                 <div>
-                  <label className="block text-sm font-medium text-slate-700 mb-1">On date (YYYY-MM-DD)</label>
+                  <label className="block text-sm font-medium text-foreground mb-1">On date (YYYY-MM-DD)</label>
                   <div className="flex gap-2">
                     <input
                       type="date"
                       value={clearOnDate}
                       onChange={(e) => setClearOnDate(e.target.value)}
-                      className="rounded border border-slate-300 px-3 py-2 text-sm"
+                      className="rounded border border-input px-3 py-2 text-sm"
                     />
                     <Button
                       variant="outline"
@@ -889,13 +1064,13 @@ export default function AnalyticsPage() {
                   </div>
                 </div>
                 <div>
-                  <label className="block text-sm font-medium text-slate-700 mb-1">Before date (older than)</label>
+                  <label className="block text-sm font-medium text-foreground mb-1">Before date (older than)</label>
                   <div className="flex gap-2">
                     <input
                       type="date"
                       value={clearBefore}
                       onChange={(e) => setClearBefore(e.target.value)}
-                      className="rounded border border-slate-300 px-3 py-2 text-sm"
+                      className="rounded border border-input px-3 py-2 text-sm"
                     />
                     <Button
                       variant="outline"
@@ -909,7 +1084,7 @@ export default function AnalyticsPage() {
                 </div>
               </div>
               <div className="pt-2 border-t border-amber-200">
-                <label className="flex items-center gap-2 text-sm text-slate-700 mb-2">
+                <label className="flex items-center gap-2 text-sm text-foreground mb-2">
                   <input
                     type="checkbox"
                     checked={clearAllConfirm}
@@ -927,14 +1102,14 @@ export default function AnalyticsPage() {
                 </Button>
               </div>
               {clearMessage && (
-                <p className="text-sm text-slate-600">{clearMessage}</p>
+                <p className="text-sm text-muted-foreground">{clearMessage}</p>
               )}
             </CardContent>
           </Card>
         </>
       )}
       {!loading && !stats && (
-        <p className="text-slate-500">
+        <p className="text-muted-foreground">
           {error || "Failed to load analytics."}
           {error === "Unauthorized" && " Make sure you are logged in."}
         </p>

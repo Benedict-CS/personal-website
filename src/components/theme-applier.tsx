@@ -9,7 +9,9 @@ import { useEffect } from "react";
 export function ThemeApplier({ themeMode }: { themeMode?: string }) {
   void themeMode;
   useEffect(() => {
-    document.documentElement.setAttribute("data-theme", "light");
+    const root = document.documentElement;
+    root.setAttribute("data-theme", "light");
+    root.style.colorScheme = "light";
   }, []);
   return null;
 }

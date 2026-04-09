@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect } from "react";
+import { useEffect, useMemo } from "react";
 import Link from "next/link";
 
 /**
@@ -17,6 +17,17 @@ export default function GlobalError({
 }) {
   useEffect(() => {
     console.error("Global error boundary:", error);
+  }, [error]);
+
+  const digest = useMemo(() => {
+    try {
+      if (error && typeof error === "object" && "digest" in error) {
+        return String((error as { digest?: string }).digest ?? "");
+      }
+    } catch {
+      /* ignore */
+    }
+    return "";
   }, [error]);
 
   const glassBg = "oklch(1 0 0 / 0.72)";
@@ -73,10 +84,29 @@ export default function GlobalError({
           <p style={{ color: muted, marginBottom: "1.5rem", lineHeight: 1.5 }}>
             An unexpected error occurred. You can try again or go back to the home page.
           </p>
+          {digest ? (
+            <p
+              style={{
+                fontSize: "0.7rem",
+                color: muted,
+                fontFamily: "ui-monospace, monospace",
+                marginBottom: "1rem",
+                wordBreak: "break-all",
+              }}
+            >
+              Reference: {digest}
+            </p>
+          ) : null}
           <div style={{ display: "flex", flexWrap: "wrap", gap: "0.75rem", justifyContent: "center" }}>
             <button
               type="button"
-              onClick={() => reset()}
+              onClick={() => {
+                try {
+                  reset();
+                } catch {
+                  window.location.href = "/";
+                }
+              }}
               style={{
                 padding: "0.5rem 1rem",
                 background: primary,

@@ -61,19 +61,19 @@ export default function SiteInfrastructurePage() {
     <div className="space-y-4">
       <div className="flex items-center justify-between">
         <div>
-          <h1 className="text-2xl font-bold text-slate-900">Custom Cloud Orchestration</h1>
-          <p className="text-slate-600">Tenant-level CI/CD pipeline with Docker/Kubernetes deploy and SSL provisioning.</p>
+          <h1 className="text-2xl font-bold text-foreground">Custom Cloud Orchestration</h1>
+          <p className="text-muted-foreground">Tenant-level CI/CD pipeline with Docker/Kubernetes deploy and SSL provisioning.</p>
         </div>
         <Link href={`/dashboard/sites/${siteId}/pages`}>
           <Button variant="outline">Back to Pages</Button>
         </Link>
       </div>
 
-      <div className="rounded border border-slate-200 bg-white p-4 space-y-3">
+      <div className="rounded border border-border bg-card p-4 space-y-3">
         <h2 className="font-semibold">Deploy Tenant Site</h2>
         <div className="grid gap-2 md:grid-cols-4">
           <select
-            className="rounded border border-slate-300 px-3 py-2"
+            className="rounded border border-input px-3 py-2"
             value={provider}
             onChange={(e) => setProvider(e.target.value as "docker" | "kubernetes")}
           >
@@ -84,21 +84,21 @@ export default function SiteInfrastructurePage() {
           <Input value={customDomain} onChange={(e) => setCustomDomain(e.target.value)} placeholder="custom domain (optional)" />
           <Button onClick={deploy}>Deploy</Button>
         </div>
-        {statusText ? <p className="text-sm text-slate-600">{statusText}</p> : null}
+        {statusText ? <p className="text-sm text-muted-foreground">{statusText}</p> : null}
       </div>
 
       <div className="space-y-3">
         {jobs.map((job) => (
-          <div key={job.id} className="rounded border border-slate-200 bg-white p-4">
+          <div key={job.id} className="rounded border border-border bg-card p-4">
             <div className="flex items-center justify-between">
               <div>
                 <p className="font-semibold">{job.imageTag}</p>
-                <p className="text-sm text-slate-600">{job.provider} - {job.status}</p>
+                <p className="text-sm text-muted-foreground">{job.provider} - {job.status}</p>
               </div>
-              <p className="text-xs text-slate-500">{new Date(job.createdAt).toLocaleString()}</p>
+              <p className="text-xs text-muted-foreground">{new Date(job.createdAt).toLocaleString()}</p>
             </div>
             {Array.isArray(job.logs) && job.logs.length > 0 ? (
-              <pre className="mt-2 overflow-auto rounded bg-slate-50 p-2 text-xs">{job.logs.join("\n")}</pre>
+              <pre className="mt-2 overflow-auto rounded bg-muted/40 p-2 text-xs">{job.logs.join("\n")}</pre>
             ) : null}
           </div>
         ))}

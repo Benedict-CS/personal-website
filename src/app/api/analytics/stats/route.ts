@@ -3,6 +3,7 @@ import { requireSession } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 import type { Prisma } from "@prisma/client";
 import { getExcludedIPsForNotIn, getExcludedIPsSet, getExcludedPrefixes, filterByExcludedIP } from "@/lib/analytics-excluded-ips";
+import { prismaWhereExcludeLocalAndUnknownIp, prismaWhereExcludeNoise } from "@/lib/analytics-noise";
 
 export async function GET(request: NextRequest) {
   const auth = await requireSession();
@@ -10,6 +11,7 @@ export async function GET(request: NextRequest) {
   const from = request.nextUrl.searchParams.get("from");
   const to = request.nextUrl.searchParams.get("to");
   const filterIP = request.nextUrl.searchParams.get("ip")?.trim() || null;
+  const includeDevIps = request.nextUrl.searchParams.get("includeDevIps") === "1";
   let fromDate: Date | null = null;
   let toDate: Date | null = null;
   if (from) {
@@ -29,20 +31,27 @@ export async function GET(request: NextRequest) {
   const excludedSet = getExcludedIPsSet();
   const excludedPrefixes = getExcludedPrefixes();
 
-  const where: Prisma.PageViewWhereInput = {};
+  const baseWhere: Prisma.PageViewWhereInput = {};
   if (filterIP) {
-    where.ip = filterIP;
+    baseWhere.ip = filterIP;
   } else {
     const andParts: Prisma.PageViewWhereInput[] = [];
     if (excludedForNotIn.length > 0) andParts.push({ ip: { notIn: excludedForNotIn } });
     excludedPrefixes.forEach((p) => andParts.push({ ip: { not: { startsWith: p } } }));
-    if (andParts.length === 1) Object.assign(where, andParts[0]);
-    else if (andParts.length > 1) where.AND = andParts;
+    if (andParts.length === 1) Object.assign(baseWhere, andParts[0]);
+    else if (andParts.length > 1) baseWhere.AND = andParts;
   }
   const dateFilter: { gte?: Date; lte?: Date } = {};
   if (fromDate) dateFilter.gte = fromDate;
   if (toDate) dateFilter.lte = toDate;
-  if (Object.keys(dateFilter).length) where.createdAt = dateFilter;
+  if (Object.keys(dateFilter).length) baseWhere.createdAt = dateFilter;
+
+  /** Real-traffic filters: probe paths, scanner UAs, and by default non-public client IPs */
+  const whereParts: Prisma.PageViewWhereInput[] = [baseWhere, prismaWhereExcludeNoise()];
+  if (!filterIP && !includeDevIps) {
+    whereParts.push(prismaWhereExcludeLocalAndUnknownIp());
+  }
+  const where: Prisma.PageViewWhereInput = { AND: whereParts };
 
   const blockWhere: Prisma.AccessBlockLogWhereInput = {};
   if (filterIP) {
@@ -55,10 +64,21 @@ export async function GET(request: NextRequest) {
     OR: [{ published: true }, { publishedAt: { lte: now } }],
   };
 
+  const cvParts: Prisma.PageViewWhereInput[] = [
+    baseWhere,
+    prismaWhereExcludeNoise(),
+    { OR: [{ path: "/cv.pdf" }, { path: "/api/cv/download" }] },
+  ];
+  if (!filterIP && !includeDevIps) {
+    cvParts.push(prismaWhereExcludeLocalAndUnknownIp());
+  }
+  const cvWhere: Prisma.PageViewWhereInput = { AND: cvParts };
+
   try {
-    const [total, byPath, byIP, byCountry, byReferrer, withDuration, recent, topBlogPosts, accessBlockTotal, accessBlockedRecent] =
+    const [total, cvDownloads, byPath, byIP, byCountry, byReferrer, withDuration, recent, topBlogPosts, accessBlockTotal, accessBlockedRecent] =
       await Promise.all([
       prisma.pageView.count({ where }),
+      prisma.pageView.count({ where: cvWhere }),
       prisma.pageView.groupBy({
         by: ["path"],
         where,
@@ -123,8 +143,6 @@ export async function GET(request: NextRequest) {
       }),
     ]);
 
-    const cvDownloads = byPath.find((p) => p.path === "/cv.pdf" || p.path === "/api/cv/download")?._count?.path ?? 0;
-
     const byIPFiltered = filterByExcludedIP(
       byIP.map((p) => ({
         ip: p.ip,
@@ -176,6 +194,7 @@ export async function GET(request: NextRequest) {
         createdAt: r.createdAt.toISOString(),
       })),
       filterIP: filterIP || undefined,
+      excludingDevIps: !filterIP && !includeDevIps,
       excludedIPs:
         excludedSet.size > 0 || excludedPrefixes.length > 0
           ? [...Array.from(excludedSet), ...excludedPrefixes]

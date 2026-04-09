@@ -15,6 +15,17 @@ export function stripScheduledPublishAt(content: string): string {
   return content.replace(SCHEDULE_REGEX, "");
 }
 
+const THEME_HINT = /^<!--\s*site-theme:(clean|soft|bold)\s*-->\s*\n?/i;
+const BRAND_HINT = /^<!--\s*site-brand:(\{[\s\S]*?\})\s*-->\s*\n?/i;
+
+/** Strips schedule, theme, and brand hints so Markdown-derived SEO snippets start with real content. */
+export function stripCustomPageDecoratorsForSeo(content: string): string {
+  let c = stripScheduledPublishAt(content);
+  c = c.replace(THEME_HINT, "");
+  c = c.replace(BRAND_HINT, "");
+  return c;
+}
+
 export function setScheduledPublishAt(content: string, isoOrNull: string | null): string {
   const body = stripScheduledPublishAt(content);
   if (!isoOrNull) return body;
@@ -27,5 +38,13 @@ export function isScheduledLive(content: string, now = new Date()): boolean {
   const scheduled = getScheduledPublishAt(content);
   if (!scheduled) return false;
   return new Date(scheduled).getTime() <= now.getTime();
+}
+
+/**
+ * Matches public route logic for `/page/[slug]`: published pages, or drafts that became
+ * visible because their scheduled publish time has passed.
+ */
+export function isCustomPagePublicOnSite(published: boolean | null | undefined, content: string): boolean {
+  return (published ?? true) || isScheduledLive(content);
 }
 

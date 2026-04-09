@@ -52,4 +52,10 @@ export type SiteConfigResponse = {
   themeMode: "light";
   autoAddCustomPagesToNav: boolean;
   contactEmail?: string | null;
+  /** POST JSON to this URL when a contact form is submitted (Discord, Telegram, LINE bridges). */
+  contactWebhookUrl?: string | null;
+  /** Optional rsync destination for scripts/backup-data.sh (e.g. user@nas::module/path/). */
+  backupRsyncTarget?: string | null;
+  /** Optional URL to POST JSON after a backup archive is created. */
+  backupPostHookUrl?: string | null;
 };

@@ -6,6 +6,8 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Bookmark, BookmarkCheck, ChevronDown, ChevronUp, Loader2 } from "lucide-react";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
+import { DashboardPageHeader } from "@/components/dashboard/dashboard-ui";
+import { formatAbsoluteDateTime, formatRelativeTime } from "@/lib/relative-time";
 
 interface AuditEntry {
   id: string;
@@ -991,16 +993,16 @@ export default function AuditPage() {
 
   return (
     <div className="space-y-6">
-      <h2 className="text-3xl font-bold text-[var(--foreground)]">Audit log</h2>
-      <p className="text-sm text-[var(--muted-foreground)]">
-        Recent actions (post create/update/delete, import). Only visible when logged in.
-      </p>
+      <DashboardPageHeader
+        title="Audit log"
+        description="Recent actions (post create/update/delete, import). Only visible when logged in."
+      />
       <Card>
         <CardHeader>
           <CardTitle className="text-lg">Recent activity</CardTitle>
         </CardHeader>
         <CardContent>
-          <div className="mb-3 grid gap-2 rounded-lg border border-[var(--border)] p-3 md:grid-cols-[1fr_1fr_1fr_auto_auto]">
+          <div className="mb-3 grid gap-2 rounded-lg border border-border p-3 md:grid-cols-[1fr_1fr_1fr_auto_auto]">
             <Input
               value={resourceTypeFilter}
               onChange={(e) => setResourceTypeFilter(e.target.value)}
@@ -1055,14 +1057,14 @@ export default function AuditPage() {
             </Button>
           </div>
           {hasActiveFilters ? (
-            <p className="mb-2 text-xs text-[var(--muted-foreground)]">
+            <p className="mb-2 text-xs text-muted-foreground">
               Active: {activeFiltersSummary.join(" · ")}
             </p>
           ) : (
-            <p className="mb-2 text-xs text-[var(--muted-foreground)]">No filters applied</p>
+            <p className="mb-2 text-xs text-muted-foreground">No filters applied</p>
           )}
           <div className="mb-2 flex flex-wrap items-center gap-2">
-            <span className="text-xs text-[var(--muted-foreground)]">Date range:</span>
+            <span className="text-xs text-muted-foreground">Date range:</span>
             <Input
               type="date"
               value={dateFrom}
@@ -1094,7 +1096,7 @@ export default function AuditPage() {
               Export visible as CSV
             </Button>
           </div>
-          <div className="mb-3 rounded-lg border border-[var(--border)] p-3">
+          <div className="mb-3 rounded-lg border border-border p-3">
             <div className="flex flex-wrap items-center gap-2">
               <Input
                 value={savedViewName}
@@ -1105,7 +1107,7 @@ export default function AuditPage() {
               <select
                 value={savedViewCategory}
                 onChange={(e) => setSavedViewCategory(e.target.value as (typeof SAVED_VIEW_CATEGORIES)[number])}
-                className="h-9 rounded-lg border border-input bg-background px-2 text-sm text-foreground shadow-[var(--shadow-sm)]"
+                className="h-9 rounded-lg border border-input bg-background px-2 text-sm text-foreground shadow-sm"
               >
                 {SAVED_VIEW_CATEGORIES.map((category) => (
                   <option key={category} value={category}>
@@ -1225,7 +1227,7 @@ export default function AuditPage() {
               >
                 Sort: Name
               </Button>
-              <span className="text-xs text-[var(--muted-foreground)]">Quick apply: Alt+Shift+1..9</span>
+              <span className="text-xs text-muted-foreground">Quick apply: Alt+Shift+1..9</span>
             </div>
             <div className="mt-2 flex flex-wrap items-center gap-2">
               <Button type="button" size="sm" variant="outline" onClick={selectAllVisibleSavedViews}>
@@ -1274,7 +1276,7 @@ export default function AuditPage() {
               <select
                 value={bulkCategory}
                 onChange={(e) => setBulkCategory(e.target.value as (typeof SAVED_VIEW_CATEGORIES)[number])}
-                className="h-8 rounded-lg border border-input bg-background px-2 text-xs text-foreground shadow-[var(--shadow-sm)]"
+                className="h-8 rounded-lg border border-input bg-background px-2 text-xs text-foreground shadow-sm"
               >
                 {SAVED_VIEW_CATEGORIES.map((category) => (
                   <option key={category} value={category}>
@@ -1305,7 +1307,7 @@ export default function AuditPage() {
                     value={deleteConfirmText}
                     onChange={(e) => setDeleteConfirmText(e.target.value)}
                     placeholder="DELETE"
-                    className="h-7 w-28 bg-white text-xs"
+                    className="h-7 w-28 bg-card text-xs"
                   />
                 </div>
               </div>
@@ -1322,18 +1324,18 @@ export default function AuditPage() {
               </div>
             ) : null}
             {defaultStartupViewId ? (
-              <p className="mt-2 text-xs text-[var(--muted-foreground)]">
+              <p className="mt-2 text-xs text-muted-foreground">
                 Startup view:
                 {" "}
                 {savedViews.find((view) => view.id === defaultStartupViewId)?.name ?? "Missing saved view"}
               </p>
             ) : (
-              <p className="mt-2 text-xs text-[var(--muted-foreground)]">Startup view: none</p>
+              <p className="mt-2 text-xs text-muted-foreground">Startup view: none</p>
             )}
             {visibleSavedViews.length > 0 ? (
               <div className="mt-2 flex flex-wrap items-center gap-2">
                 {sortedVisibleSavedViews.map((view, index) => (
-                  <div key={view.id} className="inline-flex items-center gap-1 rounded-full border border-[var(--border)] bg-[var(--muted)]/50 px-2 py-1">
+                  <div key={view.id} className="inline-flex items-center gap-1 rounded-full border border-border bg-muted/50 px-2 py-1">
                     <input
                       type="checkbox"
                       className="h-3.5 w-3.5 cursor-pointer rounded border-input"
@@ -1342,11 +1344,11 @@ export default function AuditPage() {
                       aria-label={`Select saved view ${view.name}`}
                     />
                     {index < 9 ? (
-                      <span className="rounded bg-[var(--muted)] px-1 py-0.5 text-[10px] font-semibold text-[var(--foreground)]">
+                      <span className="rounded bg-muted px-1 py-0.5 text-[10px] font-semibold text-foreground">
                         {index + 1}
                       </span>
                     ) : null}
-                    <span className="rounded bg-[var(--muted)] px-1.5 py-0.5 text-[10px] font-semibold uppercase tracking-wide text-[var(--muted-foreground)]">
+                    <span className="rounded bg-muted px-1.5 py-0.5 text-[10px] font-semibold uppercase tracking-wide text-muted-foreground">
                       {view.category}
                     </span>
                     {editingViewId === view.id ? (
@@ -1376,59 +1378,59 @@ export default function AuditPage() {
                       <>
                         <button
                           type="button"
-                          className="text-xs font-medium text-[var(--foreground)] hover:text-[var(--primary)]"
+                          className="text-xs font-medium text-foreground hover:text-primary"
                           onClick={() => applySavedView(view)}
                         >
                           {view.name}
                         </button>
                         <button
                           type="button"
-                          className="text-[11px] text-[var(--muted-foreground)] hover:text-[var(--foreground)]"
+                          className="text-[11px] text-muted-foreground hover:text-foreground"
                           onClick={() => overwriteSavedView(view.id)}
                         >
                           Overwrite
                         </button>
                         <button
                           type="button"
-                          className="text-[11px] text-[var(--muted-foreground)] hover:text-[var(--foreground)]"
+                          className="text-[11px] text-muted-foreground hover:text-foreground"
                           onClick={() => void copySavedViewLink(view)}
                         >
                           {copiedViewId === view.id ? "Copied" : "Copy link"}
                         </button>
                         <button
                           type="button"
-                          className={`text-[11px] ${defaultStartupViewId === view.id ? "text-[var(--primary)]" : "text-[var(--muted-foreground)] hover:text-[var(--foreground)]"}`}
+                          className={`text-[11px] ${defaultStartupViewId === view.id ? "text-primary" : "text-muted-foreground hover:text-foreground"}`}
                           onClick={() => toggleDefaultStartupView(view.id)}
                         >
                           {defaultStartupViewId === view.id ? "Default" : "Set default"}
                         </button>
                         <button
                           type="button"
-                          className="text-[11px] text-[var(--muted-foreground)] hover:text-[var(--foreground)]"
+                          className="text-[11px] text-muted-foreground hover:text-foreground"
                           onClick={() => duplicateSavedView(view)}
                         >
                           Duplicate
                         </button>
                         <button
                           type="button"
-                          className="text-[11px] text-[var(--muted-foreground)] hover:text-[var(--foreground)]"
+                          className="text-[11px] text-muted-foreground hover:text-foreground"
                           onClick={() => toggleArchiveSavedView(view.id)}
                         >
                           {view.archived ? "Unarchive" : "Archive"}
                         </button>
-                        <span className="text-[10px] text-[var(--muted-foreground)]">
+                        <span className="text-[10px] text-muted-foreground">
                           used {savedViewUsage[view.id]?.count ?? 0}
                         </span>
                         <button
                           type="button"
-                          className="text-[11px] text-[var(--muted-foreground)] hover:text-[var(--foreground)]"
+                          className="text-[11px] text-muted-foreground hover:text-foreground"
                           onClick={() => startRenameSavedView(view)}
                         >
                           Rename
                         </button>
                         <button
                           type="button"
-                          className="text-xs text-[var(--muted-foreground)] hover:text-[var(--foreground)]"
+                          className="text-xs text-muted-foreground hover:text-foreground"
                           onClick={() => deleteSavedView(view.id)}
                           aria-label={`Delete saved view ${view.name}`}
                         >
@@ -1484,25 +1486,25 @@ export default function AuditPage() {
             </Button>
           </div>
           {loading ? (
-            <div className="flex items-center gap-2 text-[var(--muted-foreground)]">
+            <div className="flex items-center gap-2 text-muted-foreground">
               <Loader2 className="h-4 w-4 animate-spin" />
               Loading…
             </div>
           ) : displayedEntries.length === 0 ? (
-            <p className="text-[var(--muted-foreground)]">No audit entries yet.</p>
+            <p className="text-muted-foreground">No audit entries yet.</p>
           ) : (
             <div className="overflow-x-auto">
               <table className="w-full text-sm">
                 <thead>
-                  <tr className="border-b border-[var(--border)] text-left">
-                    <th className="pb-2 pr-4 font-medium text-[var(--foreground)]">Time</th>
-                    <th className="pb-2 pr-4 font-medium text-[var(--foreground)]">Pin</th>
-                    <th className="pb-2 pr-4 font-medium text-[var(--foreground)]">Action</th>
-                    <th className="pb-2 pr-4 font-medium text-[var(--foreground)]">Resource</th>
-                    <th className="pb-2 pr-4 font-medium text-[var(--foreground)]">Actor</th>
-                    <th className="pb-2 pr-4 font-medium text-[var(--foreground)]">Details</th>
-                    <th className="pb-2 pr-4 font-medium text-[var(--foreground)]">IP</th>
-                    <th className="pb-2 font-medium text-[var(--foreground)]">Tools</th>
+                  <tr className="border-b border-border text-left">
+                    <th className="pb-2 pr-4 font-medium text-foreground">Time</th>
+                    <th className="pb-2 pr-4 font-medium text-foreground">Pin</th>
+                    <th className="pb-2 pr-4 font-medium text-foreground">Action</th>
+                    <th className="pb-2 pr-4 font-medium text-foreground">Resource</th>
+                    <th className="pb-2 pr-4 font-medium text-foreground">Actor</th>
+                    <th className="pb-2 pr-4 font-medium text-foreground">Details</th>
+                    <th className="pb-2 pr-4 font-medium text-foreground">IP</th>
+                    <th className="pb-2 font-medium text-foreground">Tools</th>
                   </tr>
                 </thead>
                 <tbody>
@@ -1513,8 +1515,13 @@ export default function AuditPage() {
                       const expanded = expandedRows.has(e.id);
                       const pinned = pinnedIds.has(e.id);
                       return (
-                        <tr key={e.id} className="border-b border-[var(--border)] transition-colors duration-150 hover:bg-[var(--accent)]/30">
-                          <td className="py-2 pr-4 text-[var(--muted-foreground)] whitespace-nowrap">{formatDate(e.createdAt)}</td>
+                        <tr key={e.id} className="border-b border-border transition-colors duration-150 hover:bg-accent/30">
+                          <td
+                            className="py-2 pr-4 text-muted-foreground whitespace-nowrap"
+                            title={formatAbsoluteDateTime(e.createdAt)}
+                          >
+                            <span className="tabular-nums">{formatRelativeTime(e.createdAt)}</span>
+                          </td>
                           <td className="py-2 pr-4">
                             <Button
                               type="button"
@@ -1527,21 +1534,21 @@ export default function AuditPage() {
                               {pinned ? <BookmarkCheck className="h-3.5 w-3.5" /> : <Bookmark className="h-3.5 w-3.5" />}
                             </Button>
                           </td>
-                          <td className="py-2 pr-4 font-mono text-[var(--foreground)]">{e.action}</td>
+                          <td className="py-2 pr-4 font-mono text-foreground">{e.action}</td>
                           <td className="py-2 pr-4">{e.resourceType}{e.resourceId ? ` ${e.resourceId.slice(0, 8)}…` : ""}</td>
-                          <td className="py-2 pr-4 text-[var(--muted-foreground)]">{e.actor ?? "—"}</td>
-                          <td className="py-2 pr-4 text-[var(--muted-foreground)] max-w-[460px] align-top">
+                          <td className="py-2 pr-4 text-muted-foreground">{e.actor ?? "—"}</td>
+                          <td className="py-2 pr-4 text-muted-foreground max-w-[460px] align-top">
                             {diff.length > 0 ? (
                               <div className="space-y-1">
                                 {(expanded ? diff : diff.slice(0, 4)).map((row) => (
-                                  <div key={row.field} className="text-xs text-[var(--foreground)]">
+                                  <div key={row.field} className="text-xs text-foreground">
                                     <span className="font-medium">{row.field}</span>: {row.before} → {row.after}
                                   </div>
                                 ))}
                                 {diff.length > 4 ? (
                                   <button
                                     type="button"
-                                    className="inline-flex items-center gap-1 text-xs text-[var(--muted-foreground)] hover:text-[var(--foreground)]"
+                                    className="inline-flex items-center gap-1 text-xs text-muted-foreground hover:text-foreground"
                                     onClick={() =>
                                       setExpandedRows((prev) => {
                                         const next = new Set(prev);
@@ -1559,13 +1566,13 @@ export default function AuditPage() {
                             ) : (
                               <div className="space-y-1">
                                 {summarizeDetails(e.action, e.details).map((line) => (
-                                  <div key={`${e.id}-${line}`} className="break-all text-xs text-[var(--foreground)]">
+                                  <div key={`${e.id}-${line}`} className="break-all text-xs text-foreground">
                                     {line}
                                   </div>
                                 ))}
                                 <button
                                   type="button"
-                                  className="inline-flex items-center gap-1 text-xs text-[var(--muted-foreground)] hover:text-[var(--foreground)]"
+                                  className="inline-flex items-center gap-1 text-xs text-muted-foreground hover:text-foreground"
                                   onClick={() =>
                                     setExpandedRows((prev) => {
                                       const next = new Set(prev);
@@ -1579,7 +1586,7 @@ export default function AuditPage() {
                                   {expanded ? "Hide payload" : "View payload"}
                                 </button>
                                 {expanded ? (
-                                  <pre className="max-h-48 overflow-auto whitespace-pre-wrap rounded border border-[var(--border)] bg-[var(--muted)]/50 p-2 text-[11px] text-[var(--foreground)]">
+                                  <pre className="max-h-48 overflow-auto whitespace-pre-wrap rounded border border-border bg-muted/50 p-2 text-[11px] text-foreground">
                                     {typeof e.details === "string"
                                       ? e.details
                                       : JSON.stringify(normalizedDetails, null, 2)}
@@ -1588,7 +1595,7 @@ export default function AuditPage() {
                               </div>
                             )}
                           </td>
-                          <td className="py-2 pr-4 text-[var(--muted-foreground)]">{e.ip ?? "—"}</td>
+                          <td className="py-2 pr-4 text-muted-foreground">{e.ip ?? "—"}</td>
                           <td className="py-2">
                             <Button
                               type="button"

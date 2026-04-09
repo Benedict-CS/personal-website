@@ -96,6 +96,38 @@ describe("POST /api/analytics/view", () => {
     expect(data).toEqual({ ok: true, skipped: "excluded" });
   });
 
+  it("returns no_client_ip skip when X-Forwarded-For is missing (browser beacon)", async () => {
+    const POST = await loadRoute();
+    const req = new NextRequest("http://localhost/api/analytics/view", {
+      method: "POST",
+      headers: {
+        origin: "https://site.test",
+        "content-type": "application/json",
+      },
+      body: JSON.stringify({ path: "/a" }),
+    });
+    const res = await POST(req);
+    const data = await res.json();
+    expect(data).toEqual({ ok: true, skipped: "no_client_ip" });
+    expect(mockCreate).not.toHaveBeenCalled();
+  });
+
+  it("returns no_client_ip skip for middleware flow without usable ip", async () => {
+    const POST = await loadRoute("secret-1");
+    const req = new NextRequest("http://localhost/api/analytics/view", {
+      method: "POST",
+      headers: {
+        "x-analytics-secret": "secret-1",
+        "content-type": "application/json",
+      },
+      body: JSON.stringify({ path: "/from-mw", ip: "unknown" }),
+    });
+    const res = await POST(req);
+    const data = await res.json();
+    expect(data).toEqual({ ok: true, skipped: "no_client_ip" });
+    expect(mockCreate).not.toHaveBeenCalled();
+  });
+
   it("returns private_ip skip", async () => {
     mockIsPrivateIP.mockReturnValue(true);
     const POST = await loadRoute();
@@ -128,6 +160,40 @@ describe("POST /api/analytics/view", () => {
     const res = await POST(req);
     const data = await res.json();
     expect(data).toEqual({ ok: true, skipped: "dedup" });
+  });
+
+  it("returns junk_path skip for probe paths", async () => {
+    const POST = await loadRoute();
+    const req = new NextRequest("http://localhost/api/analytics/view", {
+      method: "POST",
+      headers: {
+        origin: "https://site.test",
+        "content-type": "application/json",
+        "x-forwarded-for": "3.3.3.3",
+      },
+      body: JSON.stringify({ path: "/.env" }),
+    });
+    const res = await POST(req);
+    const data = await res.json();
+    expect(data).toEqual({ ok: true, skipped: "junk_path" });
+    expect(mockCreate).not.toHaveBeenCalled();
+  });
+
+  it("returns scanner_ua skip for known scanner user agents", async () => {
+    const POST = await loadRoute();
+    const req = new NextRequest("http://localhost/api/analytics/view", {
+      method: "POST",
+      headers: {
+        origin: "https://site.test",
+        "content-type": "application/json",
+        "x-forwarded-for": "3.3.3.3",
+      },
+      body: JSON.stringify({ path: "/ok", userAgent: "Mozilla/5.0 NetcraftSurveyAgent/1.0" }),
+    });
+    const res = await POST(req);
+    const data = await res.json();
+    expect(data).toEqual({ ok: true, skipped: "scanner_ua" });
+    expect(mockCreate).not.toHaveBeenCalled();
   });
 
   it("creates page view on valid request", async () => {

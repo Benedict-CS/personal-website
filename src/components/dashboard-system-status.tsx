@@ -9,6 +9,9 @@ type HealthResponse = {
   ok: boolean;
   db: "ok" | "error";
   version?: string;
+  appVersion?: string;
+  uptimeSeconds?: number;
+  node?: string;
 };
 
 type HealthSnapshot = {
@@ -23,9 +26,22 @@ function formatMs(ms: number | null): string {
   return `${ms} ms`;
 }
 
+async function timedFetch(url: string): Promise<{ res: Response | null; ms: number | null }> {
+  const t0 = performance.now();
+  try {
+    const res = await fetch(url, { cache: "no-store" });
+    const ms = Math.round(performance.now() - t0);
+    return { res, ms };
+  } catch {
+    return { res: null, ms: null };
+  }
+}
+
 export function DashboardSystemStatus() {
   const [health, setHealth] = useState<HealthResponse | null>(null);
   const [latencyMs, setLatencyMs] = useState<number | null>(null);
+  const [liveLatencyMs, setLiveLatencyMs] = useState<number | null>(null);
+  const [liveOk, setLiveOk] = useState<boolean | null>(null);
   const [lastCheckedAt, setLastCheckedAt] = useState<string>("");
   const [loading, setLoading] = useState(false);
   const [showDiagnostics, setShowDiagnostics] = useState(false);
@@ -33,7 +49,6 @@ export function DashboardSystemStatus() {
 
   const runCheck = useCallback(async () => {
     setLoading(true);
-    const started = performance.now();
     let snapshot: HealthSnapshot = {
       ok: false,
       db: "error",
@@ -41,12 +56,19 @@ export function DashboardSystemStatus() {
       checkedAt: new Date().toISOString(),
     };
     try {
-      const res = await fetch("/api/health", { cache: "no-store" });
-      const ended = performance.now();
-      const measuredLatency = Math.round(ended - started);
+      const [healthTimed, liveTimed] = await Promise.all([
+        timedFetch("/api/health"),
+        timedFetch("/api/live"),
+      ]);
+
+      setLiveLatencyMs(liveTimed.ms);
+      setLiveOk(liveTimed.res !== null && liveTimed.res.ok);
+
+      const measuredLatency = healthTimed.ms;
       setLatencyMs(measuredLatency);
-      if (res.ok) {
-        const data = (await res.json()) as HealthResponse;
+
+      if (healthTimed.res?.ok) {
+        const data = (await healthTimed.res.json()) as HealthResponse;
         setHealth(data);
         snapshot = {
           ok: data.ok,
@@ -66,6 +88,8 @@ export function DashboardSystemStatus() {
     } catch {
       setHealth({ ok: false, db: "error" });
       setLatencyMs(null);
+      setLiveLatencyMs(null);
+      setLiveOk(false);
       snapshot = {
         ok: false,
         db: "error",
@@ -117,15 +141,27 @@ export function DashboardSystemStatus() {
   }, [history]);
 
   const copyDiagnostics = async () => {
+    const liveLine =
+      liveOk === null
+        ? ""
+        : liveOk
+          ? `Liveness (/api/live): OK · ${formatMs(liveLatencyMs)}`
+          : `Liveness (/api/live): failed · ${formatMs(liveLatencyMs)}`;
     const summary = [
       `Status: ${statusText}`,
       `API: ${health?.ok ? "OK" : "Error"}`,
       `Database: ${health?.db === "ok" ? "Connected" : "Unavailable"}`,
-      `Latency: ${formatMs(latencyMs)}`,
+      liveLine,
+      health?.appVersion ? `Deployment: ${health.appVersion}` : "",
+      health?.node ? `Node.js: ${health.node}` : "",
+      typeof health?.uptimeSeconds === "number" ? `Process uptime: ${health.uptimeSeconds}s` : "",
+      `Readiness latency (/api/health): ${formatMs(latencyMs)}`,
       `Success rate (last 10): ${diagnostics.successRate}%`,
       `Average latency (last 10): ${formatMs(diagnostics.avgLatency)}`,
       `Last checked: ${lastCheckedAt || "—"}`,
-    ].join("\n");
+    ]
+      .filter(Boolean)
+      .join("\n");
     try {
       await navigator.clipboard.writeText(summary);
     } catch {
@@ -136,7 +172,7 @@ export function DashboardSystemStatus() {
   return (
     <Card>
       <CardHeader className="flex flex-row items-center justify-between space-y-0">
-        <CardTitle className="text-lg text-[var(--foreground)]">System status</CardTitle>
+        <CardTitle className="text-lg text-foreground">System status</CardTitle>
         <div className="flex items-center gap-2">
           <Button
             type="button"
@@ -163,37 +199,76 @@ export function DashboardSystemStatus() {
       </CardHeader>
       <CardContent className="space-y-3">
         <div className="flex items-center gap-2">
-          <Activity className="h-4 w-4 text-[var(--muted-foreground)]" />
+          <Activity className="h-4 w-4 text-muted-foreground" />
           <span
             className={`inline-flex rounded-full px-2.5 py-1 text-xs font-medium ${statusClass}`}
           >
             {statusText}
           </span>
         </div>
-        <div className="grid grid-cols-1 gap-2 text-sm text-[var(--muted-foreground)] sm:grid-cols-3">
+        <div className="grid grid-cols-1 gap-2 text-sm text-muted-foreground sm:grid-cols-2 lg:grid-cols-3">
           <p>
-            <span className="font-medium text-[var(--foreground)]">API</span>:{" "}
+            <span className="font-medium text-foreground">API</span>:{" "}
             {health?.ok ? "OK" : "Error"}
           </p>
           <p>
-            <span className="font-medium text-[var(--foreground)]">Database</span>:{" "}
+            <span className="font-medium text-foreground">Database</span>:{" "}
             {health?.db === "ok" ? "Connected" : "Unavailable"}
           </p>
           <p>
-            <span className="font-medium text-[var(--foreground)]">Latency</span>:{" "}
+            <span className="font-medium text-foreground">Readiness</span>{" "}
+            <span className="text-muted-foreground">(/api/health)</span>:{" "}
             {formatMs(latencyMs)}
           </p>
+          <p>
+            <span className="font-medium text-foreground">Liveness</span>{" "}
+            <span className="text-muted-foreground">(/api/live, no DB)</span>:{" "}
+            {liveOk === null
+              ? "—"
+              : liveOk
+                ? `OK · ${formatMs(liveLatencyMs)}`
+                : liveLatencyMs === null
+                  ? "Unreachable"
+                  : `Error · ${formatMs(liveLatencyMs)}`}
+          </p>
+          {typeof health?.uptimeSeconds === "number" ? (
+            <p>
+              <span className="font-medium text-foreground">Uptime</span>:{" "}
+              {Math.floor(health.uptimeSeconds / 3600)}h {Math.floor((health.uptimeSeconds % 3600) / 60)}m
+            </p>
+          ) : null}
+          {health?.appVersion ? (
+            <p className="min-w-0">
+              <span className="font-medium text-foreground">Deployment</span>:{" "}
+              <span className="font-mono text-xs break-all">{health.appVersion}</span>
+            </p>
+          ) : (
+            <p>
+              <span className="font-medium text-foreground">Deployment</span>:{" "}
+              <span className="text-muted-foreground">—</span>
+            </p>
+          )}
+          {health?.node ? (
+            <p>
+              <span className="font-medium text-foreground">Node.js</span>:{" "}
+              <span className="font-mono text-xs">{health.node}</span>
+            </p>
+          ) : null}
         </div>
-        <p className="text-xs text-[var(--muted-foreground)]">
+        <p className="text-xs text-muted-foreground">
           Last checked: {lastCheckedAt || "—"} (auto refresh every 30s)
         </p>
         {showDiagnostics ? (
-          <div className="space-y-3 rounded-lg border border-[var(--border)] bg-[var(--muted)]/40 p-3">
+          <div className="space-y-3 rounded-lg border border-border bg-muted/40 p-3">
+            <p className="text-xs leading-relaxed text-muted-foreground">
+              Readiness hits the database; liveness only confirms the Node process responds. Large gaps between the
+              two often point to DB latency or pool pressure.
+            </p>
             <div className="flex flex-wrap items-center gap-2">
-              <span className="rounded-full bg-[var(--muted)] px-2 py-0.5 text-[11px] text-[var(--foreground)]">
+              <span className="rounded-full bg-muted px-2 py-0.5 text-[11px] text-foreground">
                 Success rate: {diagnostics.successRate}%
               </span>
-              <span className="rounded-full bg-[var(--muted)] px-2 py-0.5 text-[11px] text-[var(--foreground)]">
+              <span className="rounded-full bg-muted px-2 py-0.5 text-[11px] text-foreground">
                 Avg latency: {formatMs(diagnostics.avgLatency)}
               </span>
               {diagnostics.unstable ? (
@@ -208,10 +283,10 @@ export function DashboardSystemStatus() {
               )}
             </div>
             <div>
-              <p className="mb-1 text-xs text-[var(--muted-foreground)]">Last checks</p>
+              <p className="mb-1 text-xs text-muted-foreground">Last checks</p>
               <div className="flex flex-wrap gap-1.5">
                 {history.length === 0 ? (
-                  <span className="text-xs text-[var(--muted-foreground)]">No samples yet</span>
+                  <span className="text-xs text-muted-foreground">No samples yet</span>
                 ) : (
                   history.slice(-10).map((sample, index) => (
                     <span

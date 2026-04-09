@@ -78,11 +78,21 @@ echo "📊 Service status:"
 sudo docker compose ps
 
 echo ""
-echo "🔍 Checking health..."
-if curl -f http://localhost:3000 > /dev/null 2>&1; then
-    echo "✅ Service is up."
+echo "Checking health endpoints..."
+LIVE_OK=0
+HEALTH_OK=0
+if curl -fsS "http://127.0.0.1:3000/api/live" > /dev/null 2>&1; then
+    LIVE_OK=1
+fi
+if curl -fsS "http://127.0.0.1:3000/api/health" > /dev/null 2>&1; then
+    HEALTH_OK=1
+fi
+if [ "$LIVE_OK" -eq 1 ] && [ "$HEALTH_OK" -eq 1 ]; then
+    echo "OK: GET /api/live and GET /api/health succeeded."
 else
-    echo "⚠️  Service may not be ready yet; check again shortly."
+    echo "Warning: liveness or readiness check failed (app may still be starting)."
+    echo "  /api/live ok=$LIVE_OK  /api/health ok=$HEALTH_OK"
+    echo "  Retry: curl -fsS http://127.0.0.1:3000/api/health"
 fi
 
 echo ""

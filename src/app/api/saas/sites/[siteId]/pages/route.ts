@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import type { Prisma } from "@prisma/client";
 import { prisma } from "@/lib/prisma";
 import { canWrite, requireTenantContext } from "@/lib/tenant-auth";
+import { assertPageCreateAllowed } from "@/lib/saas/entitlements";
 
 function normalizeSlug(value: string): string {
   return value
@@ -40,6 +41,14 @@ export async function POST(
   if ("unauthorized" in tenant) return tenant.unauthorized;
   if (!canWrite(tenant.context.role)) {
     return NextResponse.json({ error: "Insufficient role" }, { status: 403 });
+  }
+
+  const gate = await assertPageCreateAllowed(siteId);
+  if (!gate.ok) {
+    return NextResponse.json(
+      { error: gate.message, plan: gate.plan, limit: gate.limit, usage: gate.usage },
+      { status: gate.status }
+    );
   }
 
   const body = (await request.json()) as {

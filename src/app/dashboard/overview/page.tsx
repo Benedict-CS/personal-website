@@ -7,6 +7,8 @@ import { DashboardSystemStatus } from "@/components/dashboard-system-status";
 import { DashboardExportImport } from "@/components/dashboard-export-import";
 import { DashboardRecentActivity } from "@/components/dashboard-recent-activity";
 import { DashboardOverviewToolbar } from "@/components/dashboard-overview-toolbar";
+import { DashboardOperationsCard } from "@/components/dashboard-operations-card";
+import { DashboardPageHeader } from "@/components/dashboard/dashboard-ui";
 
 export const dynamic = "force-dynamic";
 
@@ -152,36 +154,31 @@ export default async function DashboardOverviewPage() {
 
   return (
     <div className="space-y-6">
-      <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
-        <div>
-          <h1 className="text-2xl font-semibold text-[var(--foreground)]">Dashboard overview</h1>
-          <p className="text-sm text-slate-600">
-            Monitor content status, system health, and recent operations in one place.
-          </p>
-        </div>
-        <div className="flex flex-wrap items-center gap-2">
-          <DashboardOverviewToolbar generatedAt={generatedAt} />
-          <Link href="/editor/home">
-            <Button size="sm">Open visual editor</Button>
-          </Link>
-          <Link href="/dashboard/content/pages">
-            <Button size="sm" variant="outline">Manage custom pages</Button>
-          </Link>
-          <Link href="/dashboard/audit">
-            <Button size="sm" variant="outline">Open audit log</Button>
-          </Link>
-          <Link href="/dashboard/analytics">
-            <Button size="sm" variant="outline">Analytics</Button>
-          </Link>
-          <Link href="/dashboard/content/site">
-            <Button size="sm" variant="outline">Site &amp; SEO</Button>
-          </Link>
-        </div>
-      </div>
+      <DashboardPageHeader
+        title="Dashboard overview"
+        description="Monitor content status, system health, and recent operations in one place."
+      >
+        <DashboardOverviewToolbar generatedAt={generatedAt} />
+        <Link href="/editor/home">
+          <Button size="sm">Open visual editor</Button>
+        </Link>
+        <Link href="/dashboard/content/pages">
+          <Button size="sm" variant="outline">Manage custom pages</Button>
+        </Link>
+        <Link href="/dashboard/audit">
+          <Button size="sm" variant="outline">Open audit log</Button>
+        </Link>
+        <Link href="/dashboard/analytics">
+          <Button size="sm" variant="outline">Analytics</Button>
+        </Link>
+        <Link href="/dashboard/content/site">
+          <Button size="sm" variant="outline">Site &amp; SEO</Button>
+        </Link>
+      </DashboardPageHeader>
 
       <MotionCard
         delayIndex={0}
-        className="rounded-xl border border-[var(--border)] bg-[var(--glass-bg)] px-4 py-3 shadow-[var(--glass-shadow)] backdrop-blur-sm"
+        className="rounded-xl border border-border bg-card/80 px-4 py-3 shadow-md backdrop-blur-sm"
       >
         <div className="flex flex-wrap items-center justify-between gap-3">
           <div className="flex flex-wrap items-center gap-2 text-sm">
@@ -197,12 +194,12 @@ export default async function DashboardOverviewPage() {
                 : "No warning events today"}
             </span>
             {metrics.latestWarningAction ? (
-              <span className="text-slate-600">
-                Latest: <span className="font-medium text-slate-800">{metrics.latestWarningAction}</span>
+              <span className="text-muted-foreground">
+                Latest: <span className="font-medium text-foreground">{metrics.latestWarningAction}</span>
                 {metrics.latestWarningAt ? ` · ${formatCompactDateTime(metrics.latestWarningAt)}` : ""}
               </span>
             ) : (
-              <span className="text-slate-500">Recent operations look stable.</span>
+              <span className="text-muted-foreground">Recent operations look stable.</span>
             )}
           </div>
           <Link href="/dashboard/audit?risk=high">
@@ -215,20 +212,20 @@ export default async function DashboardOverviewPage() {
 
       <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-3">
         <MotionCard delayIndex={1}>
-        <Card className="border-[var(--border)] shadow-[var(--shadow-md)] transition-shadow duration-200 hover:shadow-[var(--shadow-lg)]">
+        <Card className="border-border shadow-md transition-shadow duration-200 hover:shadow-lg">
           <CardHeader className="pb-2">
-            <CardTitle className="text-sm font-medium text-slate-600">Posts</CardTitle>
+            <CardTitle className="text-sm font-medium text-muted-foreground">Posts</CardTitle>
           </CardHeader>
           <CardContent className="space-y-2">
-            <Link href="/dashboard/posts" className="block rounded-lg py-1 transition-colors hover:bg-slate-50">
-              <p className="text-2xl font-semibold text-[var(--foreground)]">{metrics.totalPosts}</p>
-              <p className="mt-1 text-xs text-slate-500">Open published posts</p>
+            <Link href="/dashboard/posts" className="block rounded-lg py-1 transition-colors hover:bg-muted/40">
+              <p className="text-2xl font-semibold text-foreground">{metrics.totalPosts}</p>
+              <p className="mt-1 text-xs text-muted-foreground">Open published posts</p>
             </Link>
             <div className="flex flex-wrap items-center gap-2 text-xs">
-              <Link href="/dashboard/posts" className="rounded-full border border-slate-200 px-2 py-0.5 text-slate-600 hover:bg-slate-50">
+              <Link href="/dashboard/posts" className="rounded-full border border-border px-2 py-0.5 text-muted-foreground hover:bg-muted/40">
                 {metrics.publishedPosts} live
               </Link>
-              <Link href="/dashboard/notes" className="rounded-full border border-slate-200 px-2 py-0.5 text-slate-600 hover:bg-slate-50">
+              <Link href="/dashboard/notes" className="rounded-full border border-border px-2 py-0.5 text-muted-foreground hover:bg-muted/40">
                 {metrics.draftPosts} draft
               </Link>
             </div>
@@ -236,25 +233,25 @@ export default async function DashboardOverviewPage() {
         </Card>
         </MotionCard>
         <MotionCard delayIndex={2}>
-        <Card className="border-[var(--border)] shadow-[var(--shadow-md)] transition-shadow duration-200 hover:shadow-[var(--shadow-lg)]">
+        <Card className="border-border shadow-md transition-shadow duration-200 hover:shadow-lg">
           <CardHeader className="pb-2">
-            <CardTitle className="text-sm font-medium text-slate-600">Custom pages</CardTitle>
+            <CardTitle className="text-sm font-medium text-muted-foreground">Custom pages</CardTitle>
           </CardHeader>
           <CardContent className="space-y-2">
-            <Link href="/dashboard/content/pages" className="block rounded-lg py-1 transition-colors hover:bg-slate-50">
-              <p className="text-2xl font-semibold text-[var(--foreground)]">{metrics.totalCustomPages}</p>
-              <p className="mt-1 text-xs text-slate-500">Open custom pages manager</p>
+            <Link href="/dashboard/content/pages" className="block rounded-lg py-1 transition-colors hover:bg-muted/40">
+              <p className="text-2xl font-semibold text-foreground">{metrics.totalCustomPages}</p>
+              <p className="mt-1 text-xs text-muted-foreground">Open custom pages manager</p>
             </Link>
             <div className="flex flex-wrap items-center gap-2 text-xs">
               <Link
                 href="/dashboard/content/pages?status=published"
-                className="rounded-full border border-slate-200 px-2 py-0.5 text-slate-600 hover:bg-slate-50"
+                className="rounded-full border border-border px-2 py-0.5 text-muted-foreground hover:bg-muted/40"
               >
                 {metrics.liveCustomPages} live
               </Link>
               <Link
                 href="/dashboard/content/pages?status=draft"
-                className="rounded-full border border-slate-200 px-2 py-0.5 text-slate-600 hover:bg-slate-50"
+                className="rounded-full border border-border px-2 py-0.5 text-muted-foreground hover:bg-muted/40"
               >
                 {Math.max(0, metrics.totalCustomPages - metrics.liveCustomPages)} draft
               </Link>
@@ -263,14 +260,14 @@ export default async function DashboardOverviewPage() {
         </Card>
         </MotionCard>
         <MotionCard delayIndex={3}>
-        <Card className="border-[var(--border)] shadow-[var(--shadow-md)] transition-shadow duration-200 hover:shadow-[var(--shadow-lg)]">
+        <Card className="border-border shadow-md transition-shadow duration-200 hover:shadow-lg">
           <CardHeader className="pb-2">
-            <CardTitle className="text-sm font-medium text-slate-600">Audit events today</CardTitle>
+            <CardTitle className="text-sm font-medium text-muted-foreground">Audit events today</CardTitle>
           </CardHeader>
           <CardContent>
-            <Link href="/dashboard/audit" className="block rounded-lg py-1 transition-colors hover:bg-slate-50">
-              <p className="text-2xl font-semibold text-[var(--foreground)]">{metrics.auditToday}</p>
-              <p className="mt-1 text-xs text-slate-500">Tracks publish, page updates, optimize runs, and more</p>
+            <Link href="/dashboard/audit" className="block rounded-lg py-1 transition-colors hover:bg-muted/40">
+              <p className="text-2xl font-semibold text-foreground">{metrics.auditToday}</p>
+              <p className="mt-1 text-xs text-muted-foreground">Tracks publish, page updates, optimize runs, and more</p>
             </Link>
           </CardContent>
         </Card>
@@ -283,6 +280,7 @@ export default async function DashboardOverviewPage() {
           <DashboardRecentActivity entries={metrics.recentActivity} />
         </MotionCard>
         <MotionCard delayIndex={5} className="space-y-4">
+          <DashboardOperationsCard />
           <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
             <DashboardExportImport />
           </div>

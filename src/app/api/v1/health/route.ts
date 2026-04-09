@@ -1,5 +1,5 @@
-import { NextResponse } from "next/server";
 import { runHealthCheck } from "@/lib/health";
+import { emptyHealthProbe, jsonHealthProbe } from "@/lib/health-http";
 
 export const dynamic = "force-dynamic";
 export const runtime = "nodejs";
@@ -9,5 +9,10 @@ export const runtime = "nodejs";
  */
 export async function GET() {
   const { body, status } = await runHealthCheck("v1");
-  return NextResponse.json(body, { status });
+  return jsonHealthProbe(body, status);
+}
+
+export async function HEAD() {
+  const { status } = await runHealthCheck("v1");
+  return emptyHealthProbe(status);
 }

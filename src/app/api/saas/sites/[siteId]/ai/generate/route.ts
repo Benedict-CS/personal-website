@@ -18,10 +18,16 @@ export async function POST(
     return NextResponse.json({ error: "Insufficient role" }, { status: 403 });
   }
 
-  const body = (await request.json()) as { prompt?: string };
+  let body: { prompt?: string };
+  try {
+    body = (await request.json()) as { prompt?: string };
+  } catch {
+    return NextResponse.json({ error: "Invalid JSON body" }, { status: 400 });
+  }
   const prompt = body.prompt?.trim();
   if (!prompt) return NextResponse.json({ error: "Prompt is required" }, { status: 400 });
 
+  try {
   const generated = generateSiteSchemaFromPrompt(prompt);
   const heroImage = await tryFetchUnsplashImage(prompt);
 
@@ -82,5 +88,15 @@ export async function POST(
   });
 
   return NextResponse.json({ ...txResult, generated });
+  } catch (e) {
+    console.error("SaaS AI generate:", e);
+    return NextResponse.json(
+      {
+        error:
+          "Site generation could not be completed. The AI step or database write failed. Try again in a moment.",
+      },
+      { status: 500 }
+    );
+  }
 }
 

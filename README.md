@@ -72,7 +72,9 @@ docker compose exec app npx prisma migrate deploy
 Then open:
 
 - Site: `http://localhost:3000`
-- Dashboard: `http://localhost:3000/dashboard`
+- Dashboard (defaults to Analytics): `http://localhost:3000/dashboard` → `/dashboard/analytics`
+
+**Quality gate (same as CI):** run `npm run verify` before pushing — ESLint, TypeScript, Jest, and production build. See [CI/CD](docs/CI_CD.md).
 
 ---
 
@@ -80,6 +82,12 @@ Then open:
 
 | Doc | Description |
 |-----|-------------|
+| [PRODUCTION_READINESS.md](docs/PRODUCTION_READINESS.md) | **Start here:** verify checklist, Node 20, roadmap index |
+| [FEATURES.md](docs/FEATURES.md) | Platform capabilities (CMS, analytics, security, SEO, ops) |
+| [MIGRATION_CHECKLIST.md](docs/MIGRATION_CHECKLIST.md) | Moving hosts: data, env parity, verification |
+| [TROUBLESHOOTING.md](docs/TROUBLESHOOTING.md) | Common production issues (health, analytics, previews) |
+| [OPERATIONS_QUICK_REFERENCE.md](docs/OPERATIONS_QUICK_REFERENCE.md) | One-page commands, endpoints, env, automation |
+| [Security policy](.github/SECURITY.md) | How to report vulnerabilities responsibly |
 | [GETTING_STARTED.md](docs/GETTING_STARTED.md) | First-time setup |
 | [ENVIRONMENT.md](docs/ENVIRONMENT.md) | Environment variables |
 | [ARCHITECTURE.md](docs/ARCHITECTURE.md) | System design and data flow |
@@ -88,6 +96,14 @@ Then open:
 | [CUSTOM_PAGES.md](docs/CUSTOM_PAGES.md) | Custom pages and scheduling |
 | [SITE_SETTINGS.md](docs/SITE_SETTINGS.md) | What site settings affect (navbar, footer, meta, GA) |
 | [DEPLOYMENT.md](docs/DEPLOYMENT.md), [MAINTENANCE.md](docs/MAINTENANCE.md), [RUNBOOK.md](docs/RUNBOOK.md) | Deploy and operations |
+| [OPERATIONS_AND_RELIABILITY.md](docs/OPERATIONS_AND_RELIABILITY.md) | HA, health checks, scaling, migration, monitoring |
+| [CI_CD.md](docs/CI_CD.md) | GitHub Actions (CI/CD), local check parity |
+| [PHASE1_ARCHITECTURE.md](docs/PHASE1_ARCHITECTURE.md) | HA containers, health probes, request IDs, error recovery |
+| [PHASE2_CMS.md](docs/PHASE2_CMS.md) | CMS / dashboard, draft preview behavior, templates, RWD notes |
+| [PHASE3_OBSERVABILITY_AND_SECURITY.md](docs/PHASE3_OBSERVABILITY_AND_SECURITY.md) | Logging, security controls, CI/CD, `npm run verify` |
+| [PHASE4_UI_AND_SEO.md](docs/PHASE4_UI_AND_SEO.md) | SEO (sitemap, robots, meta), light UI, RWD notes |
+| [PHASE1_PERSONAL_BRAND_BLOCKS.md](docs/PHASE1_PERSONAL_BRAND_BLOCKS.md) | Personal brand blocks (hero, timeline, projects, skills, contact form) |
+| [PHASE5_SAAS_I18N_AND_BILLING.md](docs/PHASE5_SAAS_I18N_AND_BILLING.md) | SaaS i18n, plan limits, Stripe / Lemon billing |
 
 ---
 
@@ -97,6 +113,8 @@ Then open:
 |---|---|
 | Dev server | `npm run dev` |
 | Build | `npm run build` |
+| Lint + typecheck + unit tests + build (release gate) | `npm run verify` |
+| TypeScript only | `npm run typecheck` |
 | Tests | `npm test` |
 | Prisma generate | `npx prisma generate` |
 | Prisma migrate deploy | `docker compose exec app npx prisma migrate deploy` |

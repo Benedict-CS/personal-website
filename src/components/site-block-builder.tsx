@@ -41,9 +41,29 @@ import {
 } from "@dnd-kit/sortable";
 import { CSS } from "@dnd-kit/utilities";
 import { InsertMediaModal } from "@/components/insert-media-modal";
+import { useToast } from "@/contexts/toast-context";
+import {
+  formFieldsToMarkdown,
+  parseFormFieldsText,
+  parseProjectsText,
+  parseSkillsText,
+  parseTimelineText,
+  projectsToMarkdown,
+  skillsToMarkdown,
+  timelineToMarkdown,
+} from "@/lib/personal-brand-blocks";
+import { SkillBlockIcon } from "@/components/personal-brand/skill-block-icon";
 
 type BlockType =
   | "hero"
+  | "professionalHero"
+  | "resumeTimeline"
+  | "projectShowcase"
+  | "skillGrid"
+  | "contactFormModular"
+  | "codeSnippet"
+  | "githubStats"
+  | "leetcodeStats"
   | "text"
   | "gallery"
   | "cta"
@@ -91,6 +111,25 @@ type SiteBlock = {
   logosText?: string;
   teamText?: string;
   comparisonText?: string;
+  /** Professional hero: headshot URL from Media library */
+  profileImageUrl?: string;
+  tagline?: string;
+  /** One line per entry: Period|Role|Organization|Description */
+  timelineText?: string;
+  /** One line per project: Title|Summary|URL|Image URL */
+  projectsText?: string;
+  /** One line per skill: Name|icon-key|level */
+  skillsText?: string;
+  /** One line per field: Label|text|email|textarea|tel|url|required */
+  formFieldsText?: string;
+  /** Syntax-highlighted code (developer block) */
+  codeText?: string;
+  codeLanguage?: string;
+  codeFilename?: string;
+  githubUsername?: string;
+  /** repos = repository list; overview = profile + streak card */
+  githubStatsVariant?: "repos" | "overview";
+  leetcodeUsername?: string;
 };
 
 type SavedTemplate = {
@@ -151,6 +190,93 @@ function createBlock(type: BlockType): SiteBlock {
       stylePreset: "highlight",
       align: "center",
       shadow: "sm",
+    });
+  }
+  if (type === "professionalHero") {
+    return withBaseStyle({
+      id: makeId(),
+      type,
+      title: "Your name",
+      tagline: "Role · Focus area",
+      subtitle: "One or two sentences about what you do and who you help.",
+      profileImageUrl: "",
+      buttonText: "Get in touch",
+      buttonUrl: "#contact",
+      secondaryButtonText: "View work",
+      secondaryButtonUrl: "#",
+      align: "center",
+      stylePreset: "card",
+      shadow: "sm",
+    });
+  }
+  if (type === "resumeTimeline") {
+    return withBaseStyle({
+      id: makeId(),
+      type,
+      title: "Experience",
+      timelineText:
+        "2023–Present|Staff Engineer|Example Corp|Shipped core platform APIs and mentored engineers.\n2020–2023|Software Developer|Startup Labs|Full-stack product delivery.",
+      stylePreset: "minimal",
+    });
+  }
+  if (type === "projectShowcase") {
+    return withBaseStyle({
+      id: makeId(),
+      type,
+      title: "Selected projects",
+      projectsText:
+        "Portfolio site|Personal brand and blog|https://example.com|https://placehold.co/400x240\nOpen toolkit|CLI utilities|https://github.com|https://placehold.co/400x240",
+      stylePreset: "card",
+    });
+  }
+  if (type === "skillGrid") {
+    return withBaseStyle({
+      id: makeId(),
+      type,
+      title: "Skills",
+      skillsText: "TypeScript|code|Strong\nReact|layers|Advanced\nWriting|pen-line|Solid",
+      stylePreset: "minimal",
+      align: "center",
+    });
+  }
+  if (type === "contactFormModular") {
+    return withBaseStyle({
+      id: makeId(),
+      type,
+      title: "Contact",
+      subtitle: "Messages go to your site contact endpoint when wired to a form handler.",
+      formFieldsText: "Full name|text|required\nEmail|email|required\nMessage|textarea|required",
+      stylePreset: "card",
+    });
+  }
+  if (type === "codeSnippet") {
+    return withBaseStyle({
+      id: makeId(),
+      type,
+      title: "Code snippet",
+      codeLanguage: "typescript",
+      codeFilename: "example.ts",
+      codeText: 'import { greet } from "./hello";\n\ngreet("world");',
+      stylePreset: "minimal",
+    });
+  }
+  if (type === "githubStats") {
+    return withBaseStyle({
+      id: makeId(),
+      type,
+      title: "GitHub",
+      githubUsername: "octocat",
+      githubStatsVariant: "overview",
+      stylePreset: "minimal",
+    });
+  }
+  if (type === "leetcodeStats") {
+    return withBaseStyle({
+      id: makeId(),
+      type,
+      title: "LeetCode",
+      leetcodeUsername: "",
+      stylePreset: "minimal",
     });
   }
   if (type === "gallery") {
@@ -345,6 +471,87 @@ function blocksToMarkdown(blocks: SiteBlock[], theme: SiteTheme, brand: BrandCon
           .join(" · ");
         return applyStyleWrappers([`# ${title || "Hero title"}`, subtitle, ctas].filter(Boolean).join("\n\n"), b);
       }
+      if (b.type === "professionalHero") {
+        const title = (b.title || "").trim();
+        const tagline = (b.tagline || "").trim();
+        const subtitle = (b.subtitle || "").trim();
+        const img = (b.profileImageUrl || "").trim();
+        const primary = (b.buttonText || "").trim();
+        const primaryUrl = (b.buttonUrl || "").trim();
+        const secondary = (b.secondaryButtonText || "").trim();
+        const secondaryUrl = (b.secondaryButtonUrl || "").trim();
+        const imageMd = img ? `![Profile](${img})` : "";
+        const ctas = [
+          primary && primaryUrl ? `[${primary}](${primaryUrl})` : "",
+          secondary && secondaryUrl ? `[${secondary}](${secondaryUrl})` : "",
+        ]
+          .filter(Boolean)
+          .join(" · ");
+        const body = [imageMd, `# ${title || "Your name"}`, tagline ? `*${tagline}*` : "", subtitle, ctas]
+          .filter(Boolean)
+          .join("\n\n");
+        return applyStyleWrappers(body, b);
+      }
+      if (b.type === "resumeTimeline") {
+        const title = (b.title || "").trim();
+        const entries = parseTimelineText(b.timelineText || "");
+        const md = timelineToMarkdown(entries);
+        return applyStyleWrappers([`## ${title || "Experience"}`, md].filter(Boolean).join("\n\n"), b);
+      }
+      if (b.type === "projectShowcase") {
+        const title = (b.title || "").trim();
+        const entries = parseProjectsText(b.projectsText || "");
+        const md = projectsToMarkdown(entries);
+        return applyStyleWrappers([`## ${title || "Projects"}`, md].filter(Boolean).join("\n\n"), b);
+      }
+      if (b.type === "skillGrid") {
+        const title = (b.title || "").trim();
+        const entries = parseSkillsText(b.skillsText || "");
+        const md = skillsToMarkdown(entries);
+        return applyStyleWrappers([`## ${title || "Skills"}`, md].filter(Boolean).join("\n\n"), b);
+      }
+      if (b.type === "contactFormModular") {
+        const title = (b.title || "").trim();
+        const subtitle = (b.subtitle || "").trim();
+        const entries = parseFormFieldsText(b.formFieldsText || "");
+        const md = formFieldsToMarkdown(entries);
+        return applyStyleWrappers(
+          [`## ${title || "Contact"}`, subtitle, "_Form fields (connect to your contact workflow):_", md]
+            .filter(Boolean)
+            .join("\n\n"),
+          b
+        );
+      }
+      if (b.type === "codeSnippet") {
+        const title = (b.title || "").trim();
+        const fn = (b.codeFilename || "").trim();
+        const lang = (b.codeLanguage || "text").trim();
+        const body = (b.codeText || "").trim();
+        const fileLine = fn ? `_File: \`${fn}\`_\n\n` : "";
+        return applyStyleWrappers(
+          [`## ${title || "Code snippet"}`, `${fileLine}\`\`\`${lang}\n${body}\n\`\`\``].filter(Boolean).join("\n\n"),
+          b
+        );
+      }
+      if (b.type === "githubStats") {
+        const title = (b.title || "").trim();
+        const u = (b.githubUsername || "").trim();
+        const v = b.githubStatsVariant === "repos" ? "repos" : "overview";
+        return applyStyleWrappers(
+          [`## ${title || "GitHub"}`, `<!-- embed:github:${v}:${u} -->`].filter(Boolean).join("\n\n"),
+          b
+        );
+      }
+      if (b.type === "leetcodeStats") {
+        const title = (b.title || "").trim();
+        const u = (b.leetcodeUsername || "").trim();
+        return applyStyleWrappers(
+          [`## ${title || "LeetCode"}`, u ? `<!-- embed:leetcode:${u} -->` : "_Set LeetCode username in the block._"].join(
+            "\n\n"
+          ),
+          b
+        );
+      }
       if (b.type === "text") return (b.markdown || "").trim();
       if (b.type === "gallery") {
         const title = (b.title || "").trim();
@@ -502,6 +709,14 @@ function blocksToMarkdown(blocks: SiteBlock[], theme: SiteTheme, brand: BrandCon
 function blockTypeLabel(type: BlockType): string {
   return {
     hero: "Hero",
+    professionalHero: "Professional hero",
+    resumeTimeline: "Resume timeline",
+    projectShowcase: "Project showcase",
+    skillGrid: "Skill grid",
+    contactFormModular: "Contact form",
+    codeSnippet: "Code snippet",
+    githubStats: "GitHub stats",
+    leetcodeStats: "LeetCode stats",
     text: "Text",
     gallery: "Gallery",
     cta: "CTA",
@@ -517,9 +732,14 @@ function blockTypeLabel(type: BlockType): string {
   }[type];
 }
 
+function SkillPreviewIcon({ iconKey }: { iconKey: string }) {
+  return <SkillBlockIcon iconKey={iconKey} className="h-4 w-4 shrink-0 text-slate-500" />;
+}
+
 function themeClasses(theme: SiteTheme): string {
   if (theme === "soft") return "bg-slate-50 border-slate-200 text-slate-700";
-  if (theme === "bold") return "bg-slate-900 border-slate-800 text-slate-100";
+  /** Strong contrast while staying light-only (no dark mode). */
+  if (theme === "bold") return "bg-slate-100 border-slate-300 text-slate-900";
   return "bg-white border-slate-200 text-slate-800";
 }
 
@@ -556,8 +776,8 @@ function BlockPreview({
   theme: SiteTheme;
 }) {
   const base = `rounded-lg border p-4 ${themeClasses(theme)}`;
-  const titleClass = theme === "bold" ? "text-slate-100" : "text-slate-900";
-  const muted = theme === "bold" ? "text-slate-300" : "text-slate-600";
+  const titleClass = "text-slate-900";
+  const muted = theme === "bold" ? "text-slate-600" : "text-slate-600";
   const styleClass = stylePreviewClasses(block);
 
   if (block.type === "hero") {
@@ -565,6 +785,162 @@ function BlockPreview({
       <div className={`${base} ${styleClass}`}>
         <h3 className={`text-2xl font-bold ${titleClass}`}>{block.title || "Hero title"}</h3>
         <p className={`mt-2 ${muted}`}>{block.subtitle}</p>
+      </div>
+    );
+  }
+
+  if (block.type === "professionalHero") {
+    const img = (block.profileImageUrl || "").trim();
+    return (
+      <div className={`${base} ${styleClass}`}>
+        <div className="flex flex-col items-center gap-4 sm:flex-row sm:items-start sm:gap-6">
+          <div
+            className={`h-24 w-24 shrink-0 overflow-hidden rounded-full border border-slate-200 bg-slate-100 sm:h-28 sm:w-28 ${
+              img ? "" : "flex items-center justify-center text-xs text-slate-400"
+            }`}
+            style={img ? { backgroundImage: `url(${img})`, backgroundSize: "cover", backgroundPosition: "center" } : undefined}
+          >
+            {!img ? "Photo" : null}
+          </div>
+          <div className="min-w-0 flex-1 text-center sm:text-left">
+            <h3 className={`text-2xl font-bold tracking-tight ${titleClass}`}>{block.title || "Your name"}</h3>
+            {block.tagline ? <p className={`mt-1 text-sm font-medium text-slate-700`}>{block.tagline}</p> : null}
+            {block.subtitle ? <p className={`mt-2 text-sm leading-relaxed ${muted}`}>{block.subtitle}</p> : null}
+            <div className="mt-3 flex flex-wrap justify-center gap-2 sm:justify-start">
+              <span className="rounded-full bg-slate-900 px-3 py-1 text-xs font-medium text-white">
+                {block.buttonText || "Primary"}
+              </span>
+              {block.secondaryButtonText ? (
+                <span className="rounded-full border border-slate-300 bg-white px-3 py-1 text-xs font-medium text-slate-800">
+                  {block.secondaryButtonText}
+                </span>
+              ) : null}
+            </div>
+          </div>
+        </div>
+      </div>
+    );
+  }
+
+  if (block.type === "resumeTimeline") {
+    const rows = parseTimelineText(block.timelineText || "");
+    return (
+      <div className={`${base} ${styleClass}`}>
+        <h4 className={`font-semibold ${titleClass}`}>{block.title || "Experience"}</h4>
+        <ul className="mt-3 space-y-3 border-l-2 border-slate-200 pl-4">
+          {rows.slice(0, 4).map((r, i) => (
+            <li key={`${r.period}-${i}`} className="relative">
+              <span className="absolute -left-[1.15rem] top-1.5 h-2 w-2 rounded-full bg-slate-400" />
+              <p className="text-xs font-medium uppercase tracking-wide text-slate-500">{r.period}</p>
+              <p className="font-medium text-slate-900">{r.title}</p>
+              <p className="text-sm text-slate-600">{r.organization}</p>
+              {r.description ? <p className="mt-1 text-xs text-slate-600">{r.description}</p> : null}
+            </li>
+          ))}
+        </ul>
+      </div>
+    );
+  }
+
+  if (block.type === "projectShowcase") {
+    const projects = parseProjectsText(block.projectsText || "");
+    return (
+      <div className={`${base} ${styleClass}`}>
+        <h4 className={`font-semibold ${titleClass}`}>{block.title || "Projects"}</h4>
+        <div className="mt-3 grid gap-3 sm:grid-cols-2">
+          {projects.slice(0, 4).map((p, i) => (
+            <div
+              key={`${p.title}-${i}`}
+              className="flex flex-col overflow-hidden rounded-lg border border-slate-200 bg-white shadow-sm"
+            >
+              <div
+                className="h-24 bg-slate-100 bg-cover bg-center"
+                style={p.imageUrl ? { backgroundImage: `url(${p.imageUrl})` } : undefined}
+              />
+              <div className="p-3">
+                <p className="font-medium text-slate-900">{p.title || "Project"}</p>
+                <p className="mt-1 text-xs text-slate-600 line-clamp-2">{p.summary}</p>
+              </div>
+            </div>
+          ))}
+        </div>
+      </div>
+    );
+  }
+
+  if (block.type === "skillGrid") {
+    const skills = parseSkillsText(block.skillsText || "");
+    return (
+      <div className={`${base} ${styleClass}`}>
+        <h4 className={`font-semibold ${titleClass}`}>{block.title || "Skills"}</h4>
+        <div className="mt-3 flex flex-wrap justify-center gap-2 sm:justify-start">
+          {skills.slice(0, 12).map((s, i) => (
+            <span
+              key={`${s.name}-${i}`}
+              className="inline-flex items-center gap-1.5 rounded-full border border-slate-200 bg-white px-3 py-1.5 text-xs font-medium text-slate-800 shadow-sm"
+            >
+              <SkillPreviewIcon iconKey={s.iconKey} />
+              {s.name}
+              {s.level ? <span className="text-slate-500">· {s.level}</span> : null}
+            </span>
+          ))}
+        </div>
+      </div>
+    );
+  }
+
+  if (block.type === "contactFormModular") {
+    const fields = parseFormFieldsText(block.formFieldsText || "");
+    return (
+      <div className={`${base} ${styleClass}`}>
+        <h4 className={`font-semibold ${titleClass}`}>{block.title || "Contact"}</h4>
+        {block.subtitle ? <p className={`mt-1 text-sm ${muted}`}>{block.subtitle}</p> : null}
+        <div className="mt-3 space-y-2">
+          {fields.slice(0, 6).map((f, i) => (
+            <div key={`${f.label}-${i}`} className="rounded border border-slate-200 bg-white px-3 py-2 text-sm text-slate-500">
+              {f.label}
+              {f.required ? <span className="text-red-500"> *</span> : null}
+              <span className="ml-2 text-xs text-slate-400">({f.fieldType})</span>
+            </div>
+          ))}
+        </div>
+      </div>
+    );
+  }
+
+  if (block.type === "codeSnippet") {
+    const preview = (block.codeText || "").split("\n").slice(0, 6).join("\n");
+    return (
+      <div className={`${base} ${styleClass}`}>
+        <h4 className={`font-semibold ${titleClass}`}>{block.title || "Code"}</h4>
+        <p className={`mt-1 text-xs ${muted}`}>
+          {(block.codeFilename || "snippet") + (block.codeLanguage ? ` · ${block.codeLanguage}` : "")}
+        </p>
+        <pre className="mt-2 max-h-32 overflow-hidden rounded border border-slate-200 bg-slate-900/5 p-2 text-left font-mono text-[11px] leading-relaxed text-slate-800">
+          {preview}
+          {(block.codeText || "").split("\n").length > 6 ? "\n…" : ""}
+        </pre>
+      </div>
+    );
+  }
+
+  if (block.type === "githubStats") {
+    return (
+      <div className={`${base} ${styleClass}`}>
+        <h4 className={`font-semibold ${titleClass}`}>{block.title || "GitHub"}</h4>
+        <p className={`mt-2 text-sm ${muted}`}>@{block.githubUsername || "username"}</p>
+        <p className="mt-1 text-xs text-slate-500">
+          {block.githubStatsVariant === "repos" ? "Repository list" : "Profile + streak"}
+        </p>
+      </div>
+    );
+  }
+
+  if (block.type === "leetcodeStats") {
+    return (
+      <div className={`${base} ${styleClass}`}>
+        <h4 className={`font-semibold ${titleClass}`}>{block.title || "LeetCode"}</h4>
+        <p className={`mt-2 text-sm ${muted}`}>@{block.leetcodeUsername?.trim() || "your-username"}</p>
       </div>
     );
   }
@@ -715,7 +1091,9 @@ function SortableBlockCard({
   onChange: (next: SiteBlock) => void;
   onDelete: () => void;
   onDuplicate: () => void;
-  onOpenMedia: (field: "gallery" | "video" | "text" | "columns" | "logoCloud" | "team") => void;
+  onOpenMedia: (
+    field: "gallery" | "video" | "text" | "columns" | "logoCloud" | "team" | "professionalHero"
+  ) => void;
   onSaveComponent: () => void;
   onToggleCollapse: () => void;
   collapsed: boolean;
@@ -848,6 +1226,150 @@ function SortableBlockCard({
                 onChange={(e) => onChange({ ...block, secondaryButtonUrl: e.target.value })}
               />
             </div>
+          </>
+        )}
+
+        {block.type === "professionalHero" && (
+          <>
+            <Button type="button" variant="outline" size="sm" className="gap-1" onClick={() => onOpenMedia("professionalHero")}>
+              <ImagePlus className="h-4 w-4" />
+              Profile image from Media
+            </Button>
+            <Input
+              placeholder="Profile image URL"
+              value={block.profileImageUrl ?? ""}
+              onChange={(e) => onChange({ ...block, profileImageUrl: e.target.value })}
+            />
+            <Input placeholder="Your name" value={block.title ?? ""} onChange={(e) => onChange({ ...block, title: e.target.value })} />
+            <Input placeholder="Tagline (role · focus)" value={block.tagline ?? ""} onChange={(e) => onChange({ ...block, tagline: e.target.value })} />
+            <Textarea
+              placeholder="Short bio"
+              value={block.subtitle ?? ""}
+              onChange={(e) => onChange({ ...block, subtitle: e.target.value })}
+              rows={3}
+            />
+            <div className="grid gap-2 sm:grid-cols-2">
+              <Input placeholder="Primary button" value={block.buttonText ?? ""} onChange={(e) => onChange({ ...block, buttonText: e.target.value })} />
+              <Input placeholder="Primary URL" value={block.buttonUrl ?? ""} onChange={(e) => onChange({ ...block, buttonUrl: e.target.value })} />
+              <Input placeholder="Secondary button" value={block.secondaryButtonText ?? ""} onChange={(e) => onChange({ ...block, secondaryButtonText: e.target.value })} />
+              <Input placeholder="Secondary URL" value={block.secondaryButtonUrl ?? ""} onChange={(e) => onChange({ ...block, secondaryButtonUrl: e.target.value })} />
+            </div>
+          </>
+        )}
+
+        {block.type === "resumeTimeline" && (
+          <>
+            <Input placeholder="Section title" value={block.title ?? ""} onChange={(e) => onChange({ ...block, title: e.target.value })} />
+            <Textarea
+              placeholder={"One line per role:\nPeriod|Job title|Organization|Short description"}
+              value={block.timelineText ?? ""}
+              onChange={(e) => onChange({ ...block, timelineText: e.target.value })}
+              rows={10}
+              className="font-mono text-sm"
+            />
+          </>
+        )}
+
+        {block.type === "projectShowcase" && (
+          <>
+            <Input placeholder="Section title" value={block.title ?? ""} onChange={(e) => onChange({ ...block, title: e.target.value })} />
+            <Textarea
+              placeholder={"One line per project:\nTitle|Summary|Link|Thumbnail URL"}
+              value={block.projectsText ?? ""}
+              onChange={(e) => onChange({ ...block, projectsText: e.target.value })}
+              rows={10}
+              className="font-mono text-sm"
+            />
+          </>
+        )}
+
+        {block.type === "skillGrid" && (
+          <>
+            <Input placeholder="Section title" value={block.title ?? ""} onChange={(e) => onChange({ ...block, title: e.target.value })} />
+            <p className="text-xs text-slate-600">
+              Icon keys: code, layers, pen-line, briefcase, circle (see Lucide icon names).
+            </p>
+            <Textarea
+              placeholder={"One line per skill:\nName|icon-key|Level label"}
+              value={block.skillsText ?? ""}
+              onChange={(e) => onChange({ ...block, skillsText: e.target.value })}
+              rows={8}
+              className="font-mono text-sm"
+            />
+          </>
+        )}
+
+        {block.type === "contactFormModular" && (
+          <>
+            <Input placeholder="Section title" value={block.title ?? ""} onChange={(e) => onChange({ ...block, title: e.target.value })} />
+            <Textarea placeholder="Intro text (optional)" value={block.subtitle ?? ""} onChange={(e) => onChange({ ...block, subtitle: e.target.value })} rows={2} />
+            <Textarea
+              placeholder={"One field per line:\nFull name|text|required\nEmail|email|required\nWebsite|url|optional"}
+              value={block.formFieldsText ?? ""}
+              onChange={(e) => onChange({ ...block, formFieldsText: e.target.value })}
+              rows={8}
+              className="font-mono text-sm"
+            />
+          </>
+        )}
+
+        {block.type === "codeSnippet" && (
+          <>
+            <Input placeholder="Section title" value={block.title ?? ""} onChange={(e) => onChange({ ...block, title: e.target.value })} />
+            <div className="grid gap-2 sm:grid-cols-2">
+              <Input
+                placeholder="File name (e.g. main.ts)"
+                value={block.codeFilename ?? ""}
+                onChange={(e) => onChange({ ...block, codeFilename: e.target.value })}
+              />
+              <Input
+                placeholder="Language (typescript, python, …)"
+                value={block.codeLanguage ?? ""}
+                onChange={(e) => onChange({ ...block, codeLanguage: e.target.value })}
+              />
+            </div>
+            <Textarea
+              placeholder="Source code"
+              value={block.codeText ?? ""}
+              onChange={(e) => onChange({ ...block, codeText: e.target.value })}
+              rows={14}
+              className="font-mono text-sm"
+            />
+          </>
+        )}
+
+        {block.type === "githubStats" && (
+          <>
+            <Input placeholder="Section title" value={block.title ?? ""} onChange={(e) => onChange({ ...block, title: e.target.value })} />
+            <Input
+              placeholder="GitHub username"
+              value={block.githubUsername ?? ""}
+              onChange={(e) => onChange({ ...block, githubUsername: e.target.value })}
+            />
+            <label className="text-xs text-slate-600">
+              Layout
+              <select
+                className="mt-1 block w-full rounded border border-slate-300 bg-white px-2 py-1.5 text-sm"
+                value={block.githubStatsVariant ?? "overview"}
+                onChange={(e) =>
+                  onChange({ ...block, githubStatsVariant: e.target.value === "repos" ? "repos" : "overview" })
+                }
+              >
+                <option value="overview">Profile + contribution streak</option>
+                <option value="repos">Top repositories</option>
+              </select>
+            </label>
+          </>
+        )}
+
+        {block.type === "leetcodeStats" && (
+          <>
+            <Input placeholder="Section title" value={block.title ?? ""} onChange={(e) => onChange({ ...block, title: e.target.value })} />
+            <Input
+              placeholder="LeetCode username"
+              value={block.leetcodeUsername ?? ""}
+              onChange={(e) => onChange({ ...block, leetcodeUsername: e.target.value })}
+            />
           </>
         )}
 
@@ -1063,6 +1585,7 @@ export function SiteBlockBuilder({
   value: string;
   onChange: (nextMarkdown: string) => void;
 }) {
+  const { toast } = useToast();
   const parsed = useMemo(() => parseBuilderMeta(value), [value]);
   const [theme, setTheme] = useState<SiteTheme>(parsed.theme);
   const [brand, setBrand] = useState<BrandConfig>(parsed.brand);
@@ -1071,7 +1594,10 @@ export function SiteBlockBuilder({
   ]);
   const [devicePreview, setDevicePreview] = useState<"desktop" | "mobile">("desktop");
   const [showMedia, setShowMedia] = useState(false);
-  const [mediaTarget, setMediaTarget] = useState<{ blockId: string; field: "gallery" | "video" | "text" | "columns" | "logoCloud" | "team" } | null>(null);
+  const [mediaTarget, setMediaTarget] = useState<{
+    blockId: string;
+    field: "gallery" | "video" | "text" | "columns" | "logoCloud" | "team" | "professionalHero";
+  } | null>(null);
   const [savedTemplates, setSavedTemplates] = useState<SavedTemplate[]>([]);
   const [savedComponents, setSavedComponents] = useState<ReusableComponent[]>([]);
   const [collapsed, setCollapsed] = useState<Set<string>>(new Set());
@@ -1205,7 +1731,10 @@ export function SiteBlockBuilder({
     });
   };
 
-  const openMediaFor = (blockId: string, field: "gallery" | "video" | "text" | "columns" | "logoCloud" | "team") => {
+  const openMediaFor = (
+    blockId: string,
+    field: "gallery" | "video" | "text" | "columns" | "logoCloud" | "team" | "professionalHero"
+  ) => {
     setMediaTarget({ blockId, field });
     setShowMedia(true);
   };
@@ -1229,6 +1758,9 @@ export function SiteBlockBuilder({
           const next = [b.teamText?.trim(), line].filter(Boolean).join("\n");
           return { ...b, teamText: next };
         }
+        if (mediaTarget.field === "professionalHero") {
+          return { ...b, profileImageUrl: url };
+        }
         if (mediaTarget.field === "columns") {
           const c = (b.columnsText || "").trim();
           const add = `\n![Image](${url})`;
@@ -1249,20 +1781,30 @@ export function SiteBlockBuilder({
     "5) Save page",
   ];
 
-  const sectionLibrary: Array<{ type: BlockType; label: string; category: "structure" | "marketing" | "business" }> = [
+  const sectionLibrary: Array<{
+    type: BlockType;
+    label: string;
+    category: "structure" | "marketing" | "personal" | "developer";
+  }> = [
+    { type: "professionalHero", label: "Professional hero", category: "personal" },
+    { type: "resumeTimeline", label: "Resume timeline", category: "personal" },
+    { type: "projectShowcase", label: "Project showcase", category: "personal" },
+    { type: "skillGrid", label: "Skill grid", category: "personal" },
+    { type: "contactFormModular", label: "Contact form", category: "personal" },
+    { type: "codeSnippet", label: "Code snippet", category: "developer" },
+    { type: "githubStats", label: "GitHub stats", category: "developer" },
+    { type: "leetcodeStats", label: "LeetCode stats", category: "developer" },
     { type: "hero", label: "Hero", category: "structure" },
     { type: "text", label: "Text", category: "structure" },
     { type: "columns", label: "Columns", category: "structure" },
     { type: "gallery", label: "Gallery", category: "marketing" },
     { type: "video", label: "Video", category: "marketing" },
     { type: "cta", label: "Call to action", category: "marketing" },
-    { type: "faq", label: "FAQ", category: "business" },
-    { type: "pricing", label: "Pricing", category: "business" },
-    { type: "comparison", label: "Comparison", category: "business" },
-    { type: "stats", label: "Stats", category: "business" },
-    { type: "testimonials", label: "Testimonials", category: "business" },
+    { type: "faq", label: "FAQ", category: "marketing" },
+    { type: "stats", label: "Stats", category: "marketing" },
+    { type: "testimonials", label: "Testimonials", category: "marketing" },
     { type: "logoCloud", label: "Logo cloud", category: "marketing" },
-    { type: "team", label: "Team", category: "business" },
+    { type: "team", label: "Team", category: "marketing" },
   ];
   const filteredLibrary = sectionLibrary.filter((item) =>
     sectionSearch.trim()
@@ -1273,33 +1815,34 @@ export function SiteBlockBuilder({
   const applyStarterTemplate = () => {
     setTheme("clean");
     setBlocks([
-      createBlock("hero"),
-      createBlock("stats"),
-      createBlock("columns"),
-      createBlock("cta"),
+      createBlock("professionalHero"),
+      createBlock("resumeTimeline"),
+      createBlock("projectShowcase"),
+      createBlock("contactFormModular"),
     ]);
   };
 
   const applyAgencyTemplate = () => {
     setTheme("soft");
-    const hero = createBlock("hero");
-    hero.title = "Design and development for growing brands";
+    const hero = createBlock("professionalHero");
+    hero.title = "Creative technologist";
+    hero.tagline = "Design systems · Product engineering";
     const team = createBlock("team");
     const testimonials = createBlock("testimonials");
-    const pricing = createBlock("pricing");
+    const projects = createBlock("projectShowcase");
     const cta = createBlock("cta");
-    setBlocks([hero, team, testimonials, pricing, cta]);
+    setBlocks([hero, team, testimonials, projects, cta]);
   };
 
-  const applySaasTemplate = () => {
+  const applyPortfolioTemplate = () => {
     setTheme("bold");
-    const hero = createBlock("hero");
-    hero.title = "Launch your product site in one day";
+    const hero = createBlock("professionalHero");
+    hero.title = "Your personal brand";
     const stats = createBlock("stats");
-    const comparison = createBlock("comparison");
+    const timeline = createBlock("resumeTimeline");
     const faq = createBlock("faq");
     const cta = createBlock("cta");
-    setBlocks([hero, stats, comparison, faq, cta]);
+    setBlocks([hero, stats, timeline, faq, cta]);
   };
 
   const saveCurrentAsTemplate = async () => {
@@ -1502,7 +2045,7 @@ export function SiteBlockBuilder({
         setSavedComponents(serverComponents);
       }
     } catch {
-      window.alert("Invalid template library file.");
+      toast("Invalid template library file.", "error");
     } finally {
       if (importInputRef.current) importInputRef.current.value = "";
     }
@@ -1619,9 +2162,15 @@ export function SiteBlockBuilder({
             </CardHeader>
             <CardContent className="space-y-2">
               <div className="flex flex-wrap gap-2">
-                <Button type="button" variant="outline" size="sm" onClick={applyStarterTemplate}>Starter site</Button>
-                <Button type="button" variant="outline" size="sm" onClick={applyAgencyTemplate}>Agency</Button>
-                <Button type="button" variant="outline" size="sm" onClick={applySaasTemplate}>SaaS</Button>
+                <Button type="button" variant="outline" size="sm" onClick={applyStarterTemplate}>
+                  Personal starter
+                </Button>
+                <Button type="button" variant="outline" size="sm" onClick={applyAgencyTemplate}>
+                  Creative portfolio
+                </Button>
+                <Button type="button" variant="outline" size="sm" onClick={applyPortfolioTemplate}>
+                  Resume &amp; FAQ
+                </Button>
               </div>
               {savedTemplates.length > 0 && (
                 <div className="space-y-2">

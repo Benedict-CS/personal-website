@@ -95,19 +95,19 @@ export default function SiteExperimentsPage() {
     <div className="space-y-4">
       <div className="flex items-center justify-between">
         <div>
-          <h1 className="text-2xl font-bold text-slate-900">A/B Testing Engine</h1>
-          <p className="text-slate-600">Create variants, route traffic, and evaluate statistical significance.</p>
+          <h1 className="text-2xl font-bold text-foreground">A/B Testing Engine</h1>
+          <p className="text-muted-foreground">Create variants, route traffic, and evaluate statistical significance.</p>
         </div>
         <Link href={`/dashboard/sites/${siteId}/pages`}>
           <Button variant="outline">Back to Pages</Button>
         </Link>
       </div>
 
-      <div className="rounded border border-slate-200 bg-white p-4 space-y-2">
+      <div className="rounded border border-border bg-card p-4 space-y-2">
         <h2 className="font-semibold">Create Experiment</h2>
         <div className="grid gap-2 md:grid-cols-3">
           <select
-            className="rounded border border-slate-300 px-3 py-2"
+            className="rounded border border-input px-3 py-2"
             value={selectedPageId}
             onChange={(e) => setSelectedPageId(e.target.value)}
           >
@@ -124,11 +124,11 @@ export default function SiteExperimentsPage() {
 
       <div className="space-y-2">
         {experiments.map((exp) => (
-          <div key={exp.id} className="rounded border border-slate-200 bg-white p-3">
+          <div key={exp.id} className="rounded border border-border bg-card p-3">
             <div className="flex items-center justify-between">
               <div>
                 <p className="font-medium">{exp.name}</p>
-                <p className="text-xs text-slate-600">
+                <p className="text-xs text-muted-foreground">
                   Status: {exp.status} | Winner: {exp.winnerVariant || "-"}
                 </p>
               </div>
@@ -139,7 +139,7 @@ export default function SiteExperimentsPage() {
           </div>
         ))}
       </div>
-      {status ? <p className="text-sm text-slate-600">{status}</p> : null}
+      {status ? <p className="text-sm text-muted-foreground">{status}</p> : null}
     </div>
   );
 }

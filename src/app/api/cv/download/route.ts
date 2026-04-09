@@ -4,7 +4,10 @@ import { GetObjectCommand } from "@aws-sdk/client-s3";
 import { prisma } from "@/lib/prisma";
 import { s3Client, S3_BUCKET } from "@/lib/s3";
 import { isPrivateIP } from "@/lib/is-private-url";
+import { isExcludedIP, normalizeIP } from "@/lib/analytics-excluded-ips";
 import { getCvDownloadFilename } from "@/lib/cv-download-filename";
+import { sanitizeReferrerForAnalytics } from "@/lib/analytics-referrer";
+import { getTrustedClientIp } from "@/lib/client-ip";
 
 export const dynamic = "force-dynamic";
 
@@ -16,17 +19,21 @@ function ensureGeoIPDataDir() {
   }
 }
 
-function getClientIP(req: NextRequest): string {
-  const xff = req.headers.get("x-forwarded-for");
-  if (xff) return xff.split(",")[0].trim();
-  return req.headers.get("x-real-ip") || "unknown";
+function truncateMeta(value: string | null, max: number): string | null {
+  if (!value) return null;
+  const t = value.trim();
+  if (!t) return null;
+  return t.length <= max ? t : t.slice(0, max);
 }
 
-/** Log CV download (always count; only skip private IP). Then stream PDF from S3. */
+/** Log CV download (same rules as page analytics: need a resolvable client IP; skip private and excluded). Then stream PDF from S3. */
 export async function GET(request: NextRequest) {
-  const ip = getClientIP(request);
+  const rawIp = getTrustedClientIp(request);
+  const ip = rawIp ? normalizeIP(rawIp) : "";
+  const canLog =
+    !!rawIp && !!ip && ip !== "unknown" && !isPrivateIP(rawIp) && !isExcludedIP(rawIp);
 
-  if (!isPrivateIP(ip)) {
+  if (canLog) {
     let country: string | null = null;
     let city: string | null = null;
     try {
@@ -41,8 +48,19 @@ export async function GET(request: NextRequest) {
       // GeoIP optional
     }
     try {
+      const rawUa = request.headers.get("user-agent");
+      const userAgent = truncateMeta(rawUa, 512);
+      const rawRef = request.headers.get("referer");
+      const referrer = truncateMeta(sanitizeReferrerForAnalytics(rawRef), 512);
       await prisma.pageView.create({
-        data: { path: "/cv.pdf", ip, country, city },
+        data: {
+          path: "/cv.pdf",
+          ip,
+          country,
+          city,
+          userAgent,
+          referrer,
+        },
       });
     } catch (e) {
       console.error("[cv/download] Failed to log PageView:", e);

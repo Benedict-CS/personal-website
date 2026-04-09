@@ -7,6 +7,7 @@ import { Card, CardContent, CardHeader } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { MarkdownRenderer } from "@/components/markdown-renderer";
 import { TableOfContents } from "@/components/toc";
+import { extractTocHeadingsFromMarkdown } from "@/lib/markdown-toc";
 import { ReadingProgress } from "@/components/reading-progress";
 import { PrevNextKeys } from "@/components/prev-next-keys";
 import { ArrowLeft, ChevronLeft, ChevronRight, Pencil } from "lucide-react";
@@ -43,6 +44,8 @@ export default async function NoteViewPage({ params }: NotePageProps) {
   if (!note) {
     notFound();
   }
+
+  const tocHeadings = extractTocHeadingsFromMarkdown(note.content);
 
   // Prev/next in same category by creation time
   const category = note.category || null;
@@ -108,10 +111,10 @@ export default async function NoteViewPage({ params }: NotePageProps) {
             <Card>
               <CardHeader>
                 <div className="space-y-4">
-                  <h1 className="text-4xl font-bold text-slate-900">
+                  <h1 className="text-4xl font-bold text-foreground">
                     {note.title}
                   </h1>
-                  <div className="flex items-center gap-3 text-sm text-slate-600">
+                  <div className="flex items-center gap-3 text-sm text-muted-foreground">
                     <Badge variant="secondary">Draft / Note</Badge>
                     <span>Last updated: {formatDate(note.updatedAt)}</span>
                   </div>
@@ -165,7 +168,7 @@ export default async function NoteViewPage({ params }: NotePageProps) {
           </div>
 
           <aside className="lg:sticky lg:top-20 lg:self-start">
-            <TableOfContents content={note.content} />
+            <TableOfContents content={note.content} initialHeadings={tocHeadings} />
           </aside>
         </div>
       </div>
