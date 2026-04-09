@@ -21,5 +21,6 @@
 - [x] Dashboard: `eyebrow` on all `DashboardPageHeader` usages (overview, posts, content, analytics, notes, tags, setup, cv, audit, tools, site/home/pages, media, operations, platform sites, billing).
 - [x] Immersive editor: `EditorImmersiveHeader` + `publicSiteContainerClassName`; custom page missing slug uses `DashboardEmptyState`.
 - [x] About page: replaced hardcoded `slate` Tailwind classes with semantic tokens (`foreground`, `muted-foreground`, `border-border`, etc.).
+- [x] Sitewide: removed remaining `(text|bg|border|…)-slate-*` utilities across blog, markdown, TOC, SaaS builders, auth layout, share/giscus, etc., in favor of design tokens.
 
 **Verify:** `npm run lint`, `npm run typecheck`, `npm test`, `npm run build`.
