@@ -191,6 +191,7 @@ export default function SiteSettingsPage() {
   return (
     <div className="space-y-8">
       <DashboardPageHeader
+        eyebrow="Site"
         title="Site settings"
         description="Site name, favicon, logo, meta, navigation, footer, and OG image. All visible on the site."
       >

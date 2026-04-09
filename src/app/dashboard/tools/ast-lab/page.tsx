@@ -5,6 +5,7 @@ export default function AstLabPage() {
   return (
     <div className="space-y-6">
       <DashboardPageHeader
+        eyebrow="Tools"
         title="Markdown AST lab"
         description="Parse Markdown to mdast (GFM + math). Inspect the tree or copy JSON for debugging pipelines and migrations."
       />

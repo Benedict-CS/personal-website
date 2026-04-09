@@ -394,6 +394,7 @@ export default function NotesPage() {
     return (
       <div className="space-y-6" aria-busy="true" aria-label="Loading notes">
         <DashboardPageHeader
+          eyebrow="Notes"
           title="My notes"
           description="Private notes (unpublished posts)."
         >
@@ -417,7 +418,11 @@ export default function NotesPage() {
 
   return (
     <div className="space-y-6">
-      <DashboardPageHeader title="My notes" description="Private notes (unpublished posts).">
+      <DashboardPageHeader
+        eyebrow="Notes"
+        title="My notes"
+        description="Private notes (unpublished posts)."
+      >
         <Button asChild>
           <Link href="/dashboard/posts/new">Create new note</Link>
         </Button>

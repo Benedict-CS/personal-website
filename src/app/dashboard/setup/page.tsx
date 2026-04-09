@@ -128,6 +128,7 @@ export default function SetupWizardPage() {
   return (
     <div className="max-w-2xl mx-auto space-y-8">
       <DashboardPageHeader
+        eyebrow="Setup"
         title="First-time setup"
         description="A few steps to get your site ready. You can change any of this later in Content → Site settings."
       />

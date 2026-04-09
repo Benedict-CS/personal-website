@@ -18,8 +18,8 @@
 
 ## Remaining
 
-- [ ] Dashboard: apply `eyebrow` / consistent `DashboardPanel` spacing on analytics, posts, content, tools — only where headers are bespoke.
-- [ ] Editor / immersive editor: align title rows and empty states with `DashboardPageHeader` patterns.
+- [x] Dashboard: `eyebrow` on all `DashboardPageHeader` usages (overview, posts, content, analytics, notes, tags, setup, cv, audit, tools, site/home/pages, media, operations, platform sites, billing).
+- [x] Immersive editor: `EditorImmersiveHeader` + `publicSiteContainerClassName`; custom page missing slug uses `DashboardEmptyState`.
 - [ ] Optional: replace remaining `text-slate-*` on About blocks with `text-foreground` / `border-border` in a focused pass (large file).
 
 **Verify:** `npm run lint`, `npm run typecheck`, `npm test`, `npm run build`.

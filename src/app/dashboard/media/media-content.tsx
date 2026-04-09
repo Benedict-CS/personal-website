@@ -1132,6 +1132,7 @@ export default function MediaContent() {
         onConfirm={handleCleanup}
       />
       <DashboardPageHeader
+        eyebrow="Media"
         title="Media library"
         description="Drag and drop images anywhere on this page to upload. Copy a URL or send markdown to an open post editor."
       >

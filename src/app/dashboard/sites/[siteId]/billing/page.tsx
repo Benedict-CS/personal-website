@@ -84,6 +84,7 @@ export default function SiteBillingPage() {
   return (
     <div className="mx-auto max-w-3xl space-y-6">
       <DashboardPageHeader
+        eyebrow="Billing"
         title="Billing & plan"
         description={
           <>

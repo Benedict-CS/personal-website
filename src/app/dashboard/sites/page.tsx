@@ -73,7 +73,7 @@ export default function DashboardSitesPage() {
 
   return (
     <div className="space-y-6">
-      <DashboardPageHeader title={t.saasSitesTitle} description={t.saasSitesSubtitle}>
+      <DashboardPageHeader eyebrow="Platform" title={t.saasSitesTitle} description={t.saasSitesSubtitle}>
         <PlatformLocaleSwitcher value={locale} label={t.locale} />
       </DashboardPageHeader>
 

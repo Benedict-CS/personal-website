@@ -199,6 +199,7 @@ export default function DashboardHomeSectionsPage() {
   return (
     <div className="space-y-6 px-2 sm:px-0 max-w-4xl">
       <DashboardPageHeader
+        eyebrow="Home"
         title="Home page sections"
         description="Add, remove, and reorder sections. Edit hero, skills, and latest posts in the visual editor."
       >

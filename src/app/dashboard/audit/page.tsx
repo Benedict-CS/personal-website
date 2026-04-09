@@ -994,6 +994,7 @@ export default function AuditPage() {
   return (
     <div className="space-y-6">
       <DashboardPageHeader
+        eyebrow="Operations"
         title="Audit log"
         description="Recent actions (post create/update/delete, import). Only visible when logged in."
       />

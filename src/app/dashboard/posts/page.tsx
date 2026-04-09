@@ -89,6 +89,7 @@ export default async function PostsPage({ searchParams }: PostsPageProps) {
   return (
     <div className="space-y-6">
       <DashboardPageHeader
+        eyebrow="Blog"
         title={`Published posts${total > POSTS_PER_PAGE ? ` (${total} total)` : ""}`}
         description="Live articles visible on the blog. Drafts live under Notes."
       >

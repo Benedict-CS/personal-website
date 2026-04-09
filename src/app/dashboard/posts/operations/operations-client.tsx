@@ -122,6 +122,7 @@ export function PostsOperationsClient() {
       </div>
 
       <DashboardPageHeader
+        eyebrow="Blog"
         title="Content find & replace"
         description="Search and replace literal text across all post bodies (Markdown / MDX). Run preview first, then apply. This is a string operation, not an AST — use it for URLs, typos, and renames."
       />

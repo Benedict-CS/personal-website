@@ -155,6 +155,7 @@ export default async function DashboardOverviewPage() {
   return (
     <div className="space-y-6">
       <DashboardPageHeader
+        eyebrow="Overview"
         title="Dashboard overview"
         description="Monitor content status, system health, and recent operations in one place."
       >

@@ -423,6 +423,7 @@ export default function AnalyticsPage() {
         }}
       />
       <DashboardPageHeader
+        eyebrow="Insights"
         title="Analytics"
         description="Traffic, paths, application health, privacy filters, and CSV exports."
       />

@@ -22,6 +22,7 @@ export default function ContentIndexPage() {
   return (
     <div className="space-y-6">
       <DashboardPageHeader
+        eyebrow="Hub"
         title="Content"
         description="Dashboard is for management. Visual page editing lives in immersive editor routes."
       />

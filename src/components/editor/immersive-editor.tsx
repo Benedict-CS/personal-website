@@ -29,7 +29,11 @@ import { SiteBlockBuilder } from "@/components/site-block-builder";
 import { ImmersiveCustomMarkdownField } from "@/components/editor/immersive-custom-markdown-field";
 import { ContentEditableField } from "@/components/editor/content-editable-field";
 import { DevBlockMutedNotice } from "@/components/dev-blocks/dev-block-muted-notice";
+import { EditorImmersiveHeader } from "@/components/editor/editor-immersive-header";
+import { DashboardEmptyState } from "@/components/dashboard/dashboard-ui";
+import { publicSiteContainerClassName } from "@/components/public/public-layout";
 import type { EditorTarget } from "@/lib/editor-route";
+import { cn } from "@/lib/utils";
 import { stableStringify } from "@/lib/stable-stringify";
 import { subscribeCmsMediaInsert } from "@/lib/cms-media-insert";
 
@@ -621,7 +625,7 @@ export function ImmersiveEditor({ target }: { target: EditorTarget }) {
   if (loading) {
     return (
       <div className="relative min-h-screen bg-background pb-36 pt-6">
-        <div className="container mx-auto max-w-6xl px-6 py-10">
+        <div className={cn(publicSiteContainerClassName, "py-10")}>
           <div className="space-y-4">
             <div className="h-9 w-48 max-w-[60%] rounded-lg bg-muted/55 motion-safe:animate-pulse" />
             <div className="h-12 w-full max-w-xl rounded-lg bg-muted/40 motion-safe:animate-pulse" />
@@ -686,7 +690,8 @@ export function ImmersiveEditor({ target }: { target: EditorTarget }) {
           />
         </div>
       ) : null}
-      <div className="container mx-auto max-w-6xl px-6 py-10">
+      <div className={cn(publicSiteContainerClassName, "py-10")}>
+        <EditorImmersiveHeader target={target} customPageTitle={customPage?.title} />
         {target.kind === "home" && (
           <DndContext sensors={sensors} collisionDetection={closestCenter} onDragEnd={onDragEnd}>
             <SortableContext items={sectionOrder} strategy={verticalListSortingStrategy}>
@@ -817,11 +822,18 @@ export function ImmersiveEditor({ target }: { target: EditorTarget }) {
             }`}
           >
             {!customPage ? (
-              <Card>
-                <CardContent className="pt-6 text-muted-foreground">
-                  Page not found. Create it in <Link href="/dashboard/content/pages" className="underline">Custom pages</Link> or open another slug.
-                </CardContent>
-              </Card>
+              <DashboardEmptyState
+                title="Page not found"
+                description={
+                  <>
+                    Create it in{" "}
+                    <Link href="/dashboard/content/pages" className="font-medium text-foreground underline underline-offset-2">
+                      Custom pages
+                    </Link>{" "}
+                    or open another slug.
+                  </>
+                }
+              />
             ) : (
               <Card className="shadow-lg">
                 <CardContent className="space-y-4 pt-6">

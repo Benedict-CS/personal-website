@@ -444,6 +444,7 @@ export default function CustomPagesPage() {
       />
       <div className="space-y-3">
         <DashboardPageHeader
+          eyebrow="Pages"
           title="Custom pages"
           description="Manage additional pages separate from core site settings."
         />

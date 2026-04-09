@@ -114,7 +114,11 @@ export default function CVPage() {
 
   return (
     <div className="space-y-6">
-      <DashboardPageHeader title="Manage CV" description="Upload a PDF for the public CV download, or print your About page." />
+      <DashboardPageHeader
+        eyebrow="Content"
+        title="Manage CV"
+        description="Upload a PDF for the public CV download, or print your About page."
+      />
 
       <Card>
         <CardHeader>
