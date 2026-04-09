@@ -33,11 +33,11 @@ function SortableNavRow({
     <div
       ref={setNodeRef}
       style={style}
-      className={`flex items-center gap-2 flex-wrap ${isDragging ? "z-20 opacity-95 shadow-lg rounded-md bg-white border border-slate-200" : ""}`}
+      className={`flex items-center gap-2 flex-wrap ${isDragging ? "z-20 opacity-95 shadow-lg rounded-md bg-card border border-border" : ""}`}
     >
       <button
         type="button"
-        className="cursor-grab active:cursor-grabbing touch-none p-1 text-slate-400 hover:text-slate-600 rounded"
+        className="cursor-grab active:cursor-grabbing touch-none p-1 text-muted-foreground/70 hover:text-muted-foreground rounded"
         {...attributes}
         {...listeners}
         aria-label="Drag to reorder"
@@ -108,7 +108,7 @@ export function NavItemsEditor({
 
   return (
     <div className="space-y-3">
-      {helpText && <p className="text-sm text-slate-600">{helpText}</p>}
+      {helpText && <p className="text-sm text-muted-foreground">{helpText}</p>}
       <DndContext sensors={sensors} collisionDetection={closestCenter} onDragEnd={handleDragEnd}>
         <SortableContext items={items.map((_, i) => `nav-${i}`)} strategy={verticalListSortingStrategy}>
           <div className="space-y-2">

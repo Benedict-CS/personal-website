@@ -44,7 +44,7 @@ export default async function CustomPagePreview({ searchParams }: PreviewProps) 
             </Badge>
           </div>
           <CardTitle>{page.title}</CardTitle>
-          <p className="text-sm text-slate-500">
+          <p className="text-sm text-muted-foreground">
             Slug: /page/{page.slug} • Last updated {new Date(page.updatedAt).toLocaleString()}
             {scheduledAt ? ` • Scheduled ${new Date(scheduledAt).toLocaleString()}` : ""}
           </p>
@@ -53,7 +53,7 @@ export default async function CustomPagePreview({ searchParams }: PreviewProps) 
           <div className="prose prose-slate max-w-none">
             <MarkdownBodyServer content={cleanContent} />
           </div>
-          <div className="mt-6 flex flex-wrap gap-3 border-t border-slate-200 pt-4">
+          <div className="mt-6 flex flex-wrap gap-3 border-t border-border pt-4">
             <Link href={`/editor/page/${encodeURIComponent(page.slug)}`}>
               <Button>Edit in visual editor</Button>
             </Link>

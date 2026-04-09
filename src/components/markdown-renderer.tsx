@@ -135,7 +135,7 @@ export function MarkdownRenderer({ content, postId, editable = false }: Markdown
       if (isInline) {
         return (
           <code
-            className="bg-slate-100 text-slate-800 px-1.5 py-0.5 rounded text-sm font-mono"
+            className="bg-muted text-foreground px-1.5 py-0.5 rounded text-sm font-mono"
             {...props}
           >
             {children}
@@ -184,7 +184,7 @@ export function MarkdownRenderer({ content, postId, editable = false }: Markdown
       }
       if (embedUrl) {
         return (
-          <div className="my-4 rounded-lg overflow-hidden bg-slate-900" style={{ aspectRatio: "16/9", maxWidth: "100%" }}>
+          <div className="my-4 rounded-lg overflow-hidden bg-foreground" style={{ aspectRatio: "16/9", maxWidth: "100%" }}>
             <iframe
               src={embedUrl}
               title={title}
@@ -203,7 +203,7 @@ export function MarkdownRenderer({ content, postId, editable = false }: Markdown
     },
     table: ({ children, ...props }) => {
       return (
-        <div className="markdown-table-shell my-6 w-full overflow-x-auto rounded-lg border border-slate-200/90 bg-white shadow-sm">
+        <div className="markdown-table-shell my-6 w-full overflow-x-auto rounded-lg border border-border/90 bg-card shadow-sm">
           <table {...props} className="min-w-full border-collapse border-0 text-sm">
             {children}
           </table>
@@ -212,7 +212,7 @@ export function MarkdownRenderer({ content, postId, editable = false }: Markdown
     },
     thead: ({ children, ...props }) => {
       return (
-        <thead {...props} className="bg-slate-100">
+        <thead {...props} className="bg-muted">
           {children}
         </thead>
       );
@@ -222,7 +222,7 @@ export function MarkdownRenderer({ content, postId, editable = false }: Markdown
     },
     tr: ({ children, ...props }) => {
       return (
-        <tr {...props} className="border-b border-slate-200 last:border-b-0">
+        <tr {...props} className="border-b border-border last:border-b-0">
           {children}
         </tr>
       );
@@ -231,7 +231,7 @@ export function MarkdownRenderer({ content, postId, editable = false }: Markdown
       return (
         <th
           {...props}
-          className="border border-slate-200 bg-slate-50/90 px-4 py-2 text-left text-sm font-semibold text-slate-900"
+          className="border border-border bg-muted/90 px-4 py-2 text-left text-sm font-semibold text-foreground"
         >
           {children}
         </th>
@@ -261,7 +261,7 @@ export function MarkdownRenderer({ content, postId, editable = false }: Markdown
       return (
         <li
           {...props}
-          className="text-slate-700"
+          className="text-foreground/90"
         >
           {children}
         </li>
@@ -305,7 +305,7 @@ export function MarkdownRenderer({ content, postId, editable = false }: Markdown
           return (
             <td
               {...props}
-              className="border border-slate-200 px-4 py-2 text-center"
+              className="border border-border px-4 py-2 text-center"
             >
               <input
                 type="checkbox"
@@ -313,7 +313,7 @@ export function MarkdownRenderer({ content, postId, editable = false }: Markdown
                 onChange={(e) => {
                   handleCheckboxToggle(checkboxIndex, e.target.checked);
                 }}
-                className="h-4 w-4 rounded border-slate-300 text-blue-600 focus:ring-blue-500 cursor-pointer"
+                className="h-4 w-4 rounded border-border text-blue-600 focus:ring-blue-500 cursor-pointer"
               />
             </td>
           );
@@ -322,7 +322,7 @@ export function MarkdownRenderer({ content, postId, editable = false }: Markdown
         return (
           <td
             {...props}
-            className="border border-slate-200 px-4 py-2 text-slate-700"
+            className="border border-border px-4 py-2 text-foreground/90"
           >
             <div className="flex items-start gap-2">
               <input
@@ -331,7 +331,7 @@ export function MarkdownRenderer({ content, postId, editable = false }: Markdown
                 onChange={(e) => {
                   handleCheckboxToggle(checkboxIndex, e.target.checked);
                 }}
-                className="mt-0.5 h-4 w-4 rounded border-slate-300 text-blue-600 focus:ring-blue-500 cursor-pointer flex-shrink-0"
+                className="mt-0.5 h-4 w-4 rounded border-border text-blue-600 focus:ring-blue-500 cursor-pointer flex-shrink-0"
               />
               <div>{remainingContent}</div>
             </div>
@@ -342,7 +342,7 @@ export function MarkdownRenderer({ content, postId, editable = false }: Markdown
       return (
         <td
           {...props}
-          className="border border-slate-200 px-4 py-2 text-slate-700"
+          className="border border-border px-4 py-2 text-foreground/90"
         >
           {children}
         </td>
@@ -371,7 +371,7 @@ export function MarkdownRenderer({ content, postId, editable = false }: Markdown
         >
           <button
             type="button"
-            className="absolute top-4 right-4 rounded-full bg-white/90 p-2 text-slate-800 hover:bg-white focus:outline-none focus:ring-2 focus:ring-white"
+            className="absolute top-4 right-4 rounded-full bg-card/90 p-2 text-foreground hover:bg-card focus:outline-none focus:ring-2 focus:ring-white"
             onClick={() => setLightboxSrc(null)}
             aria-label="Close"
           >

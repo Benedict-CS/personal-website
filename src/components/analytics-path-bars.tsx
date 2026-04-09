@@ -21,15 +21,15 @@ export function AnalyticsPathBars({
         const pct = Math.round((row.count / maxCount) * 100);
         return (
           <div key={row.path}>
-            <div className="mb-0.5 flex justify-between gap-2 text-xs text-slate-600">
+            <div className="mb-0.5 flex justify-between gap-2 text-xs text-muted-foreground">
               <span className="min-w-0 truncate font-mono" title={row.path}>
                 {row.path}
               </span>
-              <span className="shrink-0 tabular-nums text-slate-700">{row.count.toLocaleString()}</span>
+              <span className="shrink-0 tabular-nums text-foreground/90">{row.count.toLocaleString()}</span>
             </div>
-            <div className="h-2 overflow-hidden rounded-full bg-slate-100">
+            <div className="h-2 overflow-hidden rounded-full bg-muted">
               <div
-                className="h-full min-w-[2px] rounded-full bg-slate-500/85"
+                className="h-full min-w-[2px] rounded-full bg-muted-foreground/50"
                 style={{ width: `${pct}%` }}
               />
             </div>

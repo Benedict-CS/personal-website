@@ -181,12 +181,12 @@ export function ThreeShowroomBuilder({ siteId }: { siteId: string }) {
 
   return (
     <div className="grid gap-4 lg:grid-cols-[320px_1fr]">
-      <aside className="rounded border border-slate-200 bg-white p-3 space-y-3">
+      <aside className="rounded border border-border bg-card p-3 space-y-3">
         <h2 className="text-sm font-semibold">3D Showroom Controls</h2>
         <Input value={urlInput} onChange={(e) => setUrlInput(e.target.value)} placeholder="https://...model.glb" />
         <Button variant="outline" onClick={addModel}>Add GLB/GLTF Model</Button>
         {selected ? (
-          <div className="space-y-2 rounded border border-slate-200 p-2">
+          <div className="space-y-2 rounded border border-border p-2">
             <p className="text-xs font-semibold">Selected Model</p>
             <Input type="number" value={selected.x} onChange={(e) => updateSelected({ x: Number(e.target.value) })} placeholder="x" />
             <Input type="number" value={selected.y} onChange={(e) => updateSelected({ y: Number(e.target.value) })} placeholder="y" />
@@ -195,13 +195,13 @@ export function ThreeShowroomBuilder({ siteId }: { siteId: string }) {
             <Input type="number" value={selected.scale ?? 1} onChange={(e) => updateSelected({ scale: Number(e.target.value) })} placeholder="scale" />
           </div>
         ) : (
-          <p className="text-xs text-slate-500">Select a model in canvas by clicking it.</p>
+          <p className="text-xs text-muted-foreground">Select a model in canvas by clicking it.</p>
         )}
         <Button onClick={save}>Save Showroom</Button>
-        {status ? <p className="text-xs text-slate-600">{status}</p> : null}
+        {status ? <p className="text-xs text-muted-foreground">{status}</p> : null}
       </aside>
 
-      <section className="h-[70vh] overflow-hidden rounded border border-slate-200 bg-white">
+      <section className="h-[70vh] overflow-hidden rounded border border-border bg-card">
         <Canvas camera={{ position: [config.camera.x, config.camera.y, config.camera.z], fov: 55 }}>
           <ambientLight intensity={0.5} />
           <directionalLight position={[8, 14, 6]} intensity={1.2} castShadow />

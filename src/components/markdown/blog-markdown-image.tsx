@@ -45,7 +45,7 @@ export function BlogMarkdownImage({ src, alt, title, className, onOpenLightbox }
     >
       {!loaded && (
         <span
-          className="absolute inset-0 block rounded bg-gradient-to-b from-slate-100 to-slate-200/80"
+          className="absolute inset-0 block rounded bg-gradient-to-b from-muted to-muted-foreground/25"
           aria-hidden
         />
       )}
@@ -73,7 +73,7 @@ export function BlogMarkdownImage({ src, alt, title, className, onOpenLightbox }
       <button
         type="button"
         onClick={() => onOpenLightbox(cleanSrc || (typeof src === "string" ? src : ""))}
-        className="inline-block w-full cursor-zoom-in rounded-md focus:outline-none focus-visible:ring-2 focus-visible:ring-slate-400 focus-visible:ring-offset-2"
+        className="inline-block w-full cursor-zoom-in rounded-md focus:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
         title="Click to enlarge"
       >
         {img}

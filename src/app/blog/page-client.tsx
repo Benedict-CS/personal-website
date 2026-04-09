@@ -246,7 +246,7 @@ export default function BlogPageClient() {
                     animate={{ opacity: 1, y: 0 }}
                     transition={{ duration: 0.3, delay: Math.min(cardIndex * 0.05, 0.25), ease: [0.25, 0.46, 0.45, 0.94] }}
                   >
-                    <Card className="relative h-full border-[var(--border)] shadow-[var(--shadow-sm)] transition-all duration-200 hover:shadow-[var(--shadow-md)] hover:border-slate-300">
+                    <Card className="relative h-full border-[var(--border)] shadow-[var(--shadow-sm)] transition-all duration-200 hover:shadow-[var(--shadow-md)] hover:border-muted-foreground/25">
                       <Link
                         href={`/blog/${post.slug}`}
                         className="absolute inset-0 z-0 rounded-xl focus:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"

@@ -32,13 +32,13 @@ export default async function BlogPreviewPage({ searchParams }: PreviewPageProps
   if (!token) {
     return (
       <div className="container mx-auto max-w-xl px-4 py-12 sm:px-6 sm:py-16">
-        <div className="rounded-xl border border-slate-200 bg-white p-6 shadow-sm sm:p-8">
-          <h1 className="text-2xl font-semibold text-slate-900">Draft preview</h1>
-          <p className="mt-3 text-slate-600 leading-relaxed">
+        <div className="rounded-xl border border-border bg-card p-6 shadow-sm sm:p-8">
+          <h1 className="text-2xl font-semibold text-foreground">Draft preview</h1>
+          <p className="mt-3 text-muted-foreground leading-relaxed">
             A valid preview URL includes a secret token in the query string. Open your post in the dashboard and use
             &quot;Copy preview link&quot; to generate a read-only link you can share.
           </p>
-          <p className="mt-3 text-sm text-slate-500">
+          <p className="mt-3 text-sm text-muted-foreground">
             If you opened this page without a token, nothing is wrong—this route only serves draft previews when the
             token is present.
           </p>
@@ -96,10 +96,10 @@ export default async function BlogPreviewPage({ searchParams }: PreviewPageProps
                         Draft preview — read-only link
                       </Badge>
                     </div>
-                    <h1 className="mb-4 text-4xl font-bold text-slate-900">
+                    <h1 className="mb-4 text-4xl font-bold text-foreground">
                       {post.title}
                     </h1>
-                    <div className="mb-3 flex items-center gap-4 text-sm text-slate-500">
+                    <div className="mb-3 flex items-center gap-4 text-sm text-muted-foreground">
                       <span>Last updated {formatDate(post.updatedAt)}</span>
                       <span>•</span>
                       <span>{formatReadingTime(readingTime)}</span>
@@ -131,7 +131,7 @@ export default async function BlogPreviewPage({ searchParams }: PreviewPageProps
                     )}
                   </div>
 
-                  <div className="flex flex-wrap gap-3 border-t border-slate-200 pt-6">
+                  <div className="flex flex-wrap gap-3 border-t border-border pt-6">
                     <Link href={`/dashboard/posts/${post.id}`}>
                       <Button>Edit in dashboard</Button>
                     </Link>

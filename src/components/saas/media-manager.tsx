@@ -177,7 +177,7 @@ export function MediaManager({ siteId }: { siteId: string }) {
         />
       </div>
 
-      <div className="rounded border border-slate-200 bg-white p-3">
+      <div className="rounded border border-border bg-card p-3">
         <h3 className="mb-2 text-sm font-semibold">Image Editor (before upload)</h3>
         <div className="grid gap-2 sm:grid-cols-2">
           <label className="text-sm">
@@ -207,18 +207,18 @@ export function MediaManager({ siteId }: { siteId: string }) {
       </div>
 
       <div className="grid gap-4 lg:grid-cols-[280px_1fr]">
-        <aside className="rounded border border-slate-200 bg-white p-3">
+        <aside className="rounded border border-border bg-card p-3">
           <h3 className="mb-2 text-sm font-semibold">Folders</h3>
           <button
             type="button"
-            className={`mb-2 w-full rounded border px-2 py-1 text-left text-sm ${activeFolderId === null ? "border-blue-500 bg-blue-50" : "border-slate-200"}`}
+            className={`mb-2 w-full rounded border px-2 py-1 text-left text-sm ${activeFolderId === null ? "border-blue-500 bg-blue-50" : "border-border"}`}
             onClick={() => setActiveFolderId(null)}
           >
             All assets
           </button>
           <div className="space-y-2">
             {folders.map((f) => (
-              <div key={f.id} className="rounded border border-slate-200 p-2">
+              <div key={f.id} className="rounded border border-border p-2">
                 <button
                   type="button"
                   className={`w-full text-left text-sm ${activeFolderId === f.id ? "font-semibold text-blue-700" : ""}`}
@@ -235,12 +235,12 @@ export function MediaManager({ siteId }: { siteId: string }) {
           </div>
         </aside>
 
-        <section className="rounded border border-slate-200 bg-white p-3">
+        <section className="rounded border border-border bg-card p-3">
           <h3 className="mb-3 text-sm font-semibold">Assets</h3>
           {viewMode === "grid" ? (
             <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
               {visibleAssets.map((a) => (
-                <div key={a.id} className="rounded border border-slate-200 p-2">
+                <div key={a.id} className="rounded border border-border p-2">
                   <NextImage
                     src={a.publicUrl}
                     alt={a.filename}
@@ -259,10 +259,10 @@ export function MediaManager({ siteId }: { siteId: string }) {
           ) : (
             <div className="space-y-2">
               {visibleAssets.map((a) => (
-                <div key={a.id} className="flex items-center justify-between rounded border border-slate-200 p-2">
+                <div key={a.id} className="flex items-center justify-between rounded border border-border p-2">
                   <div className="truncate">
                     <p className="font-medium">{a.filename}</p>
-                    <p className="text-xs text-slate-500">{a.mimeType} - {Math.round(a.sizeBytes / 1024)} KB</p>
+                    <p className="text-xs text-muted-foreground">{a.mimeType} - {Math.round(a.sizeBytes / 1024)} KB</p>
                   </div>
                   <div className="flex gap-2">
                     <Button size="sm" variant="outline" onClick={() => renameAsset(a)}>Rename</Button>
@@ -274,7 +274,7 @@ export function MediaManager({ siteId }: { siteId: string }) {
           )}
         </section>
       </div>
-      {status ? <p className="text-sm text-slate-600">{status}</p> : null}
+      {status ? <p className="text-sm text-muted-foreground">{status}</p> : null}
       <Button variant="outline" onClick={reload}>Refresh</Button>
     </div>
   );

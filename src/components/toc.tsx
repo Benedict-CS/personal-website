@@ -118,12 +118,12 @@ export function TableOfContents({ content, initialHeadings }: TableOfContentsPro
   }
 
   const tocPanel = (variant: "sidebar" | "drawer") => (
-    <div className={variant === "sidebar" ? "rounded-lg border border-slate-200 bg-white p-4" : "px-4 pb-1"}>
+    <div className={variant === "sidebar" ? "rounded-lg border border-border bg-card p-4" : "px-4 pb-1"}>
       {variant === "sidebar" && (
         <div className="mb-4 flex items-center justify-between gap-2">
-          <h2 className="text-sm font-semibold text-slate-900">On this page</h2>
+          <h2 className="text-sm font-semibold text-foreground">On this page</h2>
           {headings.length > 1 && (
-            <span className="text-xs text-slate-400 tabular-nums" aria-hidden>
+            <span className="text-xs text-muted-foreground/70 tabular-nums" aria-hidden>
               {sectionProgress}%
             </span>
           )}
@@ -131,15 +131,15 @@ export function TableOfContents({ content, initialHeadings }: TableOfContentsPro
       )}
       {variant === "drawer" && headings.length > 1 && (
         <div className="mb-3 flex justify-end">
-          <span className="text-xs text-slate-400 tabular-nums" aria-hidden>
+          <span className="text-xs text-muted-foreground/70 tabular-nums" aria-hidden>
             {sectionProgress}%
           </span>
         </div>
       )}
       {headings.length > 1 && (
-        <div className="mb-4 h-1 w-full overflow-hidden rounded-full bg-slate-100">
+        <div className="mb-4 h-1 w-full overflow-hidden rounded-full bg-muted">
           <div
-            className="h-full rounded-full bg-slate-300 transition-all duration-200 ease-out"
+            className="h-full rounded-full bg-muted-foreground/35 transition-all duration-200 ease-out"
             style={{ width: `${sectionProgress}%` }}
           />
         </div>
@@ -164,8 +164,8 @@ export function TableOfContents({ content, initialHeadings }: TableOfContentsPro
                     : "pl-7"
               } ${
                 activeId === heading.id
-                  ? "border-slate-700 bg-slate-100 font-semibold text-slate-900"
-                  : "border-transparent text-slate-600 hover:border-slate-300 hover:text-slate-900"
+                  ? "border-foreground/50 bg-muted font-semibold text-foreground"
+                  : "border-transparent text-muted-foreground hover:border-border hover:text-foreground"
               }`}
               onClick={(e) => {
                 e.preventDefault();
@@ -190,16 +190,16 @@ export function TableOfContents({ content, initialHeadings }: TableOfContentsPro
   return (
     <>
       <div className="mb-6 w-full lg:hidden">
-        <details className="group rounded-lg border border-slate-200 bg-white open:shadow-sm">
-          <summary className="cursor-pointer list-none px-4 py-3 text-sm font-semibold text-slate-900 [&::-webkit-details-marker]:hidden">
+        <details className="group rounded-lg border border-border bg-card open:shadow-sm">
+          <summary className="cursor-pointer list-none px-4 py-3 text-sm font-semibold text-foreground [&::-webkit-details-marker]:hidden">
             <span className="flex items-center justify-between gap-2">
               On this page
-              <span className="text-slate-400 transition-transform group-open:rotate-180" aria-hidden>
+              <span className="text-muted-foreground/70 transition-transform group-open:rotate-180" aria-hidden>
                 ▾
               </span>
             </span>
           </summary>
-          <div className="border-t border-slate-100 pt-2">{tocPanel("drawer")}</div>
+          <div className="border-t border-border/60 pt-2">{tocPanel("drawer")}</div>
         </details>
       </div>
 

@@ -64,7 +64,7 @@ export function EmailBuilder({ siteId }: { siteId: string }) {
 
   return (
     <div className="grid gap-4 lg:grid-cols-[320px_1fr]">
-      <aside className="rounded border border-slate-200 bg-white p-4 space-y-3">
+      <aside className="rounded border border-border bg-card p-4 space-y-3">
         <h2 className="font-semibold">Campaign Settings</h2>
         <Input value={name} onChange={(e) => setName(e.target.value)} placeholder="Campaign name" />
         <Input value={subject} onChange={(e) => setSubject(e.target.value)} placeholder="Subject line" />
@@ -77,14 +77,14 @@ export function EmailBuilder({ siteId }: { siteId: string }) {
         </div>
         <Button variant="outline" onClick={() => sendCampaign(false)}>Save Draft</Button>
         <Button onClick={() => sendCampaign(true)}>Send Campaign</Button>
-        {status ? <p className="text-sm text-slate-600">{status}</p> : null}
+        {status ? <p className="text-sm text-muted-foreground">{status}</p> : null}
       </aside>
 
-      <section className="rounded border border-slate-200 bg-white p-4 space-y-3">
+      <section className="rounded border border-border bg-card p-4 space-y-3">
         <h2 className="font-semibold">Visual Email Builder</h2>
         {blocks.map((block) => (
-          <div key={block.id} className="rounded border border-slate-200 p-3">
-            <p className="mb-1 text-xs font-semibold uppercase text-slate-500">{block.type}</p>
+          <div key={block.id} className="rounded border border-border p-3">
+            <p className="mb-1 text-xs font-semibold uppercase text-muted-foreground">{block.type}</p>
             <Textarea
               value={block.content}
               rows={block.type === "paragraph" ? 4 : 2}
@@ -94,7 +94,7 @@ export function EmailBuilder({ siteId }: { siteId: string }) {
             />
           </div>
         ))}
-        <div className="rounded border border-slate-100 bg-slate-50 p-3">
+        <div className="rounded border border-border/60 bg-muted p-3">
           <p className="mb-2 text-sm font-semibold">Rendered HTML preview</p>
           <div dangerouslySetInnerHTML={{ __html: html }} />
         </div>

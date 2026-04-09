@@ -73,8 +73,8 @@ export function ShareButtons({ title, url, description }: ShareButtonsProps) {
   const isWebShareSupported = typeof navigator !== "undefined" && navigator.share;
 
   return (
-    <div className="flex flex-wrap items-center gap-2 py-4 border-t border-b border-slate-200 my-6">
-      <span className="text-sm font-medium text-slate-700 mr-2">Share:</span>
+    <div className="flex flex-wrap items-center gap-2 py-4 border-t border-b border-border my-6">
+      <span className="text-sm font-medium text-foreground/90 mr-2">Share:</span>
       
       {/* Web Share (mobile) */}
       {isWebShareSupported && (

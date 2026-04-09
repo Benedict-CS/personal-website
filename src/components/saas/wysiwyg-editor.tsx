@@ -139,25 +139,25 @@ function SortableBlock({
       style={style}
       className={`rounded-lg border p-2 transition-shadow ${
         selected
-          ? "border-slate-400 bg-white shadow-sm ring-2 ring-slate-200"
-          : "border-slate-200 bg-white hover:border-slate-300"
+          ? "border-muted-foreground/40 bg-card shadow-sm ring-2 ring-border"
+          : "border-border bg-card hover:border-border"
       }`}
     >
       <div className="flex items-center justify-between gap-2">
-        <button type="button" className="flex-1 text-left text-sm font-medium text-slate-800" onClick={onSelect}>
+        <button type="button" className="flex-1 text-left text-sm font-medium text-foreground" onClick={onSelect}>
           {block.type}
         </button>
         <button
           type="button"
           {...attributes}
           {...listeners}
-          className="rounded-md border border-slate-200 px-2 py-1 text-xs text-slate-600 hover:bg-slate-50"
+          className="rounded-md border border-border px-2 py-1 text-xs text-muted-foreground hover:bg-muted/50"
         >
           Drag
         </button>
         <button
           type="button"
-          className="rounded-md border border-slate-200 px-2 py-1 text-xs text-slate-600 hover:bg-slate-50"
+          className="rounded-md border border-border px-2 py-1 text-xs text-muted-foreground hover:bg-muted/50"
           onClick={onDelete}
         >
           Remove
@@ -475,32 +475,32 @@ export function WysiwygEditor({ siteId, pageId }: { siteId: string; pageId: stri
 
   return (
     <div className="grid gap-4 lg:grid-cols-[280px_1fr_320px]">
-      <aside className="rounded-lg border border-slate-200 bg-white p-3 shadow-sm">
-        <h3 className="mb-2 text-sm font-semibold text-slate-800">Block Library (50+)</h3>
+      <aside className="rounded-lg border border-border bg-card p-3 shadow-sm">
+        <h3 className="mb-2 text-sm font-semibold text-foreground">Block Library (50+)</h3>
         <Input
           value={query}
           onChange={(e) => setQuery(e.target.value)}
           placeholder="Search block"
-          className="mb-3 border-slate-200"
+          className="mb-3 border-border"
         />
         <div className="max-h-[65vh] space-y-2 overflow-auto">
           {filteredLibrary.map((item) => (
             <button
               key={item.type}
               type="button"
-              className="w-full rounded-lg border border-slate-200 px-2 py-2 text-left text-sm transition-colors hover:border-slate-300 hover:bg-slate-50"
+              className="w-full rounded-lg border border-border px-2 py-2 text-left text-sm transition-colors hover:border-border hover:bg-muted/50"
               onClick={() => addBlock(item.type)}
             >
-              <div className="font-medium text-slate-800">{item.label}</div>
-              <div className="text-xs text-slate-500">{item.category}</div>
+              <div className="font-medium text-foreground">{item.label}</div>
+              <div className="text-xs text-muted-foreground">{item.category}</div>
             </button>
           ))}
         </div>
       </aside>
 
-      <section className="rounded-lg border border-slate-200 bg-slate-50/80 p-3 shadow-sm">
+      <section className="rounded-lg border border-border bg-muted/80 p-3 shadow-sm">
         <div className="mb-3 flex flex-wrap items-center justify-between gap-2">
-          <h2 className="font-semibold text-slate-900">Canvas (WYSIWYG Preview)</h2>
+          <h2 className="font-semibold text-foreground">Canvas (WYSIWYG Preview)</h2>
           <div className="flex flex-wrap gap-2">
             <Button variant="outline" onClick={() => void saveDraft()}>
               Save Draft
@@ -540,7 +540,7 @@ export function WysiwygEditor({ siteId, pageId }: { siteId: string; pageId: stri
         </DndContext>
 
         <div className="relative mt-4">
-          <label className="mb-1 block text-xs font-medium text-slate-600">Slash insert</label>
+          <label className="mb-1 block text-xs font-medium text-muted-foreground">Slash insert</label>
           <Input
             ref={slashInputRef}
             value={slashLine}
@@ -588,11 +588,11 @@ export function WysiwygEditor({ siteId, pageId }: { siteId: string; pageId: stri
               }, 180);
             }}
             placeholder="Type / for Heading, Code block, Image, Quote…"
-            className="border-slate-200 bg-white"
+            className="border-border bg-card"
           />
           {slashOpen && slashMenuPos && filteredSlash.length > 0 ? (
             <ul
-              className="fixed z-50 max-h-60 min-w-[220px] overflow-auto rounded-lg border border-slate-200 bg-white py-1 shadow-lg"
+              className="fixed z-50 max-h-60 min-w-[220px] overflow-auto rounded-lg border border-border bg-card py-1 shadow-lg"
               style={{ top: slashMenuPos.top, left: slashMenuPos.left }}
               role="listbox"
             >
@@ -603,15 +603,15 @@ export function WysiwygEditor({ siteId, pageId }: { siteId: string; pageId: stri
                     role="option"
                     aria-selected={idx === clampedSlashIndex}
                     className={`flex w-full flex-col items-start px-3 py-2 text-left text-sm ${
-                      idx === clampedSlashIndex ? "bg-slate-100" : "hover:bg-slate-50"
+                      idx === clampedSlashIndex ? "bg-muted" : "hover:bg-muted/50"
                     }`}
                     onMouseDown={(ev) => {
                       ev.preventDefault();
                       insertSlashBlock(item);
                     }}
                   >
-                    <span className="font-medium text-slate-900">{item.label}</span>
-                    <span className="text-xs text-slate-500">{item.hint}</span>
+                    <span className="font-medium text-foreground">{item.label}</span>
+                    <span className="text-xs text-muted-foreground">{item.hint}</span>
                   </button>
                 </li>
               ))}
@@ -619,16 +619,16 @@ export function WysiwygEditor({ siteId, pageId }: { siteId: string; pageId: stri
           ) : null}
         </div>
 
-        <div className="mt-4 rounded-lg border border-slate-200 bg-white p-4 shadow-sm">
+        <div className="mt-4 rounded-lg border border-border bg-card p-4 shadow-sm">
           <BlockRenderer blocks={blocks} />
         </div>
-        {statusText ? <p className="mt-3 text-sm text-slate-600">{statusText}</p> : null}
+        {statusText ? <p className="mt-3 text-sm text-muted-foreground">{statusText}</p> : null}
       </section>
 
-      <aside className="rounded-lg border border-slate-200 bg-white p-3 shadow-sm">
-        <h3 className="mb-3 text-sm font-semibold text-slate-800">Visual CSS Editor</h3>
+      <aside className="rounded-lg border border-border bg-card p-3 shadow-sm">
+        <h3 className="mb-3 text-sm font-semibold text-foreground">Visual CSS Editor</h3>
         {!selectedBlock ? (
-          <p className="text-sm text-slate-500">Select a block on canvas.</p>
+          <p className="text-sm text-muted-foreground">Select a block on canvas.</p>
         ) : (
           <div className="space-y-3">
             <Input
@@ -637,7 +637,7 @@ export function WysiwygEditor({ siteId, pageId }: { siteId: string; pageId: stri
                 updateSelected((b) => ({ ...b, content: { ...b.content, title: e.target.value } }))
               }
               placeholder="Title"
-              className="border-slate-200"
+              className="border-border"
             />
             <Input
               value={String(selectedBlock.content.subtitle ?? "")}
@@ -645,7 +645,7 @@ export function WysiwygEditor({ siteId, pageId }: { siteId: string; pageId: stri
                 updateSelected((b) => ({ ...b, content: { ...b.content, subtitle: e.target.value } }))
               }
               placeholder="Subtitle"
-              className="border-slate-200"
+              className="border-border"
             />
             <div className="grid grid-cols-3 gap-2">
               <Button size="sm" variant="outline" onClick={() => void rewriteSelectedCopy("seo")}>
@@ -667,10 +667,10 @@ export function WysiwygEditor({ siteId, pageId }: { siteId: string; pageId: stri
               ["fontWeight", "Font Weight"],
             ].map(([key, label]) => (
               <div key={key}>
-                <label className="mb-1 block text-xs text-slate-600">{label}</label>
+                <label className="mb-1 block text-xs text-muted-foreground">{label}</label>
                 <Input
                   type="number"
-                  className="border-slate-200"
+                  className="border-border"
                   value={Number(selectedBlock.styles[key] ?? 0)}
                   onChange={(e) =>
                     updateSelected((b) => ({
@@ -682,9 +682,9 @@ export function WysiwygEditor({ siteId, pageId }: { siteId: string; pageId: stri
               </div>
             ))}
             <div>
-              <label className="mb-1 block text-xs text-slate-600">Background</label>
+              <label className="mb-1 block text-xs text-muted-foreground">Background</label>
               <Input
-                className="border-slate-200"
+                className="border-border"
                 value={String(selectedBlock.styles.backgroundColor ?? "#ffffff")}
                 onChange={(e) =>
                   updateSelected((b) => ({
@@ -695,9 +695,9 @@ export function WysiwygEditor({ siteId, pageId }: { siteId: string; pageId: stri
               />
             </div>
             <div>
-              <label className="mb-1 block text-xs text-slate-600">Text Color</label>
+              <label className="mb-1 block text-xs text-muted-foreground">Text Color</label>
               <Input
-                className="border-slate-200"
+                className="border-border"
                 value={String(selectedBlock.styles.color ?? "#0f172a")}
                 onChange={(e) =>
                   updateSelected((b) => ({
@@ -710,19 +710,19 @@ export function WysiwygEditor({ siteId, pageId }: { siteId: string; pageId: stri
           </div>
         )}
         <div className="mt-6">
-          <h4 className="mb-2 text-sm font-semibold text-slate-800">Revision History</h4>
+          <h4 className="mb-2 text-sm font-semibold text-foreground">Revision History</h4>
           <div className="max-h-56 space-y-2 overflow-auto">
             {versions.map((v) => (
               <button
                 type="button"
                 key={v.id}
-                className="w-full rounded-lg border border-slate-200 px-2 py-2 text-left text-xs transition-colors hover:border-slate-300 hover:bg-slate-50"
+                className="w-full rounded-lg border border-border px-2 py-2 text-left text-xs transition-colors hover:border-border hover:bg-muted/50"
                 onClick={() => void restoreVersion(v.id)}
               >
-                <div className="font-medium text-slate-800">
+                <div className="font-medium text-foreground">
                   Version {v.versionNumber} ({v.status})
                 </div>
-                <div className="text-slate-500">{new Date(v.createdAt).toLocaleString()}</div>
+                <div className="text-muted-foreground">{new Date(v.createdAt).toLocaleString()}</div>
               </button>
             ))}
           </div>

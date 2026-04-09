@@ -73,10 +73,10 @@ export function GiscusComments({ mapping = "pathname" }: { mapping?: "pathname" 
   }, [config, mapping]);
 
   return (
-    <div className="mt-10 border-t border-slate-200 pt-8" aria-label="Comments">
+    <div className="mt-10 border-t border-border pt-8" aria-label="Comments">
       <div ref={containerRef} />
       {config && (
-        <p className="mt-2 text-xs text-slate-500">
+        <p className="mt-2 text-xs text-muted-foreground">
           Leave a comment via GitHub (Giscus). Sign in with GitHub to post.
         </p>
       )}

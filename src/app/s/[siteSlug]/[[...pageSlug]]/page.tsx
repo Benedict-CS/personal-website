@@ -70,9 +70,9 @@ export default async function TenantPublicPage({
 
   return (
     <div className="container mx-auto max-w-6xl px-4 py-8">
-      <header className="mb-8 border-b border-slate-200 pb-4">
-        <h1 className="text-3xl font-bold text-slate-900">{site.name}</h1>
-        <p className="text-slate-600">{page.title}</p>
+      <header className="mb-8 border-b border-border pb-4">
+        <h1 className="text-3xl font-bold text-foreground">{site.name}</h1>
+        <p className="text-muted-foreground">{page.title}</p>
       </header>
       <BlockRenderer blocks={blocks} />
       <div className="mt-8">

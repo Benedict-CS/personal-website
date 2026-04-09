@@ -15,7 +15,7 @@ export default async function TenantSiteLayout({
   const lang = site?.defaultLocale ?? "en";
 
   return (
-    <div lang={lang} className="min-h-screen bg-white text-slate-900">
+    <div lang={lang} className="min-h-screen bg-background text-foreground">
       {children}
     </div>
   );

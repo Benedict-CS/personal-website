@@ -65,7 +65,7 @@ export function MdxDashboardPreview({ source }: { source: string }) {
     );
   }
   if (!node) {
-    return <p className="text-sm text-slate-500">Preparing MDX preview…</p>;
+    return <p className="text-sm text-muted-foreground">Preparing MDX preview…</p>;
   }
 
   return (

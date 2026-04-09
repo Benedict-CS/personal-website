@@ -90,12 +90,12 @@ export function BlogMarkdownPre({ children, className, ...props }: Props) {
   return (
     <div
       className={cn(
-        "not-prose my-5 w-full max-w-full overflow-hidden rounded-xl border border-slate-200/90 bg-slate-50/95 shadow-sm",
+        "not-prose my-5 w-full max-w-full overflow-hidden rounded-xl border border-border/90 bg-muted/95 shadow-sm",
         "markdown-code-frame"
       )}
     >
-      <div className="flex items-center justify-between gap-2 border-b border-slate-200/90 bg-white/90 px-3 py-1.5">
-        <span className="text-[11px] font-semibold uppercase tracking-[0.12em] text-slate-500">
+      <div className="flex items-center justify-between gap-2 border-b border-border/90 bg-card/90 px-3 py-1.5">
+        <span className="text-[11px] font-semibold uppercase tracking-[0.12em] text-muted-foreground">
           {langLabel}
         </span>
         {codeString ? (
@@ -104,7 +104,7 @@ export function BlogMarkdownPre({ children, className, ...props }: Props) {
             variant="ghost"
             size="sm"
             className={cn(
-              "h-7 gap-1 px-2 text-xs text-slate-600 hover:bg-slate-100 hover:text-slate-900",
+              "h-7 gap-1 px-2 text-xs text-muted-foreground hover:bg-muted hover:text-foreground",
               copied && "text-emerald-700"
             )}
             onClick={handleCopy}
@@ -131,7 +131,7 @@ export function BlogMarkdownPre({ children, className, ...props }: Props) {
       <div className="flex min-h-0 min-w-0">
         {showLineNumbers ? (
           <div
-            className="markdown-code-gutter shrink-0 select-none border-r border-slate-200/90 bg-slate-100/90 py-3 pl-2 pr-2 text-right font-mono text-[11px] tabular-nums text-slate-400"
+            className="markdown-code-gutter shrink-0 select-none border-r border-border/90 bg-muted/90 py-3 pl-2 pr-2 text-right font-mono text-[11px] tabular-nums text-muted-foreground/70"
             style={{ lineHeight: LINE_HEIGHT }}
             aria-hidden
           >
@@ -144,7 +144,7 @@ export function BlogMarkdownPre({ children, className, ...props }: Props) {
           {...props}
           className={cn(
             "markdown-code-pre min-w-0 flex-1 overflow-x-auto py-3 pr-3 pl-2",
-            "bg-transparent text-slate-800 [&_code]:!bg-transparent [&_code]:!text-inherit [&_.hljs]:!bg-transparent [&_code_span]:!bg-transparent",
+            "bg-transparent text-foreground [&_code]:!bg-transparent [&_code]:!text-inherit [&_.hljs]:!bg-transparent [&_code_span]:!bg-transparent",
             "markdown-code-scrollbar",
             className
           )}

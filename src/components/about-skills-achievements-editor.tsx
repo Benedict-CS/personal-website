@@ -197,14 +197,14 @@ export function AboutSkillsAchievementsEditor({
     <button
       type="button"
       onClick={onClick}
-      className="group flex w-full items-center gap-3 py-1 text-slate-500 transition-colors hover:text-slate-900"
+      className="group flex w-full items-center gap-3 py-1 text-muted-foreground transition-colors hover:text-foreground"
       aria-label={label}
     >
-      <span className="h-px flex-1 border-t border-dashed border-slate-300 transition-colors group-hover:border-slate-500" />
-      <span className="inline-flex h-8 w-8 items-center justify-center rounded-full border border-dashed border-slate-300 bg-white transition-colors group-hover:border-slate-500">
+      <span className="h-px flex-1 border-t border-dashed border-border transition-colors group-hover:border-muted-foreground/50" />
+      <span className="inline-flex h-8 w-8 items-center justify-center rounded-full border border-dashed border-border bg-card transition-colors group-hover:border-muted-foreground/50">
         <Plus className="h-4 w-4" />
       </span>
-      <span className="h-px flex-1 border-t border-dashed border-slate-300 transition-colors group-hover:border-slate-500" />
+      <span className="h-px flex-1 border-t border-dashed border-border transition-colors group-hover:border-muted-foreground/50" />
     </button>
   );
 
@@ -213,7 +213,7 @@ export function AboutSkillsAchievementsEditor({
       {showSkills && (
       <Card className="shadow-lg">
         <CardHeader>
-          <CardTitle className="flex items-center gap-2 text-slate-900">
+          <CardTitle className="flex items-center gap-2 text-foreground">
             <Network className="h-5 w-5" />
             {isEditor ? (
               <span
@@ -234,9 +234,9 @@ export function AboutSkillsAchievementsEditor({
                 <div
                   className={`${BLOCK_CONTAINER_CLASS} ${
                     dragSkillOver === i
-                      ? "border border-slate-400 bg-slate-50"
+                      ? "border border-muted-foreground/40 bg-muted"
                       : isEditor
-                        ? "border border-slate-100"
+                        ? "border border-border/60"
                         : "border-0"
                   }`}
                   onDragOver={(e) => {
@@ -263,14 +263,14 @@ export function AboutSkillsAchievementsEditor({
                             setDragSkillFrom(null);
                             setDragSkillOver(null);
                           }}
-                          className="mt-1 inline-flex h-8 w-8 cursor-grab items-center justify-center rounded border border-slate-200 text-slate-500 hover:text-slate-800 active:cursor-grabbing"
+                          className="mt-1 inline-flex h-8 w-8 cursor-grab items-center justify-center rounded border border-border text-muted-foreground hover:text-foreground active:cursor-grabbing"
                           aria-label="Drag to reorder skill block"
                           title="Drag to reorder"
                         >
                           <GripVertical className="h-4 w-4" />
                         </button>
                         <h3
-                          className="mt-1 mb-1 text-sm font-semibold text-slate-800 rounded px-1"
+                          className="mt-1 mb-1 text-sm font-semibold text-foreground rounded px-1"
                           data-about-edit={`technicalSkills.${i}.category`}
                         >
                           {section.category}
@@ -316,7 +316,7 @@ export function AboutSkillsAchievementsEditor({
                             </Badge>
                             <button
                               type="button"
-                              className="inline-flex h-5 w-5 items-center justify-center rounded border border-slate-200 text-slate-500 hover:text-slate-800"
+                              className="inline-flex h-5 w-5 items-center justify-center rounded border border-border text-muted-foreground hover:text-foreground"
                               onClick={() =>
                                 applySkillsAction((current) =>
                                   current.map((item, idx) =>
@@ -334,7 +334,7 @@ export function AboutSkillsAchievementsEditor({
                         ))}
                         <button
                           type="button"
-                          className="inline-flex h-6 items-center rounded border border-dashed border-slate-300 px-2 text-xs text-slate-600 hover:border-slate-500 hover:text-slate-900"
+                          className="inline-flex h-6 items-center rounded border border-dashed border-border px-2 text-xs text-muted-foreground hover:border-muted-foreground/50 hover:text-foreground"
                           onClick={() =>
                             applySkillsAction((current) => {
                               const next = current.map((item, idx) =>
@@ -354,7 +354,7 @@ export function AboutSkillsAchievementsEditor({
                     </>
                   ) : (
                     <>
-                      <h3 className="mb-1 text-sm font-semibold text-slate-800">{section.category}</h3>
+                      <h3 className="mb-1 text-sm font-semibold text-foreground">{section.category}</h3>
                       <div className="flex flex-wrap gap-2">
                         {section.items.map((skill) => (
                           <Badge key={skill} variant="secondary" className="text-xs">
@@ -389,7 +389,7 @@ export function AboutSkillsAchievementsEditor({
       {showAchievements && (
       <Card className="shadow-lg">
         <CardHeader>
-          <CardTitle className="flex items-center gap-2 text-slate-900">
+          <CardTitle className="flex items-center gap-2 text-foreground">
             <Award className="h-5 w-5" />
             {isEditor ? (
               <span
@@ -410,9 +410,9 @@ export function AboutSkillsAchievementsEditor({
                 <div
                   className={`${BLOCK_CONTAINER_CLASS} ${
                     dragAchievementOver === i
-                      ? "border border-slate-400 bg-slate-50"
+                      ? "border border-muted-foreground/40 bg-muted"
                       : isEditor
-                        ? "border border-slate-100"
+                        ? "border border-border/60"
                         : "border-0"
                   }`}
                   onDragOver={(e) => {
@@ -438,7 +438,7 @@ export function AboutSkillsAchievementsEditor({
                             setDragAchievementFrom(null);
                             setDragAchievementOver(null);
                           }}
-                          className="mt-1 inline-flex h-8 w-8 cursor-grab items-center justify-center rounded border border-slate-200 text-slate-500 hover:text-slate-800 active:cursor-grabbing"
+                          className="mt-1 inline-flex h-8 w-8 cursor-grab items-center justify-center rounded border border-border text-muted-foreground hover:text-foreground active:cursor-grabbing"
                           aria-label="Drag to reorder achievement block"
                           title="Drag to reorder"
                         >
@@ -447,14 +447,14 @@ export function AboutSkillsAchievementsEditor({
                         <div className="flex-1 min-w-0">
                           <div className="flex flex-wrap items-start justify-between gap-x-2 gap-y-1">
                             <p
-                              className="text-sm font-medium leading-snug text-slate-800 rounded px-1"
+                              className="text-sm font-medium leading-snug text-foreground rounded px-1"
                               data-about-edit={`achievements.${i}.title`}
                             >
                               {a.title}
                             </p>
                             <div className="flex items-center gap-1">
                               <p
-                                className="inline-flex rounded bg-slate-100 px-2 py-0.5 text-xs text-slate-600"
+                                className="inline-flex rounded bg-muted px-2 py-0.5 text-xs text-muted-foreground"
                                 data-about-edit={`achievements.${i}.year`}
                               >
                                 {a.year}
@@ -471,7 +471,7 @@ export function AboutSkillsAchievementsEditor({
                             </div>
                           </div>
                           <p
-                            className="mt-0.5 text-xs leading-snug text-slate-500 rounded px-1"
+                            className="mt-0.5 text-xs leading-snug text-muted-foreground rounded px-1"
                             data-about-edit={`achievements.${i}.organization`}
                           >
                             {trimRepeatedAchievementYear(a.organization, a.year)}
@@ -482,14 +482,14 @@ export function AboutSkillsAchievementsEditor({
                   ) : (
                     <>
                       <div className="flex flex-wrap items-start justify-between gap-x-2 gap-y-1">
-                        <p className="text-sm font-medium leading-snug text-slate-800">{a.title}</p>
+                        <p className="text-sm font-medium leading-snug text-foreground">{a.title}</p>
                         {a.year && (
-                          <p className="inline-flex rounded bg-slate-100 px-2 py-0.5 text-xs text-slate-600">
+                          <p className="inline-flex rounded bg-muted px-2 py-0.5 text-xs text-muted-foreground">
                             {a.year}
                           </p>
                         )}
                       </div>
-                      <p className="mt-0.5 text-xs leading-snug text-slate-500">
+                      <p className="mt-0.5 text-xs leading-snug text-muted-foreground">
                         {trimRepeatedAchievementYear(a.organization, a.year)}
                       </p>
                     </>

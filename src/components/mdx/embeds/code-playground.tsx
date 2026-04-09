@@ -32,9 +32,9 @@ export function CodePlayground({
   };
 
   return (
-    <div className="not-prose my-8 rounded-xl border border-slate-200 bg-white shadow-sm">
-      <div className="flex items-center justify-between border-b border-slate-100 px-4 py-2">
-        <span className="text-xs font-medium uppercase tracking-wide text-slate-500">
+    <div className="not-prose my-8 rounded-xl border border-border bg-card shadow-sm">
+      <div className="flex items-center justify-between border-b border-border/60 px-4 py-2">
+        <span className="text-xs font-medium uppercase tracking-wide text-muted-foreground">
           {title} · {language}
         </span>
         <Button type="button" size="sm" variant="outline" className="h-7 text-xs" onClick={() => void copy()}>
@@ -45,7 +45,7 @@ export function CodePlayground({
         value={code}
         onChange={(e) => setCode(e.target.value)}
         spellCheck={false}
-        className="w-full resize-y rounded-b-xl border-0 bg-slate-50/80 px-4 py-3 font-mono text-sm leading-relaxed text-slate-900 outline-none focus:ring-2 focus:ring-inset focus:ring-slate-300 min-h-[140px]"
+        className="w-full resize-y rounded-b-xl border-0 bg-muted/80 px-4 py-3 font-mono text-sm leading-relaxed text-foreground outline-none focus:ring-2 focus:ring-inset focus:ring-border min-h-[140px]"
         aria-label="Editable code sample"
       />
     </div>

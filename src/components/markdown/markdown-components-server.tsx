@@ -39,7 +39,7 @@ export function createServerMarkdownComponents(): Components {
       if (isInline) {
         return (
           <code
-            className="bg-slate-100 text-slate-800 px-1.5 py-0.5 rounded text-sm font-mono"
+            className="bg-muted text-foreground px-1.5 py-0.5 rounded text-sm font-mono"
             {...props}
           >
             {children}
@@ -81,7 +81,7 @@ export function createServerMarkdownComponents(): Components {
       }
       if (embedUrl) {
         return (
-          <div className="my-4 rounded-lg overflow-hidden bg-slate-900" style={{ aspectRatio: "16/9", maxWidth: "100%" }}>
+          <div className="my-4 rounded-lg overflow-hidden bg-foreground" style={{ aspectRatio: "16/9", maxWidth: "100%" }}>
             <iframe
               src={embedUrl}
               title={embedTitle}
@@ -99,27 +99,27 @@ export function createServerMarkdownComponents(): Components {
       );
     },
     table: ({ children, ...props }) => (
-      <div className="markdown-table-shell my-6 w-full overflow-x-auto rounded-lg border border-slate-200/90 bg-white shadow-sm">
+      <div className="markdown-table-shell my-6 w-full overflow-x-auto rounded-lg border border-border/90 bg-card shadow-sm">
         <table {...props} className="min-w-full border-collapse border-0 text-sm">
           {children}
         </table>
       </div>
     ),
     thead: ({ children, ...props }) => (
-      <thead {...props} className="bg-slate-100">
+      <thead {...props} className="bg-muted">
         {children}
       </thead>
     ),
     tbody: ({ children, ...props }) => <tbody {...props}>{children}</tbody>,
     tr: ({ children, ...props }) => (
-      <tr {...props} className="border-b border-slate-200 last:border-b-0">
+      <tr {...props} className="border-b border-border last:border-b-0">
         {children}
       </tr>
     ),
     th: ({ children, ...props }) => (
       <th
         {...props}
-        className="border border-slate-200 bg-slate-50/90 px-4 py-2 text-left text-sm font-semibold text-slate-900"
+        className="border border-border bg-muted/90 px-4 py-2 text-left text-sm font-semibold text-foreground"
       >
         {children}
       </th>
@@ -135,7 +135,7 @@ export function createServerMarkdownComponents(): Components {
       </ol>
     ),
     li: ({ children, ...props }) => (
-      <li {...props} className="text-slate-700">
+      <li {...props} className="text-foreground/90">
         {children}
       </li>
     ),
@@ -165,27 +165,27 @@ export function createServerMarkdownComponents(): Components {
         }
         if (isAloneCheckbox) {
           return (
-            <td {...props} className="border border-slate-200 px-4 py-2 text-center">
+            <td {...props} className="border border-border px-4 py-2 text-center">
               <input
                 type="checkbox"
                 readOnly
                 checked={isChecked}
                 tabIndex={-1}
-                className="h-4 w-4 rounded border-slate-300 text-blue-600 pointer-events-none"
+                className="h-4 w-4 rounded border-border text-blue-600 pointer-events-none"
                 aria-label="Task"
               />
             </td>
           );
         }
         return (
-          <td {...props} className="border border-slate-200 px-4 py-2 text-slate-700">
+          <td {...props} className="border border-border px-4 py-2 text-foreground/90">
             <div className="flex items-start gap-2">
               <input
                 type="checkbox"
                 readOnly
                 checked={isChecked}
                 tabIndex={-1}
-                className="mt-0.5 h-4 w-4 rounded border-slate-300 text-blue-600 pointer-events-none flex-shrink-0"
+                className="mt-0.5 h-4 w-4 rounded border-border text-blue-600 pointer-events-none flex-shrink-0"
                 aria-label="Task"
               />
               <div>{remainingContent}</div>
@@ -194,7 +194,7 @@ export function createServerMarkdownComponents(): Components {
         );
       }
       return (
-        <td {...props} className="border border-slate-200 px-4 py-2 text-slate-700">
+        <td {...props} className="border border-border px-4 py-2 text-foreground/90">
           {children}
         </td>
       );

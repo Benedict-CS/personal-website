@@ -12,10 +12,10 @@ type Props = {
  */
 export function PlatformLocaleSwitcher({ value, label }: Props) {
   return (
-    <label className="flex items-center gap-2 text-sm text-slate-700">
+    <label className="flex items-center gap-2 text-sm text-foreground/90">
       <span className="whitespace-nowrap">{label}</span>
       <select
-        className="rounded border border-slate-300 bg-white px-2 py-1.5 text-slate-900"
+        className="rounded border border-border bg-card px-2 py-1.5 text-foreground"
         value={value}
         onChange={(e) => {
           const next = e.target.value as PlatformLocale;

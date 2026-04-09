@@ -29,7 +29,7 @@ export function CodeSnippetBlock({
         ? hljs.highlight(code, { language: lang, ignoreIllegals: true })
         : hljs.highlightAuto(code);
       el.innerHTML = result.value;
-      el.className = `hljs block whitespace-pre font-mono text-slate-800 language-${result.language ?? lang}`;
+      el.className = `hljs block whitespace-pre font-mono text-foreground language-${result.language ?? lang}`;
     } catch {
       el.textContent = code;
     }
@@ -47,10 +47,10 @@ export function CodeSnippetBlock({
 
   return (
     <div
-      className={`overflow-hidden rounded-lg border border-slate-200 bg-slate-50 shadow-sm ${className ?? ""}`}
+      className={`overflow-hidden rounded-lg border border-border bg-muted shadow-sm ${className ?? ""}`}
     >
-      <div className="flex items-center justify-between gap-2 border-b border-slate-200 bg-white px-3 py-2">
-        <span className="truncate font-mono text-xs font-medium text-slate-600">
+      <div className="flex items-center justify-between gap-2 border-b border-border bg-card px-3 py-2">
+        <span className="truncate font-mono text-xs font-medium text-muted-foreground">
           {filename?.trim() ? filename.trim() : `snippet.${lang || "txt"}`}
         </span>
         <Button type="button" variant="ghost" size="sm" className="h-8 gap-1 text-xs" onClick={() => void copy()}>

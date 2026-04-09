@@ -146,9 +146,9 @@ export function MockCheckoutPanel({ siteId }: { siteId: string }) {
   };
 
   return (
-    <div className="rounded border border-slate-200 bg-white p-4">
+    <div className="rounded border border-border bg-card p-4">
       <h3 className="mb-2 text-lg font-semibold">Mock Stripe Checkout</h3>
-      <p className="mb-3 text-sm text-slate-600">Session: {sessionKey || "-"}</p>
+      <p className="mb-3 text-sm text-muted-foreground">Session: {sessionKey || "-"}</p>
       <div className="grid gap-2 sm:grid-cols-2">
         <Input value={email} onChange={(e) => setEmail(e.target.value)} placeholder="customer@example.com" />
         <div className="flex gap-2">
@@ -158,7 +158,7 @@ export function MockCheckoutPanel({ siteId }: { siteId: string }) {
       </div>
       <div className="mt-2 flex gap-2">
         <select
-          className="flex-1 rounded border border-slate-300 px-3 py-2 text-sm"
+          className="flex-1 rounded border border-border px-3 py-2 text-sm"
           value={selectedProductId}
           onChange={(e) => setSelectedProductId(e.target.value)}
         >
@@ -171,14 +171,14 @@ export function MockCheckoutPanel({ siteId }: { siteId: string }) {
         <Button variant="outline" onClick={addItem}>Add Item</Button>
       </div>
       <div className="mt-3 flex items-center justify-between">
-        <span className="text-sm text-slate-600">Cart total</span>
+        <span className="text-sm text-muted-foreground">Cart total</span>
         <strong>{totalsText || "$0.00"}</strong>
       </div>
       <div className="mt-3 flex gap-2">
         <Button variant="outline" onClick={() => refresh()}>Refresh Cart</Button>
         <Button onClick={checkout}>Checkout</Button>
       </div>
-      {status ? <p className="mt-2 text-sm text-slate-600">{status}</p> : null}
+      {status ? <p className="mt-2 text-sm text-muted-foreground">{status}</p> : null}
     </div>
   );
 }

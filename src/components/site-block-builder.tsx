@@ -733,14 +733,14 @@ function blockTypeLabel(type: BlockType): string {
 }
 
 function SkillPreviewIcon({ iconKey }: { iconKey: string }) {
-  return <SkillBlockIcon iconKey={iconKey} className="h-4 w-4 shrink-0 text-slate-500" />;
+  return <SkillBlockIcon iconKey={iconKey} className="h-4 w-4 shrink-0 text-muted-foreground" />;
 }
 
 function themeClasses(theme: SiteTheme): string {
-  if (theme === "soft") return "bg-slate-50 border-slate-200 text-slate-700";
+  if (theme === "soft") return "bg-muted border-border text-foreground/90";
   /** Strong contrast while staying light-only (no dark mode). */
-  if (theme === "bold") return "bg-slate-100 border-slate-300 text-slate-900";
-  return "bg-white border-slate-200 text-slate-800";
+  if (theme === "bold") return "bg-muted border-border text-foreground";
+  return "bg-card border-border text-foreground";
 }
 
 function stylePreviewClasses(block: SiteBlock): string {
@@ -748,8 +748,8 @@ function stylePreviewClasses(block: SiteBlock): string {
     block.stylePreset === "highlight"
       ? "bg-blue-50 border-blue-200"
       : block.stylePreset === "card"
-        ? "bg-white border-slate-200"
-        : "bg-transparent border-slate-200";
+        ? "bg-card border-border"
+        : "bg-transparent border-border";
   const spacing =
     block.spacing === "compact" ? "p-2" : block.spacing === "spacious" ? "p-6" : "p-4";
   const radius =
@@ -776,8 +776,8 @@ function BlockPreview({
   theme: SiteTheme;
 }) {
   const base = `rounded-lg border p-4 ${themeClasses(theme)}`;
-  const titleClass = "text-slate-900";
-  const muted = theme === "bold" ? "text-slate-600" : "text-slate-600";
+  const titleClass = "text-foreground";
+  const muted = theme === "bold" ? "text-muted-foreground" : "text-muted-foreground";
   const styleClass = stylePreviewClasses(block);
 
   if (block.type === "hero") {
@@ -795,8 +795,8 @@ function BlockPreview({
       <div className={`${base} ${styleClass}`}>
         <div className="flex flex-col items-center gap-4 sm:flex-row sm:items-start sm:gap-6">
           <div
-            className={`h-24 w-24 shrink-0 overflow-hidden rounded-full border border-slate-200 bg-slate-100 sm:h-28 sm:w-28 ${
-              img ? "" : "flex items-center justify-center text-xs text-slate-400"
+            className={`h-24 w-24 shrink-0 overflow-hidden rounded-full border border-border bg-muted sm:h-28 sm:w-28 ${
+              img ? "" : "flex items-center justify-center text-xs text-muted-foreground/70"
             }`}
             style={img ? { backgroundImage: `url(${img})`, backgroundSize: "cover", backgroundPosition: "center" } : undefined}
           >
@@ -804,14 +804,14 @@ function BlockPreview({
           </div>
           <div className="min-w-0 flex-1 text-center sm:text-left">
             <h3 className={`text-2xl font-bold tracking-tight ${titleClass}`}>{block.title || "Your name"}</h3>
-            {block.tagline ? <p className={`mt-1 text-sm font-medium text-slate-700`}>{block.tagline}</p> : null}
+            {block.tagline ? <p className={`mt-1 text-sm font-medium text-foreground/90`}>{block.tagline}</p> : null}
             {block.subtitle ? <p className={`mt-2 text-sm leading-relaxed ${muted}`}>{block.subtitle}</p> : null}
             <div className="mt-3 flex flex-wrap justify-center gap-2 sm:justify-start">
-              <span className="rounded-full bg-slate-900 px-3 py-1 text-xs font-medium text-white">
+              <span className="rounded-full bg-foreground px-3 py-1 text-xs font-medium text-primary-foreground">
                 {block.buttonText || "Primary"}
               </span>
               {block.secondaryButtonText ? (
-                <span className="rounded-full border border-slate-300 bg-white px-3 py-1 text-xs font-medium text-slate-800">
+                <span className="rounded-full border border-border bg-card px-3 py-1 text-xs font-medium text-foreground">
                   {block.secondaryButtonText}
                 </span>
               ) : null}
@@ -827,14 +827,14 @@ function BlockPreview({
     return (
       <div className={`${base} ${styleClass}`}>
         <h4 className={`font-semibold ${titleClass}`}>{block.title || "Experience"}</h4>
-        <ul className="mt-3 space-y-3 border-l-2 border-slate-200 pl-4">
+        <ul className="mt-3 space-y-3 border-l-2 border-border pl-4">
           {rows.slice(0, 4).map((r, i) => (
             <li key={`${r.period}-${i}`} className="relative">
-              <span className="absolute -left-[1.15rem] top-1.5 h-2 w-2 rounded-full bg-slate-400" />
-              <p className="text-xs font-medium uppercase tracking-wide text-slate-500">{r.period}</p>
-              <p className="font-medium text-slate-900">{r.title}</p>
-              <p className="text-sm text-slate-600">{r.organization}</p>
-              {r.description ? <p className="mt-1 text-xs text-slate-600">{r.description}</p> : null}
+              <span className="absolute -left-[1.15rem] top-1.5 h-2 w-2 rounded-full bg-muted-foreground/45" />
+              <p className="text-xs font-medium uppercase tracking-wide text-muted-foreground">{r.period}</p>
+              <p className="font-medium text-foreground">{r.title}</p>
+              <p className="text-sm text-muted-foreground">{r.organization}</p>
+              {r.description ? <p className="mt-1 text-xs text-muted-foreground">{r.description}</p> : null}
             </li>
           ))}
         </ul>
@@ -851,15 +851,15 @@ function BlockPreview({
           {projects.slice(0, 4).map((p, i) => (
             <div
               key={`${p.title}-${i}`}
-              className="flex flex-col overflow-hidden rounded-lg border border-slate-200 bg-white shadow-sm"
+              className="flex flex-col overflow-hidden rounded-lg border border-border bg-card shadow-sm"
             >
               <div
-                className="h-24 bg-slate-100 bg-cover bg-center"
+                className="h-24 bg-muted bg-cover bg-center"
                 style={p.imageUrl ? { backgroundImage: `url(${p.imageUrl})` } : undefined}
               />
               <div className="p-3">
-                <p className="font-medium text-slate-900">{p.title || "Project"}</p>
-                <p className="mt-1 text-xs text-slate-600 line-clamp-2">{p.summary}</p>
+                <p className="font-medium text-foreground">{p.title || "Project"}</p>
+                <p className="mt-1 text-xs text-muted-foreground line-clamp-2">{p.summary}</p>
               </div>
             </div>
           ))}
@@ -877,11 +877,11 @@ function BlockPreview({
           {skills.slice(0, 12).map((s, i) => (
             <span
               key={`${s.name}-${i}`}
-              className="inline-flex items-center gap-1.5 rounded-full border border-slate-200 bg-white px-3 py-1.5 text-xs font-medium text-slate-800 shadow-sm"
+              className="inline-flex items-center gap-1.5 rounded-full border border-border bg-card px-3 py-1.5 text-xs font-medium text-foreground shadow-sm"
             >
               <SkillPreviewIcon iconKey={s.iconKey} />
               {s.name}
-              {s.level ? <span className="text-slate-500">· {s.level}</span> : null}
+              {s.level ? <span className="text-muted-foreground">· {s.level}</span> : null}
             </span>
           ))}
         </div>
@@ -897,10 +897,10 @@ function BlockPreview({
         {block.subtitle ? <p className={`mt-1 text-sm ${muted}`}>{block.subtitle}</p> : null}
         <div className="mt-3 space-y-2">
           {fields.slice(0, 6).map((f, i) => (
-            <div key={`${f.label}-${i}`} className="rounded border border-slate-200 bg-white px-3 py-2 text-sm text-slate-500">
+            <div key={`${f.label}-${i}`} className="rounded border border-border bg-card px-3 py-2 text-sm text-muted-foreground">
               {f.label}
               {f.required ? <span className="text-red-500"> *</span> : null}
-              <span className="ml-2 text-xs text-slate-400">({f.fieldType})</span>
+              <span className="ml-2 text-xs text-muted-foreground/70">({f.fieldType})</span>
             </div>
           ))}
         </div>
@@ -916,7 +916,7 @@ function BlockPreview({
         <p className={`mt-1 text-xs ${muted}`}>
           {(block.codeFilename || "snippet") + (block.codeLanguage ? ` · ${block.codeLanguage}` : "")}
         </p>
-        <pre className="mt-2 max-h-32 overflow-hidden rounded border border-slate-200 bg-slate-900/5 p-2 text-left font-mono text-[11px] leading-relaxed text-slate-800">
+        <pre className="mt-2 max-h-32 overflow-hidden rounded border border-border bg-foreground/5 p-2 text-left font-mono text-[11px] leading-relaxed text-foreground">
           {preview}
           {(block.codeText || "").split("\n").length > 6 ? "\n…" : ""}
         </pre>
@@ -929,7 +929,7 @@ function BlockPreview({
       <div className={`${base} ${styleClass}`}>
         <h4 className={`font-semibold ${titleClass}`}>{block.title || "GitHub"}</h4>
         <p className={`mt-2 text-sm ${muted}`}>@{block.githubUsername || "username"}</p>
-        <p className="mt-1 text-xs text-slate-500">
+        <p className="mt-1 text-xs text-muted-foreground">
           {block.githubStatsVariant === "repos" ? "Repository list" : "Profile + streak"}
         </p>
       </div>
@@ -952,7 +952,7 @@ function BlockPreview({
         <h4 className={`font-semibold ${titleClass}`}>{block.title || "Gallery"}</h4>
         <div className="mt-3 grid grid-cols-2 gap-2">
           {urls.slice(0, 4).map((u, i) => (
-            <div key={`${u}-${i}`} className="h-16 rounded bg-slate-200/70" title={u} />
+            <div key={`${u}-${i}`} className="h-16 rounded bg-muted/80" title={u} />
           ))}
         </div>
       </div>
@@ -972,7 +972,7 @@ function BlockPreview({
           }`}
         >
           {cols.map((c, i) => (
-            <div key={`${c}-${i}`} className="rounded border border-slate-300/50 bg-white/60 p-2 text-xs text-slate-700">
+            <div key={`${c}-${i}`} className="rounded border border-border/50 bg-card/60 p-2 text-xs text-foreground/90">
               {c.split("\n")[0]}
             </div>
           ))}
@@ -990,9 +990,9 @@ function BlockPreview({
           {stats.slice(0, 4).map((s, i) => {
             const [label, value] = s.split("|");
             return (
-              <div key={`${s}-${i}`} className="rounded border border-slate-300/40 bg-white/70 p-2">
-                <p className="text-lg font-semibold text-slate-900">{value?.trim() || "-"}</p>
-                <p className="text-xs text-slate-600">{label?.trim() || "Metric"}</p>
+              <div key={`${s}-${i}`} className="rounded border border-border/40 bg-card/70 p-2">
+                <p className="text-lg font-semibold text-foreground">{value?.trim() || "-"}</p>
+                <p className="text-xs text-muted-foreground">{label?.trim() || "Metric"}</p>
               </div>
             );
           })}
@@ -1010,9 +1010,9 @@ function BlockPreview({
           {rows.slice(0, 3).map((r, i) => {
             const [name, role, quote] = r.split("|");
             return (
-              <div key={`${r}-${i}`} className="rounded border border-slate-300/40 bg-white/70 p-2">
-                <p className="text-sm text-slate-700">&quot;{quote?.trim() || "Great experience."}&quot;</p>
-                <p className="mt-1 text-xs font-medium text-slate-900">
+              <div key={`${r}-${i}`} className="rounded border border-border/40 bg-card/70 p-2">
+                <p className="text-sm text-foreground/90">&quot;{quote?.trim() || "Great experience."}&quot;</p>
+                <p className="mt-1 text-xs font-medium text-foreground">
                   {name?.trim() || "Customer"} {role ? `· ${role.trim()}` : ""}
                 </p>
               </div>
@@ -1030,7 +1030,7 @@ function BlockPreview({
         <h4 className={`font-semibold ${titleClass}`}>{block.title || "Logo Cloud"}</h4>
         <div className="mt-3 grid grid-cols-3 gap-2">
           {logos.slice(0, 6).map((logo, i) => (
-            <div key={`${logo}-${i}`} className="h-10 rounded border border-slate-300/40 bg-white/70" />
+            <div key={`${logo}-${i}`} className="h-10 rounded border border-border/40 bg-card/70" />
           ))}
         </div>
       </div>
@@ -1046,11 +1046,11 @@ function BlockPreview({
           {rows.slice(0, 3).map((r, i) => {
             const [name, role] = r.split("|");
             return (
-              <div key={`${r}-${i}`} className="flex items-center gap-2 rounded border border-slate-300/40 bg-white/70 p-2">
-                <div className="h-8 w-8 rounded-full bg-slate-300/60" />
+              <div key={`${r}-${i}`} className="flex items-center gap-2 rounded border border-border/40 bg-card/70 p-2">
+                <div className="h-8 w-8 rounded-full bg-muted-foreground/40" />
                 <div>
-                  <p className="text-sm font-medium text-slate-900">{name?.trim() || "Member"}</p>
-                  <p className="text-xs text-slate-600">{role?.trim() || "Role"}</p>
+                  <p className="text-sm font-medium text-foreground">{name?.trim() || "Member"}</p>
+                  <p className="text-xs text-muted-foreground">{role?.trim() || "Role"}</p>
                 </div>
               </div>
             );
@@ -1064,7 +1064,7 @@ function BlockPreview({
     return (
       <div className={`${base} ${styleClass}`}>
         <h4 className={`font-semibold ${titleClass}`}>{block.title || "Comparison"}</h4>
-        <div className="mt-3 h-20 rounded border border-slate-300/40 bg-white/70" />
+        <div className="mt-3 h-20 rounded border border-border/40 bg-card/70" />
       </div>
     );
   }
@@ -1104,13 +1104,13 @@ function SortableBlockCard({
   const style = { transform: CSS.Transform.toString(transform), transition };
 
   return (
-    <Card ref={setNodeRef} style={style} className={isDragging ? "border-slate-400 shadow-md" : ""}>
+    <Card ref={setNodeRef} style={style} className={isDragging ? "border-muted-foreground/40 shadow-md" : ""}>
       <CardHeader className="pb-3">
         <div className="flex items-center justify-between gap-3">
           <div className="flex items-center gap-2">
             <button
               type="button"
-              className="cursor-grab rounded border border-slate-200 p-1.5 text-slate-500 hover:text-slate-700"
+              className="cursor-grab rounded border border-border p-1.5 text-muted-foreground hover:text-foreground/90"
               aria-label="Drag block"
               {...attributes}
               {...listeners}
@@ -1141,10 +1141,10 @@ function SortableBlockCard({
       </CardHeader>
       {!collapsed && <CardContent className="space-y-3">
         <div className="grid gap-2 sm:grid-cols-5">
-          <label className="text-xs text-slate-600">
+          <label className="text-xs text-muted-foreground">
             Style
             <select
-              className="mt-1 block w-full rounded border border-slate-300 bg-white px-2 py-1.5 text-sm"
+              className="mt-1 block w-full rounded border border-border bg-card px-2 py-1.5 text-sm"
               value={block.stylePreset ?? "minimal"}
               onChange={(e) => onChange({ ...block, stylePreset: e.target.value as StylePreset })}
             >
@@ -1153,10 +1153,10 @@ function SortableBlockCard({
               <option value="highlight">Highlight</option>
             </select>
           </label>
-          <label className="text-xs text-slate-600">
+          <label className="text-xs text-muted-foreground">
             Spacing
             <select
-              className="mt-1 block w-full rounded border border-slate-300 bg-white px-2 py-1.5 text-sm"
+              className="mt-1 block w-full rounded border border-border bg-card px-2 py-1.5 text-sm"
               value={block.spacing ?? "normal"}
               onChange={(e) => onChange({ ...block, spacing: e.target.value as SpacingPreset })}
             >
@@ -1165,10 +1165,10 @@ function SortableBlockCard({
               <option value="spacious">Spacious</option>
             </select>
           </label>
-          <label className="text-xs text-slate-600">
+          <label className="text-xs text-muted-foreground">
             Align
             <select
-              className="mt-1 block w-full rounded border border-slate-300 bg-white px-2 py-1.5 text-sm"
+              className="mt-1 block w-full rounded border border-border bg-card px-2 py-1.5 text-sm"
               value={block.align ?? "left"}
               onChange={(e) => onChange({ ...block, align: e.target.value as TextAlignPreset })}
             >
@@ -1176,10 +1176,10 @@ function SortableBlockCard({
               <option value="center">Center</option>
             </select>
           </label>
-          <label className="text-xs text-slate-600">
+          <label className="text-xs text-muted-foreground">
             Radius
             <select
-              className="mt-1 block w-full rounded border border-slate-300 bg-white px-2 py-1.5 text-sm"
+              className="mt-1 block w-full rounded border border-border bg-card px-2 py-1.5 text-sm"
               value={block.radius ?? "md"}
               onChange={(e) => onChange({ ...block, radius: e.target.value as RadiusPreset })}
             >
@@ -1189,10 +1189,10 @@ function SortableBlockCard({
               <option value="lg">Large</option>
             </select>
           </label>
-          <label className="text-xs text-slate-600">
+          <label className="text-xs text-muted-foreground">
             Shadow
             <select
-              className="mt-1 block w-full rounded border border-slate-300 bg-white px-2 py-1.5 text-sm"
+              className="mt-1 block w-full rounded border border-border bg-card px-2 py-1.5 text-sm"
               value={block.shadow ?? "none"}
               onChange={(e) => onChange({ ...block, shadow: e.target.value as ShadowPreset })}
             >
@@ -1286,7 +1286,7 @@ function SortableBlockCard({
         {block.type === "skillGrid" && (
           <>
             <Input placeholder="Section title" value={block.title ?? ""} onChange={(e) => onChange({ ...block, title: e.target.value })} />
-            <p className="text-xs text-slate-600">
+            <p className="text-xs text-muted-foreground">
               Icon keys: code, layers, pen-line, briefcase, circle (see Lucide icon names).
             </p>
             <Textarea
@@ -1346,10 +1346,10 @@ function SortableBlockCard({
               value={block.githubUsername ?? ""}
               onChange={(e) => onChange({ ...block, githubUsername: e.target.value })}
             />
-            <label className="text-xs text-slate-600">
+            <label className="text-xs text-muted-foreground">
               Layout
               <select
-                className="mt-1 block w-full rounded border border-slate-300 bg-white px-2 py-1.5 text-sm"
+                className="mt-1 block w-full rounded border border-border bg-card px-2 py-1.5 text-sm"
                 value={block.githubStatsVariant ?? "overview"}
                 onChange={(e) =>
                   onChange({ ...block, githubStatsVariant: e.target.value === "repos" ? "repos" : "overview" })
@@ -1464,10 +1464,10 @@ function SortableBlockCard({
           <>
             <Input placeholder="Section title" value={block.title ?? ""} onChange={(e) => onChange({ ...block, title: e.target.value })} />
             <div className="grid gap-2 sm:grid-cols-2">
-              <label className="text-xs text-slate-600">
+              <label className="text-xs text-muted-foreground">
                 Columns
                 <select
-                  className="mt-1 block w-full rounded border border-slate-300 bg-white px-2 py-1.5 text-sm"
+                  className="mt-1 block w-full rounded border border-border bg-card px-2 py-1.5 text-sm"
                   value={block.columnsCount ?? 2}
                   onChange={(e) => onChange({ ...block, columnsCount: Number(e.target.value) as 2 | 3 })}
                 >
@@ -1475,10 +1475,10 @@ function SortableBlockCard({
                   <option value={3}>Three columns</option>
                 </select>
               </label>
-              <label className="text-xs text-slate-600">
+              <label className="text-xs text-muted-foreground">
                 Mobile behavior
                 <select
-                  className="mt-1 block w-full rounded border border-slate-300 bg-white px-2 py-1.5 text-sm"
+                  className="mt-1 block w-full rounded border border-border bg-card px-2 py-1.5 text-sm"
                   value={block.mobileBehavior ?? "stack"}
                   onChange={(e) => onChange({ ...block, mobileBehavior: e.target.value as "stack" | "scroll" })}
                 >
@@ -2098,31 +2098,31 @@ export function SiteBlockBuilder({
   };
 
   return (
-    <div className="space-y-4 rounded-lg border border-slate-200 bg-slate-50/60 p-3">
+    <div className="space-y-4 rounded-lg border border-border bg-muted/60 p-3">
       <div className="flex flex-wrap items-center gap-2">
-        <div className="mr-2 inline-flex items-center gap-1.5 rounded-full bg-white px-2.5 py-1 text-xs font-medium text-slate-700">
+        <div className="mr-2 inline-flex items-center gap-1.5 rounded-full bg-card px-2.5 py-1 text-xs font-medium text-foreground/90">
           <Sparkles className="h-3.5 w-3.5" />
           Visual builder
         </div>
-        <div className="inline-flex items-center rounded border border-slate-300 bg-white p-1 text-xs">
+        <div className="inline-flex items-center rounded border border-border bg-card p-1 text-xs">
           <button
             type="button"
             onClick={() => setTheme("clean")}
-            className={`rounded px-2 py-1 ${theme === "clean" ? "bg-slate-900 text-white" : "text-slate-700"}`}
+            className={`rounded px-2 py-1 ${theme === "clean" ? "bg-foreground text-primary-foreground" : "text-foreground/90"}`}
           >
             Clean
           </button>
           <button
             type="button"
             onClick={() => setTheme("soft")}
-            className={`rounded px-2 py-1 ${theme === "soft" ? "bg-slate-900 text-white" : "text-slate-700"}`}
+            className={`rounded px-2 py-1 ${theme === "soft" ? "bg-foreground text-primary-foreground" : "text-foreground/90"}`}
           >
             Soft
           </button>
           <button
             type="button"
             onClick={() => setTheme("bold")}
-            className={`rounded px-2 py-1 ${theme === "bold" ? "bg-slate-900 text-white" : "text-slate-700"}`}
+            className={`rounded px-2 py-1 ${theme === "bold" ? "bg-foreground text-primary-foreground" : "text-foreground/90"}`}
           >
             Bold
           </button>
@@ -2174,12 +2174,12 @@ export function SiteBlockBuilder({
               </div>
               {savedTemplates.length > 0 && (
                 <div className="space-y-2">
-                  <p className="text-xs font-medium text-slate-600">Saved templates</p>
+                  <p className="text-xs font-medium text-muted-foreground">Saved templates</p>
                   {savedTemplates.map((tpl) => (
-                    <div key={tpl.id} className="flex items-center justify-between rounded border border-slate-200 bg-white px-2 py-1.5">
+                    <div key={tpl.id} className="flex items-center justify-between rounded border border-border bg-card px-2 py-1.5">
                       <button
                         type="button"
-                        className="text-sm text-slate-700 hover:underline"
+                        className="text-sm text-foreground/90 hover:underline"
                         onClick={() => applySavedTemplate(tpl.id)}
                       >
                         {tpl.name}
@@ -2213,7 +2213,7 @@ export function SiteBlockBuilder({
                 value={brand.brandLogoUrl}
                 onChange={(e) => setBrand((b) => ({ ...b, brandLogoUrl: e.target.value }))}
               />
-              <label className="text-xs text-slate-600">
+              <label className="text-xs text-muted-foreground">
                 Primary color
                 <div className="mt-1 flex items-center gap-2">
                   <input
@@ -2227,7 +2227,7 @@ export function SiteBlockBuilder({
                   />
                 </div>
               </label>
-              <label className="text-xs text-slate-600">
+              <label className="text-xs text-muted-foreground">
                 Accent color
                 <div className="mt-1 flex items-center gap-2">
                   <input
@@ -2253,11 +2253,11 @@ export function SiteBlockBuilder({
                 {savedComponents.map((component) => (
                   <div
                     key={component.id}
-                    className="flex items-center justify-between rounded border border-slate-200 bg-white px-2 py-1.5"
+                    className="flex items-center justify-between rounded border border-border bg-card px-2 py-1.5"
                   >
                     <button
                       type="button"
-                      className="text-sm text-slate-700 hover:underline"
+                      className="text-sm text-foreground/90 hover:underline"
                       onClick={() => insertSavedComponent(component.id)}
                     >
                       {component.name}
@@ -2280,7 +2280,7 @@ export function SiteBlockBuilder({
               value={sectionSearch}
               onChange={(e) => setSectionSearch(e.target.value)}
               placeholder="Search sections..."
-              className="max-w-xs bg-white"
+              className="max-w-xs bg-card"
             />
             {filteredLibrary.map((item) => (
               <Button
@@ -2318,7 +2318,7 @@ export function SiteBlockBuilder({
             </SortableContext>
           </DndContext>
 
-          <div className="rounded border border-slate-200 bg-white p-3">
+          <div className="rounded border border-border bg-card p-3">
             <div className="flex flex-wrap items-center gap-2">
               <Button
                 type="button"
@@ -2331,7 +2331,7 @@ export function SiteBlockBuilder({
                 <Upload className="h-4 w-4" />
                 {isUploading ? "Uploading..." : "Upload media directly"}
               </Button>
-              <span className="text-xs text-slate-500">
+              <span className="text-xs text-muted-foreground">
                 Select a block &quot;Insert/Add from Media&quot; first, then upload files directly into that block.
               </span>
             </div>
@@ -2351,11 +2351,11 @@ export function SiteBlockBuilder({
             <CardHeader className="pb-2">
               <CardTitle className="flex items-center justify-between text-base">
                 <span className="inline-flex items-center gap-2"><Eye className="h-4 w-4" />Live preview</span>
-                <span className="inline-flex gap-1 rounded border border-slate-300 p-1">
+                <span className="inline-flex gap-1 rounded border border-border p-1">
                   <button
                     type="button"
                     onClick={() => setDevicePreview("desktop")}
-                    className={`rounded px-2 py-1 text-xs ${devicePreview === "desktop" ? "bg-slate-900 text-white" : "text-slate-700"}`}
+                    className={`rounded px-2 py-1 text-xs ${devicePreview === "desktop" ? "bg-foreground text-primary-foreground" : "text-foreground/90"}`}
                   >
                     <Monitor className="mr-1 inline h-3 w-3" />
                     Desktop
@@ -2363,7 +2363,7 @@ export function SiteBlockBuilder({
                   <button
                     type="button"
                     onClick={() => setDevicePreview("mobile")}
-                    className={`rounded px-2 py-1 text-xs ${devicePreview === "mobile" ? "bg-slate-900 text-white" : "text-slate-700"}`}
+                    className={`rounded px-2 py-1 text-xs ${devicePreview === "mobile" ? "bg-foreground text-primary-foreground" : "text-foreground/90"}`}
                   >
                     <Smartphone className="mr-1 inline h-3 w-3" />
                     Mobile
@@ -2402,7 +2402,7 @@ export function SiteBlockBuilder({
               </CardTitle>
             </CardHeader>
             <CardContent>
-              <ul className="space-y-1 text-sm text-slate-600">
+              <ul className="space-y-1 text-sm text-muted-foreground">
                 {quickFlowTips.map((tip) => (
                   <li key={tip}>{tip}</li>
                 ))}
@@ -2412,7 +2412,7 @@ export function SiteBlockBuilder({
         </div>
       </div>
 
-      <p className="text-xs text-slate-500">
+      <p className="text-xs text-muted-foreground">
         Drag blocks to reorder. Theme and layout are stored in Markdown-friendly format and can still be edited manually.
       </p>
 

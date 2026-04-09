@@ -79,7 +79,7 @@ function EditableText({
     <div
       contentEditable
       suppressContentEditableWarning
-      className={`${className} rounded px-2 py-1 outline-none ring-offset-2 hover:ring-2 hover:ring-slate-300 focus:ring-2 focus:ring-slate-400`}
+      className={`${className} rounded px-2 py-1 outline-none ring-offset-2 hover:ring-2 hover:ring-border focus:ring-2 focus:ring-ring`}
       onBlur={(event) => onChange(event.currentTarget.textContent ?? "")}
       data-placeholder={placeholder}
     >
@@ -95,10 +95,10 @@ function SortableBlock({ id, children }: { id: string; children: React.ReactNode
     <div
       ref={setNodeRef}
       style={style}
-      className="group relative rounded-xl border border-transparent hover:border-slate-300"
+      className="group relative rounded-xl border border-transparent hover:border-border"
       data-editable-block={id}
     >
-      <div className="pointer-events-none absolute right-2 top-2 z-20 hidden rounded-md border border-slate-300 bg-white/95 p-1 text-slate-600 shadow-sm group-hover:block">
+      <div className="pointer-events-none absolute right-2 top-2 z-20 hidden rounded-md border border-border bg-card/95 p-1 text-muted-foreground shadow-sm group-hover:block">
         <button type="button" className="pointer-events-auto cursor-grab active:cursor-grabbing" aria-label={`Drag ${id}`} {...attributes} {...listeners}>
           <GripVertical className="h-4 w-4" />
         </button>
@@ -182,7 +182,7 @@ export function ImmersivePageEditor({ payload, isLoggedIn }: { payload: EditorPa
   return (
     <div className="relative min-h-screen bg-white">
       {payload.kind === "home" && (
-        <div className="min-h-screen bg-gradient-to-br from-slate-50 via-white to-slate-100">
+        <div className="min-h-screen bg-gradient-to-br from-muted/40 via-background to-muted/60">
           <DndContext sensors={sensors} collisionDetection={closestCenter} onDragEnd={onHomeDragEnd}>
             <SortableContext items={homeSectionOrder} strategy={verticalListSortingStrategy}>
               {homeSectionOrder.map((id) => {
@@ -193,12 +193,12 @@ export function ImmersivePageEditor({ payload, isLoggedIn }: { payload: EditorPa
                       <section className="container mx-auto max-w-6xl px-6 py-20 md:py-28 lg:py-32">
                         <div className="mx-auto max-w-4xl text-center">
                           <EditableText
-                            className="mb-6 text-4xl font-bold tracking-tight text-slate-900 sm:text-5xl md:text-6xl lg:text-7xl"
+                            className="mb-6 text-4xl font-bold tracking-tight text-foreground sm:text-5xl md:text-6xl lg:text-7xl"
                             value={home.heroTitle ?? DEFAULT_HOME.heroTitle}
                             onChange={(value) => setHome((prev) => ({ ...prev, heroTitle: value }))}
                           />
                           <EditableText
-                            className="mb-10 text-lg text-slate-600 sm:text-xl md:text-2xl"
+                            className="mb-10 text-lg text-muted-foreground sm:text-xl md:text-2xl"
                             value={home.heroSubtitle ?? DEFAULT_HOME.heroSubtitle}
                             onChange={(value) => setHome((prev) => ({ ...prev, heroSubtitle: value }))}
                           />
@@ -216,16 +216,16 @@ export function ImmersivePageEditor({ payload, isLoggedIn }: { payload: EditorPa
                   return (
                     <SortableBlock key={id} id={id}>
                       <section className="container mx-auto max-w-6xl px-6 py-16">
-                        <h2 className="mb-8 text-3xl font-bold text-slate-900">Latest Articles</h2>
+                        <h2 className="mb-8 text-3xl font-bold text-foreground">Latest Articles</h2>
                         <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-3">
                           {payload.latestPosts.map((post) => (
-                            <Card key={post.id} className="h-full border-slate-200/80">
+                            <Card key={post.id} className="h-full border-border/80">
                               <CardContent className="space-y-3 p-6">
-                                <h3 className="line-clamp-2 text-lg font-semibold text-slate-900">
+                                <h3 className="line-clamp-2 text-lg font-semibold text-foreground">
                                   {post.pinned ? "Pinned - " : ""}
                                   {post.title}
                                 </h3>
-                                <div className="flex items-center gap-2 text-sm text-slate-500">
+                                <div className="flex items-center gap-2 text-sm text-muted-foreground">
                                   <span>{formatDate(post.createdAt)}</span>
                                   <span>•</span>
                                   <span>{formatReadingTime(calculateReadingTime(post.content))}</span>
@@ -239,7 +239,7 @@ export function ImmersivePageEditor({ payload, isLoggedIn }: { payload: EditorPa
                                     ))}
                                   </div>
                                 )}
-                                <p className="text-sm text-slate-600 line-clamp-3">
+                                <p className="text-sm text-muted-foreground line-clamp-3">
                                   {post.description || stripMarkdown(post.content).slice(0, 150)}
                                 </p>
                               </CardContent>
@@ -254,10 +254,10 @@ export function ImmersivePageEditor({ payload, isLoggedIn }: { payload: EditorPa
                   <SortableBlock key={id} id={id}>
                     <section className="container mx-auto max-w-6xl px-6 py-16">
                       <div className="mx-auto max-w-4xl">
-                        <h2 className="mb-8 text-center text-3xl font-bold text-slate-900">Technical Skills</h2>
+                        <h2 className="mb-8 text-center text-3xl font-bold text-foreground">Technical Skills</h2>
                         <div className="flex flex-wrap justify-center gap-3">
                           {(home.skills && home.skills.length > 0 ? home.skills : DEFAULT_HOME.skills).map((skill) => (
-                            <Badge key={skill} variant="secondary" className="px-4 py-2 text-sm font-medium text-slate-700">
+                            <Badge key={skill} variant="secondary" className="px-4 py-2 text-sm font-medium text-foreground/90">
                               {skill}
                             </Badge>
                           ))}
@@ -273,26 +273,26 @@ export function ImmersivePageEditor({ payload, isLoggedIn }: { payload: EditorPa
       )}
 
       {payload.kind === "contact" && (
-        <div className="min-h-screen bg-gradient-to-br from-slate-50 via-white to-slate-100">
+        <div className="min-h-screen bg-gradient-to-br from-muted/40 via-background to-muted/60">
           <section className="container mx-auto max-w-2xl px-4 py-16 md:py-24">
             <EditableText
-              className="mb-4 text-4xl font-bold text-slate-900"
+              className="mb-4 text-4xl font-bold text-foreground"
               value="Contact"
               onChange={() => undefined}
             />
             <EditableText
-              className="mb-2 text-slate-600"
+              className="mb-2 text-muted-foreground"
               value={contact.intro ?? "I'm open to new opportunities, collaborations, or a chat about tech."}
               onChange={(value) => setContact((prev) => ({ ...prev, intro: value }))}
             />
             <EditableText
-              className="mb-10 text-sm text-slate-500"
+              className="mb-10 text-sm text-muted-foreground"
               value={contact.formNote ?? "Use the form below, or email me directly at hello@example.com."}
               onChange={(value) => setContact((prev) => ({ ...prev, formNote: value }))}
             />
             <Card>
               <CardContent className="p-6">
-                <p className="text-sm text-slate-500">Form block (live frontend style preview)</p>
+                <p className="text-sm text-muted-foreground">Form block (live frontend style preview)</p>
               </CardContent>
             </Card>
           </section>
@@ -307,7 +307,7 @@ export function ImmersivePageEditor({ payload, isLoggedIn }: { payload: EditorPa
                 {about.profileImage ? (
                   <button
                     type="button"
-                    className="mb-6 inline-block rounded-full border-2 border-slate-300 p-1 hover:border-slate-400"
+                    className="mb-6 inline-block rounded-full border-2 border-border p-1 hover:border-muted-foreground/35"
                     onClick={() => setMediaOpen(true)}
                   >
                     <div className="relative h-32 w-32 overflow-hidden rounded-full">
@@ -317,24 +317,24 @@ export function ImmersivePageEditor({ payload, isLoggedIn }: { payload: EditorPa
                 ) : (
                   <button
                     type="button"
-                    className="mb-6 inline-flex h-32 w-32 items-center justify-center rounded-full border-2 border-dashed border-slate-300 text-slate-500 hover:border-slate-500"
+                    className="mb-6 inline-flex h-32 w-32 items-center justify-center rounded-full border-2 border-dashed border-border text-muted-foreground hover:border-muted-foreground/45"
                     onClick={() => setMediaOpen(true)}
                   >
                     <ImageIcon className="h-8 w-8" />
                   </button>
                 )}
                 <EditableText
-                  className="mb-2 text-4xl font-bold text-slate-900"
+                  className="mb-2 text-4xl font-bold text-foreground"
                   value={about.heroName ?? "Your Name"}
                   onChange={(value) => setAbout((prev) => ({ ...prev, heroName: value }))}
                 />
                 <EditableText
-                  className="mb-2 text-lg text-slate-600"
+                  className="mb-2 text-lg text-muted-foreground"
                   value={about.heroTagline ?? "Builder Owner | Product Creator"}
                   onChange={(value) => setAbout((prev) => ({ ...prev, heroTagline: value }))}
                 />
                 <EditableText
-                  className="mx-auto mt-6 max-w-4xl text-left text-slate-700"
+                  className="mx-auto mt-6 max-w-4xl text-left text-foreground/90"
                   value={about.introText ?? "Write your intro here."}
                   onChange={(value) => setAbout((prev) => ({ ...prev, introText: value }))}
                 />
@@ -349,12 +349,12 @@ export function ImmersivePageEditor({ payload, isLoggedIn }: { payload: EditorPa
           <Card className="shadow-lg">
             <CardContent className="space-y-6 p-6">
               <EditableText
-                className="text-3xl font-bold text-slate-900"
+                className="text-3xl font-bold text-foreground"
                 value={custom.title ?? "Untitled"}
                 onChange={(value) => setCustom((prev) => ({ ...prev, title: value }))}
               />
               <EditableText
-                className="min-h-[260px] whitespace-pre-wrap text-slate-700"
+                className="min-h-[260px] whitespace-pre-wrap text-foreground/90"
                 value={custom.content ?? ""}
                 onChange={(value) => setCustom((prev) => ({ ...prev, content: value }))}
               />

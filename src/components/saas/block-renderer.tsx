@@ -54,7 +54,7 @@ function BlockNode({ block }: { block: VisualBlock }) {
       return (
         <section style={style} className="space-y-3">
           <h2 className="text-3xl font-semibold">{title}</h2>
-          <p className="text-slate-600">{subtitle}</p>
+          <p className="text-muted-foreground">{subtitle}</p>
           <button className="rounded-md bg-blue-600 px-4 py-2 text-white">
             {text(content.ctaText, "Get Started")}
           </button>
@@ -66,7 +66,7 @@ function BlockNode({ block }: { block: VisualBlock }) {
           <h3 className="mb-3 text-2xl font-semibold">{title}</h3>
           <div className="grid gap-3 md:grid-cols-3">
             {list(content.features).map((f) => (
-              <div key={f} className="rounded border border-slate-200 bg-white p-3">{f}</div>
+              <div key={f} className="rounded border border-border bg-card p-3">{f}</div>
             ))}
           </div>
         </section>
@@ -90,7 +90,7 @@ function BlockNode({ block }: { block: VisualBlock }) {
           <h3 className="text-xl font-semibold">{title}</h3>
           <div className="grid gap-2">
             {list(content.fields).map((field) => (
-              <input key={field} placeholder={field} className="rounded border border-slate-300 px-3 py-2" />
+              <input key={field} placeholder={field} className="rounded border border-border px-3 py-2" />
             ))}
             <button className="rounded-md bg-blue-600 px-4 py-2 text-white">Submit</button>
           </div>
@@ -102,10 +102,10 @@ function BlockNode({ block }: { block: VisualBlock }) {
           <h3 className="text-xl font-semibold">{text(content.title, "Featured products")}</h3>
           <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
             {Array.from({ length: Number(content.limit ?? 4) }).map((_, idx) => (
-              <div key={`p-${idx}`} className="rounded border border-slate-200 bg-white p-3">
-                <div className="mb-2 h-24 rounded bg-slate-100" />
+              <div key={`p-${idx}`} className="rounded border border-border bg-card p-3">
+                <div className="mb-2 h-24 rounded bg-muted" />
                 <p className="font-medium">Product {idx + 1}</p>
-                <p className="text-sm text-slate-500">$99.00</p>
+                <p className="text-sm text-muted-foreground">$99.00</p>
               </div>
             ))}
           </div>
@@ -114,10 +114,10 @@ function BlockNode({ block }: { block: VisualBlock }) {
     case "CommerceSingleProduct":
       return (
         <section style={style} className="grid gap-3 md:grid-cols-2">
-          <div className="h-48 rounded bg-slate-100" />
+          <div className="h-48 rounded bg-muted" />
           <div className="space-y-2">
             <h3 className="text-2xl font-semibold">{text(content.productSlug, "product-slug")}</h3>
-            <p className="text-slate-600">Variant-aware product detail block for storefront pages.</p>
+            <p className="text-muted-foreground">Variant-aware product detail block for storefront pages.</p>
             <button className="rounded-md bg-blue-600 px-4 py-2 text-white">Add to cart</button>
           </div>
         </section>
@@ -126,8 +126,8 @@ function BlockNode({ block }: { block: VisualBlock }) {
       return (
         <section style={style}>
           <h3 className="text-xl font-semibold">Cart Drawer</h3>
-          <p className="text-slate-600">Slide-out cart preview with quantity controls and subtotal.</p>
-          <div className="mt-2 rounded border border-slate-200 p-2 text-sm">
+          <p className="text-muted-foreground">Slide-out cart preview with quantity controls and subtotal.</p>
+          <div className="mt-2 rounded border border-border p-2 text-sm">
             Position: {text(content.position, "right")} | Subtotal visibility: {String(content.showSubtotal ?? true)}
           </div>
         </section>
@@ -136,7 +136,7 @@ function BlockNode({ block }: { block: VisualBlock }) {
       return (
         <section style={style} className="space-y-2">
           <h3 className="text-xl font-semibold">Checkout Flow</h3>
-          <ol className="list-decimal space-y-1 pl-5 text-sm text-slate-700">
+          <ol className="list-decimal space-y-1 pl-5 text-sm text-foreground/90">
             {list(content.steps).map((step) => (
               <li key={step}>{step}</li>
             ))}
@@ -160,27 +160,27 @@ function BlockNode({ block }: { block: VisualBlock }) {
       return (
         <section style={style} className="overflow-hidden">
           <div className="flex flex-col items-center gap-6 sm:flex-row sm:items-start">
-            <div className="relative h-28 w-28 shrink-0 overflow-hidden rounded-full border border-slate-200 bg-slate-100">
+            <div className="relative h-28 w-28 shrink-0 overflow-hidden rounded-full border border-border bg-muted">
               {img ? (
                 <Image src={img} alt={title} width={112} height={112} className="h-full w-full object-cover" />
               ) : (
-                <div className="flex h-full w-full items-center justify-center text-xs text-slate-400">Photo</div>
+                <div className="flex h-full w-full items-center justify-center text-xs text-muted-foreground/70">Photo</div>
               )}
             </div>
             <div className="min-w-0 flex-1 text-center sm:text-left">
-              <h2 className="text-3xl font-bold tracking-tight text-slate-900">{title}</h2>
+              <h2 className="text-3xl font-bold tracking-tight text-foreground">{title}</h2>
               {content.tagline ? (
-                <p className="mt-1 text-sm font-medium text-slate-700">{String(content.tagline)}</p>
+                <p className="mt-1 text-sm font-medium text-foreground/90">{String(content.tagline)}</p>
               ) : null}
-              <p className="mt-2 text-slate-600">{subtitle}</p>
+              <p className="mt-2 text-muted-foreground">{subtitle}</p>
               <div className="mt-4 flex flex-wrap justify-center gap-2 sm:justify-start">
                 {(content.ctaText ?? content.buttonText) ? (
-                  <span className="rounded-full bg-slate-900 px-4 py-2 text-sm font-medium text-white">
+                  <span className="rounded-full bg-foreground px-4 py-2 text-sm font-medium text-primary-foreground">
                     {String(content.ctaText ?? content.buttonText)}
                   </span>
                 ) : null}
                 {(content.secondaryCtaText ?? content.secondaryButtonText) ? (
-                  <span className="rounded-full border border-slate-300 bg-white px-4 py-2 text-sm font-medium text-slate-800">
+                  <span className="rounded-full border border-border bg-card px-4 py-2 text-sm font-medium text-foreground">
                     {String(content.secondaryCtaText ?? content.secondaryButtonText)}
                   </span>
                 ) : null}
@@ -195,15 +195,15 @@ function BlockNode({ block }: { block: VisualBlock }) {
       const entries = parseTimelineText(text(content.timelineText, ""));
       return (
         <section style={style}>
-          <h3 className="mb-4 text-2xl font-semibold text-slate-900">{title}</h3>
-          <ul className="space-y-4 border-l-2 border-slate-200 pl-5">
+          <h3 className="mb-4 text-2xl font-semibold text-foreground">{title}</h3>
+          <ul className="space-y-4 border-l-2 border-border pl-5">
             {entries.map((e, i) => (
               <li key={`${e.period}-${i}`} className="relative">
-                <span className="absolute -left-[1.35rem] top-2 h-2 w-2 rounded-full bg-slate-400" />
-                <p className="text-xs font-medium uppercase tracking-wide text-slate-500">{e.period}</p>
-                <p className="font-semibold text-slate-900">{e.title}</p>
-                <p className="text-sm text-slate-600">{e.organization}</p>
-                {e.description ? <p className="mt-1 text-sm text-slate-600">{e.description}</p> : null}
+                <span className="absolute -left-[1.35rem] top-2 h-2 w-2 rounded-full bg-muted-foreground/45" />
+                <p className="text-xs font-medium uppercase tracking-wide text-muted-foreground">{e.period}</p>
+                <p className="font-semibold text-foreground">{e.title}</p>
+                <p className="text-sm text-muted-foreground">{e.organization}</p>
+                {e.description ? <p className="mt-1 text-sm text-muted-foreground">{e.description}</p> : null}
               </li>
             ))}
           </ul>
@@ -215,14 +215,14 @@ function BlockNode({ block }: { block: VisualBlock }) {
       const projects = parseProjectsText(text(content.projectsText, ""));
       return (
         <section style={style}>
-          <h3 className="mb-4 text-2xl font-semibold text-slate-900">{title}</h3>
+          <h3 className="mb-4 text-2xl font-semibold text-foreground">{title}</h3>
           <div className="grid gap-4 sm:grid-cols-2">
             {projects.map((p, i) => (
               <article
                 key={`${p.title}-${i}`}
-                className="flex flex-col overflow-hidden rounded-xl border border-slate-200 bg-white shadow-sm"
+                className="flex flex-col overflow-hidden rounded-xl border border-border bg-card shadow-sm"
               >
-                <div className="relative h-40 w-full bg-slate-100">
+                <div className="relative h-40 w-full bg-muted">
                   {p.imageUrl ? (
                     <Image
                       src={p.imageUrl}
@@ -234,8 +234,8 @@ function BlockNode({ block }: { block: VisualBlock }) {
                   ) : null}
                 </div>
                 <div className="p-4">
-                  <h4 className="font-semibold text-slate-900">{p.title}</h4>
-                  <p className="mt-1 text-sm text-slate-600">{p.summary}</p>
+                  <h4 className="font-semibold text-foreground">{p.title}</h4>
+                  <p className="mt-1 text-sm text-muted-foreground">{p.summary}</p>
                   {p.link ? (
                     <a href={p.link} className="mt-2 inline-block text-sm font-medium text-blue-700 underline">
                       View project
@@ -253,16 +253,16 @@ function BlockNode({ block }: { block: VisualBlock }) {
       const skills = parseSkillsText(text(content.skillsText, ""));
       return (
         <section style={style}>
-          <h3 className="mb-4 text-2xl font-semibold text-slate-900">{title}</h3>
+          <h3 className="mb-4 text-2xl font-semibold text-foreground">{title}</h3>
           <div className="flex flex-wrap gap-2">
             {skills.map((s, i) => (
               <span
                 key={`${s.name}-${i}`}
-                className="inline-flex items-center gap-2 rounded-full border border-slate-200 bg-white px-3 py-1.5 text-sm text-slate-800 shadow-sm"
+                className="inline-flex items-center gap-2 rounded-full border border-border bg-card px-3 py-1.5 text-sm text-foreground shadow-sm"
               >
                 <SkillBlockIcon iconKey={s.iconKey} />
                 {s.name}
-                {s.level ? <span className="text-slate-500">· {s.level}</span> : null}
+                {s.level ? <span className="text-muted-foreground">· {s.level}</span> : null}
               </span>
             ))}
           </div>
@@ -274,16 +274,16 @@ function BlockNode({ block }: { block: VisualBlock }) {
       const fields = parseFormFieldsText(text(content.formFieldsText, ""));
       return (
         <section style={style} className="space-y-3">
-          <h3 className="text-xl font-semibold text-slate-900">{title}</h3>
+          <h3 className="text-xl font-semibold text-foreground">{title}</h3>
           {content.intro || content.subtitle ? (
-            <p className="text-sm text-slate-600">{String(content.intro ?? content.subtitle)}</p>
+            <p className="text-sm text-muted-foreground">{String(content.intro ?? content.subtitle)}</p>
           ) : null}
           <div className="grid gap-2">
             {fields.map((f, i) => (
-              <label key={`${f.label}-${i}`} className="block text-sm text-slate-700">
+              <label key={`${f.label}-${i}`} className="block text-sm text-foreground/90">
                 {f.label}
                 {f.required ? <span className="text-red-500"> *</span> : null}
-                <span className="mt-1 block rounded border border-slate-200 bg-white px-3 py-2 text-slate-400">
+                <span className="mt-1 block rounded border border-border bg-card px-3 py-2 text-muted-foreground/70">
                   {f.fieldType} field
                 </span>
               </label>
@@ -300,7 +300,7 @@ function BlockNode({ block }: { block: VisualBlock }) {
       return (
         <section style={style} className="space-y-2">
           {title && title !== "CodeSnippet" && title !== "codeSnippet" ? (
-            <h3 className="text-xl font-semibold text-slate-900">{title}</h3>
+            <h3 className="text-xl font-semibold text-foreground">{title}</h3>
           ) : null}
           <CodeSnippetBlock code={code} language={lang} filename={fn || undefined} />
         </section>
@@ -312,7 +312,7 @@ function BlockNode({ block }: { block: VisualBlock }) {
       const variant = content.githubStatsVariant === "repos" ? "repos" : "overview";
       return (
         <section style={style} className="space-y-2">
-          <h3 className="text-xl font-semibold text-slate-900">{title || "GitHub"}</h3>
+          <h3 className="text-xl font-semibold text-foreground">{title || "GitHub"}</h3>
           <GitHubStatsBlock username={user} variant={variant} />
         </section>
       );
@@ -322,7 +322,7 @@ function BlockNode({ block }: { block: VisualBlock }) {
       const user = text(content.leetcodeUsername, "");
       return (
         <section style={style} className="space-y-2">
-          <h3 className="text-xl font-semibold text-slate-900">{title || "LeetCode"}</h3>
+          <h3 className="text-xl font-semibold text-foreground">{title || "LeetCode"}</h3>
           <LeetCodeStatsBlock username={user} />
         </section>
       );
@@ -331,7 +331,7 @@ function BlockNode({ block }: { block: VisualBlock }) {
       return (
         <section style={style}>
           <h3 className="mb-1 text-xl font-semibold">{title}</h3>
-          <p className="text-slate-600">{subtitle}</p>
+          <p className="text-muted-foreground">{subtitle}</p>
         </section>
       );
   }

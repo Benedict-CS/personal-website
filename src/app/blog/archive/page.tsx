@@ -83,42 +83,42 @@ export default async function ArchivePage() {
       <div className="mb-8">
         <Link
           href="/blog"
-          className="text-sm text-slate-600 hover:text-slate-900 transition-colors mb-4 inline-block"
+          className="text-sm text-muted-foreground hover:text-foreground transition-colors mb-4 inline-block"
         >
           ← Back to Blog
         </Link>
-        <h1 className="text-3xl font-bold text-slate-900 mt-4 sm:text-4xl">Archive</h1>
-        <p className="text-slate-600 mt-2">
+        <h1 className="text-3xl font-bold text-foreground mt-4 sm:text-4xl">Archive</h1>
+        <p className="text-muted-foreground mt-2">
           {posts.length} {posts.length === 1 ? "post" : "posts"} in total
         </p>
       </div>
 
       {years.length === 0 ? (
         <div className="rounded-xl border border-[var(--border)] bg-card p-12 text-center shadow-[var(--shadow-sm)]">
-          <p className="text-slate-500">No posts available yet.</p>
+          <p className="text-muted-foreground">No posts available yet.</p>
         </div>
       ) : (
         <div className="space-y-10">
           {years.map((year) => (
             <section key={year}>
-              <h2 className="text-2xl font-bold text-slate-900 mb-5 pb-2 border-b border-slate-200 sm:text-3xl">
+              <h2 className="text-2xl font-bold text-foreground mb-5 pb-2 border-b border-border sm:text-3xl">
                 {year}
-                <span className="ml-3 text-lg font-normal text-slate-500">
+                <span className="ml-3 text-lg font-normal text-muted-foreground">
                   ({postsByYear[year].length} {postsByYear[year].length === 1 ? "post" : "posts"})
                 </span>
               </h2>
               <div className="grid gap-5 sm:gap-6 md:grid-cols-2 lg:grid-cols-3">
                 {postsByYear[year].map((post) => (
                   <Link key={post.id} href={`/blog/${post.slug}`} className="block rounded-xl transition-opacity hover:opacity-95">
-                    <Card className="h-full border-[var(--border)] shadow-[var(--shadow-sm)] transition-all duration-200 hover:shadow-[var(--shadow-md)] hover:border-slate-300">
+                    <Card className="h-full border-[var(--border)] shadow-[var(--shadow-sm)] transition-all duration-200 hover:shadow-[var(--shadow-md)] hover:border-muted-foreground/25">
                       <CardHeader className="gap-2 p-5 sm:gap-3 sm:p-6">
-                        <CardTitle className="line-clamp-2 text-slate-900 leading-relaxed flex items-start gap-1.5">
+                        <CardTitle className="line-clamp-2 text-foreground leading-relaxed flex items-start gap-1.5">
                           {post.pinned && (
                             <Pin className="h-4 w-4 mt-0.5 flex-shrink-0 text-amber-500" aria-hidden />
                           )}
                           <span>{post.title}</span>
                         </CardTitle>
-                          <div className="flex items-center gap-2 text-sm text-slate-500">
+                          <div className="flex items-center gap-2 text-sm text-muted-foreground">
                             <span>{formatDate(post.createdAt)}</span>
                             <span>•</span>
                             <span>{formatReadingTime(calculateReadingTime(post.content))}</span>
@@ -138,7 +138,7 @@ export default async function ArchivePage() {
                         )}
                       </CardHeader>
                       <CardContent>
-                        <p className="text-sm text-slate-600 line-clamp-3 leading-relaxed">
+                        <p className="text-sm text-muted-foreground line-clamp-3 leading-relaxed">
                           {post.description || truncateContent(post.content)}
                         </p>
                       </CardContent>

@@ -81,11 +81,11 @@ export default async function CustomPageRoute({ params }: Props) {
   // Light-only site: "bold" is high-contrast borders and shadow, not a dark panel.
   const containerClass =
     pageTheme === "bold"
-      ? "bg-white text-slate-900 border-2 border-slate-900 shadow-md"
+      ? "bg-card text-foreground border-2 border-foreground shadow-md"
       : pageTheme === "soft"
-        ? "bg-slate-50 border-slate-200"
-        : "bg-white border-slate-200";
-  const titleClass = "text-slate-900";
+        ? "bg-muted/50 border-border"
+        : "bg-card border-border";
+  const titleClass = "text-foreground";
 
   return (
     <div className="container mx-auto max-w-4xl px-4 py-12">

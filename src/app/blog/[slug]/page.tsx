@@ -257,7 +257,7 @@ export default async function BlogPostPage({
                         <Link key={tag.id} href={`/blog/tag/${tag.slug}`}>
                           <Badge
                             variant="secondary"
-                            className="text-xs cursor-pointer hover:bg-slate-200 hover:scale-105 transition-all"
+                            className="text-xs cursor-pointer hover:bg-accent hover:scale-105 transition-all"
                             title={`View all posts tagged "${tag.name}"`}
                           >
                             {tag.name}
@@ -302,8 +302,8 @@ export default async function BlogPostPage({
 
                 {/* Related posts (by tag) */}
                 {relatedPosts.length > 0 && (
-                  <div className="border-t border-slate-200 pt-8">
-                    <h3 className="mb-3 text-sm font-medium uppercase tracking-wider text-slate-500">
+                  <div className="border-t border-border pt-8">
+                    <h3 className="mb-3 text-sm font-medium uppercase tracking-wider text-muted-foreground">
                       Related posts
                     </h3>
                     <ul className="space-y-2">
@@ -311,7 +311,7 @@ export default async function BlogPostPage({
                         <li key={r.id}>
                           <Link
                             href={`/blog/${r.slug}`}
-                            className="text-slate-700 hover:text-slate-900 hover:underline"
+                            className="text-foreground/90 hover:text-foreground hover:underline"
                           >
                             {r.title}
                           </Link>
@@ -322,17 +322,17 @@ export default async function BlogPostPage({
                 )}
 
                 {/* Prev/Next navigation */}
-                <div className="border-t border-slate-200 pt-8">
+                <div className="border-t border-border pt-8">
                   <div className="flex flex-col gap-4 sm:flex-row sm:justify-between">
                     {prevPost ? (
                       <Link
                         href={`/blog/${prevPost.slug}`}
-                        className="group flex-1 rounded-lg border border-slate-200 bg-white p-4 transition-all hover:border-slate-300 hover:shadow-md"
+                        className="group flex-1 rounded-lg border border-border bg-card p-4 transition-all hover:border-muted-foreground/25 hover:shadow-md"
                       >
-                        <div className="text-sm text-slate-500">
+                        <div className="text-sm text-muted-foreground">
                           ← Previous
                         </div>
-                        <div className="mt-1 font-medium text-slate-900 group-hover:text-slate-700">
+                        <div className="mt-1 font-medium text-foreground group-hover:text-foreground/90">
                           {prevPost.title}
                         </div>
                       </Link>
@@ -343,12 +343,12 @@ export default async function BlogPostPage({
                     {nextPost ? (
                       <Link
                         href={`/blog/${nextPost.slug}`}
-                        className="group flex-1 rounded-lg border border-slate-200 bg-white p-4 text-right transition-all hover:border-slate-300 hover:shadow-md"
+                        className="group flex-1 rounded-lg border border-border bg-card p-4 text-right transition-all hover:border-muted-foreground/25 hover:shadow-md"
                       >
-                        <div className="text-sm text-slate-500">
+                        <div className="text-sm text-muted-foreground">
                           Next →
                         </div>
-                        <div className="mt-1 font-medium text-slate-900 group-hover:text-slate-700">
+                        <div className="mt-1 font-medium text-foreground group-hover:text-foreground/90">
                           {nextPost.title}
                         </div>
                       </Link>
@@ -364,7 +364,7 @@ export default async function BlogPostPage({
                   </Link>
                 </div>
 
-                <div className="border-t border-slate-200 pt-8 mt-8">
+                <div className="border-t border-border pt-8 mt-8">
                   <GiscusComments mapping="pathname" />
                 </div>
               </div>
