@@ -20,6 +20,6 @@
 
 - [x] Dashboard: `eyebrow` on all `DashboardPageHeader` usages (overview, posts, content, analytics, notes, tags, setup, cv, audit, tools, site/home/pages, media, operations, platform sites, billing).
 - [x] Immersive editor: `EditorImmersiveHeader` + `publicSiteContainerClassName`; custom page missing slug uses `DashboardEmptyState`.
-- [ ] Optional: replace remaining `text-slate-*` on About blocks with `text-foreground` / `border-border` in a focused pass (large file).
+- [x] About page: replaced hardcoded `slate` Tailwind classes with semantic tokens (`foreground`, `muted-foreground`, `border-border`, etc.).
 
 **Verify:** `npm run lint`, `npm run typecheck`, `npm test`, `npm run build`.

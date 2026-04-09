@@ -449,7 +449,7 @@ export default async function AboutPage({
             <div className="text-center">
               {profileImage ? (
                 <div className="mb-6 inline-block" data-about-profile-image>
-                  <div className="relative h-32 w-32 rounded-full overflow-hidden border-4 border-slate-200 shadow-md mx-auto">
+                  <div className="relative h-32 w-32 rounded-full overflow-hidden border-4 border-border shadow-md mx-auto">
                     <Image
                       src={profileImage}
                       alt={heroName?.trim() || "Profile"}
@@ -461,19 +461,19 @@ export default async function AboutPage({
                   </div>
                 </div>
               ) : (
-                <div className="mb-6 inline-flex h-32 w-32 items-center justify-center rounded-full bg-gradient-to-br from-slate-400 to-slate-600 text-5xl font-bold text-white shadow-md">
+                <div className="mb-6 inline-flex h-32 w-32 items-center justify-center rounded-full bg-gradient-to-br from-muted-foreground/45 to-muted-foreground/75 text-5xl font-bold text-white shadow-md">
                   {(heroName?.trim() || "B")[0]}
                 </div>
               )}
-              <h1 className="mb-2 text-4xl font-bold text-slate-900" data-about-edit="heroName">
+              <h1 className="mb-2 text-4xl font-bold text-foreground" data-about-edit="heroName">
                 {heroName?.trim() || "Your Name"}
               </h1>
               {(heroTagline?.trim()) ? (
-                <p className="mb-2 text-lg text-slate-600" data-about-edit="heroTagline">
+                <p className="mb-2 text-lg text-muted-foreground" data-about-edit="heroTagline">
                   {heroTagline}
                 </p>
               ) : (
-                <p className="mb-2 text-lg text-slate-600" data-about-edit="heroTagline">
+                <p className="mb-2 text-lg text-muted-foreground" data-about-edit="heroTagline">
                   Builder Owner | Product Creator
                 </p>
               )}
@@ -491,8 +491,8 @@ export default async function AboutPage({
               </div>
             </div>
             {introText && introText.trim() && (
-              <div className="mt-8 pt-6 border-t border-slate-200 text-left max-w-4xl mx-auto px-0">
-                <p className="text-slate-700 whitespace-pre-wrap leading-relaxed" data-about-edit="introText">{introText}</p>
+              <div className="mt-8 pt-6 border-t border-border text-left max-w-4xl mx-auto px-0">
+                <p className="text-foreground/90 whitespace-pre-wrap leading-relaxed" data-about-edit="introText">{introText}</p>
               </div>
             )}
           </CardContent>
@@ -508,7 +508,7 @@ export default async function AboutPage({
               >
               <Card className="shadow-lg">
                 <CardHeader>
-                  <CardTitle className="flex items-center gap-2 text-slate-900">
+                  <CardTitle className="flex items-center gap-2 text-foreground">
                     <GraduationCap className="h-5 w-5" />
                     <span data-about-edit="sectionTitles.education">{sectionTitles.education}</span>
                   </CardTitle>
@@ -542,7 +542,7 @@ export default async function AboutPage({
                             </div>
                           ) : (
                             <div
-                              className="hidden h-16 w-16 flex-shrink-0 items-center justify-center rounded border-2 border-dashed border-slate-300 text-[11px] text-slate-500"
+                              className="hidden h-16 w-16 flex-shrink-0 items-center justify-center rounded border-2 border-dashed border-border text-[11px] text-muted-foreground"
                               data-about-logo-key={`educationBlocks.${i}.logoUrl`}
                               data-about-logo-kind="education"
                               data-about-logo-empty
@@ -552,9 +552,9 @@ export default async function AboutPage({
                           )}
                           <div className="flex-1 min-w-0 flex flex-wrap items-start justify-between gap-x-4 gap-y-0.5">
                             <div>
-                              <h3 className="font-semibold text-slate-900 text-lg mb-0.5" data-about-edit={`educationBlocks.${i}.title`}>{entry.title}</h3>
+                              <h3 className="font-semibold text-foreground text-lg mb-0.5" data-about-edit={`educationBlocks.${i}.title`}>{entry.title}</h3>
                               {entry.organization && (
-                                <p className="text-base font-semibold text-slate-700 flex items-center gap-1.5 flex-wrap" data-about-edit={`educationBlocks.${i}.organization`}>
+                                <p className="text-base font-semibold text-foreground/90 flex items-center gap-1.5 flex-wrap" data-about-edit={`educationBlocks.${i}.organization`}>
                                   <span>{entry.organization}</span>
                                   {countryCode && (
                                     <CountryFlag countryCode={countryCode} />
@@ -563,7 +563,7 @@ export default async function AboutPage({
                               )}
                             </div>
                             {entry.dateRange && (
-                              <Badge variant="secondary" className="shrink-0 text-slate-600 font-normal" data-about-edit={`educationBlocks.${i}.dateRange`}>{entry.dateRange}</Badge>
+                              <Badge variant="secondary" className="shrink-0 text-muted-foreground font-normal" data-about-edit={`educationBlocks.${i}.dateRange`}>{entry.dateRange}</Badge>
                             )}
                           </div>
                         </div>
@@ -590,7 +590,7 @@ export default async function AboutPage({
               >
               <Card className="shadow-lg">
                 <CardHeader>
-                  <CardTitle className="flex items-center gap-2 text-slate-900">
+                  <CardTitle className="flex items-center gap-2 text-foreground">
                     <Briefcase className="h-5 w-5" />
                     <span data-about-edit="sectionTitles.experience">{sectionTitles.experience}</span>
                   </CardTitle>
@@ -620,7 +620,7 @@ export default async function AboutPage({
                             </div>
                           ) : (
                             <div
-                              className="hidden h-16 w-16 flex-shrink-0 items-center justify-center rounded border-2 border-dashed border-slate-300 text-[11px] text-slate-500"
+                              className="hidden h-16 w-16 flex-shrink-0 items-center justify-center rounded border-2 border-dashed border-border text-[11px] text-muted-foreground"
                               data-about-logo-key={`experienceBlocks.${i}.logoUrl`}
                               data-about-logo-kind="experience"
                               data-about-logo-empty
@@ -630,13 +630,13 @@ export default async function AboutPage({
                           )}
                           <div className="flex-1 min-w-0 flex flex-wrap items-start justify-between gap-x-4 gap-y-0.5">
                             <div>
-                              <h3 className="font-semibold text-slate-900 text-lg mb-0.5" data-about-edit={`experienceBlocks.${i}.title`}>{entry.title}</h3>
+                              <h3 className="font-semibold text-foreground text-lg mb-0.5" data-about-edit={`experienceBlocks.${i}.title`}>{entry.title}</h3>
                               {entry.organization && (
-                                <p className="text-base font-semibold text-slate-700" data-about-edit={`experienceBlocks.${i}.organization`}>{entry.organization}</p>
+                                <p className="text-base font-semibold text-foreground/90" data-about-edit={`experienceBlocks.${i}.organization`}>{entry.organization}</p>
                               )}
                             </div>
                             {entry.dateRange && (
-                              <Badge variant="secondary" className="shrink-0 text-slate-600 font-normal" data-about-edit={`experienceBlocks.${i}.dateRange`}>{entry.dateRange}</Badge>
+                              <Badge variant="secondary" className="shrink-0 text-muted-foreground font-normal" data-about-edit={`experienceBlocks.${i}.dateRange`}>{entry.dateRange}</Badge>
                             )}
                           </div>
                         </div>
@@ -663,7 +663,7 @@ export default async function AboutPage({
               >
               <Card className="shadow-lg">
                 <CardHeader>
-                  <CardTitle className="flex items-center gap-2 text-slate-900">
+                  <CardTitle className="flex items-center gap-2 text-foreground">
                     <HeartHandshake className="h-5 w-5" />
                     <span data-about-edit="sectionTitles.volunteer">{sectionTitles.volunteer ?? "Volunteer"}</span>
                   </CardTitle>
@@ -694,7 +694,7 @@ export default async function AboutPage({
                             </div>
                           ) : (
                             <div
-                              className="hidden h-16 w-16 flex-shrink-0 items-center justify-center rounded border-2 border-dashed border-slate-300 text-[11px] text-slate-500"
+                              className="hidden h-16 w-16 flex-shrink-0 items-center justify-center rounded border-2 border-dashed border-border text-[11px] text-muted-foreground"
                               data-about-logo-key={`volunteerBlocks.${i}.logoUrl`}
                               data-about-logo-kind="volunteer"
                               data-about-logo-empty
@@ -704,13 +704,13 @@ export default async function AboutPage({
                           )}
                           <div className="flex-1 min-w-0 flex flex-wrap items-start justify-between gap-x-4 gap-y-0.5">
                             <div>
-                              <h3 className="font-semibold text-slate-900 text-lg mb-0.5" data-about-edit={`volunteerBlocks.${i}.title`}>{entry.title}</h3>
+                              <h3 className="font-semibold text-foreground text-lg mb-0.5" data-about-edit={`volunteerBlocks.${i}.title`}>{entry.title}</h3>
                               {entry.organization && (
-                                <p className="text-base font-semibold text-slate-700" data-about-edit={`volunteerBlocks.${i}.organization`}>{entry.organization}</p>
+                                <p className="text-base font-semibold text-foreground/90" data-about-edit={`volunteerBlocks.${i}.organization`}>{entry.organization}</p>
                               )}
                             </div>
                             {entry.dateRange && (
-                              <Badge variant="secondary" className="shrink-0 text-slate-600 font-normal" data-about-edit={`volunteerBlocks.${i}.dateRange`}>{entry.dateRange}</Badge>
+                              <Badge variant="secondary" className="shrink-0 text-muted-foreground font-normal" data-about-edit={`volunteerBlocks.${i}.dateRange`}>{entry.dateRange}</Badge>
                             )}
                           </div>
                         </div>
@@ -727,7 +727,7 @@ export default async function AboutPage({
                     })}
                   </div>
                   ) : (
-                    <p className="text-sm text-slate-500">No volunteer entries yet.</p>
+                    <p className="text-sm text-muted-foreground">No volunteer entries yet.</p>
                   )}
                 </CardContent>
               </Card>
@@ -745,7 +745,7 @@ export default async function AboutPage({
                 >
                   <Card className="shadow-lg">
                     <CardHeader>
-                      <CardTitle className="flex items-center gap-2 text-slate-900">
+                      <CardTitle className="flex items-center gap-2 text-foreground">
                         <Code className="h-5 w-5" />
                         <span data-about-edit={`customSections.${sectionIndex}.title`}>
                           {section.title || "Custom section"}
@@ -760,7 +760,7 @@ export default async function AboutPage({
                           return (
                             <div
                               key={`${sectionId}-${i}`}
-                              className="border-l-4 border-slate-400 pl-3"
+                              className="border-l-4 border-muted-foreground/35 pl-3"
                               data-about-block-root
                               data-about-block-section="custom"
                               data-about-block-group={sectionId}
@@ -779,7 +779,7 @@ export default async function AboutPage({
                                   </div>
                                 ) : (
                                   <div
-                                    className="hidden h-16 w-16 flex-shrink-0 items-center justify-center rounded border-2 border-dashed border-slate-300 text-[11px] text-slate-500"
+                                    className="hidden h-16 w-16 flex-shrink-0 items-center justify-center rounded border-2 border-dashed border-border text-[11px] text-muted-foreground"
                                     data-about-logo-key={`${blockPrefix}.${i}.logoUrl`}
                                     data-about-logo-kind="custom"
                                     data-about-logo-empty
@@ -789,13 +789,13 @@ export default async function AboutPage({
                                 )}
                                 <div className="flex-1 min-w-0 flex flex-wrap items-start justify-between gap-x-4 gap-y-0.5">
                                   <div>
-                                    <h3 className="font-semibold text-slate-900 text-lg mb-0.5" data-about-edit={`${blockPrefix}.${i}.title`}>{entry.title}</h3>
+                                    <h3 className="font-semibold text-foreground text-lg mb-0.5" data-about-edit={`${blockPrefix}.${i}.title`}>{entry.title}</h3>
                                     {entry.organization && (
-                                      <p className="text-base font-semibold text-slate-700" data-about-edit={`${blockPrefix}.${i}.organization`}>{entry.organization}</p>
+                                      <p className="text-base font-semibold text-foreground/90" data-about-edit={`${blockPrefix}.${i}.organization`}>{entry.organization}</p>
                                     )}
                                   </div>
                                   {entry.dateRange && (
-                                    <Badge variant="secondary" className="shrink-0 text-slate-600 font-normal" data-about-edit={`${blockPrefix}.${i}.dateRange`}>{entry.dateRange}</Badge>
+                                    <Badge variant="secondary" className="shrink-0 text-muted-foreground font-normal" data-about-edit={`${blockPrefix}.${i}.dateRange`}>{entry.dateRange}</Badge>
                                   )}
                                 </div>
                               </div>
@@ -823,7 +823,7 @@ export default async function AboutPage({
               >
               <Card className="shadow-lg">
                 <CardHeader>
-                  <CardTitle className="flex items-center gap-2 text-slate-900">
+                  <CardTitle className="flex items-center gap-2 text-foreground">
                     <Code className="h-5 w-5" />
                     <span data-about-edit="sectionTitles.projects">{sectionTitles.projects}</span>
                   </CardTitle>
@@ -842,13 +842,13 @@ export default async function AboutPage({
                         <div className="flex-1 min-w-0">
                             <div className="flex flex-wrap items-start justify-between gap-x-4 gap-y-0.5">
                               <div>
-                                <h3 className="font-semibold text-slate-900 text-lg mb-0.5" data-about-edit={`projectBlocks.${i}.title`}>{entry.title}</h3>
+                                <h3 className="font-semibold text-foreground text-lg mb-0.5" data-about-edit={`projectBlocks.${i}.title`}>{entry.title}</h3>
                                 {entry.organization && (
-                                  <p className="text-base font-semibold text-slate-700" data-about-edit={`projectBlocks.${i}.organization`}>{entry.organization}</p>
+                                  <p className="text-base font-semibold text-foreground/90" data-about-edit={`projectBlocks.${i}.organization`}>{entry.organization}</p>
                                 )}
                               </div>
                               {entry.dateRange && (
-                                <Badge variant="secondary" className="shrink-0 text-slate-600 font-normal" data-about-edit={`projectBlocks.${i}.dateRange`}>{entry.dateRange}</Badge>
+                                <Badge variant="secondary" className="shrink-0 text-muted-foreground font-normal" data-about-edit={`projectBlocks.${i}.dateRange`}>{entry.dateRange}</Badge>
                               )}
                             </div>
                             {entry.content && (
@@ -908,7 +908,7 @@ export default async function AboutPage({
         <>
         <Card className="shadow-lg">
           <CardHeader>
-            <CardTitle className="flex items-center gap-2 text-slate-900">
+            <CardTitle className="flex items-center gap-2 text-foreground">
               <GraduationCap className="h-5 w-5" />
               Education
             </CardTitle>
@@ -924,17 +924,17 @@ export default async function AboutPage({
                   )}
                   <div className="flex-1 min-w-0">
                     <div className="flex items-start justify-between gap-4 mb-0.5">
-                      <h3 className="font-semibold text-slate-900 text-lg flex-1" data-about-edit="educationBlocks.0.title">
+                      <h3 className="font-semibold text-foreground text-lg flex-1" data-about-edit="educationBlocks.0.title">
                         M.S. in Computer Science
                       </h3>
                       <Badge variant="secondary" className="flex-shrink-0 whitespace-nowrap" data-about-edit="educationBlocks.0.dateRange">
                         Sep 2023 - Jan 2026
                       </Badge>
                     </div>
-                    <p className="text-sm text-slate-600 font-medium mb-0.5" data-about-edit="educationBlocks.0.organization">
+                    <p className="text-sm text-muted-foreground font-medium mb-0.5" data-about-edit="educationBlocks.0.organization">
                       National Yang Ming Chiao Tung University (NYCU), Taiwan
                     </p>
-                    <ul className="space-y-0.5 text-sm text-slate-700 -mt-0.5" data-about-edit="educationBlocks.0.content">
+                    <ul className="space-y-0.5 text-sm text-foreground/90 -mt-0.5" data-about-edit="educationBlocks.0.content">
                       <li>• <strong>Thesis:</strong> A CI/CD Framework for Zero Downtime Deployment in Wi‑Fi Mesh Networks</li>
                       <li>• <strong>Research Focus:</strong> Network Function Virtualization (NFV), CI/CD, DevOps, Kubernetes, and Cloud‑Native Technologies</li>
                       <li>• <strong>Advisor:</strong> Prof. Chien‑Chao Tseng (Wireless Internet Laboratory, WinLab)</li>
@@ -951,17 +951,17 @@ export default async function AboutPage({
                   )}
                   <div className="flex-1 min-w-0">
                     <div className="flex items-start justify-between gap-4 mb-0.5">
-                      <h3 className="font-semibold text-slate-900 text-lg flex-1" data-about-edit="educationBlocks.1.title">
+                      <h3 className="font-semibold text-foreground text-lg flex-1" data-about-edit="educationBlocks.1.title">
                         B.S. in Interaction Design (Media Design Division)
                       </h3>
                       <Badge variant="secondary" className="flex-shrink-0 whitespace-nowrap" data-about-edit="educationBlocks.1.dateRange">
                         Sep 2019 - Jun 2023
                       </Badge>
                     </div>
-                    <p className="text-sm text-slate-600 font-medium mb-0.5" data-about-edit="educationBlocks.1.organization">
+                    <p className="text-sm text-muted-foreground font-medium mb-0.5" data-about-edit="educationBlocks.1.organization">
                       National Taipei University of Technology (NTUT), Taiwan
                     </p>
-                    <ul className="space-y-0.5 text-sm text-slate-700 -mt-0.5" data-about-edit="educationBlocks.1.content">
+                    <ul className="space-y-0.5 text-sm text-foreground/90 -mt-0.5" data-about-edit="educationBlocks.1.content">
                       <li>• <strong>Award:</strong> Outstanding Overseas Chinese Graduate of the Year, Presidential Award (3 Semesters)</li>
                       <li>• <strong>Graduation Project:</strong> A Location‑Based AR System for Urban Exploration and Infrastructure Maintenance</li>
                       <li>• <strong>Research Focus:</strong> IoT, Embedded Systems, Full‑Stack Development, AR/VR, Human‑Computer Interaction (HCI)</li>
@@ -977,7 +977,7 @@ export default async function AboutPage({
         {/* Projects */}
         <Card className="shadow-lg">
           <CardHeader>
-            <CardTitle className="flex items-center gap-2 text-slate-900">
+            <CardTitle className="flex items-center gap-2 text-foreground">
               <Code className="h-5 w-5" />
               Projects
             </CardTitle>
@@ -999,17 +999,17 @@ export default async function AboutPage({
                   )}
                   <div className="flex-1 min-w-0">
                     <div className="flex items-start justify-between gap-4 mb-0.5">
-                      <h3 className="font-semibold text-slate-900 text-lg flex-1">
+                      <h3 className="font-semibold text-foreground text-lg flex-1">
                         A CI/CD Framework for Zero Downtime Deployment in Wi‑Fi Mesh Networks
                       </h3>
                       <Badge variant="secondary" className="flex-shrink-0 whitespace-nowrap">
                         Feb 2025 - Jan 2026
                       </Badge>
                     </div>
-                    <p className="text-sm text-slate-600 font-medium mb-0.5">
+                    <p className="text-sm text-muted-foreground font-medium mb-0.5">
                       Master&apos;s Thesis / Industry‑Academia Collaboration with Wistron NeWeb Corporation (WNC)
                     </p>
-                    <ul className="space-y-0.5 text-sm text-slate-700 -mt-0.5">
+                    <ul className="space-y-0.5 text-sm text-foreground/90 -mt-0.5">
                       <li>• Integrated GitHub Actions with USP APIs to automate cloud‑to‑edge container delivery to Root AP via TR‑369 (USP) standards</li>
                       <li>• Developed a C‑based Controller bridging USP Agent (via UDS) to Extender APs (via TCP) for synchronized mesh updates</li>
                       <li>• Engineered Linux iptables steering to achieve zero packet loss and zero downtime during Blue‑Green/Canary deployments</li>
@@ -1032,17 +1032,17 @@ export default async function AboutPage({
                   )}
                   <div className="flex-1 min-w-0">
                     <div className="flex items-start justify-between gap-4 mb-0.5">
-                      <h3 className="font-semibold text-slate-900 text-lg flex-1">
+                      <h3 className="font-semibold text-foreground text-lg flex-1">
                         Kubernetes‑based Multi‑Cluster Hybrid Cloud Management System
                       </h3>
                       <Badge variant="secondary" className="flex-shrink-0 whitespace-nowrap">
                         Apr 2024 - Sep 2024
                       </Badge>
                     </div>
-                    <p className="text-sm text-slate-600 font-medium mb-0.5">
+                    <p className="text-sm text-muted-foreground font-medium mb-0.5">
                       Industry‑Academia Collaboration with Iscom Online International Info. Inc.
                     </p>
-                    <ul className="space-y-0.5 text-sm text-slate-700 -mt-0.5">
+                    <ul className="space-y-0.5 text-sm text-foreground/90 -mt-0.5">
                       <li>• Orchestrated public cloud and on‑premises clusters using Karmada and GitOps (ArgoCD/FluxCD) for automated service propagation</li>
                       <li>• Implemented Cilium Cluster Mesh and HAProxy to enable global traffic steering, cross‑cluster failover, and firewall security policies</li>
                       <li>• Engineered a unified observability stack integrating Thanos, Prometheus, and Grafana for centralized health monitoring</li>
@@ -1057,14 +1057,14 @@ export default async function AboutPage({
         {/* Work Experience */}
         <Card className="shadow-lg">
           <CardHeader>
-            <CardTitle className="flex items-center gap-2 text-slate-900">
+            <CardTitle className="flex items-center gap-2 text-foreground">
               <Briefcase className="h-5 w-5" />
               Work Experience
             </CardTitle>
           </CardHeader>
           <CardContent>
             <div className="space-y-4">
-              <div className="border-l-2 border-slate-300 pl-3">
+              <div className="border-l-2 border-border pl-3">
                 <div className="flex items-start gap-2">
                   {getCompanyLogo(companyLogos, "NYCU") && (
                     <div className="relative h-12 w-12 flex-shrink-0 mt-0.5">
@@ -1073,24 +1073,24 @@ export default async function AboutPage({
                   )}
                   <div className="flex-1 min-w-0">
                     <div className="flex items-start justify-between gap-4 mb-0.5">
-                      <h3 className="font-semibold text-slate-900 flex-1">
+                      <h3 className="font-semibold text-foreground flex-1">
                         SDN/NFV Teaching Assistant
                       </h3>
                       <Badge variant="secondary" className="flex-shrink-0 whitespace-nowrap">
                         Jul 2023 - Jan 2024
                       </Badge>
                     </div>
-                    <p className="text-sm text-slate-600 mb-0.5">
+                    <p className="text-sm text-muted-foreground mb-0.5">
                       Department of Computer Science, NYCU
                     </p>
-                    <ul className="space-y-0.5 text-sm text-slate-700 -mt-0.5">
+                    <ul className="space-y-0.5 text-sm text-foreground/90 -mt-0.5">
                       <li>• Refined labs for ONOS SDN modules to implement L2/L3 protocols, including Learning Bridge, Proxy ARP, and Unicast DHCP</li>
                       <li>• Led NFV labs on Docker‑based routing (BGP) and guided final projects on VLAN‑based Segment Routing</li>
                     </ul>
                   </div>
                 </div>
               </div>
-              <div className="border-l-2 border-slate-300 pl-3">
+              <div className="border-l-2 border-border pl-3">
                 <div className="flex items-start gap-2">
                   {getCompanyLogo(companyLogos, "Makalot") && (
                     <div className="relative h-12 w-12 flex-shrink-0 mt-0.5">
@@ -1099,17 +1099,17 @@ export default async function AboutPage({
                   )}
                   <div className="flex-1 min-w-0">
                     <div className="flex items-start justify-between gap-4 mb-0.5">
-                      <h3 className="font-semibold text-slate-900 flex-1">
+                      <h3 className="font-semibold text-foreground flex-1">
                         Software Engineer Intern
                       </h3>
                       <Badge variant="secondary" className="flex-shrink-0 whitespace-nowrap">
                         Jul 2022 - Jun 2023
                       </Badge>
                     </div>
-                    <p className="text-sm text-slate-600 mb-0.5">
+                    <p className="text-sm text-muted-foreground mb-0.5">
                       IT Department, Makalot Industrial Co., Ltd.
                     </p>
-                    <ul className="space-y-0.5 text-sm text-slate-700 -mt-0.5">
+                    <ul className="space-y-0.5 text-sm text-foreground/90 -mt-0.5">
                       <li>• Developed a Full‑Stack dashboard using Vue.js and ASP.NET Web API to streamline RBAC and system configurations</li>
                       <li>• Engineered a Dockerized OAuth 2.0 Authentication Service with JWT and Dapper ORM to secure cross‑platform ERP API access</li>
                       <li>• Implemented RPA workflows via Power Automate to trigger Microsoft Teams and Outlook alerts, reducing manual effort</li>
@@ -1117,7 +1117,7 @@ export default async function AboutPage({
                   </div>
                 </div>
               </div>
-              <div className="border-l-2 border-slate-300 pl-3">
+              <div className="border-l-2 border-border pl-3">
                 <div className="flex items-start gap-2">
                   {getCompanyLogo(companyLogos, "MUST") && (
                     <div className="relative h-12 w-12 flex-shrink-0 mt-0.5">
@@ -1126,24 +1126,24 @@ export default async function AboutPage({
                   )}
                   <div className="flex-1 min-w-0">
                     <div className="flex items-start justify-between gap-4 mb-0.5">
-                      <h3 className="font-semibold text-slate-900 flex-1">
+                      <h3 className="font-semibold text-foreground flex-1">
                         Unity Software Engineer (Research Assistant)
                       </h3>
                       <Badge variant="secondary" className="flex-shrink-0 whitespace-nowrap">
                         Jan 2022 - Jun 2022
                       </Badge>
                     </div>
-                    <p className="text-sm text-slate-600 mb-0.5">
+                    <p className="text-sm text-muted-foreground mb-0.5">
                       Department of Multimedia & Game Development, MUST
                     </p>
-                    <ul className="space-y-0.5 text-sm text-slate-700 -mt-0.5">
+                    <ul className="space-y-0.5 text-sm text-foreground/90 -mt-0.5">
                       <li>• Developed an NSTC project using Unity and C#, engineering a cross‑platform system featuring 5 distinct motion‑sensing games</li>
                       <li>• Integrated Google Firebase for real‑time data synchronization to support bilingual (English/Chinese) content and learning analysis</li>
                     </ul>
                   </div>
                 </div>
               </div>
-              <div className="border-l-2 border-slate-300 pl-3">
+              <div className="border-l-2 border-border pl-3">
                 <div className="flex items-start gap-2">
                   {getCompanyLogo(companyLogos, "NTUT") && (
                     <div className="relative h-12 w-12 flex-shrink-0 mt-0.5">
@@ -1152,17 +1152,17 @@ export default async function AboutPage({
                   )}
                   <div className="flex-1 min-w-0">
                     <div className="flex items-start justify-between gap-4 mb-0.5">
-                      <h3 className="font-semibold text-slate-900 flex-1">
+                      <h3 className="font-semibold text-foreground flex-1">
                         IT Support (Work‑Study)
                       </h3>
                       <Badge variant="secondary" className="flex-shrink-0 whitespace-nowrap">
                         Jun 2021 - Jun 2023
                       </Badge>
                     </div>
-                    <p className="text-sm text-slate-600 mb-0.5">
+                    <p className="text-sm text-muted-foreground mb-0.5">
                       Computer and Network Center, NTUT
                     </p>
-                    <ul className="space-y-0.5 text-sm text-slate-700 -mt-0.5">
+                    <ul className="space-y-0.5 text-sm text-foreground/90 -mt-0.5">
                       <li>• Provided technical support to faculty members, handling PC assembly, OS installation, and troubleshooting campus network issues</li>
                       <li>• Participated in the frontend development of the campus Authorized Software Portal, improving the UI/UX to streamline software downloads</li>
                       <li>• Maintained lab servers and network infrastructure</li>
@@ -1177,7 +1177,7 @@ export default async function AboutPage({
         {/* Skills */}
         <Card className="shadow-lg">
           <CardHeader>
-            <CardTitle className="flex items-center gap-2 text-slate-900">
+            <CardTitle className="flex items-center gap-2 text-foreground">
               <Network className="h-5 w-5" />
               Technical Skills
             </CardTitle>
@@ -1185,7 +1185,7 @@ export default async function AboutPage({
           <CardContent>
             <div className="space-y-4">
               <div>
-                <h3 className="mb-2 text-sm font-semibold text-slate-800">
+                <h3 className="mb-2 text-sm font-semibold text-foreground">
                   Cloud Native & K8s
                 </h3>
                 <div className="flex flex-wrap gap-2">
@@ -1197,7 +1197,7 @@ export default async function AboutPage({
                 </div>
               </div>
               <div>
-                <h3 className="mb-2 text-sm font-semibold text-slate-800">
+                <h3 className="mb-2 text-sm font-semibold text-foreground">
                   CI/CD & GitOps
                 </h3>
                 <div className="flex flex-wrap gap-2">
@@ -1209,7 +1209,7 @@ export default async function AboutPage({
                 </div>
               </div>
               <div>
-                <h3 className="mb-2 text-sm font-semibold text-slate-800">
+                <h3 className="mb-2 text-sm font-semibold text-foreground">
                   Observability
                 </h3>
                 <div className="flex flex-wrap gap-2">
@@ -1221,7 +1221,7 @@ export default async function AboutPage({
                 </div>
               </div>
               <div>
-                <h3 className="mb-2 text-sm font-semibold text-slate-800">
+                <h3 className="mb-2 text-sm font-semibold text-foreground">
                   Infrastructure & Networking
                 </h3>
                 <div className="flex flex-wrap gap-2">
@@ -1239,7 +1239,7 @@ export default async function AboutPage({
         {/* Achievements */}
         <Card className="shadow-lg">
           <CardHeader>
-            <CardTitle className="flex items-center gap-2 text-slate-900">
+            <CardTitle className="flex items-center gap-2 text-foreground">
               <Trophy className="h-5 w-5" />
               Achievements
             </CardTitle>
@@ -1247,39 +1247,39 @@ export default async function AboutPage({
           <CardContent>
             <div className="space-y-3">
               <div className="flex items-start gap-3">
-                <Award className="mt-0.5 h-4 w-4 text-slate-500" />
+                <Award className="mt-0.5 h-4 w-4 text-muted-foreground" />
                 <div>
-                  <p className="text-sm font-medium text-slate-800">
+                  <p className="text-sm font-medium text-foreground">
                     National Makerthon: Good Health and Well‑Being - 1st Place
                   </p>
-                  <p className="text-xs text-slate-500">Ministry of Education 2022</p>
+                  <p className="text-xs text-muted-foreground">Ministry of Education 2022</p>
                 </div>
               </div>
               <div className="flex items-start gap-3">
-                <Award className="mt-0.5 h-4 w-4 text-slate-500" />
+                <Award className="mt-0.5 h-4 w-4 text-muted-foreground" />
                 <div>
-                  <p className="text-sm font-medium text-slate-800">
+                  <p className="text-sm font-medium text-foreground">
                     Vision Get Wild XR Social Welfare Potential Award
                   </p>
-                  <p className="text-xs text-slate-500">Meta XR Hub Taiwan 2023</p>
+                  <p className="text-xs text-muted-foreground">Meta XR Hub Taiwan 2023</p>
                 </div>
               </div>
               <div className="flex items-start gap-3">
-                <Award className="mt-0.5 h-4 w-4 text-slate-500" />
+                <Award className="mt-0.5 h-4 w-4 text-muted-foreground" />
                 <div>
-                  <p className="text-sm font-medium text-slate-800">
+                  <p className="text-sm font-medium text-foreground">
                     Intel® DevCup x OpenVINO™ Toolkit Competition - Shortlisted
                   </p>
-                  <p className="text-xs text-slate-500">Intel Corporation 2021</p>
+                  <p className="text-xs text-muted-foreground">Intel Corporation 2021</p>
                 </div>
               </div>
               <div className="flex items-start gap-3">
-                <Award className="mt-0.5 h-4 w-4 text-slate-500" />
+                <Award className="mt-0.5 h-4 w-4 text-muted-foreground" />
                 <div>
-                  <p className="text-sm font-medium text-slate-800">
+                  <p className="text-sm font-medium text-foreground">
                     5G Mobileheroes - Shortlisted
                   </p>
-                  <p className="text-xs text-slate-500">Industrial Development Administration 2021</p>
+                  <p className="text-xs text-muted-foreground">Industrial Development Administration 2021</p>
                 </div>
               </div>
             </div>
@@ -1289,10 +1289,10 @@ export default async function AboutPage({
         {/* Contact */}
         <Card className="shadow-lg">
           <CardHeader>
-            <CardTitle className="text-slate-900">Let&apos;s Connect</CardTitle>
+            <CardTitle className="text-foreground">Let&apos;s Connect</CardTitle>
           </CardHeader>
           <CardContent>
-            <p className="mb-4 text-slate-700">
+            <p className="mb-4 text-foreground/90">
               I&apos;m always open to discussing new opportunities, collaborations, or just having 
               a conversation about technology. Feel free to reach out!
             </p>
