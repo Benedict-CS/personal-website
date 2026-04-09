@@ -211,7 +211,7 @@ export function AboutSkillsAchievementsEditor({
   return (
     <>
       {showSkills && (
-      <Card className="shadow-lg">
+      <Card className="shadow-[var(--elevation-2)]">
         <CardHeader>
           <CardTitle className="flex items-center gap-2 text-foreground">
             <Network className="h-5 w-5" />
@@ -387,7 +387,7 @@ export function AboutSkillsAchievementsEditor({
       )}
 
       {showAchievements && (
-      <Card className="shadow-lg">
+      <Card className="shadow-[var(--elevation-2)]">
         <CardHeader>
           <CardTitle className="flex items-center gap-2 text-foreground">
             <Award className="h-5 w-5" />

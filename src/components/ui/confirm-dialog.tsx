@@ -3,6 +3,13 @@
 import { useEffect, useRef } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import { Button } from "@/components/ui/button";
+import {
+  UI_MODAL_OVERLAY_CLASS,
+  UI_MODAL_PANEL_CLASS,
+  UI_SPRING_MODAL,
+  UI_TEXT_PRIMARY,
+  UI_TEXT_SECONDARY,
+} from "@/components/ui/ui-cohesion";
 
 type ConfirmDialogProps = {
   open: boolean;
@@ -76,8 +83,8 @@ export function ConfirmDialog({
           initial={{ opacity: 0 }}
           animate={{ opacity: 1 }}
           exit={{ opacity: 0 }}
-          transition={{ duration: 0.15 }}
-          className="fixed inset-0 z-50 flex items-center justify-center bg-[oklch(0.2_0.02_265/0.4)] backdrop-blur-sm p-4"
+          transition={{ duration: 0.18, ease: [0.22, 1, 0.36, 1] }}
+          className={UI_MODAL_OVERLAY_CLASS}
           role="dialog"
           aria-modal="true"
           aria-labelledby="confirm-dialog-title"
@@ -85,18 +92,18 @@ export function ConfirmDialog({
         >
           <motion.div
             ref={panelRef}
-            initial={{ opacity: 0, scale: 0.98 }}
-            animate={{ opacity: 1, scale: 1 }}
-            exit={{ opacity: 0, scale: 0.98 }}
-            transition={{ duration: 0.2, ease: [0.25, 0.46, 0.45, 0.94] }}
-            className="w-full max-w-md rounded-xl border border-[var(--border)] bg-[var(--card)] p-6 shadow-[var(--shadow-lg)]"
+            initial={{ opacity: 0, scale: 0.95, y: 8 }}
+            animate={{ opacity: 1, scale: 1, y: 0 }}
+            exit={{ opacity: 0, scale: 0.97, y: 4 }}
+            transition={UI_SPRING_MODAL}
+            className={UI_MODAL_PANEL_CLASS}
             onClick={(e) => e.stopPropagation()}
           >
-            <h2 id="confirm-dialog-title" className="text-lg font-semibold text-[var(--foreground)]">
+            <h2 id="confirm-dialog-title" className={`text-lg font-semibold ${UI_TEXT_PRIMARY}`}>
               {title}
             </h2>
             {description && (
-              <p className="mt-2 text-sm text-[var(--muted-foreground)]">{description}</p>
+              <p className={`mt-2 text-sm ${UI_TEXT_SECONDARY}`}>{description}</p>
             )}
             <div className="mt-6 flex justify-end gap-2">
           <Button variant="outline" onClick={onClose} disabled={loading}>

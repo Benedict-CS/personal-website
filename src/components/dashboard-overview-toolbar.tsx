@@ -31,7 +31,7 @@ export function DashboardOverviewToolbar({ generatedAt }: { generatedAt: string 
 
   return (
     <div className="flex flex-wrap items-center gap-2">
-      <span className="rounded-full border border-[var(--border)] bg-[var(--card)] px-2.5 py-1 text-xs text-[var(--muted-foreground)] shadow-[var(--shadow-sm)]">
+      <span className="rounded-full border border-[var(--border)] bg-[var(--card)] px-2.5 py-1 text-xs text-[var(--muted-foreground)] shadow-[var(--elevation-1)]">
         Last refreshed: {refreshedLabel}
       </span>
       <Button

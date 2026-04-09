@@ -94,7 +94,7 @@ export function Footer({
     : `© ${year} ${name}. ${footerText}`;
 
   return (
-    <footer className="relative z-20 mt-auto border-t border-border bg-muted/50">
+    <footer className="relative z-20 mt-auto border-t border-border bg-muted/40">
       <div className="container mx-auto max-w-6xl px-4 py-4 sm:px-6 lg:px-8">
         <div className="flex flex-col items-center gap-3 sm:flex-row sm:justify-between sm:items-center">
           <div className="flex flex-wrap items-center justify-center gap-1.5 sm:gap-4 text-muted-foreground shrink-0">

@@ -23,7 +23,7 @@ import { metaDescriptionFromMarkdown } from "@/lib/meta-description";
 import { Pencil } from "lucide-react";
 import { calculateReadingTime, formatReadingTime } from "@/lib/reading-time";
 import { getSiteConfigForRender } from "@/lib/site-config";
-import { extractTocHeadingsFromMarkdown } from "@/lib/markdown-toc";
+import { extractTocHeadingsFromMarkdown, estimateTocReadingByHeading } from "@/lib/markdown-toc";
 
 export const revalidate = 60;
 
@@ -118,7 +118,7 @@ export default async function BlogPostPage({
 
   // Prev/next and related (by tag)
   const tagIds = post.tags.map((t) => t.id);
-  const [prevPost, nextPost, relatedCandidates] = await Promise.all([
+  const [prevPost, nextPost, relatedCandidates, backlinkPosts] = await Promise.all([
     prisma.post.findFirst({
       where: {
         ...publishedWhere(),
@@ -152,6 +152,16 @@ export default async function BlogPostPage({
           take: 24,
         })
       : Promise.resolve([]),
+    prisma.post.findMany({
+      where: {
+        ...publishedWhere(),
+        id: { not: post.id },
+        content: { contains: `/blog/${post.slug}` },
+      },
+      select: { id: true, title: true, slug: true, updatedAt: true },
+      orderBy: { updatedAt: "desc" },
+      take: 8,
+    }),
   ]);
 
   const relatedPosts =
@@ -179,6 +189,9 @@ export default async function BlogPostPage({
 
   const readingTime = calculateReadingTime(post.content);
   const tocHeadings = extractTocHeadingsFromMarkdown(post.content);
+  const tocReadEstimates = Object.fromEntries(
+    estimateTocReadingByHeading(post.content).map((item) => [item.id, item.readingMinutes])
+  );
 
   const configForRender = await getSiteConfigForRender();
   const canonicalUrl = `${configForRender.url}/blog/${post.slug}`;
@@ -243,7 +256,7 @@ export default async function BlogPostPage({
             <CardContent className="px-4 pt-6 pb-8 sm:px-6 sm:pt-8 sm:pb-10 lg:px-8">
               <div className="space-y-8 overflow-hidden">
                 <header>
-                  <h1 className="text-3xl font-bold tracking-tight text-foreground sm:text-4xl">
+                  <h1 className="font-bold tracking-[-0.03em] text-foreground text-[clamp(1.625rem,1.25rem+1.25vw,2.25rem)]">
                     {post.title}
                   </h1>
                   <div className="mt-3 flex flex-wrap items-center gap-x-4 gap-y-1 text-sm text-muted-foreground">
@@ -252,12 +265,12 @@ export default async function BlogPostPage({
                     <span>{formatReadingTime(readingTime)} read</span>
                   </div>
                   {post.tags && post.tags.length > 0 && (
-                    <div className="mb-4 flex flex-wrap gap-2">
+                    <div className="mt-3 flex flex-wrap gap-2">
                       {post.tags.map((tag) => (
                         <Link key={tag.id} href={`/blog/tag/${tag.slug}`}>
                           <Badge
                             variant="secondary"
-                            className="text-xs cursor-pointer hover:bg-accent hover:scale-105 transition-all"
+                            className="text-xs cursor-pointer hover:bg-accent transition-[background-color,transform] duration-200"
                             title={`View all posts tagged "${tag.name}"`}
                           >
                             {tag.name}
@@ -303,17 +316,37 @@ export default async function BlogPostPage({
                 {/* Related posts (by tag) */}
                 {relatedPosts.length > 0 && (
                   <div className="border-t border-border pt-8">
-                    <h3 className="mb-3 text-sm font-medium uppercase tracking-wider text-muted-foreground">
+                    <h3 className="mb-4 text-xs font-semibold uppercase tracking-[0.08em] text-muted-foreground">
                       Related posts
                     </h3>
-                    <ul className="space-y-2">
+                    <ul className="space-y-2.5">
                       {relatedPosts.map((r) => (
                         <li key={r.id}>
                           <Link
                             href={`/blog/${r.slug}`}
-                            className="text-foreground/90 hover:text-foreground hover:underline"
+                            className="text-sm text-foreground/85 underline-offset-2 decoration-transparent hover:text-foreground hover:decoration-foreground/30 transition-[color,text-decoration-color] duration-150"
                           >
                             {r.title}
+                          </Link>
+                        </li>
+                      ))}
+                    </ul>
+                  </div>
+                )}
+
+                {backlinkPosts.length > 0 && (
+                  <div className="border-t border-border pt-8">
+                    <h3 className="mb-4 text-xs font-semibold uppercase tracking-[0.08em] text-muted-foreground">
+                      Referenced in
+                    </h3>
+                    <ul className="space-y-2.5">
+                      {backlinkPosts.map((related) => (
+                        <li key={related.id}>
+                          <Link
+                            href={`/blog/${related.slug}`}
+                            className="text-sm text-foreground/85 underline-offset-2 decoration-transparent hover:text-foreground hover:decoration-foreground/30 transition-[color,text-decoration-color] duration-150"
+                          >
+                            {related.title}
                           </Link>
                         </li>
                       ))}
@@ -327,12 +360,12 @@ export default async function BlogPostPage({
                     {prevPost ? (
                       <Link
                         href={`/blog/${prevPost.slug}`}
-                        className="group flex-1 rounded-lg border border-border bg-card p-4 transition-all hover:border-muted-foreground/25 hover:shadow-md"
+                        className="group flex-1 rounded-xl border border-border bg-card p-4 shadow-[var(--elevation-1)] transition-[box-shadow,border-color] duration-200 hover:border-muted-foreground/25 hover:shadow-[var(--elevation-2)]"
                       >
-                        <div className="text-sm text-muted-foreground">
+                        <div className="text-xs font-medium uppercase tracking-wide text-muted-foreground">
                           ← Previous
                         </div>
-                        <div className="mt-1 font-medium text-foreground group-hover:text-foreground/90">
+                        <div className="mt-1.5 text-sm font-medium text-foreground group-hover:text-foreground/90">
                           {prevPost.title}
                         </div>
                       </Link>
@@ -343,12 +376,12 @@ export default async function BlogPostPage({
                     {nextPost ? (
                       <Link
                         href={`/blog/${nextPost.slug}`}
-                        className="group flex-1 rounded-lg border border-border bg-card p-4 text-right transition-all hover:border-muted-foreground/25 hover:shadow-md"
+                        className="group flex-1 rounded-xl border border-border bg-card p-4 text-right shadow-[var(--elevation-1)] transition-[box-shadow,border-color] duration-200 hover:border-muted-foreground/25 hover:shadow-[var(--elevation-2)]"
                       >
-                        <div className="text-sm text-muted-foreground">
+                        <div className="text-xs font-medium uppercase tracking-wide text-muted-foreground">
                           Next →
                         </div>
-                        <div className="mt-1 font-medium text-foreground group-hover:text-foreground/90">
+                        <div className="mt-1.5 text-sm font-medium text-foreground group-hover:text-foreground/90">
                           {nextPost.title}
                         </div>
                       </Link>
@@ -378,6 +411,7 @@ export default async function BlogPostPage({
             key={post.id}
             content={post.content}
             initialHeadings={tocHeadings}
+            initialReadEstimates={tocReadEstimates}
           />
         </aside>
       </div>

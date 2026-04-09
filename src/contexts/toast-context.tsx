@@ -2,17 +2,18 @@
 
 import React, { createContext, useCallback, useContext, useState } from "react";
 import { motion, AnimatePresence, useReducedMotion } from "framer-motion";
+import { UI_MOTION_EASE } from "@/components/ui/ui-cohesion";
 
-type ToastType = "success" | "error" | "info";
+type ToastType = "success" | "error" | "info" | "warning";
 
 interface ToastItem {
   id: number;
-  message: string;
+  message: React.ReactNode;
   type: ToastType;
 }
 
 interface ToastContextValue {
-  toast: (message: string, type?: ToastType) => void;
+  toast: (message: React.ReactNode, type?: ToastType) => void;
 }
 
 const ToastContext = createContext<ToastContextValue | null>(null);
@@ -23,7 +24,7 @@ export function ToastProvider({ children }: { children: React.ReactNode }) {
   const [items, setItems] = useState<ToastItem[]>([]);
   const reduceMotion = useReducedMotion();
 
-  const toast = useCallback((message: string, type: ToastType = "info") => {
+  const toast = useCallback((message: React.ReactNode, type: ToastType = "info") => {
     const currentId = ++id;
     setItems((prev) => [...prev, { id: currentId, message, type }]);
     setTimeout(() => {
@@ -34,7 +35,7 @@ export function ToastProvider({ children }: { children: React.ReactNode }) {
   return (
     <ToastContext.Provider value={{ toast }}>
       {children}
-      <div className="fixed top-4 right-4 z-[100] flex flex-col gap-2 pointer-events-none">
+      <div className="fixed right-4 top-4 z-[100] flex flex-col gap-2 pointer-events-none">
         <AnimatePresence mode="popLayout">
           {items.map((item) => (
             <motion.div
@@ -43,14 +44,16 @@ export function ToastProvider({ children }: { children: React.ReactNode }) {
               animate={{ opacity: 1, x: 0, scale: 1 }}
               exit={reduceMotion ? { opacity: 0 } : { opacity: 0, x: 16 }}
               transition={
-                reduceMotion ? { duration: 0 } : { duration: 0.2, ease: [0.25, 0.46, 0.45, 0.94] }
+                reduceMotion ? { duration: 0 } : { duration: 0.2, ease: UI_MOTION_EASE }
               }
-              className={`pointer-events-auto rounded-xl border px-4 py-3 shadow-[var(--shadow-lg)] text-sm font-medium ${
+              className={`pointer-events-auto rounded-lg border px-4 py-3 shadow-[var(--elevation-3)] text-sm font-medium ${
                 item.type === "success"
                   ? "border-emerald-200 bg-emerald-50 text-emerald-800"
+                  : item.type === "warning"
+                    ? "border-amber-200 bg-amber-50 text-amber-800"
                   : item.type === "error"
-                    ? "border-destructive/30 bg-destructive/10 text-destructive"
-                    : "border-[var(--border)] bg-[var(--card)] text-[var(--foreground)]"
+                    ? "border-red-200 bg-red-50 text-red-700"
+                    : "border-border bg-card text-foreground"
               }`}
             >
               {item.message}

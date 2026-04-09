@@ -169,6 +169,11 @@ type RegistryMetaResult = {
   license: string | null;
 };
 
+type AstTypeMatch = {
+  path: string;
+  preview: string;
+};
+
 function RegistryMetaDl({ data }: { data: RegistryMetaResult }) {
   return (
     <dl className="mt-4 grid gap-2 text-sm sm:grid-cols-2">
@@ -231,6 +236,7 @@ export function AstLabClient() {
   const [gomoduleLoading, setGomoduleLoading] = useState(false);
   const [gomoduleData, setGomoduleData] = useState<RegistryMetaResult | null>(null);
   const [gomoduleErr, setGomoduleErr] = useState<string | null>(null);
+  const [nodeTypeQuery, setNodeTypeQuery] = useState("heading");
   const reduceMotion = useReducedMotion();
 
   const { tree, parseMs } = useMemo((): { tree: MdastRoot | null; parseMs: number | null } => {
@@ -249,6 +255,35 @@ export function AstLabClient() {
   const jsonPretty = useMemo(() => (tree ? JSON.stringify(tree, null, 2) : ""), [tree]);
 
   const stats = useMemo(() => computeMdastStats(tree), [tree]);
+  const typeMatches = useMemo<AstTypeMatch[]>(() => {
+    if (!tree) return [];
+    const needle = nodeTypeQuery.trim().toLowerCase();
+    if (!needle) return [];
+    const matches: AstTypeMatch[] = [];
+    const visit = (node: unknown, path: string) => {
+      if (!node || typeof node !== "object") return;
+      const rec = node as Record<string, unknown>;
+      const type = typeof rec.type === "string" ? rec.type : "";
+      if (type.toLowerCase().includes(needle)) {
+        const preview =
+          typeof rec.value === "string"
+            ? rec.value.slice(0, 60)
+            : typeof rec.alt === "string"
+              ? rec.alt.slice(0, 60)
+              : type;
+        matches.push({ path, preview });
+      }
+      if (matches.length >= 50) return;
+      const children = rec.children;
+      if (Array.isArray(children)) {
+        children.forEach((child, idx) => {
+          if (matches.length < 50) visit(child, `${path}.children[${idx}]`);
+        });
+      }
+    };
+    visit(tree, "root");
+    return matches;
+  }, [nodeTypeQuery, tree]);
 
   const lineCount = useMemo(() => countSourceLines(source), [source]);
   const wordCount = useMemo(() => countSourceWords(source), [source]);
@@ -504,7 +539,7 @@ export function AstLabClient() {
       <div className="grid min-h-[min(70vh,720px)] gap-4 lg:grid-cols-2">
         <motion.div
           layout={!reduceMotion}
-          className="flex min-h-[280px] flex-col rounded-2xl border border-border bg-card shadow-sm"
+          className="flex min-h-[280px] flex-col rounded-2xl border border-border bg-card shadow-[var(--elevation-1)]"
         >
           <label className="border-b border-border px-4 py-2.5 text-[11px] font-semibold uppercase tracking-[0.08em] text-muted-foreground">
             Markdown
@@ -518,7 +553,7 @@ export function AstLabClient() {
           />
         </motion.div>
 
-        <div className="flex min-h-[280px] flex-col overflow-hidden rounded-2xl border border-border bg-card shadow-sm">
+        <div className="flex min-h-[280px] flex-col overflow-hidden rounded-2xl border border-border bg-card shadow-[var(--elevation-1)]">
           <div className="border-b border-border px-4 py-2.5">
             <div className="flex flex-wrap items-center justify-between gap-2">
               <div className="flex items-center gap-2">
@@ -604,6 +639,34 @@ export function AstLabClient() {
                 </>
               ) : null}
             </p>
+            <div className="mt-3 rounded-lg border border-border/80 bg-background/70 p-2.5">
+              <div className="flex flex-wrap items-end gap-2">
+                <label className="min-w-[11rem] flex-1">
+                  <span className="block text-[11px] font-medium uppercase tracking-wide text-muted-foreground">
+                    Node type query
+                  </span>
+                  <input
+                    value={nodeTypeQuery}
+                    onChange={(event) => setNodeTypeQuery(event.target.value)}
+                    placeholder="heading, code, link, table..."
+                    className="mt-1 h-8 w-full rounded-lg border border-input bg-background px-2 text-xs text-foreground shadow-[var(--elevation-1)] outline-none focus:border-ring focus:ring-2 focus:ring-ring/30"
+                  />
+                </label>
+                <p className="text-xs text-muted-foreground">
+                  <span className="font-medium text-foreground/90">{typeMatches.length}</span> matches (max 50)
+                </p>
+              </div>
+              {typeMatches.length > 0 ? (
+                <ul className="mt-2 max-h-28 space-y-1 overflow-y-auto pr-1 text-xs text-muted-foreground">
+                  {typeMatches.slice(0, 8).map((match, idx) => (
+                    <li key={`${match.path}-${idx}`} className="rounded bg-muted/40 px-2 py-1">
+                      <span className="font-mono text-[11px] text-foreground/90">{match.path}</span>
+                      <span className="ml-2 truncate">- {match.preview || "node"}</span>
+                    </li>
+                  ))}
+                </ul>
+              ) : null}
+            </div>
           </div>
           <div className="min-h-0 flex-1 overflow-auto p-3">
             <AnimatePresence mode="wait">

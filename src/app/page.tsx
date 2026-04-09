@@ -133,10 +133,10 @@ export default async function Home() {
       density={templateId === "minimal" ? "heroMinimal" : "hero"}
     >
       <div className="mx-auto max-w-4xl text-center">
-        <h1 className="mb-6 text-4xl font-bold tracking-tight text-[var(--foreground)] sm:text-5xl md:text-6xl lg:text-7xl">
+        <h1 className="mb-6 font-bold tracking-[-0.03em] text-[var(--foreground)] text-[clamp(2rem,1.25rem+2.5vw,4rem)]" style={{ lineHeight: 1.1 }}>
           <span data-inline-field="home.heroTitle">{homeContent.heroTitle ?? defaultHomeContent.heroTitle}</span>
         </h1>
-        <p className="mb-10 text-lg text-[var(--muted-foreground)] sm:text-xl md:text-2xl">
+        <p className="mb-10 text-[var(--muted-foreground)] text-[clamp(1rem,0.875rem+0.5vw,1.5rem)]" style={{ lineHeight: 1.5 }}>
           <span data-inline-field="home.heroSubtitle">{homeContent.heroSubtitle ?? defaultHomeContent.heroSubtitle}</span>
         </p>
         <div className="flex flex-col items-center justify-center gap-3 sm:flex-row sm:gap-4">
@@ -169,7 +169,7 @@ export default async function Home() {
   const latestPostsSection = (
     <PublicSection key="latestPosts" data-home-section="latestPosts" density="section">
       <div className="w-full">
-        <h2 className="mb-8 text-3xl font-bold text-[var(--foreground)]" data-inline-field="home.sectionTitleLatestPosts">
+        <h2 className="mb-8 font-bold tracking-[-0.03em] text-[var(--foreground)] text-[clamp(1.5rem,1.125rem+1.25vw,1.875rem)]" data-inline-field="home.sectionTitleLatestPosts">
           {homeContent.sectionTitleLatestPosts ?? defaultHomeContent.sectionTitleLatestPosts}
         </h2>
         {latestPosts.length === 0 ? (
@@ -179,7 +179,7 @@ export default async function Home() {
             {latestPosts.map((post) => (
               <Card
                 key={post.id}
-                className="relative h-full border-[var(--border)] shadow-[var(--shadow-sm)] transition-all duration-200 hover:shadow-[var(--shadow-md)] hover:border-[oklch(0.91_0.012_255)]"
+                className="relative h-full border-[var(--border)] shadow-[var(--elevation-1)] transition-[box-shadow,border-color] duration-200 hover:shadow-[var(--elevation-2)] hover:border-muted-foreground/25"
               >
                 {/* Single full-card hit target — avoids invalid nested <a> from tag links inside */}
                 <Link
@@ -229,7 +229,7 @@ export default async function Home() {
   const skillsSection = (
     <PublicSection key="skills" data-home-section="skills" density="section">
       <div className="mx-auto max-w-4xl">
-        <h2 className="mb-8 text-center text-3xl font-bold text-[var(--foreground)]" data-inline-field="home.sectionTitleSkills">
+        <h2 className="mb-8 text-center font-bold tracking-[-0.03em] text-[var(--foreground)] text-[clamp(1.5rem,1.125rem+1.25vw,1.875rem)]" data-inline-field="home.sectionTitleSkills">
           {homeContent.sectionTitleSkills ?? defaultHomeContent.sectionTitleSkills}
         </h2>
         <div className="flex flex-wrap justify-center gap-3" data-home-skills-container>

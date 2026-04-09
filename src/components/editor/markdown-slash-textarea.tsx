@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useRef, useState, type MutableRefObject } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import {
   Bold,
@@ -19,11 +19,20 @@ import {
   Quote,
   Sigma,
   Table2,
+  Redo2,
+  Undo2,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { buildCmsCalloutMarkdown } from "@/lib/cms-callout-insert";
 import { buildCmsDateInsertMarkdown } from "@/lib/cms-date-insert";
 import { buildAutoTocMarkdownBlock } from "@/lib/markdown-toc";
+import {
+  createTextHistory,
+  pushTextHistory,
+  redoTextHistory,
+  type TextHistoryState,
+  undoTextHistory,
+} from "@/lib/text-history";
 
 type SlashItem = {
   id: string;
@@ -158,6 +167,7 @@ type Props = {
   className?: string;
   placeholder?: string;
   "aria-label"?: string;
+  textareaRef?: MutableRefObject<HTMLTextAreaElement | null>;
   /** Visible TOC / date / callout shortcuts (immersive raw markdown, etc.). */
   showQuickInsertBar?: boolean;
   /** Called on focus and each input; parent can dim surrounding chrome and debounce idle. */
@@ -174,12 +184,14 @@ export function MarkdownSlashTextarea({
   className,
   placeholder,
   "aria-label": ariaLabel,
+  textareaRef,
   showQuickInsertBar = false,
   onTypingPulse,
   onTypingEnd,
 }: Props) {
   /** Local text for zero-latency typing; parent syncs at most once per animation frame. */
   const [inner, setInner] = useState(value);
+  const [history, setHistory] = useState<TextHistoryState>(() => createTextHistory(value));
   const rafRef = useRef<number | null>(null);
   const taRef = useRef<HTMLTextAreaElement>(null);
   const [slash, setSlash] = useState<{ slashIndex: number; query: string; selected: number } | null>(null);
@@ -191,7 +203,13 @@ export function MarkdownSlashTextarea({
   const [slashMenuPos, setSlashMenuPos] = useState<{ top: number; left: number; width: number } | null>(null);
 
   useEffect(() => {
+    // Keep local editor buffer aligned when parent loads/replaces content.
+    // eslint-disable-next-line react-hooks/set-state-in-effect
     setInner(value);
+    setHistory((current) => {
+      if (current.present === value) return current;
+      return createTextHistory(value);
+    });
   }, [value]);
 
   useEffect(
@@ -233,6 +251,7 @@ export function MarkdownSlashTextarea({
         item.buildMarkdown != null ? item.buildMarkdown(docForBuild) : item.markdown;
       const next = before + inserted + after;
       setInner(next);
+      setHistory((current) => pushTextHistory(current, next));
       onChange(next);
       requestAnimationFrame(() => {
         const el = taRef.current;
@@ -263,6 +282,7 @@ export function MarkdownSlashTextarea({
         item.buildMarkdown != null ? item.buildMarkdown(docSansSlash) : item.markdown;
       const next = before + inserted + after;
       setInner(next);
+      setHistory((current) => pushTextHistory(current, next));
       onChange(next);
       setSlash(null);
       requestAnimationFrame(() => {
@@ -291,6 +311,7 @@ export function MarkdownSlashTextarea({
       const sel = live.slice(start, end);
       const next = live.slice(0, start) + beforeWrap + sel + afterWrap + live.slice(end);
       setInner(next);
+      setHistory((current) => pushTextHistory(current, next));
       onChange(next);
       requestAnimationFrame(() => {
         const el = taRef.current;
@@ -322,6 +343,29 @@ export function MarkdownSlashTextarea({
   }, []);
 
   const onKeyDown = (e: React.KeyboardEvent<HTMLTextAreaElement>) => {
+    if ((e.metaKey || e.ctrlKey) && !e.altKey) {
+      const key = e.key.toLowerCase();
+      if (key === "z" && !e.shiftKey) {
+        e.preventDefault();
+        const result = undoTextHistory(history);
+        if (result.changed) {
+          setHistory(result.state);
+          setInner(result.state.present);
+          onChange(result.state.present);
+        }
+        return;
+      }
+      if (key === "y" || (key === "z" && e.shiftKey)) {
+        e.preventDefault();
+        const result = redoTextHistory(history);
+        if (result.changed) {
+          setHistory(result.state);
+          setInner(result.state.present);
+          onChange(result.state.present);
+        }
+        return;
+      }
+    }
     if (slash) {
       const filtered = filterItems(slash.query);
       if (e.key === "ArrowDown") {
@@ -355,6 +399,7 @@ export function MarkdownSlashTextarea({
     const next = e.target.value;
     const pos = e.target.selectionStart;
     setInner(next);
+    setHistory((current) => pushTextHistory(current, next));
     scheduleTypingFlush();
     const m = matchSlashLine(next, pos);
     if (m) {
@@ -388,6 +433,44 @@ export function MarkdownSlashTextarea({
             Quick insert
           </span>
           <div className="flex flex-wrap gap-1">
+            <Button
+              type="button"
+              size="sm"
+              variant="outline"
+              className="h-7 gap-1 px-2 text-xs"
+              title="Undo (Cmd/Ctrl+Z)"
+              disabled={history.past.length === 0}
+              onMouseDown={(ev) => ev.preventDefault()}
+              onClick={() => {
+                const result = undoTextHistory(history);
+                if (!result.changed) return;
+                setHistory(result.state);
+                setInner(result.state.present);
+                onChange(result.state.present);
+              }}
+            >
+              <Undo2 className="h-3.5 w-3.5" aria-hidden />
+              Undo
+            </Button>
+            <Button
+              type="button"
+              size="sm"
+              variant="outline"
+              className="h-7 gap-1 px-2 text-xs"
+              title="Redo (Cmd/Ctrl+Shift+Z)"
+              disabled={history.future.length === 0}
+              onMouseDown={(ev) => ev.preventDefault()}
+              onClick={() => {
+                const result = redoTextHistory(history);
+                if (!result.changed) return;
+                setHistory(result.state);
+                setInner(result.state.present);
+                onChange(result.state.present);
+              }}
+            >
+              <Redo2 className="h-3.5 w-3.5" aria-hidden />
+              Redo
+            </Button>
             <Button
               type="button"
               size="sm"
@@ -440,7 +523,10 @@ export function MarkdownSlashTextarea({
         </div>
       ) : null}
       <textarea
-        ref={taRef}
+        ref={(node) => {
+          taRef.current = node;
+          if (textareaRef) textareaRef.current = node;
+        }}
         value={inner}
         onChange={onInput}
         onKeyDown={onKeyDown}
@@ -460,7 +546,7 @@ export function MarkdownSlashTextarea({
         aria-label={ariaLabel ?? "Markdown content"}
         className={
           className ??
-          "min-h-[20rem] w-full resize-y rounded-xl border border-border bg-card p-4 font-mono text-sm leading-relaxed text-foreground shadow-sm outline-none transition-shadow placeholder:text-muted-foreground focus:border-ring focus:ring-2 focus:ring-ring/30"
+          "min-h-[20rem] w-full resize-y rounded-xl border border-border bg-card p-4 font-mono text-sm leading-relaxed text-foreground shadow-[var(--elevation-1)] outline-none transition-shadow placeholder:text-muted-foreground focus:border-ring focus:ring-2 focus:ring-ring/30"
         }
       />
 
@@ -471,7 +557,7 @@ export function MarkdownSlashTextarea({
             animate={{ opacity: 1, y: 0 }}
             exit={{ opacity: 0, y: 4 }}
             transition={{ duration: 0.15 }}
-            className="pointer-events-auto fixed z-[70] flex items-center gap-0.5 rounded-lg border border-border bg-card p-1 shadow-lg"
+            className="pointer-events-auto fixed z-[70] flex items-center gap-0.5 rounded-xl border border-border bg-card p-1 shadow-[var(--elevation-3)]"
             style={{
               top: toolbar.top,
               left: toolbar.left,

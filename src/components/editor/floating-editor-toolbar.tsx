@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useSession } from "next-auth/react";
 import { Button } from "@/components/ui/button";
 import { InsertMediaModal } from "@/components/insert-media-modal";
@@ -22,6 +22,7 @@ export function FloatingEditorToolbar({ slug }: Props) {
   const [dragging, setDragging] = useState(false);
   const [showMediaPicker, setShowMediaPicker] = useState(false);
   const [targetImage, setTargetImage] = useState<HTMLImageElement | null>(null);
+  const toolbarRef = useRef<HTMLDivElement | null>(null);
   const dragRef = useRef<{ dx: number; dy: number } | null>(null);
   const editedRef = useRef<Record<string, string>>({});
   const imageRef = useRef<Record<string, string>>({});
@@ -85,8 +86,6 @@ export function FloatingEditorToolbar({ slug }: Props) {
     };
   }, [enabled, isAuthenticated]);
 
-  if (status === "loading" || !isAuthenticated) return null;
-
   const startDrag = (event: React.PointerEvent<HTMLDivElement>) => {
     const rect = event.currentTarget.getBoundingClientRect();
     dragRef.current = { dx: event.clientX - rect.left, dy: event.clientY - rect.top };
@@ -125,6 +124,62 @@ export function FloatingEditorToolbar({ slug }: Props) {
     }));
   };
 
+  const avoidCursorCollision = useCallback(() => {
+    if (dragging) return;
+    const toolbar = toolbarRef.current;
+    if (!toolbar) return;
+    const selection = window.getSelection();
+    const anchorNode = selection?.anchorNode ?? null;
+    const target =
+      (anchorNode instanceof Element
+        ? anchorNode.closest<HTMLElement>(".editor-inline-target,[contenteditable='true']")
+        : anchorNode?.parentElement?.closest<HTMLElement>(".editor-inline-target,[contenteditable='true']")) ?? null;
+    if (!target) return;
+
+    const toolbarWidth = toolbar.offsetWidth || 340;
+    const toolbarHeight = toolbar.offsetHeight || 220;
+    const toolbarRect = new DOMRect(position.x, position.y, toolbarWidth, toolbarHeight);
+    const targetRect = target.getBoundingClientRect();
+    const intersects = !(
+      toolbarRect.right < targetRect.left ||
+      toolbarRect.left > targetRect.right ||
+      toolbarRect.bottom < targetRect.top ||
+      toolbarRect.top > targetRect.bottom
+    );
+    if (!intersects) return;
+
+    const gap = 12;
+    const maxX = Math.max(8, window.innerWidth - toolbarWidth - 8);
+    const maxY = Math.max(8, window.innerHeight - toolbarHeight - 8);
+    const preferredX = Math.max(8, Math.min(maxX, targetRect.right + gap));
+    const fallbackX = Math.max(8, Math.min(maxX, targetRect.left - toolbarWidth - gap));
+    const yAbove = targetRect.top - toolbarHeight - gap;
+    const yBelow = targetRect.bottom + gap;
+
+    let nextX = preferredX;
+    if (targetRect.right + gap + toolbarWidth > window.innerWidth) {
+      nextX = fallbackX;
+    }
+    let nextY = yBelow;
+    if (yBelow + toolbarHeight > window.innerHeight && yAbove >= 8) {
+      nextY = yAbove;
+    }
+    nextY = Math.max(8, Math.min(maxY, nextY));
+    setPosition({ x: nextX, y: nextY });
+  }, [dragging, position.x, position.y]);
+
+  useEffect(() => {
+    const run = () => avoidCursorCollision();
+    document.addEventListener("selectionchange", run);
+    window.addEventListener("resize", run);
+    window.addEventListener("scroll", run, true);
+    return () => {
+      document.removeEventListener("selectionchange", run);
+      window.removeEventListener("resize", run);
+      window.removeEventListener("scroll", run, true);
+    };
+  }, [avoidCursorCollision]);
+
   const persist = async (publish: boolean) => {
     setSaving(true);
     setMessage("");
@@ -156,15 +211,18 @@ export function FloatingEditorToolbar({ slug }: Props) {
     }
   };
 
+  if (status === "loading" || !isAuthenticated) return null;
+
   return (
     <>
       <div
+        ref={toolbarRef}
         data-testid="floating-editor-toolbar"
-        className="fixed z-[80] w-[340px] rounded-xl border border-[var(--border)] bg-[var(--glass-bg)] shadow-[var(--glass-shadow-hover)] backdrop-blur-xl"
+        className="fixed z-[70] w-[340px] rounded-xl border border-border bg-card/95 shadow-[var(--elevation-3)] backdrop-blur-md"
         style={{ left: `${position.x}px`, top: `${position.y}px` }}
       >
         <div
-          className={`cursor-move rounded-t-xl border-b border-[var(--border)] bg-[var(--muted)]/60 px-3 py-2 text-sm font-semibold text-[var(--foreground)] ${
+          className={`cursor-move rounded-t-lg border-b border-border bg-muted/60 px-3 py-2 text-sm font-semibold text-foreground ${
             dragging ? "select-none" : ""
           }`}
           onPointerDown={startDrag}
@@ -178,18 +236,37 @@ export function FloatingEditorToolbar({ slug }: Props) {
             Directly edit text on the page. Click an image to replace it from Media.
           </p>
           <div className="flex items-center gap-2">
-            <Button type="button" variant={enabled ? "default" : "outline"} size="sm" onClick={() => setEnabled((v) => !v)}>
+            <Button
+              type="button"
+              variant={enabled ? "default" : "outline"}
+              size="sm"
+              onClick={() => setEnabled((v) => !v)}
+              title="Toggle inline editing mode"
+            >
               {enabled ? "Editing on" : "Editing off"}
             </Button>
-            <Button type="button" variant="outline" size="sm" onClick={() => setShowMediaPicker(true)}>
+            <Button
+              type="button"
+              variant="outline"
+              size="sm"
+              onClick={() => setShowMediaPicker(true)}
+              title="Open media picker and upload library"
+            >
               Media Manager
             </Button>
           </div>
           <div className="flex items-center gap-2">
-            <Button type="button" size="sm" onClick={() => persist(false)} disabled={saving}>
+            <Button type="button" size="sm" onClick={() => persist(false)} disabled={saving} title="Save draft edits">
               {saving ? "Saving..." : "Save"}
             </Button>
-            <Button type="button" size="sm" variant="outline" onClick={() => persist(true)} disabled={saving}>
+            <Button
+              type="button"
+              size="sm"
+              variant="outline"
+              onClick={() => persist(true)}
+              disabled={saving}
+              title="Save and publish inline edits"
+            >
               Save & Publish
             </Button>
           </div>

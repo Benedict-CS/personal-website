@@ -12,7 +12,7 @@ import { BackToTop } from "@/components/back-to-top";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { stripMarkdown } from "@/lib/utils";
-import { calculateReadingTime, formatReadingTime } from "@/lib/reading-time";
+import { getContentMetrics } from "@/lib/content-metrics";
 
 interface Post {
   id: string;
@@ -198,21 +198,21 @@ export default function BlogPageClient() {
 
       {/* Post list */}
       {isLoading ? (
-        <div className="space-y-12 animate-pulse">
+        <div className="space-y-12">
           {[1, 2].map((block) => (
             <div key={block}>
-              <div className="h-8 w-24 rounded bg-[var(--muted)] mb-6" />
+              <div className="h-8 w-24 rounded-lg skeleton-shimmer mb-6" />
               <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-3">
                 {[1, 2, 3].map((i) => (
-                  <div key={i} className="rounded-xl border border-[var(--border)] bg-card p-6 shadow-[var(--shadow-sm)]">
-                    <div className="h-6 w-3/4 rounded bg-[var(--muted)] mb-3" />
-                    <div className="h-4 w-32 rounded bg-[var(--muted)]/80 mb-4" />
+                  <div key={i} className="rounded-xl border border-[var(--border)] bg-card p-6 shadow-[var(--elevation-1)]">
+                    <div className="h-6 w-3/4 rounded-lg skeleton-shimmer mb-3" />
+                    <div className="h-4 w-32 rounded-lg skeleton-shimmer mb-4" />
                     <div className="flex gap-2 mb-4">
-                      <div className="h-5 w-14 rounded-full bg-[var(--muted)]/70" />
-                      <div className="h-5 w-16 rounded-full bg-[var(--muted)]/70" />
+                      <div className="h-5 w-14 rounded-full skeleton-shimmer" />
+                      <div className="h-5 w-16 rounded-full skeleton-shimmer" />
                     </div>
-                    <div className="h-4 w-full rounded bg-[var(--muted)]/70" />
-                    <div className="h-4 w-2/3 rounded bg-[var(--muted)]/70 mt-2" />
+                    <div className="h-4 w-full rounded-lg skeleton-shimmer" />
+                    <div className="h-4 w-2/3 rounded-lg skeleton-shimmer mt-2" />
                   </div>
                 ))}
               </div>
@@ -232,7 +232,7 @@ export default function BlogPageClient() {
         <div className="space-y-10">
           {years.map((year) => (
             <section key={year} className="first:pt-0">
-              <h2 className="text-2xl font-bold text-[var(--foreground)] mb-5 pb-2 border-b border-[var(--border)] sm:text-3xl">
+              <h2 className="text-2xl font-bold tracking-[-0.03em] text-[var(--foreground)] mb-5 pb-2 border-b border-[var(--border)] sm:text-3xl">
                 {year}
                 <span className="ml-3 text-lg font-normal text-[var(--muted-foreground)]">
                   ({postsByYear[year].length} {postsByYear[year].length === 1 ? "post" : "posts"})
@@ -242,11 +242,11 @@ export default function BlogPageClient() {
                 {postsByYear[year].map((post, cardIndex) => (
                   <motion.div
                     key={post.id}
-                    initial={{ opacity: 0, y: 12 }}
-                    animate={{ opacity: 1, y: 0 }}
-                    transition={{ duration: 0.3, delay: Math.min(cardIndex * 0.05, 0.25), ease: [0.25, 0.46, 0.45, 0.94] }}
+                    initial={{ opacity: 0, y: 14, scale: 0.98 }}
+                    animate={{ opacity: 1, y: 0, scale: 1 }}
+                    transition={{ type: "spring", stiffness: 300, damping: 26, mass: 0.6, delay: Math.min(cardIndex * 0.04, 0.2) }}
                   >
-                    <Card className="relative h-full border-[var(--border)] shadow-[var(--shadow-sm)] transition-all duration-200 hover:shadow-[var(--shadow-md)] hover:border-muted-foreground/25">
+                    <Card className="relative h-full border-[var(--border)] shadow-[var(--elevation-1)] transition-[box-shadow,border-color] duration-200 hover:shadow-[var(--elevation-2)] hover:border-muted-foreground/25">
                       <Link
                         href={`/blog/${post.slug}`}
                         className="absolute inset-0 z-0 rounded-xl focus:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
@@ -262,7 +262,7 @@ export default function BlogPageClient() {
                         <div className="flex items-center gap-2 text-sm text-[var(--muted-foreground)]">
                           <span>{formatDate(post.createdAt)}</span>
                           <span>•</span>
-                          <span>{formatReadingTime(calculateReadingTime(post.content))}</span>
+                          <span>{getContentMetrics(post.content).readingLabel}</span>
                         </div>
                         {post.tags && post.tags.length > 0 && (
                           <div className="flex flex-wrap gap-2">

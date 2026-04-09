@@ -41,7 +41,7 @@ export function PublicPageShell({
   return (
     <div
       className={cn(
-        "container mx-auto px-4 sm:px-6 lg:px-8",
+        "container mx-auto px-4 sm:px-6 lg:px-8 public-page-in",
         shellMaxWidth[maxWidth],
         shellPadding[pad],
         className,
@@ -108,7 +108,8 @@ export function PublicPageHeader({
       <div className="min-w-0 space-y-2">
         <h1
           className={cn(
-            "text-3xl font-bold tracking-tight text-foreground sm:text-4xl",
+            "font-bold tracking-[-0.03em] text-foreground",
+            "text-[clamp(1.625rem,1.25rem+1.25vw,2.25rem)]",
             titleClassName,
           )}
         >
@@ -144,7 +145,7 @@ export function PublicEmptyState({
   return (
     <div
       className={cn(
-        "rounded-xl border border-border bg-card px-8 py-12 text-center shadow-sm",
+        "rounded-xl border border-border bg-card px-8 py-12 text-center shadow-[var(--elevation-1)]",
         className,
       )}
     >

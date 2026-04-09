@@ -1,13 +1,14 @@
 import * as React from "react"
 
 import { cn } from "@/lib/utils"
+import { UI_PANEL_SPACING, UI_RADIUS, UI_SURFACE_SHADOW } from "@/components/ui/ui-cohesion";
 
 function Card({ className, ...props }: React.ComponentProps<"div">) {
   return (
     <div
       data-slot="card"
       className={cn(
-        "bg-card text-card-foreground flex flex-col gap-4 rounded-xl border border-border py-6 shadow-[var(--shadow-sm)] transition-[box-shadow,border-color] duration-200 hover:shadow-[var(--shadow-md)] hover:border-[oklch(0.91_0.012_255)]",
+        `bg-card text-card-foreground flex flex-col ${UI_PANEL_SPACING} ${UI_RADIUS} border border-border py-6 ${UI_SURFACE_SHADOW} transition-[box-shadow,border-color] duration-200 hover:shadow-[var(--elevation-2)]`,
         className
       )}
       {...props}

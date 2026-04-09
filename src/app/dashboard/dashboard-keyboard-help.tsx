@@ -134,7 +134,7 @@ export function DashboardKeyboardHelp() {
           animate={{ opacity: 1 }}
           exit={{ opacity: 0 }}
           transition={reduceMotion ? { duration: 0 } : { duration: 0.15 }}
-          className={`fixed inset-0 z-[70] flex items-center justify-center p-4 backdrop-blur-sm ${DASHBOARD_OVERLAY_SCRIM}`}
+          className={`fixed inset-0 z-[70] flex items-center justify-center p-4 backdrop-blur-[4px] ${DASHBOARD_OVERLAY_SCRIM}`}
           role="dialog"
           aria-modal="true"
           aria-labelledby="keyboard-help-title"
@@ -143,13 +143,13 @@ export function DashboardKeyboardHelp() {
         >
           <motion.div
             ref={panelRef}
-            initial={reduceMotion ? false : { opacity: 0, scale: 0.98, y: 8 }}
+            initial={reduceMotion ? false : { opacity: 0, scale: 0.95, y: 8 }}
             animate={{ opacity: 1, scale: 1, y: 0 }}
-            exit={reduceMotion ? { opacity: 0 } : { opacity: 0, scale: 0.98, y: 8 }}
+            exit={reduceMotion ? { opacity: 0 } : { opacity: 0, scale: 0.97, y: 4 }}
             transition={
               reduceMotion
                 ? { duration: 0 }
-                : { duration: 0.22, ease: [0.25, 0.46, 0.45, 0.94] }
+                : { type: "spring", stiffness: 400, damping: 30, mass: 0.8 }
             }
             className={`max-h-[min(85vh,640px)] w-full max-w-lg overflow-hidden rounded-2xl ${DASHBOARD_MODAL_PANEL_BASE}`}
             onClick={(ev) => ev.stopPropagation()}
@@ -195,7 +195,7 @@ export function DashboardKeyboardHelp() {
                           className="flex items-center justify-between gap-4 rounded-lg border border-border/80 bg-muted/25 px-3 py-2.5 text-sm"
                         >
                           <span className="text-foreground">{row.label}</span>
-                          <kbd className="shrink-0 rounded-md border border-border bg-card px-2 py-1 font-mono text-[11px] font-medium text-muted-foreground shadow-sm">
+                          <kbd className="shrink-0 rounded-lg border border-border bg-card px-2 py-1 font-mono text-[11px] font-medium text-muted-foreground shadow-[var(--elevation-1)]">
                             {row.keys}
                           </kbd>
                         </li>

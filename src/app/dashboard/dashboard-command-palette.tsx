@@ -32,6 +32,7 @@ import {
   Map as MapIcon,
   Bot,
   KeyRound,
+  Link2,
 } from "lucide-react";
 import {
   DASHBOARD_MODAL_PANEL_BASE,
@@ -45,6 +46,7 @@ type Action = {
   label: string;
   keywords: string[];
   href?: string;
+  command?: "create_quick_draft" | "copy_rss_url" | "copy_sitemap_url";
   icon: React.ComponentType<{ className?: string }>;
   external?: boolean;
   section: ActionSection;
@@ -124,6 +126,22 @@ const ACTIONS: Action[] = [
     section: "go",
   },
   {
+    id: "copy-rss-url",
+    label: "Copy RSS feed URL",
+    keywords: ["copy", "rss", "feed", "url", "share", "subscribe"],
+    command: "copy_rss_url",
+    icon: Rss,
+    section: "go",
+  },
+  {
+    id: "copy-sitemap-url",
+    label: "Copy sitemap URL",
+    keywords: ["copy", "sitemap", "xml", "url", "seo"],
+    command: "copy_sitemap_url",
+    icon: MapIcon,
+    section: "go",
+  },
+  {
     id: "public-rss-feed",
     label: "Blog RSS feed (public site)",
     keywords: ["rss", "feed", "xml", "subscribe", "syndication", "reader", "atom"],
@@ -182,6 +200,46 @@ const ACTIONS: Action[] = [
     section: "go",
   },
   {
+    id: "hub-global-settings",
+    label: "Global settings hub",
+    keywords: ["hub", "global", "settings", "configuration", "site setup", "all settings"],
+    href: "/dashboard/hubs/global-settings",
+    icon: Settings,
+    section: "go",
+  },
+  {
+    id: "hub-taxonomy-assets",
+    label: "Content taxonomy & assets hub",
+    keywords: ["hub", "taxonomy", "assets", "media", "tags", "content operations"],
+    href: "/dashboard/hubs/taxonomy-assets",
+    icon: Layers,
+    section: "go",
+  },
+  {
+    id: "system-health",
+    label: "System health",
+    keywords: ["system", "health", "maintenance", "database", "cleanup"],
+    href: "/dashboard/system",
+    icon: Shield,
+    section: "go",
+  },
+  {
+    id: "system-link-checker",
+    label: "System link checker",
+    keywords: ["broken links", "link checker", "integrity", "markdown links", "scan links"],
+    href: "/dashboard/system",
+    icon: Link2,
+    section: "go",
+  },
+  {
+    id: "create-quick-draft",
+    label: "Create quick draft post",
+    keywords: ["quick", "draft", "post", "create", "instant", "new"],
+    command: "create_quick_draft",
+    icon: FilePlus2,
+    section: "create",
+  },
+  {
     id: "create-post",
     label: "New post",
     keywords: ["new", "post", "write", "create", "draft"],
@@ -202,6 +260,22 @@ const ACTIONS: Action[] = [
     label: "Visual editor — blog",
     keywords: ["editor", "blog", "visual"],
     href: "/editor/blog",
+    icon: PenSquare,
+    section: "content",
+  },
+  {
+    id: "editor-about",
+    label: "Visual editor — about",
+    keywords: ["editor", "about", "visual", "profile", "bio"],
+    href: "/editor/about",
+    icon: PenSquare,
+    section: "content",
+  },
+  {
+    id: "editor-contact",
+    label: "Visual editor — contact",
+    keywords: ["editor", "contact", "visual", "form", "copy"],
+    href: "/editor/contact",
     icon: PenSquare,
     section: "content",
   },
@@ -472,6 +546,47 @@ export function DashboardCommandPalette() {
     setOpen(false);
   }, []);
 
+  const executeCommand = useCallback(
+    async (action: Action): Promise<boolean> => {
+      if (!action.command) return false;
+      if (action.command === "copy_rss_url") {
+        await navigator.clipboard.writeText(`${window.location.origin}/feed.xml`);
+        return true;
+      }
+      if (action.command === "copy_sitemap_url") {
+        await navigator.clipboard.writeText(`${window.location.origin}/sitemap.xml`);
+        return true;
+      }
+      if (action.command === "create_quick_draft") {
+        const now = Date.now();
+        const payload = {
+          title: `Quick Draft ${new Date(now).toISOString().slice(0, 16).replace("T", " ")}`,
+          slug: `quick-draft-${now}`,
+          content: "# Quick Draft\n\nStart writing here...",
+          published: false,
+        };
+        const response = await fetch("/api/posts", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          credentials: "include",
+          body: JSON.stringify(payload),
+        });
+        if (!response.ok) {
+          throw new Error("Failed to create quick draft.");
+        }
+        const created = (await response.json()) as { id?: string };
+        if (created.id) {
+          router.push(`/dashboard/posts/${created.id}`);
+        } else {
+          router.push("/dashboard/posts");
+        }
+        return true;
+      }
+      return false;
+    },
+    [router]
+  );
+
   useEffect(() => {
     const onKeyDown = (e: KeyboardEvent) => {
       if ((e.metaKey || e.ctrlKey) && e.key === "k") {
@@ -517,10 +632,23 @@ export function DashboardCommandPalette() {
         const idx = selectedRef.current;
         const item = list[idx];
         if (!item) return;
-        if (item.type === "action" && item.action.href) {
-          if (item.action.external) window.open(item.action.href, "_blank");
-          else router.push(item.action.href);
-        } else if (item.type === "post") {
+        if (item.type === "action") {
+          void (async () => {
+            try {
+              const handled = await executeCommand(item.action);
+              if (!handled && item.action.href) {
+                if (item.action.external) window.open(item.action.href, "_blank");
+                else router.push(item.action.href);
+              }
+            } catch {
+              // no-op
+            } finally {
+              closePalette();
+            }
+          })();
+          return;
+        }
+        if (item.type === "post") {
           router.push(`/dashboard/posts/${item.post.id}`);
         }
         closePalette();
@@ -528,21 +656,34 @@ export function DashboardCommandPalette() {
     };
     window.addEventListener("keydown", onKeyDown);
     return () => window.removeEventListener("keydown", onKeyDown);
-  }, [closePalette, router]);
+  }, [closePalette, executeCommand, router]);
 
   const selectedItem = flatList[activeIndex];
 
   const runAction = useCallback(
     (item: ListItem) => {
-      if (item.type === "action" && item.action.href) {
-        if (item.action.external) window.open(item.action.href, "_blank");
-        else router.push(item.action.href);
-      } else if (item.type === "post") {
+      if (item.type === "action") {
+        void (async () => {
+          try {
+            const handled = await executeCommand(item.action);
+            if (!handled && item.action.href) {
+              if (item.action.external) window.open(item.action.href, "_blank");
+              else router.push(item.action.href);
+            }
+          } catch {
+            // no-op
+          } finally {
+            closePalette();
+          }
+        })();
+        return;
+      }
+      if (item.type === "post") {
         router.push(`/dashboard/posts/${item.post.id}`);
       }
       closePalette();
     },
-    [router, closePalette]
+    [closePalette, executeCommand, router]
   );
 
   const flatIndexByAction = useCallback(
@@ -563,7 +704,7 @@ export function DashboardCommandPalette() {
           animate={{ opacity: 1 }}
           exit={{ opacity: 0 }}
           transition={{ duration: 0.15 }}
-          className={`fixed inset-0 z-[60] flex items-start justify-center pt-[10vh] backdrop-blur-sm ${DASHBOARD_OVERLAY_SCRIM}`}
+          className={`fixed inset-0 z-[60] flex items-start justify-center pt-[10vh] backdrop-blur-[4px] ${DASHBOARD_OVERLAY_SCRIM}`}
           onClick={closePalette}
           role="dialog"
           aria-modal="true"

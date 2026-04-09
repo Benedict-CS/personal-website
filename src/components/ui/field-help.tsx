@@ -40,7 +40,7 @@ export function FieldHelp({ text, className = "" }: { text: string; className?: 
       </button>
       {open && (
         <div
-          className="absolute left-0 top-full mt-1 z-[100] min-w-[180px] max-w-[280px] max-h-[min(50vh,320px)] overflow-y-auto rounded-xl border border-[var(--border)] bg-[var(--card)] px-3 py-2 text-sm text-[var(--foreground)] shadow-[var(--shadow-lg)]"
+          className="absolute left-0 top-full mt-1 z-[100] min-w-[180px] max-w-[280px] max-h-[min(50vh,320px)] overflow-y-auto rounded-xl border border-[var(--border)] bg-[var(--card)] px-3 py-2 text-sm text-[var(--foreground)] shadow-[var(--elevation-3)]"
           role="tooltip"
         >
           {text}

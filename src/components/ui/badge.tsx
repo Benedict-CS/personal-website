@@ -9,13 +9,13 @@ const badgeVariants = cva(
     variants: {
       variant: {
         default:
-          "border-transparent bg-primary text-primary-foreground shadow-[var(--shadow-sm)] hover:bg-primary/90 hover:shadow-[var(--shadow-sm)] active:scale-[0.98]",
+          "border-transparent bg-primary text-primary-foreground shadow-[var(--elevation-1)] hover:bg-primary/90 active:scale-[0.97]",
         secondary:
-          "border-transparent bg-secondary text-secondary-foreground shadow-[var(--shadow-sm)] hover:bg-secondary/85 hover:shadow-[var(--shadow-sm)] active:scale-[0.98]",
+          "border-transparent bg-secondary text-secondary-foreground shadow-[var(--elevation-1)] hover:bg-secondary/85 active:scale-[0.97]",
         destructive:
-          "border-transparent bg-destructive text-destructive-foreground shadow-[var(--shadow-sm)] hover:bg-destructive/90 active:scale-[0.98]",
+          "border-transparent bg-destructive text-destructive-foreground shadow-[var(--elevation-1)] hover:bg-destructive/90 active:scale-[0.97]",
         outline:
-          "border-[var(--border)] bg-transparent text-[var(--foreground)] hover:bg-[var(--accent)]/60 hover:border-[var(--border)] active:scale-[0.98]",
+          "border-[var(--border)] bg-transparent text-[var(--foreground)] hover:bg-[var(--accent)]/60 hover:border-[var(--border)] active:scale-[0.97]",
       },
     },
     defaultVariants: {

@@ -32,7 +32,7 @@ export default async function BlogPreviewPage({ searchParams }: PreviewPageProps
   if (!token) {
     return (
       <div className="container mx-auto max-w-xl px-4 py-12 sm:px-6 sm:py-16">
-        <div className="rounded-xl border border-border bg-card p-6 shadow-sm sm:p-8">
+        <div className="rounded-xl border border-border bg-card p-6 shadow-[var(--elevation-1)] sm:p-8">
           <h1 className="text-2xl font-semibold text-foreground">Draft preview</h1>
           <p className="mt-3 text-muted-foreground leading-relaxed">
             A valid preview URL includes a secret token in the query string. Open your post in the dashboard and use

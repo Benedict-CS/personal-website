@@ -196,14 +196,14 @@ export default function ContactPage() {
               })}
           </div>
 
-          <Card className="shadow-[var(--shadow-lg)] border-[var(--border)]">
+          <Card className="shadow-[var(--elevation-3)] border-[var(--border)]">
             <CardHeader>
-              <CardTitle className="text-[var(--foreground)]">Send a message</CardTitle>
+              <CardTitle className="text-lg font-semibold tracking-[-0.02em] text-[var(--foreground)]">Send a message</CardTitle>
             </CardHeader>
             <CardContent>
-              <form onSubmit={handleSubmit} className="space-y-4">
+              <form onSubmit={handleSubmit} className="space-y-5">
                 <div>
-                  <label htmlFor="name" className="mb-1 block text-sm font-medium text-[var(--foreground)]">
+                  <label htmlFor="name" className="mb-1.5 block text-sm font-medium tracking-[-0.01em] text-[var(--foreground)]">
                     Name
                   </label>
                   <Input
@@ -217,7 +217,7 @@ export default function ContactPage() {
                   />
                 </div>
                 <div>
-                  <label htmlFor="email" className="mb-1 block text-sm font-medium text-[var(--foreground)]">
+                  <label htmlFor="email" className="mb-1.5 block text-sm font-medium tracking-[-0.01em] text-[var(--foreground)]">
                     Email
                   </label>
                   <Input
@@ -231,7 +231,7 @@ export default function ContactPage() {
                   />
                 </div>
                 <div>
-                  <label htmlFor="subject" className="mb-1 block text-sm font-medium text-[var(--foreground)]">
+                  <label htmlFor="subject" className="mb-1.5 block text-sm font-medium tracking-[-0.01em] text-[var(--foreground)]">
                     Subject (optional)
                   </label>
                   <Input
@@ -244,7 +244,7 @@ export default function ContactPage() {
                   />
                 </div>
                 <div>
-                  <label htmlFor="message" className="mb-1 block text-sm font-medium text-[var(--foreground)]">
+                  <label htmlFor="message" className="mb-1.5 block text-sm font-medium tracking-[-0.01em] text-[var(--foreground)]">
                     Message
                   </label>
                   <Textarea
@@ -263,9 +263,9 @@ export default function ContactPage() {
                     id="contact-form-status"
                     role="status"
                     aria-live="polite"
-                    className={`flex items-center gap-3 rounded-lg border p-4 text-sm ${
+                    className={`flex items-center gap-3 rounded-xl border p-4 text-sm ${
                       status === "success"
-                        ? "border-emerald-200 bg-emerald-50 text-emerald-800"
+                        ? "border-emerald-200 bg-emerald-50/80 text-emerald-800"
                         : "border-destructive/30 bg-destructive/10 text-destructive"
                     }`}
                   >

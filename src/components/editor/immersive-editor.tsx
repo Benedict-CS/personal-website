@@ -1,6 +1,6 @@
 "use client";
 
-import { startTransition, useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { startTransition, useCallback, useDeferredValue, useEffect, useMemo, useRef, useState } from "react";
 import Link from "next/link";
 import { motion, AnimatePresence, useReducedMotion } from "framer-motion";
 import {
@@ -20,22 +20,28 @@ import {
   verticalListSortingStrategy,
 } from "@dnd-kit/sortable";
 import { CSS } from "@dnd-kit/utilities";
-import { GripVertical, Image as ImageIcon, Save, Send, Upload, Check, Focus } from "lucide-react";
+import { GripVertical, Image as ImageIcon, Save, Send, Upload, Check, Focus, Command } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Card, CardContent } from "@/components/ui/card";
 import { InsertMediaModal } from "@/components/insert-media-modal";
 import { SiteBlockBuilder } from "@/components/site-block-builder";
 import { ImmersiveCustomMarkdownField } from "@/components/editor/immersive-custom-markdown-field";
+import { MarkdownRenderer } from "@/components/markdown-renderer";
 import { ContentEditableField } from "@/components/editor/content-editable-field";
 import { DevBlockMutedNotice } from "@/components/dev-blocks/dev-block-muted-notice";
 import { EditorImmersiveHeader } from "@/components/editor/editor-immersive-header";
-import { DashboardEmptyState } from "@/components/dashboard/dashboard-ui";
+import { DashboardEmptyState, DashboardKbd } from "@/components/dashboard/dashboard-ui";
 import { publicSiteContainerClassName } from "@/components/public/public-layout";
 import type { EditorTarget } from "@/lib/editor-route";
 import { cn } from "@/lib/utils";
 import { stableStringify } from "@/lib/stable-stringify";
 import { subscribeCmsMediaInsert } from "@/lib/cms-media-insert";
+import { extractMarkdownHeadingOutline } from "@/lib/markdown-heading-outline";
+import { sanitizeSlugForStorage, validateCustomPageDraft } from "@/lib/editor-validation";
+import { useLeaveGuard } from "@/contexts/leave-guard-context";
+import { useToast } from "@/contexts/toast-context";
+import { getContentMetrics } from "@/lib/content-metrics";
 
 type HomeContent = {
   heroTitle?: string;
@@ -97,6 +103,9 @@ const defaultContact: ContactContent = {
   formNote: "Use the form below, or email me directly.",
 };
 
+const PREMIUM_MOTION_EASE: [number, number, number, number] = [0.25, 0.46, 0.45, 0.94];
+const PREMIUM_MOTION_DURATION = 0.35;
+
 function SortableSection({
   id,
   children,
@@ -137,7 +146,7 @@ function SortableSection({
         >
           <button
             type="button"
-            className="inline-flex h-8 w-8 cursor-grab items-center justify-center rounded-lg border border-border/70 bg-card/85 text-muted-foreground shadow-sm backdrop-blur-md transition-colors hover:bg-card hover:text-foreground active:cursor-grabbing"
+            className="inline-flex h-8 w-8 cursor-grab items-center justify-center rounded-lg border border-border/70 bg-card/85 text-muted-foreground shadow-[var(--elevation-1)] backdrop-blur-md transition-colors hover:bg-card hover:text-foreground active:cursor-grabbing"
             {...attributes}
             {...listeners}
             aria-label={`Drag section: ${HOME_SECTION_LABELS[id] ?? id}`}
@@ -172,6 +181,9 @@ export function ImmersiveEditor({ target }: { target: EditorTarget }) {
   const [message, setMessage] = useState<string>("");
   const [mediaOpen, setMediaOpen] = useState(false);
   const cvInputRef = useRef<HTMLInputElement | null>(null);
+  const rawTextareaRef = useRef<HTMLTextAreaElement | null>(null);
+  const rawPreviewRef = useRef<HTMLDivElement | null>(null);
+  const syncScrollLockRef = useRef<"input" | "preview" | null>(null);
 
   const [home, setHome] = useState<HomeContent>(defaultHome);
   const [contact, setContact] = useState<ContactContent>(defaultContact);
@@ -180,6 +192,7 @@ export function ImmersiveEditor({ target }: { target: EditorTarget }) {
   const [customEditorMode, setCustomEditorMode] = useState<"builder" | "raw">("builder");
   /** Dims chrome while editing raw markdown on custom pages (writing focus). */
   const [writingFocus, setWritingFocus] = useState(false);
+  const [commandPaletteOpen, setCommandPaletteOpen] = useState(false);
   /** Auto-dim secondary UI while typing in raw markdown (distraction-free without toggling focus mode). */
   const [immersiveTypingDim, setImmersiveTypingDim] = useState(false);
   const immersiveTypingIdleRef = useRef<ReturnType<typeof setTimeout> | null>(null);
@@ -187,7 +200,10 @@ export function ImmersiveEditor({ target }: { target: EditorTarget }) {
 
   const [isEditing] = useState(true);
   const [savedAt, setSavedAt] = useState<number | null>(null);
+  const [syncStatus, setSyncStatus] = useState<"idle" | "saving" | "saved-draft" | "published" | "error">("idle");
   const savedTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const autosaveTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const autosaveRequestIdRef = useRef(0);
   /** Matches last saved or loaded snapshot so we can show unsaved UI (tab title + floating bar). */
   const editorBaselineRef = useRef<string | null>(null);
   const savedDocumentTitleRef = useRef<string | null>(null);
@@ -198,6 +214,8 @@ export function ImmersiveEditor({ target }: { target: EditorTarget }) {
     useSensor(PointerSensor, { activationConstraint: { distance: 8 } }),
     useSensor(KeyboardSensor, { coordinateGetter: sortableKeyboardCoordinates })
   );
+  const { setDirty: setLeaveGuardDirty, registerHandler: registerLeaveHandler } = useLeaveGuard();
+  const { toast } = useToast();
 
   const onCustomPageMarkdownChange = useCallback((next: string) => {
     startTransition(() => {
@@ -389,11 +407,27 @@ export function ImmersiveEditor({ target }: { target: EditorTarget }) {
 
   useEffect(() => {
     const onBeforeUnload = (e: BeforeUnloadEvent) => {
-      if (isDirty) e.preventDefault();
+      if (isDirty || syncStatus === "saving") e.preventDefault();
     };
     window.addEventListener("beforeunload", onBeforeUnload);
     return () => window.removeEventListener("beforeunload", onBeforeUnload);
-  }, [isDirty]);
+  }, [isDirty, syncStatus]);
+
+  useEffect(() => {
+    setLeaveGuardDirty(isDirty || syncStatus === "saving");
+  }, [isDirty, setLeaveGuardDirty, syncStatus]);
+
+  useEffect(() => {
+    registerLeaveHandler((url) => {
+      const shouldLeave = window.confirm(
+        "You still have unsaved changes or an in-flight save. Leave this editor anyway?"
+      );
+      if (!shouldLeave) return;
+      setLeaveGuardDirty(false);
+      window.location.assign(url);
+    });
+    return () => registerLeaveHandler(null);
+  }, [registerLeaveHandler, setLeaveGuardDirty]);
 
   useEffect(() => {
     return () => {
@@ -444,112 +478,152 @@ export function ImmersiveEditor({ target }: { target: EditorTarget }) {
     }
   }, [target.kind, customPage, loading]);
 
-  useEffect(() => {
-    if (target.kind !== "custom-page" || !customPage || loading) return;
-    const snap = stableStringify({
-      id: customPage.id,
-      title: customPage.title,
-      content: customPage.content,
-      slug: customPage.slug,
-      published: customPage.published,
-    });
-    if (snap === lastCustomPageAutosaveRef.current) return;
-    const timer = setTimeout(async () => {
-      if (saving) return;
+  const persistChanges = useCallback(
+    async (mode: "autosave" | "manual") => {
+      if (loading) return false;
+      if (mode === "manual") setSaving(true);
+      setSyncStatus("saving");
+      setMessage(mode === "manual" ? "Saving changes..." : "Auto-saving draft...");
       try {
-        const res = await fetch(`/api/custom-pages/id/${customPage.id}`, {
-          method: "PATCH",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({
+        if (target.kind === "home") {
+          const payload = { ...home, sectionOrder, sectionVisibility: home.sectionVisibility ?? {} };
+          const res = await fetch("/api/site-content", {
+            method: "PATCH",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ page: "home", content: payload }),
+          });
+          if (!res.ok) throw new Error("save failed");
+        } else if (target.kind === "contact") {
+          const res = await fetch("/api/site-content", {
+            method: "PATCH",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ page: "contact", content: contact }),
+          });
+          if (!res.ok) throw new Error("save failed");
+        } else if (target.kind === "about") {
+          const res = await fetch("/api/about/config", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify(about),
+          });
+          if (!res.ok) throw new Error("save failed");
+        } else if (target.kind === "custom-page" && customPage) {
+          const validation = validateCustomPageDraft({
             title: customPage.title,
-            content: customPage.content,
             slug: customPage.slug,
-            published: customPage.published,
-          }),
-        });
-        if (res.ok) {
-          lastCustomPageAutosaveRef.current = snap;
-          const full = getEditorSnapshot();
-          if (full !== null) editorBaselineRef.current = full;
-          setSavedAt(Date.now());
-          if (savedTimeoutRef.current) clearTimeout(savedTimeoutRef.current);
-          savedTimeoutRef.current = setTimeout(() => {
-            setSavedAt(null);
-            savedTimeoutRef.current = null;
-          }, 2000);
+            content: customPage.content,
+            currentSlug: customPage.slug,
+          });
+          if (!validation.valid) {
+            if (mode === "manual") {
+              setMessage("Fix validation errors before saving.");
+            }
+            setSyncStatus("error");
+            return false;
+          }
+          const res = await fetch(`/api/custom-pages/id/${customPage.id}`, {
+            method: "PATCH",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({
+              slug: sanitizeSlugForStorage(customPage.slug),
+              title: customPage.title,
+              content: customPage.content,
+              published: customPage.published,
+            }),
+          });
+          if (!res.ok) throw new Error("save failed");
         }
-      } catch {
-        // network error: local draft still in localStorage
-      }
-    }, 5000);
-    return () => clearTimeout(timer);
-  }, [target.kind, customPage, loading, saving, getEditorSnapshot]);
 
-  async function saveAndPublish() {
-    setSaving(true);
-    setMessage("");
-    try {
-      if (target.kind === "home") {
-        const payload = { ...home, sectionOrder, sectionVisibility: home.sectionVisibility ?? {} };
-        const res = await fetch("/api/site-content", {
-          method: "PATCH",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ page: "home", content: payload }),
-        });
-        if (!res.ok) throw new Error("save failed");
-      } else if (target.kind === "contact") {
-        const res = await fetch("/api/site-content", {
-          method: "PATCH",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ page: "contact", content: contact }),
-        });
-        if (!res.ok) throw new Error("save failed");
-      } else if (target.kind === "about") {
-        const res = await fetch("/api/about/config", {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify(about),
-        });
-        if (!res.ok) throw new Error("save failed");
-      } else if (target.kind === "custom-page" && customPage) {
-        const res = await fetch(`/api/custom-pages/id/${customPage.id}`, {
-          method: "PATCH",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({
-            slug: customPage.slug,
+        const snap = getEditorSnapshot();
+        if (snap !== null) editorBaselineRef.current = snap;
+        if (target.kind === "custom-page" && customPage) {
+          lastCustomPageAutosaveRef.current = stableStringify({
+            id: customPage.id,
             title: customPage.title,
             content: customPage.content,
+            slug: customPage.slug,
             published: customPage.published,
-          }),
-        });
-        if (!res.ok) throw new Error("save failed");
+          });
+        }
+        setSavedAt(Date.now());
+        if (savedTimeoutRef.current) clearTimeout(savedTimeoutRef.current);
+        savedTimeoutRef.current = setTimeout(() => {
+          setSavedAt(null);
+          savedTimeoutRef.current = null;
+        }, 2400);
+
+        const isPublishedManual = mode === "manual" && target.kind === "custom-page" && Boolean(customPage?.published);
+        setSyncStatus(isPublishedManual ? "published" : "saved-draft");
+        if (isPublishedManual && customPage?.slug) {
+          setMessage("Published to live site.");
+          toast(
+            <span>
+              Published successfully.{" "}
+              <a
+                href={`/page/${customPage.slug}`}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="font-semibold underline underline-offset-2"
+              >
+                View live page
+              </a>
+            </span>,
+            "success"
+          );
+        } else {
+          setMessage("Saved to draft.");
+        }
+        return true;
+      } catch {
+        setSyncStatus("error");
+        setMessage("Save failed. Your local draft is preserved.");
+        return false;
+      } finally {
+        if (mode === "manual") setSaving(false);
       }
-      setMessage(target.kind === "custom-page" ? "Saved custom page." : "Saved to live site.");
-      const snap = getEditorSnapshot();
-      if (snap !== null) {
-        editorBaselineRef.current = snap;
+    },
+    [about, contact, customPage, getEditorSnapshot, home, loading, sectionOrder, target.kind, toast]
+  );
+
+  useEffect(() => {
+    if (loading || !isDirty || saving) return;
+    autosaveRequestIdRef.current += 1;
+    const requestId = autosaveRequestIdRef.current;
+    if (autosaveTimerRef.current) clearTimeout(autosaveTimerRef.current);
+    autosaveTimerRef.current = setTimeout(() => {
+      if (requestId !== autosaveRequestIdRef.current) return;
+      void persistChanges("autosave");
+    }, 1400);
+    return () => {
+      if (autosaveTimerRef.current) {
+        clearTimeout(autosaveTimerRef.current);
+        autosaveTimerRef.current = null;
       }
-      if (target.kind === "custom-page" && customPage) {
-        lastCustomPageAutosaveRef.current = stableStringify({
-          id: customPage.id,
-          title: customPage.title,
-          content: customPage.content,
-          slug: customPage.slug,
-          published: customPage.published,
-        });
-      }
-      setSavedAt(Date.now());
-      if (savedTimeoutRef.current) clearTimeout(savedTimeoutRef.current);
-      savedTimeoutRef.current = setTimeout(() => {
-        setSavedAt(null);
-        savedTimeoutRef.current = null;
-      }, 2000);
-    } catch {
-      setMessage("Save failed. Please try again.");
-    } finally {
-      setSaving(false);
+    };
+  }, [isDirty, loading, persistChanges, saving]);
+
+  const saveAndPublish = useCallback(async () => {
+    if (autosaveTimerRef.current) {
+      clearTimeout(autosaveTimerRef.current);
+      autosaveTimerRef.current = null;
     }
-  }
+    await persistChanges("manual");
+  }, [persistChanges]);
+
+  const jumpToHeading = useCallback((line: number) => {
+    const ta = rawTextareaRef.current;
+    if (!ta) return;
+    const text = ta.value;
+    let currentLine = 1;
+    let index = 0;
+    while (currentLine < line && index < text.length) {
+      if (text[index] === "\n") currentLine += 1;
+      index += 1;
+    }
+    ta.focus();
+    ta.setSelectionRange(index, index);
+    ta.scrollTop = Math.max(0, ta.scrollHeight * ((line - 1) / Math.max(1, text.split("\n").length)));
+  }, []);
 
   useEffect(() => {
     return () => {
@@ -558,16 +632,84 @@ export function ImmersiveEditor({ target }: { target: EditorTarget }) {
   }, []);
 
   useEffect(() => {
-    if (!writingFocus) return;
+    const onSaveShortcut = (event: KeyboardEvent) => {
+      if (!(event.metaKey || event.ctrlKey) || event.altKey || event.shiftKey) return;
+      if (event.key.toLowerCase() !== "s") return;
+      if (loading || saving) return;
+      event.preventDefault();
+      void saveAndPublish();
+    };
+    window.addEventListener("keydown", onSaveShortcut);
+    return () => window.removeEventListener("keydown", onSaveShortcut);
+  }, [loading, saving, saveAndPublish]);
+
+  useEffect(() => {
+    const onCommandPaletteShortcut = (event: KeyboardEvent) => {
+      if (!(event.metaKey || event.ctrlKey) || event.altKey || event.shiftKey) return;
+      if (event.key.toLowerCase() !== "k") return;
+      event.preventDefault();
+      setCommandPaletteOpen(true);
+    };
+    window.addEventListener("keydown", onCommandPaletteShortcut);
+    return () => window.removeEventListener("keydown", onCommandPaletteShortcut);
+  }, []);
+
+  useEffect(() => {
+    if (!writingFocus && !commandPaletteOpen) return;
     const onKey = (e: KeyboardEvent) => {
       if (e.key === "Escape") {
         e.preventDefault();
-        setWritingFocus(false);
+        if (commandPaletteOpen) setCommandPaletteOpen(false);
+        else setWritingFocus(false);
       }
     };
     window.addEventListener("keydown", onKey);
     return () => window.removeEventListener("keydown", onKey);
-  }, [writingFocus]);
+  }, [commandPaletteOpen, writingFocus]);
+
+  useEffect(() => {
+    if (target.kind !== "custom-page" || customEditorMode !== "raw") return;
+    const inputEl = rawTextareaRef.current;
+    const previewEl = rawPreviewRef.current;
+    if (!inputEl || !previewEl) return;
+
+    const ratio = (el: HTMLElement) => {
+      const max = el.scrollHeight - el.clientHeight;
+      return max <= 0 ? 0 : el.scrollTop / max;
+    };
+
+    const applyRatio = (el: HTMLElement, value: number) => {
+      const max = el.scrollHeight - el.clientHeight;
+      el.scrollTop = Math.max(0, Math.min(max, max * value));
+    };
+
+    const onInputScroll = () => {
+      if (syncScrollLockRef.current === "preview") return;
+      syncScrollLockRef.current = "input";
+      applyRatio(previewEl, ratio(inputEl));
+      window.setTimeout(() => {
+        if (syncScrollLockRef.current === "input") syncScrollLockRef.current = null;
+      }, 40);
+    };
+
+    const onPreviewScroll = () => {
+      if (syncScrollLockRef.current === "input") return;
+      syncScrollLockRef.current = "preview";
+      applyRatio(inputEl, ratio(previewEl));
+      window.setTimeout(() => {
+        if (syncScrollLockRef.current === "preview") syncScrollLockRef.current = null;
+      }, 40);
+    };
+
+    inputEl.addEventListener("scroll", onInputScroll, { passive: true });
+    previewEl.addEventListener("scroll", onPreviewScroll, { passive: true });
+
+    return () => {
+      inputEl.removeEventListener("scroll", onInputScroll);
+      previewEl.removeEventListener("scroll", onPreviewScroll);
+      syncScrollLockRef.current = null;
+    };
+  }, [customEditorMode, target.kind]);
 
   async function handleCvUpload(event: React.ChangeEvent<HTMLInputElement>) {
     const file = event.target.files?.[0];
@@ -621,6 +763,28 @@ export function ImmersiveEditor({ target }: { target: EditorTarget }) {
     !writingFocus &&
     immersiveTypingDim;
   const secondaryEditorOpacity = dimSecondaryChrome ? (reduceMotion ? 0.78 : 0.42) : 1;
+  const deferredCustomMarkdown = useDeferredValue(
+    target.kind === "custom-page" ? (customPage?.content ?? "") : ""
+  );
+  const customRawStats = useMemo(() => {
+    if (target.kind !== "custom-page" || !customPage) return null;
+    const metrics = getContentMetrics(deferredCustomMarkdown);
+    const headings = (deferredCustomMarkdown.match(/^#{1,6}\s+/gm) ?? []).length;
+    return { ...metrics, headings };
+  }, [customPage, deferredCustomMarkdown, target.kind]);
+  const customHeadingOutline = useMemo(() => {
+    if (target.kind !== "custom-page" || customEditorMode !== "raw") return [];
+    return extractMarkdownHeadingOutline(deferredCustomMarkdown);
+  }, [customEditorMode, deferredCustomMarkdown, target.kind]);
+  const customPageValidation = useMemo(() => {
+    if (target.kind !== "custom-page" || !customPage) return null;
+    return validateCustomPageDraft({
+      title: customPage.title,
+      slug: customPage.slug,
+      content: customPage.content,
+      currentSlug: customPage.slug,
+    });
+  }, [customPage, target.kind]);
 
   if (loading) {
     return (
@@ -672,10 +836,23 @@ export function ImmersiveEditor({ target }: { target: EditorTarget }) {
             onClick={() => setWritingFocus(false)}
           />
         ) : null}
+        {commandPaletteOpen ? (
+          <motion.button
+            key="command-palette-backdrop"
+            type="button"
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            transition={{ duration: 0.18 }}
+            className="fixed inset-0 z-[65] border-0 bg-background/70 p-0 backdrop-blur-[2px]"
+            aria-label="Close command palette"
+            onClick={() => setCommandPaletteOpen(false)}
+          />
+        ) : null}
       </AnimatePresence>
       {writingFocus && target.kind === "custom-page" && customEditorMode === "raw" ? (
         <div
-          className="pointer-events-none fixed left-0 right-0 top-0 z-[45] h-[3px] overflow-hidden bg-muted/50 shadow-sm"
+          className="pointer-events-none fixed left-0 right-0 top-0 z-[45] h-[3px] overflow-hidden bg-muted/50 shadow-[var(--elevation-1)]"
           role="progressbar"
           aria-valuenow={Math.round(focusProgress)}
           aria-valuemin={0}
@@ -766,7 +943,7 @@ export function ImmersiveEditor({ target }: { target: EditorTarget }) {
               className="mb-10 text-sm text-muted-foreground"
               placeholder="Contact form note"
             />
-            <Card className="shadow-lg">
+            <Card className="shadow-[var(--elevation-3)]">
               <CardContent className="pt-6 text-foreground">
                 Contact form block (live behavior remains on public route).
               </CardContent>
@@ -776,7 +953,7 @@ export function ImmersiveEditor({ target }: { target: EditorTarget }) {
 
         {target.kind === "about" && (
           <section className="container mx-auto max-w-5xl px-6 py-12">
-            <Card className="shadow-lg">
+            <Card className="shadow-[var(--elevation-3)]">
               <CardContent className="pt-8 pb-8">
                 <div className="text-center">
                   <button
@@ -835,11 +1012,11 @@ export function ImmersiveEditor({ target }: { target: EditorTarget }) {
                 }
               />
             ) : (
-              <Card className="shadow-lg">
+              <Card className="shadow-[var(--elevation-3)]">
                 <CardContent className="space-y-4 pt-6">
                   <motion.div
                     animate={{ opacity: secondaryEditorOpacity }}
-                    transition={{ duration: 0.35, ease: [0.25, 0.46, 0.45, 0.94] }}
+                    transition={{ duration: PREMIUM_MOTION_DURATION, ease: PREMIUM_MOTION_EASE }}
                     className="space-y-4"
                   >
                     <ContentEditableField
@@ -848,6 +1025,16 @@ export function ImmersiveEditor({ target }: { target: EditorTarget }) {
                       className="text-3xl font-bold text-foreground"
                       placeholder="Page title"
                     />
+                    {customPageValidation?.errors.title ? (
+                      <p className="text-xs text-rose-700" role="status" aria-live="polite">
+                        {customPageValidation.errors.title}
+                      </p>
+                    ) : null}
+                    {customPageValidation?.errors.slug ? (
+                      <p className="text-xs text-rose-700" role="status" aria-live="polite">
+                        {customPageValidation.errors.slug}
+                      </p>
+                    ) : null}
                     <div className="flex flex-wrap items-center gap-2">
                       <Button
                         type="button"
@@ -933,19 +1120,59 @@ export function ImmersiveEditor({ target }: { target: EditorTarget }) {
                       {localDraftBanner === "restored" ? (
                         <p className="text-sm text-emerald-800">Local draft restored. Save when you are ready.</p>
                       ) : null}
-                      <ImmersiveCustomMarkdownField
-                        content={customPage.content}
-                        onContentChange={onCustomPageMarkdownChange}
-                        placeholder="Write Markdown. Type / for headings, code, images, TOC, date, or quotes."
-                        aria-label="Raw markdown body"
-                        onTypingPulse={pulseImmersiveTypingChrome}
-                        onTypingEnd={endImmersiveTypingChrome}
-                      />
+                      <div className="grid gap-4 xl:grid-cols-2">
+                        <div className="space-y-3">
+                          <ImmersiveCustomMarkdownField
+                            content={customPage.content}
+                            onContentChange={onCustomPageMarkdownChange}
+                            placeholder="Type '/' for commands or start writing your markdown here..."
+                            aria-label="Raw markdown body"
+                            textareaRef={rawTextareaRef}
+                            onTypingPulse={pulseImmersiveTypingChrome}
+                            onTypingEnd={endImmersiveTypingChrome}
+                          />
+                          {customPageValidation?.errors.content ? (
+                            <p className="text-xs text-rose-700" role="status" aria-live="polite">
+                              {customPageValidation.errors.content}
+                            </p>
+                          ) : null}
+                          {customHeadingOutline.length > 0 ? (
+                            <div className="rounded-lg border border-border bg-card/70 p-3">
+                              <p className="mb-2 text-xs font-medium uppercase tracking-wide text-muted-foreground">
+                                Heading outline
+                              </p>
+                              <ul className="max-h-36 space-y-1 overflow-y-auto pr-1">
+                                {customHeadingOutline.map((heading) => (
+                                  <li key={`${heading.line}-${heading.text}`}>
+                                    <button
+                                      type="button"
+                                      onClick={() => jumpToHeading(heading.line)}
+                                      className="w-full truncate rounded-md px-2 py-1 text-left text-xs text-foreground hover:bg-muted/60"
+                                      style={{ paddingLeft: `${Math.max(0, (heading.depth - 1) * 10 + 8)}px` }}
+                                    >
+                                      {heading.text}
+                                    </button>
+                                  </li>
+                                ))}
+                              </ul>
+                            </div>
+                          ) : null}
+                        </div>
+                        <div className="space-y-2">
+                          <p className="text-xs font-medium uppercase tracking-wide text-muted-foreground">Live preview</p>
+                          <div
+                            ref={rawPreviewRef}
+                            className="max-h-[32rem] overflow-y-auto rounded-lg border border-border bg-card p-4"
+                          >
+                            <MarkdownRenderer content={customPage.content} />
+                          </div>
+                        </div>
+                      </div>
                     </div>
                   )}
                   <motion.label
                     animate={{ opacity: secondaryEditorOpacity }}
-                    transition={{ duration: 0.35, ease: [0.25, 0.46, 0.45, 0.94] }}
+                    transition={{ duration: PREMIUM_MOTION_DURATION, ease: PREMIUM_MOTION_EASE }}
                     className="inline-flex items-center gap-2 text-sm text-foreground"
                   >
                     <input
@@ -953,7 +1180,13 @@ export function ImmersiveEditor({ target }: { target: EditorTarget }) {
                       checked={customPage.published}
                       onChange={(event) =>
                         setCustomPage((current) =>
-                          current ? { ...current, published: event.target.checked } : current
+                          current
+                            ? {
+                                ...current,
+                                published: event.target.checked,
+                                slug: sanitizeSlugForStorage(current.slug || current.title),
+                              }
+                            : current
                         )
                       }
                     />
@@ -968,21 +1201,26 @@ export function ImmersiveEditor({ target }: { target: EditorTarget }) {
 
       <motion.div
         animate={{ opacity: secondaryEditorOpacity }}
-        transition={{ duration: 0.35, ease: [0.25, 0.46, 0.45, 0.94] }}
-        className={`fixed bottom-4 right-4 flex items-center gap-3 rounded-xl border border-border/70 bg-card/90 p-3 shadow-lg backdrop-blur-xl ${
+        transition={{ duration: PREMIUM_MOTION_DURATION, ease: PREMIUM_MOTION_EASE }}
+        className={`fixed bottom-4 right-4 flex items-center gap-3 rounded-xl border border-border/70 bg-card/90 p-3 shadow-[var(--elevation-3)] backdrop-blur-xl ${
           writingFocus && target.kind === "custom-page" ? "z-[60]" : "z-50"
         }`}
       >
         <span className="rounded-full bg-muted/80 px-2.5 py-1 text-xs font-medium text-muted-foreground">
           Editor Mode
         </span>
-        {saving && (
+        {target.kind === "custom-page" && customEditorMode === "raw" && customRawStats ? (
+          <span className="rounded-full bg-muted/80 px-2.5 py-1 text-xs font-medium text-muted-foreground">
+            {customRawStats.words} words · {customRawStats.readingLabel} · {customRawStats.headings} headings
+          </span>
+        ) : null}
+        {(saving || syncStatus === "saving") && (
           <span className="flex items-center gap-1.5 rounded-full bg-muted/80 px-2.5 py-1 text-xs font-medium text-muted-foreground" aria-live="polite">
             <Save className="h-3.5 w-3.5 animate-pulse" aria-hidden />
             Saving...
           </span>
         )}
-        {!saving && isDirty && (
+        {!saving && syncStatus !== "saving" && isDirty && (
           <span
             className="rounded-full bg-amber-100 px-2.5 py-1 text-xs font-medium text-amber-900"
             aria-live="polite"
@@ -990,7 +1228,17 @@ export function ImmersiveEditor({ target }: { target: EditorTarget }) {
             Unsaved changes
           </span>
         )}
-        {!saving && savedAt !== null && !isDirty && (
+        {!saving && syncStatus === "error" ? (
+          <span className="rounded-full bg-red-100 px-2.5 py-1 text-xs font-medium text-red-700" aria-live="polite">
+            Save failed
+          </span>
+        ) : null}
+        {!saving && syncStatus === "published" && !isDirty ? (
+          <span className="rounded-full bg-blue-100 px-2.5 py-1 text-xs font-medium text-blue-800" aria-live="polite">
+            Published
+          </span>
+        ) : null}
+        {!saving && syncStatus === "saved-draft" && savedAt !== null && !isDirty && (
           <motion.span
             initial={{ opacity: 0, scale: 0.95 }}
             animate={{ opacity: 1, scale: 1 }}
@@ -999,7 +1247,7 @@ export function ImmersiveEditor({ target }: { target: EditorTarget }) {
             aria-live="polite"
           >
             <Check className="h-3.5 w-3.5" aria-hidden />
-            Saved
+            Saved to draft
           </motion.span>
         )}
         <div className="flex items-center gap-2">
@@ -1024,16 +1272,102 @@ export function ImmersiveEditor({ target }: { target: EditorTarget }) {
               </Button>
             </>
           )}
-          <Button onClick={() => void saveAndPublish()} disabled={saving} size="sm" className="gap-1.5" data-testid="floating-save-publish">
+          <Button
+            onClick={() => void saveAndPublish()}
+            disabled={saving || (target.kind === "custom-page" && customPageValidation ? !customPageValidation.valid : false)}
+            size="sm"
+            className="gap-1.5"
+            data-testid="floating-save-publish"
+          >
             {saving ? <Save className="h-4 w-4 animate-pulse" /> : <Send className="h-4 w-4" />}
             {saving ? "Saving..." : "Save Changes"}
           </Button>
+          <span className="hidden items-center gap-1 text-xs text-muted-foreground md:inline-flex" aria-label="Save shortcut">
+            <DashboardKbd>Cmd/Ctrl+S</DashboardKbd>
+          </span>
           <a href={pagePath}>
             <Button variant="outline" size="sm">Exit</Button>
           </a>
         </div>
         {message && <p className="mt-2 text-xs text-muted-foreground" role="status">{message}</p>}
       </motion.div>
+
+      <AnimatePresence>
+        {commandPaletteOpen ? (
+          <motion.section
+            initial={{ opacity: 0, scale: 0.98, y: 8 }}
+            animate={{ opacity: 1, scale: 1, y: 0 }}
+            exit={{ opacity: 0, scale: 0.98, y: 8 }}
+            transition={{ duration: 0.16 }}
+            role="dialog"
+            aria-modal="true"
+            aria-label="Editor command palette"
+            className="fixed left-1/2 top-[15%] z-[70] w-[min(92vw,36rem)] -translate-x-1/2 rounded-xl border border-border bg-card p-4 shadow-xl"
+          >
+            <div className="mb-3 flex items-center justify-between gap-3 border-b border-border pb-2">
+              <div className="flex items-center gap-2">
+                <Command className="h-4 w-4 text-muted-foreground" aria-hidden />
+                <p className="text-sm font-semibold text-foreground">Command palette</p>
+              </div>
+              <span className="text-xs text-muted-foreground">
+                <DashboardKbd>Esc</DashboardKbd>
+              </span>
+            </div>
+            <div className="grid gap-2">
+              <button
+                type="button"
+                className="flex items-center justify-between rounded-md border border-border bg-background px-3 py-2 text-left text-sm text-foreground hover:bg-muted/40"
+                onClick={() => {
+                  setCommandPaletteOpen(false);
+                  void saveAndPublish();
+                }}
+              >
+                <span>Save changes</span>
+                <DashboardKbd>Cmd/Ctrl+S</DashboardKbd>
+              </button>
+              <button
+                type="button"
+                className="flex items-center justify-between rounded-md border border-border bg-background px-3 py-2 text-left text-sm text-foreground hover:bg-muted/40"
+                onClick={() => {
+                  setCommandPaletteOpen(false);
+                  if (typeof window !== "undefined") {
+                    window.open(pagePath, "_blank", "noopener,noreferrer");
+                  }
+                }}
+              >
+                <span>Open live preview</span>
+                <DashboardKbd>New tab</DashboardKbd>
+              </button>
+              {target.kind === "custom-page" ? (
+                <button
+                  type="button"
+                  className="flex items-center justify-between rounded-md border border-border bg-background px-3 py-2 text-left text-sm text-foreground hover:bg-muted/40"
+                  onClick={() => {
+                    setCustomEditorMode((m) => (m === "builder" ? "raw" : "builder"));
+                    setCommandPaletteOpen(false);
+                  }}
+                >
+                  <span>{customEditorMode === "builder" ? "Switch to raw markdown mode" : "Switch to visual block mode"}</span>
+                  <DashboardKbd>Toggle</DashboardKbd>
+                </button>
+              ) : null}
+              {target.kind === "custom-page" && customEditorMode === "raw" ? (
+                <button
+                  type="button"
+                  className="flex items-center justify-between rounded-md border border-border bg-background px-3 py-2 text-left text-sm text-foreground hover:bg-muted/40"
+                  onClick={() => {
+                    setWritingFocus((current) => !current);
+                    setCommandPaletteOpen(false);
+                  }}
+                >
+                  <span>{writingFocus ? "Disable writing focus mode" : "Enable writing focus mode"}</span>
+                  <DashboardKbd>Focus</DashboardKbd>
+                </button>
+              ) : null}
+            </div>
+          </motion.section>
+        ) : null}
+      </AnimatePresence>
 
       <InsertMediaModal
         open={mediaOpen}

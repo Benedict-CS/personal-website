@@ -23,7 +23,7 @@ export function DashboardPageHeader({
         {eyebrow ? (
           <p className="text-xs font-medium uppercase tracking-wider text-muted-foreground">{eyebrow}</p>
         ) : null}
-        <h1 className="text-2xl font-semibold tracking-tight text-foreground">{title}</h1>
+        <h1 className="text-2xl font-semibold tracking-[-0.03em] text-foreground">{title}</h1>
         {description ? (
           <p className="max-w-2xl text-sm leading-relaxed text-muted-foreground">{description}</p>
         ) : null}
@@ -41,7 +41,7 @@ export function DashboardSectionTitle({
   className?: string;
 }) {
   return (
-    <h2 className={cn("text-lg font-semibold tracking-tight text-foreground", className)}>{children}</h2>
+    <h2 className={cn("text-lg font-semibold tracking-[-0.02em] text-foreground", className)}>{children}</h2>
   );
 }
 
@@ -66,7 +66,7 @@ export function DashboardPanel({
   return (
     <div
       className={cn(
-        "rounded-xl border border-border bg-card text-card-foreground shadow-sm transition-[box-shadow,border-color] duration-200",
+        "rounded-xl border border-border bg-card text-card-foreground shadow-[var(--elevation-1)] transition-[box-shadow,border-color] duration-200",
         pad,
         className,
       )}
@@ -74,6 +74,36 @@ export function DashboardPanel({
       {children}
     </div>
   );
+}
+
+/** Standard dashboard card surface used across overview/list pages. */
+export function dashboardCardClassName() {
+  return "border-border shadow-[var(--elevation-1)] transition-[box-shadow,border-color] duration-200";
+}
+
+/** Hoverable dashboard card surface for link grids and metric tiles. */
+export function dashboardInteractiveCardClassName() {
+  return `${dashboardCardClassName()} hover:shadow-[var(--elevation-2)] hover:border-muted-foreground/25`;
+}
+
+/** Primary action button baseline for dashboard header/toolbars. */
+export function dashboardPrimaryActionButtonClassName() {
+  return "h-9 rounded-lg px-3 text-sm font-medium shadow-[var(--elevation-1)]";
+}
+
+/** Secondary action button baseline for dashboard header/toolbars. */
+export function dashboardSecondaryActionButtonClassName() {
+  return "h-9 rounded-md px-3 text-sm font-medium";
+}
+
+/** Compact outline action variant for dense filter/tool rows. */
+export function dashboardSubtleActionButtonClassName() {
+  return "h-8 rounded-md px-2.5 text-xs font-medium";
+}
+
+/** Shared uppercase section eyebrow style for dashboard sub-headings. */
+export function dashboardSectionEyebrowClassName() {
+  return "text-sm font-semibold uppercase tracking-wide text-muted-foreground";
 }
 
 export function dashboardKbdClassName() {
@@ -92,7 +122,7 @@ export function DashboardKbd({
 
 /** Large metric numbers (overview + analytics) — Vercel-like restraint */
 export function dashboardMetricValueClassName() {
-  return "text-2xl font-semibold tracking-tight text-foreground tabular-nums";
+  return "text-2xl font-semibold tracking-[-0.03em] text-foreground tabular-nums";
 }
 
 /**
@@ -112,7 +142,7 @@ export function DashboardEmptyState({
   return (
     <div
       className={cn(
-        "rounded-xl border border-border bg-card px-8 py-12 text-center shadow-sm",
+        "rounded-xl border border-border bg-card px-8 py-12 text-center shadow-[var(--elevation-1)]",
         className,
       )}
     >

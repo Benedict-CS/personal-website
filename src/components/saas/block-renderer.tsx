@@ -220,7 +220,7 @@ function BlockNode({ block }: { block: VisualBlock }) {
             {projects.map((p, i) => (
               <article
                 key={`${p.title}-${i}`}
-                className="flex flex-col overflow-hidden rounded-xl border border-border bg-card shadow-sm"
+                className="flex flex-col overflow-hidden rounded-xl border border-border bg-card shadow-[var(--elevation-1)]"
               >
                 <div className="relative h-40 w-full bg-muted">
                   {p.imageUrl ? (
@@ -258,7 +258,7 @@ function BlockNode({ block }: { block: VisualBlock }) {
             {skills.map((s, i) => (
               <span
                 key={`${s.name}-${i}`}
-                className="inline-flex items-center gap-2 rounded-full border border-border bg-card px-3 py-1.5 text-sm text-foreground shadow-sm"
+                className="inline-flex items-center gap-2 rounded-full border border-border bg-card px-3 py-1.5 text-sm text-foreground shadow-[var(--elevation-1)]"
               >
                 <SkillBlockIcon iconKey={s.iconKey} />
                 {s.name}

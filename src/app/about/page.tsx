@@ -444,12 +444,12 @@ export default async function AboutPage({
       <div className="flex flex-col space-y-8" data-about-content>
         {/* Hero: profile card (name, tagline, contact, CV) — first thing visitors see */}
         {/* Hero + Intro merged into one card for a tighter, less empty layout */}
-        <Card className="shadow-lg">
+        <Card className="shadow-[var(--elevation-2)]">
           <CardContent className="pt-8 pb-8">
             <div className="text-center">
               {profileImage ? (
                 <div className="mb-6 inline-block" data-about-profile-image>
-                  <div className="relative h-32 w-32 rounded-full overflow-hidden border-4 border-border shadow-md mx-auto">
+                  <div className="relative h-32 w-32 rounded-full overflow-hidden border-4 border-border shadow-[var(--elevation-2)] mx-auto">
                     <Image
                       src={profileImage}
                       alt={heroName?.trim() || "Profile"}
@@ -461,7 +461,7 @@ export default async function AboutPage({
                   </div>
                 </div>
               ) : (
-                <div className="mb-6 inline-flex h-32 w-32 items-center justify-center rounded-full bg-gradient-to-br from-muted-foreground/45 to-muted-foreground/75 text-5xl font-bold text-white shadow-md">
+                <div className="mb-6 inline-flex h-32 w-32 items-center justify-center rounded-full bg-gradient-to-br from-muted-foreground/45 to-muted-foreground/75 text-5xl font-bold text-white shadow-[var(--elevation-2)]">
                   {(heroName?.trim() || "B")[0]}
                 </div>
               )}
@@ -483,7 +483,7 @@ export default async function AboutPage({
                   download={downloadCvHref === "/api/cv/download" ? cvDownloadFilename : undefined}
                   data-editor-button="about.downloadCv"
                 >
-                  <Button variant="default" className="gap-2 shadow-md">
+                  <Button variant="default" className="gap-2 shadow-[var(--elevation-2)]">
                     <Download className="h-4 w-4" />
                     <span data-editor-button-label>{downloadCvLabel}</span>
                   </Button>
@@ -506,7 +506,7 @@ export default async function AboutPage({
                 data-about-section="education"
                 style={{ order: sectionOrderIndex("education"), display: aboutVisible("education") ? undefined : "none" }}
               >
-              <Card className="shadow-lg">
+              <Card className="shadow-[var(--elevation-2)]">
                 <CardHeader>
                   <CardTitle className="flex items-center gap-2 text-foreground">
                     <GraduationCap className="h-5 w-5" />
@@ -588,7 +588,7 @@ export default async function AboutPage({
                 data-about-section="experience"
                 style={{ order: sectionOrderIndex("experience"), display: aboutVisible("experience") ? undefined : "none" }}
               >
-              <Card className="shadow-lg">
+              <Card className="shadow-[var(--elevation-2)]">
                 <CardHeader>
                   <CardTitle className="flex items-center gap-2 text-foreground">
                     <Briefcase className="h-5 w-5" />
@@ -661,7 +661,7 @@ export default async function AboutPage({
                 data-about-section="volunteer"
                 style={{ order: sectionOrderIndex("volunteer"), display: aboutVisible("volunteer") ? undefined : "none" }}
               >
-              <Card className="shadow-lg">
+              <Card className="shadow-[var(--elevation-2)]">
                 <CardHeader>
                   <CardTitle className="flex items-center gap-2 text-foreground">
                     <HeartHandshake className="h-5 w-5" />
@@ -743,7 +743,7 @@ export default async function AboutPage({
                   data-about-custom-section-id={section.id}
                   style={{ order: sectionOrderIndex(sectionId), display: aboutVisible(sectionId) ? undefined : "none" }}
                 >
-                  <Card className="shadow-lg">
+                  <Card className="shadow-[var(--elevation-2)]">
                     <CardHeader>
                       <CardTitle className="flex items-center gap-2 text-foreground">
                         <Code className="h-5 w-5" />
@@ -821,7 +821,7 @@ export default async function AboutPage({
                 data-about-section="projects"
                 style={{ order: sectionOrderIndex("projects"), display: aboutVisible("projects") ? undefined : "none" }}
               >
-              <Card className="shadow-lg">
+              <Card className="shadow-[var(--elevation-2)]">
                 <CardHeader>
                   <CardTitle className="flex items-center gap-2 text-foreground">
                     <Code className="h-5 w-5" />
@@ -896,7 +896,7 @@ export default async function AboutPage({
 
         {/* Legacy: one markdown block when no structured blocks */}
         {!useStructuredBlocks && aboutMainContent && aboutMainContent.trim() && (
-          <Card className="shadow-lg">
+          <Card className="shadow-[var(--elevation-2)]">
             <CardContent className="pt-6 pb-6">
               <MarkdownBodyServer content={aboutMainContent} className={markdownArticleClassNameProseSlate} />
             </CardContent>
@@ -906,7 +906,7 @@ export default async function AboutPage({
         {/* Hardcoded Education/Projects/Experience - only when no structured blocks and no main content */}
         {!useStructuredBlocks && (!aboutMainContent || !aboutMainContent.trim()) && (
         <>
-        <Card className="shadow-lg">
+        <Card className="shadow-[var(--elevation-2)]">
           <CardHeader>
             <CardTitle className="flex items-center gap-2 text-foreground">
               <GraduationCap className="h-5 w-5" />
@@ -975,7 +975,7 @@ export default async function AboutPage({
         </Card>
 
         {/* Projects */}
-        <Card className="shadow-lg">
+        <Card className="shadow-[var(--elevation-2)]">
           <CardHeader>
             <CardTitle className="flex items-center gap-2 text-foreground">
               <Code className="h-5 w-5" />
@@ -987,7 +987,7 @@ export default async function AboutPage({
               <div className="border-l-4 border-purple-500 pl-3 relative">
                 <div className="flex flex-col md:flex-row gap-2 md:gap-3">
                   {project1Image && (
-                    <div className="relative w-full md:w-64 h-48 flex-shrink-0 rounded-lg overflow-hidden shadow-md">
+                    <div className="relative w-full md:w-64 h-48 flex-shrink-0 rounded-lg overflow-hidden shadow-[var(--elevation-2)]">
                       <Image
                         src={project1Image}
                         alt="CI/CD Framework Project"
@@ -1020,7 +1020,7 @@ export default async function AboutPage({
               <div className="border-l-4 border-orange-500 pl-3 relative">
                 <div className="flex flex-col md:flex-row gap-2 md:gap-3">
                   {project2Image && (
-                    <div className="relative w-full md:w-64 h-48 flex-shrink-0 rounded-lg overflow-hidden shadow-md">
+                    <div className="relative w-full md:w-64 h-48 flex-shrink-0 rounded-lg overflow-hidden shadow-[var(--elevation-2)]">
                       <Image
                         src={project2Image}
                         alt="Kubernetes Multi-Cluster Project"
@@ -1055,7 +1055,7 @@ export default async function AboutPage({
         </Card>
 
         {/* Work Experience */}
-        <Card className="shadow-lg">
+        <Card className="shadow-[var(--elevation-2)]">
           <CardHeader>
             <CardTitle className="flex items-center gap-2 text-foreground">
               <Briefcase className="h-5 w-5" />
@@ -1175,7 +1175,7 @@ export default async function AboutPage({
         </Card>
 
         {/* Skills */}
-        <Card className="shadow-lg">
+        <Card className="shadow-[var(--elevation-2)]">
           <CardHeader>
             <CardTitle className="flex items-center gap-2 text-foreground">
               <Network className="h-5 w-5" />
@@ -1237,7 +1237,7 @@ export default async function AboutPage({
         </Card>
 
         {/* Achievements */}
-        <Card className="shadow-lg">
+        <Card className="shadow-[var(--elevation-2)]">
           <CardHeader>
             <CardTitle className="flex items-center gap-2 text-foreground">
               <Trophy className="h-5 w-5" />
@@ -1287,7 +1287,7 @@ export default async function AboutPage({
         </Card>
 
         {/* Contact */}
-        <Card className="shadow-lg">
+        <Card className="shadow-[var(--elevation-2)]">
           <CardHeader>
             <CardTitle className="text-foreground">Let&apos;s Connect</CardTitle>
           </CardHeader>

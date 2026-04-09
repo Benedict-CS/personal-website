@@ -38,10 +38,10 @@ export function ArticleReadingChrome({ title }: Props) {
   }, []);
 
   return (
-    <div className="sticky top-14 z-40 w-full border-b border-border bg-background/90 shadow-sm backdrop-blur-md print:hidden sm:top-16">
-      <div className="h-0.5 w-full bg-muted" aria-hidden>
+    <div className="sticky top-14 z-40 w-full border-b border-border bg-background/92 shadow-[var(--elevation-1)] backdrop-blur-lg print:hidden sm:top-16">
+      <div className="h-[3px] w-full bg-muted/60" aria-hidden>
         <div
-          className="h-full bg-foreground/35 transition-[width] duration-150 ease-out"
+          className="h-full bg-foreground/30 transition-[width] duration-200 ease-out"
           style={{ width: `${progress}%` }}
         />
       </div>

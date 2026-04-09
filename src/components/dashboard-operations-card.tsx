@@ -8,7 +8,7 @@ import { BookOpen, HeartPulse, Replace, Server } from "lucide-react";
  */
 export function DashboardOperationsCard() {
   return (
-    <Card className="border-[var(--border)] shadow-[var(--shadow-md)]">
+    <Card className="border-[var(--border)] shadow-[var(--elevation-2)]">
       <CardHeader className="pb-2">
         <CardTitle className="flex items-center gap-2 text-sm font-medium text-muted-foreground">
           <Server className="h-4 w-4 shrink-0" aria-hidden />

@@ -8,7 +8,16 @@ import { DashboardExportImport } from "@/components/dashboard-export-import";
 import { DashboardRecentActivity } from "@/components/dashboard-recent-activity";
 import { DashboardOverviewToolbar } from "@/components/dashboard-overview-toolbar";
 import { DashboardOperationsCard } from "@/components/dashboard-operations-card";
-import { DashboardPageHeader } from "@/components/dashboard/dashboard-ui";
+import { WritingStatsCard } from "@/components/dashboard/writing-stats-card";
+import { ContentFreshnessCard } from "@/components/dashboard/content-freshness-card";
+import { computeWritingStats, type WritingStats } from "@/lib/writing-stats";
+import { computeFreshnessSummary, type FreshnessSummary } from "@/lib/content-freshness";
+import {
+  DashboardPageHeader,
+  dashboardInteractiveCardClassName,
+  dashboardPrimaryActionButtonClassName,
+  dashboardSecondaryActionButtonClassName,
+} from "@/components/dashboard/dashboard-ui";
 
 export const dynamic = "force-dynamic";
 
@@ -148,9 +157,61 @@ async function loadOverviewMetrics(): Promise<OverviewMetrics> {
   }
 }
 
+async function loadWritingStats(): Promise<WritingStats> {
+  try {
+    const posts = await prisma.post.findMany({
+      select: {
+        content: true,
+        published: true,
+        createdAt: true,
+        tags: { select: { name: true } },
+      },
+    });
+    return computeWritingStats(
+      posts.map((p) => ({
+        content: p.content,
+        published: p.published,
+        createdAt: p.createdAt.toISOString(),
+        tags: p.tags,
+      }))
+    );
+  } catch {
+    return computeWritingStats([]);
+  }
+}
+
+async function loadFreshnessSummary(): Promise<FreshnessSummary> {
+  try {
+    const posts = await prisma.post.findMany({
+      select: {
+        id: true,
+        title: true,
+        slug: true,
+        published: true,
+        updatedAt: true,
+      },
+    });
+    return computeFreshnessSummary(
+      posts.map((p) => ({
+        id: p.id,
+        title: p.title,
+        slug: p.slug,
+        published: p.published,
+        updatedAt: p.updatedAt.toISOString(),
+      }))
+    );
+  } catch {
+    return computeFreshnessSummary([]);
+  }
+}
+
 export default async function DashboardOverviewPage() {
   const generatedAt = new Date().toISOString();
-  const metrics = await loadOverviewMetrics();
+  const [metrics, writingStats, freshness] = await Promise.all([
+    loadOverviewMetrics(),
+    loadWritingStats(),
+    loadFreshnessSummary(),
+  ]);
 
   return (
     <div className="space-y-6">
@@ -161,25 +222,25 @@ export default async function DashboardOverviewPage() {
       >
         <DashboardOverviewToolbar generatedAt={generatedAt} />
         <Link href="/editor/home">
-          <Button size="sm">Open visual editor</Button>
+          <Button size="sm" className={dashboardPrimaryActionButtonClassName()}>Open visual editor</Button>
         </Link>
         <Link href="/dashboard/content/pages">
-          <Button size="sm" variant="outline">Manage custom pages</Button>
+          <Button size="sm" variant="outline" className={dashboardSecondaryActionButtonClassName()}>Manage custom pages</Button>
         </Link>
         <Link href="/dashboard/audit">
-          <Button size="sm" variant="outline">Open audit log</Button>
+          <Button size="sm" variant="outline" className={dashboardSecondaryActionButtonClassName()}>Open audit log</Button>
         </Link>
         <Link href="/dashboard/analytics">
-          <Button size="sm" variant="outline">Analytics</Button>
+          <Button size="sm" variant="outline" className={dashboardSecondaryActionButtonClassName()}>Analytics</Button>
         </Link>
         <Link href="/dashboard/content/site">
-          <Button size="sm" variant="outline">Site &amp; SEO</Button>
+          <Button size="sm" variant="outline" className={dashboardSecondaryActionButtonClassName()}>Site &amp; SEO</Button>
         </Link>
       </DashboardPageHeader>
 
       <MotionCard
         delayIndex={0}
-        className="rounded-xl border border-border bg-card/80 px-4 py-3 shadow-md backdrop-blur-sm"
+        className="rounded-xl border border-border bg-card/80 px-4 py-3 shadow-[var(--elevation-2)] backdrop-blur-sm"
       >
         <div className="flex flex-wrap items-center justify-between gap-3">
           <div className="flex flex-wrap items-center gap-2 text-sm">
@@ -213,7 +274,7 @@ export default async function DashboardOverviewPage() {
 
       <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-3">
         <MotionCard delayIndex={1}>
-        <Card className="border-border shadow-md transition-shadow duration-200 hover:shadow-lg">
+        <Card className={dashboardInteractiveCardClassName()}>
           <CardHeader className="pb-2">
             <CardTitle className="text-sm font-medium text-muted-foreground">Posts</CardTitle>
           </CardHeader>
@@ -234,7 +295,7 @@ export default async function DashboardOverviewPage() {
         </Card>
         </MotionCard>
         <MotionCard delayIndex={2}>
-        <Card className="border-border shadow-md transition-shadow duration-200 hover:shadow-lg">
+        <Card className={dashboardInteractiveCardClassName()}>
           <CardHeader className="pb-2">
             <CardTitle className="text-sm font-medium text-muted-foreground">Custom pages</CardTitle>
           </CardHeader>
@@ -261,7 +322,7 @@ export default async function DashboardOverviewPage() {
         </Card>
         </MotionCard>
         <MotionCard delayIndex={3}>
-        <Card className="border-border shadow-md transition-shadow duration-200 hover:shadow-lg">
+        <Card className={dashboardInteractiveCardClassName()}>
           <CardHeader className="pb-2">
             <CardTitle className="text-sm font-medium text-muted-foreground">Audit events today</CardTitle>
           </CardHeader>
@@ -275,12 +336,21 @@ export default async function DashboardOverviewPage() {
         </MotionCard>
       </div>
 
+      <div className="grid gap-4 lg:grid-cols-2">
+        <MotionCard delayIndex={4}>
+          <WritingStatsCard stats={writingStats} />
+        </MotionCard>
+        <MotionCard delayIndex={5}>
+          <ContentFreshnessCard summary={freshness} />
+        </MotionCard>
+      </div>
+
       <div className="grid gap-4 xl:grid-cols-3">
-        <MotionCard delayIndex={4} className="space-y-4 xl:col-span-2">
+        <MotionCard delayIndex={6} className="space-y-4 xl:col-span-2">
           <DashboardSystemStatus />
           <DashboardRecentActivity entries={metrics.recentActivity} />
         </MotionCard>
-        <MotionCard delayIndex={5} className="space-y-4">
+        <MotionCard delayIndex={7} className="space-y-4">
           <DashboardOperationsCard />
           <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
             <DashboardExportImport />

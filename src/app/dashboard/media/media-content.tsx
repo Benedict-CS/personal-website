@@ -10,6 +10,7 @@ import {
   broadcastCmsMediaMarkdown,
   markdownImageFromMediaFile,
 } from "@/lib/cms-media-insert";
+import { altTextFromImageFilename } from "@/lib/image-alt-from-filename";
 import {
   isMediaGridSort,
   MEDIA_GRID_SORT_OPTIONS,
@@ -117,6 +118,7 @@ export default function MediaContent() {
   const [uploading, setUploading] = useState(false);
   const [dragOver, setDragOver] = useState(false);
   const [copiedName, setCopiedName] = useState<string | null>(null);
+  const [copiedAltName, setCopiedAltName] = useState<string | null>(null);
   const [selected, setSelected] = useState<Set<string>>(new Set());
   const [deleteConfirm, setDeleteConfirm] = useState(false);
   const [deleting, setDeleting] = useState(false);
@@ -174,25 +176,31 @@ export default function MediaContent() {
   const handleBulkDelete = async () => {
     setDeleteConfirm(false);
     if (selected.size === 0) return;
+    const selectedSnapshot = new Set(selected);
+    const previousFiles = files;
+    setFiles((prev) => prev.filter((file) => !selectedSnapshot.has(file.name)));
+    setSelected(new Set());
     setDeleting(true);
     setDeleteStatus(null);
     try {
       const res = await fetch("/api/media/delete", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ keys: Array.from(selected) }),
+        body: JSON.stringify({ keys: Array.from(selectedSnapshot) }),
       });
       const data = await res.json().catch(() => ({}));
       if (!res.ok) {
+        setFiles(previousFiles);
+        setSelected(selectedSnapshot);
         setDeleteStatus({ show: true, message: data.error || "Delete failed", type: "error" });
         setTimeout(() => setDeleteStatus(null), 3000);
         return;
       }
-      setSelected(new Set());
-      await fetchMediaFiles();
-      setDeleteStatus({ show: true, message: `Deleted ${data.deleted ?? selected.size} file(s).`, type: "success" });
+      setDeleteStatus({ show: true, message: `Deleted ${data.deleted ?? selectedSnapshot.size} file(s).`, type: "success" });
       setTimeout(() => setDeleteStatus(null), 3000);
     } catch {
+      setFiles(previousFiles);
+      setSelected(selectedSnapshot);
       setDeleteStatus({ show: true, message: "Delete failed", type: "error" });
       setTimeout(() => setDeleteStatus(null), 3000);
     } finally {
@@ -205,6 +213,18 @@ export default function MediaContent() {
       await navigator.clipboard.writeText(url);
       setCopiedName(name);
       setTimeout(() => setCopiedName(null), 2000);
+    } catch {
+      setDeleteStatus({ show: true, message: "Copy failed", type: "error" });
+      setTimeout(() => setDeleteStatus(null), 2000);
+    }
+  }, []);
+
+  const copyAltText = useCallback(async (name: string) => {
+    try {
+      const alt = altTextFromImageFilename(name);
+      await navigator.clipboard.writeText(alt);
+      setCopiedAltName(name);
+      setTimeout(() => setCopiedAltName(null), 1800);
     } catch {
       setDeleteStatus({ show: true, message: "Copy failed", type: "error" });
       setTimeout(() => setDeleteStatus(null), 2000);
@@ -1112,7 +1132,7 @@ export default function MediaContent() {
     <div className="relative min-h-[calc(100vh-8rem)] space-y-8">
       {fullWindowDrop ? (
         <div className="pointer-events-none fixed inset-0 z-[100] flex flex-col items-center justify-center border-4 border-dashed border-border bg-card/92 backdrop-blur-[3px] px-6 text-center">
-          <div className="rounded-2xl border border-border/90 bg-card p-10 shadow-lg max-w-md">
+          <div className="rounded-2xl border border-border/90 bg-card p-10 shadow-[var(--elevation-3)] max-w-md">
             <Upload className="mx-auto h-12 w-12 text-muted-foreground" aria-hidden />
             <p className="mt-4 text-lg font-semibold tracking-tight text-foreground">Drop images to upload</p>
             <p className="mt-2 text-sm text-muted-foreground leading-relaxed">
@@ -1180,7 +1200,7 @@ export default function MediaContent() {
                 const v = e.target.value;
                 if (isMediaGridSort(v)) setGridSort(v);
               }}
-              className="h-9 min-w-[140px] rounded-md border border-border bg-card px-2 text-sm text-foreground shadow-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+              className="h-9 min-w-[140px] rounded-lg border border-border bg-card px-2 text-sm text-foreground shadow-[var(--elevation-1)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
               aria-label="Sort media grid"
             >
               {MEDIA_GRID_SORT_OPTIONS.map((o) => (
@@ -1694,7 +1714,7 @@ export default function MediaContent() {
           {visibleFiles.map((file, index) => (
             <Card
               key={file.name}
-              className={`mb-4 break-inside-avoid overflow-hidden border-border/90 shadow-sm transition-[box-shadow,transform] duration-200 hover:-translate-y-0.5 hover:shadow-md ${
+              className={`mb-4 break-inside-avoid overflow-hidden border-border/90 shadow-[var(--elevation-1)] transition-[box-shadow,transform] duration-200 hover:-translate-y-0.5 hover:shadow-[var(--elevation-2)] ${
                 selected.has(file.name) ? "ring-2 ring-muted-foreground/35" : ""
               } ${mediaKbdIndex === index ? "ring-2 ring-ring ring-offset-2" : ""}`}
             >
@@ -1702,7 +1722,7 @@ export default function MediaContent() {
                 <button
                   type="button"
                   onClick={() => toggleSelected(file.name)}
-                  className="absolute left-2 top-2 z-10 flex h-6 w-6 items-center justify-center rounded-md border border-border bg-card/95 shadow-sm hover:bg-card"
+                  className="absolute left-2 top-2 z-10 flex h-6 w-6 items-center justify-center rounded-lg border border-border bg-card/95 shadow-[var(--elevation-1)] hover:bg-card"
                   aria-label={selected.has(file.name) ? "Deselect" : "Select"}
                 >
                   {selected.has(file.name) ? (
@@ -1726,6 +1746,9 @@ export default function MediaContent() {
                   <p className="mt-0.5 text-[11px] text-muted-foreground">
                     {formatFileSize(file.size)} · {formatDate(file.createdAt)}
                   </p>
+                  <p className="mt-1 truncate text-[11px] text-muted-foreground" title={altTextFromImageFilename(file.name)}>
+                    Suggested alt: {altTextFromImageFilename(file.name)}
+                  </p>
                 </div>
                 <div className="flex flex-col gap-1.5">
                   <Button
@@ -1747,6 +1770,16 @@ export default function MediaContent() {
                   >
                     {insertedName === file.name ? <Check className="h-3.5 w-3.5" /> : <FileEdit className="h-3.5 w-3.5" />}
                     {insertedName === file.name ? "Sent" : "Insert into post"}
+                  </Button>
+                  <Button
+                    type="button"
+                    size="sm"
+                    variant="outline"
+                    className="h-8 w-full justify-center gap-1.5 border-border text-xs font-medium"
+                    onClick={() => void copyAltText(file.name)}
+                  >
+                    {copiedAltName === file.name ? <Check className="h-3.5 w-3.5" /> : <Copy className="h-3.5 w-3.5" />}
+                    {copiedAltName === file.name ? "Copied alt" : "Copy alt text"}
                   </Button>
                 </div>
               </CardContent>

@@ -33,7 +33,7 @@ function SortableNavRow({
     <div
       ref={setNodeRef}
       style={style}
-      className={`flex items-center gap-2 flex-wrap ${isDragging ? "z-20 opacity-95 shadow-lg rounded-md bg-card border border-border" : ""}`}
+      className={`flex items-center gap-2 flex-wrap ${isDragging ? "z-20 opacity-95 shadow-[var(--elevation-3)] rounded-lg bg-card border border-border" : ""}`}
     >
       <button
         type="button"

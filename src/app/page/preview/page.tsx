@@ -36,7 +36,7 @@ export default async function CustomPagePreview({ searchParams }: PreviewProps) 
 
   return (
     <div className="container mx-auto max-w-4xl px-4 py-12">
-      <Card className="shadow-lg">
+      <Card className="shadow-[var(--elevation-2)]">
         <CardHeader>
           <div className="mb-2">
             <Badge variant="secondary" className="bg-amber-100 text-amber-800">

@@ -2,7 +2,11 @@
 
 import Link from "next/link";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { DashboardPageHeader } from "@/components/dashboard/dashboard-ui";
+import {
+  DashboardPageHeader,
+  dashboardInteractiveCardClassName,
+  dashboardSectionEyebrowClassName,
+} from "@/components/dashboard/dashboard-ui";
 import { Home, PenSquare, Mail, Settings, Layers, UserCircle2 } from "lucide-react";
 
 const coreItems = [
@@ -27,7 +31,7 @@ export default function ContentIndexPage() {
         description="Dashboard is for management. Visual page editing lives in immersive editor routes."
       />
       <div className="space-y-3">
-        <h3 className="text-sm font-semibold uppercase tracking-wide text-muted-foreground">Core pages</h3>
+        <h3 className={dashboardSectionEyebrowClassName()}>Core pages</h3>
         <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
           {coreItems.map(({ href, label, icon: Icon, description }) => (
             <Link
@@ -35,10 +39,10 @@ export default function ContentIndexPage() {
               href={href}
               className="block focus:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 rounded-xl"
             >
-              <Card className="h-full card-interactive border-border hover:border-border transition-colors">
+              <Card className={`h-full ${dashboardInteractiveCardClassName()}`}>
                 <CardHeader>
-                  <CardTitle className="flex items-center gap-2 text-lg">
-                    <Icon className="h-5 w-5 text-muted-foreground" />
+                  <CardTitle className="flex items-center gap-2 text-base font-semibold tracking-[-0.01em]">
+                    <Icon className="h-4.5 w-4.5 text-muted-foreground" />
                     {label}
                   </CardTitle>
                 </CardHeader>
@@ -52,7 +56,7 @@ export default function ContentIndexPage() {
       </div>
 
       <div className="space-y-3">
-        <h3 className="text-sm font-semibold uppercase tracking-wide text-muted-foreground">Immersive editors</h3>
+        <h3 className={dashboardSectionEyebrowClassName()}>Immersive editors</h3>
         <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
           {immersiveItems.map(({ href, label, icon: Icon, description }) => (
             <Link
@@ -60,10 +64,10 @@ export default function ContentIndexPage() {
               href={href}
               className="block focus:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 rounded-xl"
             >
-              <Card className="h-full card-interactive border-border hover:border-border transition-colors">
+              <Card className={`h-full ${dashboardInteractiveCardClassName()}`}>
                 <CardHeader>
-                  <CardTitle className="flex items-center gap-2 text-lg">
-                    <Icon className="h-5 w-5 text-muted-foreground" />
+                  <CardTitle className="flex items-center gap-2 text-base font-semibold tracking-[-0.01em]">
+                    <Icon className="h-4.5 w-4.5 text-muted-foreground" />
                     {label}
                   </CardTitle>
                 </CardHeader>

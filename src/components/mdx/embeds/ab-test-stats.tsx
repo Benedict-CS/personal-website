@@ -24,7 +24,7 @@ export function AbTestStats({
   const wB = 100 - wA;
 
   return (
-    <div className="not-prose my-8 rounded-xl border border-border bg-card p-4 shadow-sm">
+    <div className="not-prose my-8 rounded-xl border border-border bg-card p-4 shadow-[var(--elevation-1)]">
       <p className="text-xs font-medium uppercase tracking-wide text-muted-foreground">{experimentLabel}</p>
       <div className="mt-3 flex h-10 overflow-hidden rounded-lg text-xs font-medium text-white">
         <div

@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { ConfirmDialog } from "@/components/ui/confirm-dialog";
@@ -13,7 +13,16 @@ import {
 } from "@/lib/analytics-client-opt-out";
 import { AnalyticsPathBars } from "@/components/analytics-path-bars";
 import { AnalyticsStatsSkeleton } from "@/components/dashboard/analytics-stats-skeleton";
-import { DashboardPageHeader, dashboardMetricValueClassName } from "@/components/dashboard/dashboard-ui";
+import {
+  DashboardEmptyState,
+  DashboardPageHeader,
+  dashboardMetricValueClassName,
+  dashboardSubtleActionButtonClassName,
+} from "@/components/dashboard/dashboard-ui";
+import { DASHBOARD_FORM_LABEL_CLASS } from "@/components/dashboard/dashboard-form-classes";
+import { buildAnalyticsInsight } from "@/lib/analytics-insight";
+import { AnalyticsTrendChart } from "@/components/dashboard/analytics-trend-chart";
+import { buildAnalyticsAnomalyCallouts } from "@/lib/analytics-anomaly";
 
 type Stats = {
   total: number;
@@ -21,10 +30,24 @@ type Stats = {
   byIP: { ip: string; count: number; lastVisit?: string }[];
   byCountry?: { country: string; count: number }[];
   byReferrer?: { referrer: string; count: number }[];
+  byReferrerGroup?: { group: string; count: number }[];
   topBlogPosts?: { title: string; slug: string; viewCount: number }[];
   avgDurationSeconds?: number | null;
   durationSampleCount?: number;
   cvDownloads?: number;
+  leadGenerated?: number;
+  uniqueVisitors?: number;
+  conversionFunnel?: {
+    visitors: number;
+    cvDownloads: number;
+    leads: number;
+  };
+  trendByDay?: {
+    day: string;
+    views: number;
+    cvDownloads: number;
+    leads: number;
+  }[];
   recent: {
     path: string;
     ip: string;
@@ -401,6 +424,19 @@ export default function AnalyticsPage() {
             ? "Delete all analytics records?"
             : "";
   const clearConfirmDesc = clearConfirm ? "This cannot be undone." : "";
+  const analyticsInsight = useMemo(() => {
+    if (!stats) return null;
+    return buildAnalyticsInsight({
+      total: stats.total,
+      cvDownloads: stats.cvDownloads,
+      leadGenerated: stats.leadGenerated,
+      byReferrerGroup: stats.byReferrerGroup,
+    });
+  }, [stats]);
+  const analyticsAnomalies = useMemo(() => {
+    if (!stats?.trendByDay || stats.trendByDay.length === 0) return [];
+    return buildAnalyticsAnomalyCallouts(stats.trendByDay);
+  }, [stats?.trendByDay]);
 
   return (
     <div className="space-y-6">
@@ -427,6 +463,40 @@ export default function AnalyticsPage() {
         title="Analytics"
         description="Traffic, paths, application health, privacy filters, and CSV exports."
       />
+      {analyticsInsight ? (
+        <Card className="border-border bg-card">
+          <CardHeader className="pb-2">
+            <CardTitle className="text-base">Daily insight</CardTitle>
+          </CardHeader>
+          <CardContent>
+            <p className="text-sm text-foreground">{analyticsInsight}</p>
+          </CardContent>
+        </Card>
+      ) : null}
+      {analyticsAnomalies.length > 0 ? (
+        <Card className="border-border bg-card">
+          <CardHeader className="pb-2">
+            <CardTitle className="text-base">Anomaly watch</CardTitle>
+          </CardHeader>
+          <CardContent className="space-y-2">
+            {analyticsAnomalies.map((callout) => (
+              <div
+                key={callout.title}
+                className={`rounded-lg border px-3 py-2 text-sm ${
+                  callout.level === "warning"
+                    ? "border-amber-300 bg-amber-50 text-amber-900"
+                    : callout.level === "positive"
+                      ? "border-emerald-300 bg-emerald-50 text-emerald-900"
+                      : "border-border bg-muted/30 text-foreground"
+                }`}
+              >
+                <p className="font-medium">{callout.title}</p>
+                <p className="text-xs opacity-90">{callout.detail}</p>
+              </div>
+            ))}
+          </CardContent>
+        </Card>
+      ) : null}
 
       <Card className="border-border bg-card">
         <CardHeader className="pb-2">
@@ -563,6 +633,7 @@ export default function AnalyticsPage() {
           <Button
             variant="outline"
             size="sm"
+            className={dashboardSubtleActionButtonClassName()}
             onClick={() => {
               setFrom("2026-01-01");
               setTo(todayStr());
@@ -573,6 +644,7 @@ export default function AnalyticsPage() {
           <Button
             variant="outline"
             size="sm"
+            className={dashboardSubtleActionButtonClassName()}
             onClick={() => {
               setFrom(firstDayOfMonth());
               setTo(todayStr());
@@ -583,6 +655,7 @@ export default function AnalyticsPage() {
           <Button
             variant="outline"
             size="sm"
+            className={dashboardSubtleActionButtonClassName()}
             onClick={() => {
               setFrom(daysAgo(6));
               setTo(todayStr());
@@ -593,6 +666,7 @@ export default function AnalyticsPage() {
           <Button
             variant="outline"
             size="sm"
+            className={dashboardSubtleActionButtonClassName()}
             onClick={() => {
               setFrom(daysAgo(29));
               setTo(todayStr());
@@ -603,7 +677,7 @@ export default function AnalyticsPage() {
         </div>
         <div className="flex flex-wrap gap-4 items-end">
           <div>
-            <label className="block text-sm font-medium text-foreground mb-1">From</label>
+            <label className={`${DASHBOARD_FORM_LABEL_CLASS} mb-1 block`}>From</label>
             <input
               type="date"
               value={from}
@@ -612,7 +686,7 @@ export default function AnalyticsPage() {
             />
           </div>
           <div>
-            <label className="block text-sm font-medium text-foreground mb-1">To</label>
+            <label className={`${DASHBOARD_FORM_LABEL_CLASS} mb-1 block`}>To</label>
             <input
               type="date"
               value={to}
@@ -621,7 +695,7 @@ export default function AnalyticsPage() {
             />
           </div>
           <div>
-            <label className="block text-sm font-medium text-foreground mb-1">Filter by IP</label>
+            <label className={`${DASHBOARD_FORM_LABEL_CLASS} mb-1 block`}>Filter by IP</label>
             <div className="flex gap-2 items-center">
               <input
                 type="text"
@@ -687,17 +761,17 @@ export default function AnalyticsPage() {
             </p>
           )}
           {stats.total === 0 && !stats.filterIP && (
-            <div
-              className="rounded-lg border border-dashed border-border bg-muted/60 px-4 py-5 text-center text-sm text-muted-foreground"
-              role="status"
-            >
-              <p className="font-medium text-foreground">No page views in this date range</p>
-              <p className="mt-1">
-                Traffic appears after visitors load public pages while <code className="rounded bg-card px-1 text-xs">ANALYTICS_SECRET</code>{" "}
-                is set. Widen the range, remove IP filters, or confirm middleware is logging views. If you only tested locally, turn on{" "}
-                <span className="font-medium">Include local &amp; unknown IPs</span> to see those rows.
-              </p>
-            </div>
+            <DashboardEmptyState
+              title="No page views in this date range"
+              description={
+                <>
+                  Traffic appears after visitors load public pages while{" "}
+                  <code className="rounded bg-card px-1 text-xs">ANALYTICS_SECRET</code> is set. Widen the range, remove IP filters,
+                  or confirm middleware logging. For local testing, enable <span className="font-medium">Include local &amp; unknown IPs</span>.
+                </>
+              }
+              className="px-4 py-6"
+            />
           )}
           <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-5">
             <Card>
@@ -715,6 +789,14 @@ export default function AnalyticsPage() {
               <CardContent>
                 <p className={dashboardMetricValueClassName()}>{stats.byIP.length}</p>
                 <p className="text-xs text-muted-foreground mt-1">Distinct IPs in the grouped table below (capped at 50).</p>
+              </CardContent>
+            </Card>
+            <Card>
+              <CardHeader>
+                <CardTitle>Unique visitors</CardTitle>
+              </CardHeader>
+              <CardContent>
+                <p className={dashboardMetricValueClassName()}>{stats.uniqueVisitors ?? 0}</p>
               </CardContent>
             </Card>
             <Card>
@@ -747,6 +829,15 @@ export default function AnalyticsPage() {
             </Card>
             <Card>
               <CardHeader>
+                <CardTitle>Leads generated</CardTitle>
+              </CardHeader>
+              <CardContent>
+                <p className={dashboardMetricValueClassName()}>{stats.leadGenerated ?? 0}</p>
+                <p className="text-xs text-muted-foreground mt-1">Captured from successful contact form submissions.</p>
+              </CardContent>
+            </Card>
+            <Card>
+              <CardHeader>
                 <CardTitle>Access denied (403)</CardTitle>
               </CardHeader>
               <CardContent>
@@ -759,6 +850,49 @@ export default function AnalyticsPage() {
               </CardContent>
             </Card>
           </div>
+          {stats.trendByDay && stats.trendByDay.length > 0 ? (
+            <Card>
+              <CardHeader>
+                <CardTitle>Traffic and conversion trend</CardTitle>
+              </CardHeader>
+              <CardContent>
+                <AnalyticsTrendChart points={stats.trendByDay} />
+              </CardContent>
+            </Card>
+          ) : null}
+          {stats.conversionFunnel ? (
+            <Card>
+              <CardHeader>
+                <CardTitle>Conversion funnel</CardTitle>
+              </CardHeader>
+              <CardContent>
+                <div className="grid gap-3 sm:grid-cols-3">
+                  <div className="rounded-lg border border-border bg-muted/30 p-3">
+                    <p className="text-xs uppercase tracking-wide text-muted-foreground">Visitors</p>
+                    <p className="mt-1 text-2xl font-semibold text-foreground">{stats.conversionFunnel.visitors}</p>
+                  </div>
+                  <div className="rounded-lg border border-border bg-muted/30 p-3">
+                    <p className="text-xs uppercase tracking-wide text-muted-foreground">CV downloads</p>
+                    <p className="mt-1 text-2xl font-semibold text-foreground">{stats.conversionFunnel.cvDownloads}</p>
+                    <p className="text-xs text-muted-foreground">
+                      {stats.conversionFunnel.visitors > 0
+                        ? `${Math.round((stats.conversionFunnel.cvDownloads / stats.conversionFunnel.visitors) * 100)}% of visitors`
+                        : "No visitor sample yet"}
+                    </p>
+                  </div>
+                  <div className="rounded-lg border border-border bg-muted/30 p-3">
+                    <p className="text-xs uppercase tracking-wide text-muted-foreground">Contact leads</p>
+                    <p className="mt-1 text-2xl font-semibold text-foreground">{stats.conversionFunnel.leads}</p>
+                    <p className="text-xs text-muted-foreground">
+                      {stats.conversionFunnel.cvDownloads > 0
+                        ? `${Math.round((stats.conversionFunnel.leads / stats.conversionFunnel.cvDownloads) * 100)}% of CV downloads`
+                        : "No CV download sample yet"}
+                    </p>
+                  </div>
+                </div>
+              </CardContent>
+            </Card>
+          ) : null}
           {stats.byCountry && stats.byCountry.length > 0 && (
             <Card>
               <CardHeader>
@@ -783,11 +917,11 @@ export default function AnalyticsPage() {
               </CardHeader>
               <CardContent>
                 <div className="max-h-80 overflow-auto">
-                  <table className="w-full text-sm min-w-[280px]">
+                  <table className="w-full text-sm">
                     <thead>
-                      <tr className="border-b text-left">
-                        <th className="py-2 pr-4">Post</th>
-                        <th className="py-2">Views</th>
+                      <tr className="border-b border-border text-left">
+                        <th className="py-2 pr-4 text-muted-foreground font-medium text-xs uppercase tracking-wide">Post</th>
+                        <th className="py-2 text-muted-foreground font-medium text-xs uppercase tracking-wide">Views</th>
                       </tr>
                     </thead>
                     <tbody>
@@ -810,17 +944,44 @@ export default function AnalyticsPage() {
               </CardHeader>
               <CardContent>
                 <div className="max-h-64 overflow-auto">
-                  <table className="w-full text-sm min-w-[200px]">
+                  <table className="w-full text-sm">
                     <thead>
-                      <tr className="border-b text-left">
-                        <th className="py-2 pr-4">Referrer</th>
-                        <th className="py-2">Views</th>
+                      <tr className="border-b border-border text-left">
+                        <th className="py-2 pr-4 text-muted-foreground font-medium text-xs uppercase tracking-wide">Referrer</th>
+                        <th className="py-2 text-muted-foreground font-medium text-xs uppercase tracking-wide">Views</th>
                       </tr>
                     </thead>
                     <tbody>
                       {stats.byReferrer.map((r) => (
                         <tr key={r.referrer} className="border-b border-border/70">
                           <td className="py-2 pr-4 break-all text-foreground">{r.referrer}</td>
+                          <td className="py-2 tabular-nums">{r.count}</td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
+              </CardContent>
+            </Card>
+          )}
+          {stats.byReferrerGroup && stats.byReferrerGroup.length > 0 && (
+            <Card>
+              <CardHeader>
+                <CardTitle>Referrer groups</CardTitle>
+              </CardHeader>
+              <CardContent>
+                <div className="max-h-64 overflow-auto">
+                  <table className="w-full text-sm">
+                    <thead>
+                      <tr className="border-b border-border text-left">
+                        <th className="py-2 pr-4 text-muted-foreground font-medium text-xs uppercase tracking-wide">Group</th>
+                        <th className="py-2 text-muted-foreground font-medium text-xs uppercase tracking-wide">Views</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {stats.byReferrerGroup.map((r) => (
+                        <tr key={r.group} className="border-b border-border/70">
+                          <td className="py-2 pr-4 text-foreground">{r.group}</td>
                           <td className="py-2 tabular-nums">{r.count}</td>
                         </tr>
                       ))}
@@ -838,11 +999,11 @@ export default function AnalyticsPage() {
               <CardContent>
                 <AnalyticsPathBars rows={stats.byPath} />
                 <div className="max-h-80 overflow-auto">
-                  <table className="w-full text-sm min-w-[200px]">
+                  <table className="w-full text-sm">
                     <thead>
-                      <tr className="border-b text-left">
-                        <th className="py-2 pr-4">Path</th>
-                        <th className="py-2">Views</th>
+                      <tr className="border-b border-border text-left">
+                        <th className="py-2 pr-4 text-muted-foreground font-medium text-xs uppercase tracking-wide">Path</th>
+                        <th className="py-2 text-muted-foreground font-medium text-xs uppercase tracking-wide">Views</th>
                       </tr>
                     </thead>
                     <tbody>
@@ -863,7 +1024,7 @@ export default function AnalyticsPage() {
               </CardHeader>
               <CardContent>
                 <div className="max-h-80 overflow-auto">
-                  <table className="w-full text-sm min-w-[280px]">
+                  <table className="w-full text-sm rwd-table">
                     <thead>
                       <tr className="border-b text-left">
                         <th className="py-2 pr-4">IP</th>
@@ -875,7 +1036,7 @@ export default function AnalyticsPage() {
                     <tbody>
                       {stats.byIP.map((p) => (
                         <tr key={p.ip} className="border-b border-border/70">
-                          <td className="py-2 pr-4">
+                          <td data-label="IP" className="py-2 pr-4">
                             <button
                               type="button"
                               onClick={() => setFilterIP(p.ip)}
@@ -885,11 +1046,11 @@ export default function AnalyticsPage() {
                               {p.ip}
                             </button>
                           </td>
-                          <td className="py-2 pr-4 text-muted-foreground">
+                          <td data-label="Last visit" className="py-2 pr-4 text-muted-foreground">
                             {p.lastVisit ? formatDate(p.lastVisit) : "—"}
                           </td>
-                          <td className="py-2 pr-4">{p.count}</td>
-                          <td className="py-2">
+                          <td data-label="Views" className="py-2 pr-4">{p.count}</td>
+                          <td data-label="" className="py-2">
                             <Button
                               type="button"
                               variant="ghost"
@@ -916,7 +1077,7 @@ export default function AnalyticsPage() {
             </CardHeader>
             <CardContent>
               <div className="max-h-96 overflow-auto">
-                <table className="w-full text-sm min-w-[320px]">
+                <table className="w-full text-sm rwd-table">
                   <thead>
                     <tr className="border-b text-left">
                       <th className="py-2 pr-4">Time</th>
@@ -931,21 +1092,21 @@ export default function AnalyticsPage() {
                   <tbody>
                     {stats.recent.map((r, i) => (
                       <tr key={i} className="border-b border-border/70">
-                        <td className="py-2 pr-4 text-muted-foreground">{formatDate(r.createdAt)}</td>
-                        <td className="py-2 pr-4 font-mono">{r.path}</td>
-                        <td className="py-2 pr-4 text-muted-foreground">
+                        <td data-label="Time" className="py-2 pr-4 text-muted-foreground">{formatDate(r.createdAt)}</td>
+                        <td data-label="Path" className="py-2 pr-4 font-mono">{r.path}</td>
+                        <td data-label="Location" className="py-2 pr-4 text-muted-foreground">
                           {[r.country, r.city].filter(Boolean).join(" / ") || "—"}
                         </td>
-                        <td className="py-2 pr-4 text-muted-foreground">
+                        <td data-label="Duration" className="py-2 pr-4 text-muted-foreground">
                           {r.durationSeconds != null ? `${Math.floor(r.durationSeconds / 60)}m ${r.durationSeconds % 60}s` : "—"}
                         </td>
-                        <td className="py-2 pr-4 text-muted-foreground break-all max-w-[180px]">
+                        <td data-label="Referrer" className="py-2 pr-4 text-muted-foreground break-all max-w-[180px]">
                           {r.referrer || "—"}
                         </td>
-                        <td className="py-2 pr-4 text-muted-foreground text-xs break-all max-w-[200px]" title={r.userAgent || ""}>
+                        <td data-label="User-Agent" className="py-2 pr-4 text-muted-foreground text-xs break-all max-w-[200px]" title={r.userAgent || ""}>
                           {r.userAgent ? `${r.userAgent.slice(0, 80)}${r.userAgent.length > 80 ? "…" : ""}` : "—"}
                         </td>
-                        <td className="py-2">
+                        <td data-label="IP" className="py-2">
                           <button
                             type="button"
                             onClick={() => setFilterIP(r.ip)}
@@ -974,10 +1135,14 @@ export default function AnalyticsPage() {
                 access-block-log requests are hidden).
               </p>
               {(stats.accessBlockedRecent?.length ?? 0) === 0 ? (
-                <p className="text-sm text-muted-foreground">No entries in this range.</p>
+                <DashboardEmptyState
+                  title="No blocked requests in this range"
+                  description="No rows matched the current date and filter settings."
+                  className="px-4 py-6"
+                />
               ) : (
                 <div className="max-h-72 overflow-auto">
-                  <table className="w-full text-sm min-w-[280px]">
+                  <table className="w-full text-sm rwd-table">
                     <thead>
                       <tr className="border-b text-left">
                         <th className="py-2 pr-4">Time</th>
@@ -989,8 +1154,8 @@ export default function AnalyticsPage() {
                     <tbody>
                       {(stats.accessBlockedRecent ?? []).map((r, i) => (
                         <tr key={`${r.createdAt}-${r.ip}-${i}`} className="border-b border-border/70">
-                          <td className="py-2 pr-4 text-muted-foreground">{formatDate(r.createdAt)}</td>
-                          <td className="py-2 pr-4">
+                          <td data-label="Time" className="py-2 pr-4 text-muted-foreground">{formatDate(r.createdAt)}</td>
+                          <td data-label="IP" className="py-2 pr-4">
                             <button
                               type="button"
                               onClick={() => setFilterIP(r.ip)}
@@ -1000,8 +1165,9 @@ export default function AnalyticsPage() {
                               {r.ip}
                             </button>
                           </td>
-                          <td className="py-2 pr-4 font-mono text-foreground">{r.path}</td>
+                          <td data-label="Path" className="py-2 pr-4 font-mono text-foreground">{r.path}</td>
                           <td
+                            data-label="UA"
                             className="py-2 text-muted-foreground text-xs break-all max-w-[200px]"
                             title={r.userAgent || ""}
                           >
@@ -1036,7 +1202,7 @@ export default function AnalyticsPage() {
                       placeholder="e.g. 140.113.128.3"
                       value={clearByIP}
                       onChange={(e) => setClearByIP(e.target.value)}
-                      className="rounded border border-input px-3 py-2 text-sm font-mono w-36"
+                      className="rounded-lg border border-input px-3 py-2 text-sm font-mono w-36 shadow-[var(--elevation-1)] transition-[box-shadow,border-color] duration-200 focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2"
                     />
                     <Button
                       variant="outline"
@@ -1055,7 +1221,7 @@ export default function AnalyticsPage() {
                       type="date"
                       value={clearOnDate}
                       onChange={(e) => setClearOnDate(e.target.value)}
-                      className="rounded border border-input px-3 py-2 text-sm"
+                      className="rounded-lg border border-input px-3 py-2 text-sm shadow-[var(--elevation-1)] transition-[box-shadow,border-color] duration-200 focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2"
                     />
                     <Button
                       variant="outline"
@@ -1074,7 +1240,7 @@ export default function AnalyticsPage() {
                       type="date"
                       value={clearBefore}
                       onChange={(e) => setClearBefore(e.target.value)}
-                      className="rounded border border-input px-3 py-2 text-sm"
+                      className="rounded-lg border border-input px-3 py-2 text-sm shadow-[var(--elevation-1)] transition-[box-shadow,border-color] duration-200 focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2"
                     />
                     <Button
                       variant="outline"

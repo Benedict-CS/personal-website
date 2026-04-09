@@ -1,9 +1,10 @@
 "use client";
 
 import { motion } from "framer-motion";
+import { UI_SPRING_CARD } from "@/components/ui/ui-cohesion";
 
-const staggerOrder = 0.06;
-const baseDelay = 0.04;
+const staggerOrder = 0.05;
+const baseDelay = 0.03;
 
 type MotionCardProps = {
   delayIndex?: number;
@@ -21,14 +22,13 @@ export function MotionCard({
   return (
     <motion.div
       id={id}
-      initial={{ opacity: 0, y: 10 }}
-      animate={{ opacity: 1, y: 0 }}
+      initial={{ opacity: 0, y: 12, scale: 0.98 }}
+      animate={{ opacity: 1, y: 0, scale: 1 }}
       transition={{
-        duration: 0.35,
-        ease: [0.25, 0.46, 0.45, 0.94],
+        ...UI_SPRING_CARD,
         delay: baseDelay + delayIndex * staggerOrder,
       }}
-      whileHover={{ scale: 1.01 }}
+      whileHover={{ scale: 1.008, transition: { type: "spring", stiffness: 400, damping: 25 } }}
       className={className}
     >
       {children}

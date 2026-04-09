@@ -16,15 +16,18 @@ interface TableOfContentsProps {
   content: string;
   /** Server-parsed headings (matches rehype-slug); enables mobile TOC and faster first paint */
   initialHeadings?: MarkdownTocHeading[];
+  /** Optional per-heading read estimates keyed by heading id. */
+  initialReadEstimates?: Record<string, number>;
 }
 
-export function TableOfContents({ content, initialHeadings }: TableOfContentsProps) {
+export function TableOfContents({ content, initialHeadings, initialReadEstimates }: TableOfContentsProps) {
   const [headings, setHeadings] = useState<TocItem[]>(() =>
     initialHeadings?.length ? markdownTocToNavItems(initialHeadings) : []
   );
   const [activeId, setActiveId] = useState<string>("");
   const [expandedH2, setExpandedH2] = useState<string>("");
   const [sectionProgress, setSectionProgress] = useState(0);
+  const [copiedHeadingId, setCopiedHeadingId] = useState<string>("");
 
   // Refine from DOM after markdown renders (math, HTML, etc.)
   useEffect(() => {
@@ -118,22 +121,10 @@ export function TableOfContents({ content, initialHeadings }: TableOfContentsPro
   }
 
   const tocPanel = (variant: "sidebar" | "drawer") => (
-    <div className={variant === "sidebar" ? "rounded-lg border border-border bg-card p-4" : "px-4 pb-1"}>
+    <div className={variant === "sidebar" ? "rounded-xl border border-border bg-card p-4 shadow-[var(--elevation-1)]" : "px-4 pb-1"}>
       {variant === "sidebar" && (
         <div className="mb-4 flex items-center justify-between gap-2">
           <h2 className="text-sm font-semibold text-foreground">On this page</h2>
-          {headings.length > 1 && (
-            <span className="text-xs text-muted-foreground/70 tabular-nums" aria-hidden>
-              {sectionProgress}%
-            </span>
-          )}
-        </div>
-      )}
-      {variant === "drawer" && headings.length > 1 && (
-        <div className="mb-3 flex justify-end">
-          <span className="text-xs text-muted-foreground/70 tabular-nums" aria-hidden>
-            {sectionProgress}%
-          </span>
         </div>
       )}
       {headings.length > 1 && (
@@ -179,18 +170,44 @@ export function TableOfContents({ content, initialHeadings }: TableOfContentsPro
                 }
               }}
             >
-              {heading.text}
+              <span className="inline-flex items-center gap-2">
+                <span>{heading.text}</span>
+                {initialReadEstimates?.[heading.id] ? (
+                  <span className="rounded-full border border-border px-1.5 py-0.5 text-[10px] font-medium text-muted-foreground">
+                    ~{initialReadEstimates[heading.id]}m
+                  </span>
+                ) : null}
+              </span>
             </Link>
           );
         })}
       </nav>
+      <div className="mt-3 border-t border-border/60 pt-2">
+        <button
+          type="button"
+          className="text-xs text-muted-foreground transition-colors hover:text-foreground"
+          onClick={async () => {
+            if (!activeId) return;
+            try {
+              const url = `${window.location.origin}${window.location.pathname}#${activeId}`;
+              await navigator.clipboard.writeText(url);
+              setCopiedHeadingId(activeId);
+              setTimeout(() => setCopiedHeadingId(""), 1200);
+            } catch {
+              // no-op
+            }
+          }}
+        >
+          {copiedHeadingId === activeId && activeId ? "Copied heading link" : "Copy current heading link"}
+        </button>
+      </div>
     </div>
   );
 
   return (
     <>
       <div className="mb-6 w-full lg:hidden">
-        <details className="group rounded-lg border border-border bg-card open:shadow-sm">
+        <details className="group rounded-xl border border-border bg-card open:shadow-[var(--elevation-1)]">
           <summary className="cursor-pointer list-none px-4 py-3 text-sm font-semibold text-foreground [&::-webkit-details-marker]:hidden">
             <span className="flex items-center justify-between gap-2">
               On this page

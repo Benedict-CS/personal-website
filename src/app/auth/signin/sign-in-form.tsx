@@ -27,6 +27,7 @@ export function SignInForm() {
   const [captchaRequired, setCaptchaRequired] = useState(false);
   const [captchaToken, setCaptchaToken] = useState<string | null>(null);
   const [captchaReady, setCaptchaReady] = useState(false);
+  const errorId = "signin-error-message";
 
   const errorParam = searchParams.get("error");
   const sessionExpired = isSessionExpiredError(errorParam);
@@ -109,14 +110,14 @@ export function SignInForm() {
         />
       )}
       <motion.div
-        initial={{ opacity: 0, y: 8 }}
-        animate={{ opacity: 1, y: 0 }}
-        transition={{ duration: 0.3, ease: [0.25, 0.46, 0.45, 0.94] }}
+        initial={{ opacity: 0, y: 10, scale: 0.98 }}
+        animate={{ opacity: 1, y: 0, scale: 1 }}
+        transition={{ type: "spring", stiffness: 400, damping: 30, mass: 0.8 }}
         className="w-full max-w-md"
       >
-        <Card className="w-full border-[var(--border)] shadow-[var(--shadow-lg)]">
+        <Card className="w-full border-[var(--border)] shadow-[var(--elevation-3)]">
           <CardHeader>
-            <CardTitle className="text-[var(--foreground)]">Admin Login</CardTitle>
+            <CardTitle className="text-lg font-semibold tracking-[-0.02em] text-[var(--foreground)]">Admin Login</CardTitle>
           </CardHeader>
           <CardContent>
             <form onSubmit={handleSubmit} className="space-y-4">
@@ -131,7 +132,11 @@ export function SignInForm() {
                 </p>
               )}
               <div className="space-y-2">
+                <label htmlFor="admin-password" className="sr-only">
+                  Admin password
+                </label>
                 <Input
+                  id="admin-password"
                   type="password"
                   placeholder="Enter password"
                   value={password}
@@ -140,6 +145,8 @@ export function SignInForm() {
                     setPassword(e.target.value);
                   }}
                   required
+                  aria-invalid={!!error}
+                  aria-describedby={error ? errorId : undefined}
                 />
               </div>
               {captchaRequired && SITE_KEY && captchaReady && (
@@ -153,6 +160,11 @@ export function SignInForm() {
               <Button type="submit" className="w-full" disabled={isLoading}>
                 {isLoading ? "Signing in..." : "Sign In"}
               </Button>
+              {error ? (
+                <p id={errorId} className="sr-only" role="status" aria-live="polite">
+                  {error}
+                </p>
+              ) : null}
             </form>
           </CardContent>
         </Card>

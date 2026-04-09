@@ -2,6 +2,7 @@
 
 import { useState, useEffect, use, useRef, useMemo } from "react";
 import { useCmsFormSaveShortcut } from "@/hooks/use-cms-form-save-shortcut";
+import { useCmsCrudShortcuts } from "@/hooks/use-cms-crud-shortcuts";
 import { useRouter } from "next/navigation";
 import { motion, useReducedMotion } from "framer-motion";
 import {
@@ -21,6 +22,9 @@ import {
   Smartphone,
   Tablet,
   Monitor,
+  GitCompareArrows,
+  X,
+  Download,
 } from "lucide-react";
 import dynamic from "next/dynamic";
 import { Button } from "@/components/ui/button";
@@ -48,11 +52,18 @@ import {
 } from "@/components/dashboard/dashboard-drag-zone-classes";
 import { normalizeMarkdownWhitespace } from "@/lib/cms-normalize-markdown";
 import { slugifyPostTitle } from "@/lib/cms-slug-from-title";
+import { DashboardGlobalActionBar } from "@/components/dashboard/dashboard-global-action-bar";
 import { PostDraftMarkdownStats } from "@/components/dashboard/post-draft-markdown-stats";
+import { ContentReadabilityScore } from "@/components/dashboard/content-readability-score";
+import { SeoPreviewCard } from "@/components/dashboard/seo-preview-card";
+import { AutoTagSuggestions } from "@/components/dashboard/auto-tag-suggestions";
+import { SocialShareCardControls } from "@/components/dashboard/social-share-card-controls";
 import { PostBodyPreview } from "@/components/dashboard/post-body-preview";
 import { useSplitEditorScroll } from "@/components/dashboard/use-split-editor-scroll";
-import { calculateReadingTime, formatReadingTime } from "@/lib/reading-time";
+import { computeLineDiff, formatDiffSummary } from "@/lib/markdown-diff";
+import { exportPostAsMarkdown, exportFilename, downloadMarkdownFile } from "@/lib/post-export";
 import { useToast } from "@/contexts/toast-context";
+import { getContentMetrics } from "@/lib/content-metrics";
 
 // Dynamic import MDEditor to avoid SSR issues
 const MDEditor = dynamic(
@@ -99,12 +110,14 @@ export default function EditPostPage({
   }>>([]);
   const [isLoadingVersions, setIsLoadingVersions] = useState(false);
   const [isRestoring, setIsRestoring] = useState<string | null>(null);
+  const [selectedVersionForDiffId, setSelectedVersionForDiffId] = useState<string | null>(null);
   const [stayOnPageAfterSave, setStayOnPageAfterSave] = useState(true);
   const [savedMessage, setSavedMessage] = useState<string | null>(null);
   const [focusMode, setFocusMode] = useState(false);
   const [splitEditor, setSplitEditor] = useState(false);
   const [previewDevice, setPreviewDevice] = useState<"mobile" | "tablet" | "desktop">("desktop");
   const [editorChromeDim, setEditorChromeDim] = useState(false);
+  const [focusHeartbeatDim, setFocusHeartbeatDim] = useState(false);
   const reduceMotion = useReducedMotion();
   const [dirty, setDirty] = useState(false);
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
@@ -117,8 +130,14 @@ export default function EditPostPage({
   const [previewToken, setPreviewToken] = useState<string | null>(null);
   const [isGeneratingPreview, setIsGeneratingPreview] = useState(false);
   const [isRevokingPreview, setIsRevokingPreview] = useState(false);
+  const [linkSuggestions, setLinkSuggestions] = useState<
+    Array<{ id: string; slug: string; title: string; score: number; reasons: string[] }>
+  >([]);
+  const [scannedCandidateCount, setScannedCandidateCount] = useState(0);
+  const [isLoadingLinkSuggestions, setIsLoadingLinkSuggestions] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
   const editorRef = useRef<{ textarea?: HTMLTextAreaElement } | null>(null);
+  const focusHeartbeatTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const { leftWrapRef, rightRef } = useSplitEditorScroll(splitEditor, content.length);
   const cursorPosRef = useRef<{ start: number; end: number } | null>(null);
   const formRef = useRef<HTMLFormElement>(null);
@@ -140,12 +159,37 @@ export default function EditPostPage({
   const savedDocumentTitleRef = useRef<string | null>(null);
 
   const contentStats = useMemo(() => {
-    const words = content.trim() ? content.trim().split(/\s+/).filter(Boolean).length : 0;
-    const rt = calculateReadingTime(content);
-    return { words, readingLabel: formatReadingTime(rt) };
+    return getContentMetrics(content);
   }, [content]);
+  const selectedVersionForDiff = useMemo(
+    () => versions.find((version) => version.id === selectedVersionForDiffId) ?? null,
+    [selectedVersionForDiffId, versions]
+  );
+  const selectedVersionDiff = useMemo(() => {
+    if (!selectedVersionForDiff) return null;
+    const meta = {
+      titleChanged: title !== selectedVersionForDiff.title,
+      slugChanged: slug !== selectedVersionForDiff.slug,
+      publishedChanged: published !== selectedVersionForDiff.published,
+    };
+    const lineDiff = computeLineDiff(selectedVersionForDiff.content, content);
+    return { meta, lineDiff, summary: formatDiffSummary(lineDiff) };
+  }, [content, published, selectedVersionForDiff, slug, title]);
 
-  const splitChromeOpacity = splitEditor && editorChromeDim ? (reduceMotion ? 0.72 : 0.42) : 1;
+  const splitChromeOpacity =
+    (splitEditor && editorChromeDim) || (focusMode && focusHeartbeatDim) ? (reduceMotion ? 0.72 : 0.42) : 1;
+
+  const pulseFocusHeartbeat = () => {
+    if (!focusMode) return;
+    setFocusHeartbeatDim(true);
+    if (focusHeartbeatTimerRef.current) {
+      clearTimeout(focusHeartbeatTimerRef.current);
+    }
+    focusHeartbeatTimerRef.current = setTimeout(() => {
+      setFocusHeartbeatDim(false);
+      focusHeartbeatTimerRef.current = null;
+    }, 1800);
+  };
 
   useEffect(() => {
     const root = leftWrapRef.current;
@@ -166,6 +210,23 @@ export default function EditPostPage({
       root.removeEventListener("focusout", onFocusOut);
     };
   }, [splitEditor, content.length, leftWrapRef]);
+
+  useEffect(() => {
+    if (focusMode) return;
+    setFocusHeartbeatDim(false);
+    if (focusHeartbeatTimerRef.current) {
+      clearTimeout(focusHeartbeatTimerRef.current);
+      focusHeartbeatTimerRef.current = null;
+    }
+  }, [focusMode]);
+
+  useEffect(() => {
+    return () => {
+      if (focusHeartbeatTimerRef.current) {
+        clearTimeout(focusHeartbeatTimerRef.current);
+      }
+    };
+  }, []);
 
   // Load post data
   useEffect(() => {
@@ -410,22 +471,18 @@ export default function EditPostPage({
     enabled: true,
     submitting: isSubmitting || isDeleting,
   });
-
-  // Ctrl/Cmd+Enter — publish and save (draft → published)
-  useEffect(() => {
-    const handleKeyDown = (e: KeyboardEvent) => {
-      if ((e.ctrlKey || e.metaKey) && e.key === "Enter") {
-        e.preventDefault();
-        if (!isSubmitting && !isDeleting && !published) {
-          setPublished(true);
-          setDirty(true);
-          setTimeout(() => formRef.current?.requestSubmit(), 0);
-        }
-      }
-    };
-    window.addEventListener("keydown", handleKeyDown);
-    return () => window.removeEventListener("keydown", handleKeyDown);
-  }, [isSubmitting, isDeleting, published]);
+  useCmsCrudShortcuts({
+    enabled: true,
+    submitting: isSubmitting || isDeleting,
+    onPublishAndSave: () => {
+      if (!published) setPublished(true);
+      setDirty(true);
+      window.setTimeout(() => formRef.current?.requestSubmit(), 0);
+    },
+    onDelete: () => {
+      setShowDeleteConfirm(true);
+    },
+  });
 
   // Mark form as dirty when user edits (ensures "Unsaved changes" shows)
   const markDirty = () => {
@@ -604,10 +661,30 @@ export default function EditPostPage({
           const error = await response.json().catch(() => ({}));
           throw new Error(typeof error?.error === "string" ? error.error : "Failed to update post");
         }
+        const updated = (await response.json().catch(() => null)) as
+          | { slug?: string; publicationState?: string }
+          | null;
         try {
           localStorage.removeItem(`cms-post-local:${id}`);
         } catch {
           /* ignore */
+        }
+        if (updated?.publicationState === "published" && updated.slug) {
+          toast(
+            <span>
+              Published successfully.{" "}
+              <a
+                href={`/blog/${updated.slug}`}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="font-semibold underline underline-offset-2"
+              >
+                View live post
+              </a>
+            </span>,
+            "success"
+          );
+          setSavedMessage("Published");
         }
         setTimeout(() => setSavedMessage(null), 2500);
       } catch (error) {
@@ -646,6 +723,9 @@ export default function EditPostPage({
         const error = await response.json();
         throw new Error(error.error || "Failed to update post");
       }
+      const updated = (await response.json().catch(() => null)) as
+        | { slug?: string; publicationState?: string }
+        | null;
 
       try {
         localStorage.removeItem(`cms-post-local:${id}`);
@@ -669,8 +749,24 @@ export default function EditPostPage({
         };
       }
       setDirty(false);
-      setSavedMessage("Saved");
+      setSavedMessage(updated?.publicationState === "published" ? "Published" : "Saved");
       setTimeout(() => setSavedMessage(null), 2500);
+      if (updated?.publicationState === "published" && updated.slug) {
+        toast(
+          <span>
+            Published successfully.{" "}
+            <a
+              href={`/blog/${updated.slug}`}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="font-semibold underline underline-offset-2"
+            >
+              View live post
+            </a>
+          </span>,
+          "success"
+        );
+      }
 
       router.push("/dashboard/posts");
     } catch (error) {
@@ -717,8 +813,29 @@ export default function EditPostPage({
   };
 
   const handleShowVersions = () => {
+    setSelectedVersionForDiffId(null);
     setShowVersions(true);
     loadVersions();
+  };
+
+  const handleExportMarkdown = () => {
+    try {
+      const md = exportPostAsMarkdown({
+        title,
+        slug,
+        description,
+        tags,
+        published,
+        pinned,
+        category,
+        publishedDate,
+        content,
+      });
+      downloadMarkdownFile(md, exportFilename(slug));
+      toast("Exported as Markdown", "success");
+    } catch {
+      toast("Export failed", "error");
+    }
   };
 
   const handleRestore = async (versionId: string) => {
@@ -776,6 +893,7 @@ export default function EditPostPage({
         };
       }
       setShowVersions(false);
+      setSelectedVersionForDiffId(null);
       setDirty(false);
       toast("Restored to this version.", "success");
     } catch (error) {
@@ -838,6 +956,42 @@ export default function EditPostPage({
     } finally {
       setIsRevokingPreview(false);
     }
+  };
+
+  const loadLinkSuggestions = async () => {
+    setIsLoadingLinkSuggestions(true);
+    try {
+      const response = await fetch(`/api/posts/${id}/link-suggestions`, {
+        credentials: "include",
+        cache: "no-store",
+      });
+      if (!response.ok) throw new Error("Failed to generate suggestions");
+      const data = (await response.json()) as {
+        suggestions?: Array<{ id: string; slug: string; title: string; score: number; reasons: string[] }>;
+        scannedCandidates?: number;
+      };
+      setLinkSuggestions(Array.isArray(data.suggestions) ? data.suggestions : []);
+      setScannedCandidateCount(typeof data.scannedCandidates === "number" ? data.scannedCandidates : 0);
+      if (!data.suggestions || data.suggestions.length === 0) {
+        toast("No strong internal-link opportunities found yet.", "warning");
+      } else {
+        toast("Internal-link suggestions updated.", "success");
+      }
+    } catch {
+      toast("Failed to generate internal-link suggestions", "error");
+    } finally {
+      setIsLoadingLinkSuggestions(false);
+    }
+  };
+
+  const insertInternalLinkSuggestion = (suggestion: {
+    slug: string;
+    title: string;
+  }) => {
+    const markdown = `[${suggestion.title}](/blog/${suggestion.slug})`;
+    insertImageBlock(markdown);
+    setLinkSuggestions((current) => current.filter((item) => item.slug !== suggestion.slug));
+    toast("Inserted internal link into markdown.", "success");
   };
 
   if (isLoading) {
@@ -946,6 +1100,17 @@ export default function EditPostPage({
                   <History className="h-4 w-4" />
                   Version History
                 </Button>
+                <Button
+                  type="button"
+                  variant="outline"
+                  size="sm"
+                  onClick={handleExportMarkdown}
+                  className="flex items-center gap-2"
+                  title="Download this post as a .md file with YAML frontmatter"
+                >
+                  <Download className="h-4 w-4" />
+                  Export .md
+                </Button>
                 {previewToken ? (
                   <>
                     <Button
@@ -1010,6 +1175,10 @@ export default function EditPostPage({
                   <DashboardKbd className="px-1 text-[11px]">Enter</DashboardKbd> — Publish and save (when not already published)
                 </li>
                 <li>
+                  <DashboardKbd className="px-1 text-[11px]">⌘/Ctrl</DashboardKbd> +{" "}
+                  <DashboardKbd className="px-1 text-[11px]">Backspace</DashboardKbd> — Open delete confirmation
+                </li>
+                <li>
                   Live Markdown preview uses the <strong className="text-foreground/90">light</strong> theme only (split view below the
                   editor).
                 </li>
@@ -1022,6 +1191,33 @@ export default function EditPostPage({
           </CardHeader>
           <CardContent>
             <form ref={formRef} onSubmit={handleSubmit} className="space-y-6">
+              <DashboardGlobalActionBar>
+                <Button
+                  type="button"
+                  variant="destructive"
+                  onClick={() => setShowDeleteConfirm(true)}
+                  disabled={isDeleting || isSubmitting}
+                >
+                  {isDeleting ? "Deleting..." : "Delete"}
+                </Button>
+                <Button
+                  type="button"
+                  variant="outline"
+                  onClick={() => {
+                    if (dirty) {
+                      setPendingLeaveUrl("/dashboard/posts");
+                      setShowLeaveConfirm(true);
+                    } else router.push("/dashboard/posts");
+                  }}
+                  disabled={isSubmitting || isDeleting}
+                >
+                  Cancel
+                </Button>
+                <Button type="submit" disabled={isSubmitting || isDeleting} className="gap-2">
+                  {isSubmitting ? <Loader2 className="h-4 w-4 animate-spin" /> : null}
+                  {isSubmitting ? "Updating..." : "Update Post"}
+                </Button>
+              </DashboardGlobalActionBar>
               <div className="space-y-2">
                 <label htmlFor="title" className={DASHBOARD_FORM_LABEL_CLASS}>
                   Title
@@ -1106,6 +1302,20 @@ export default function EditPostPage({
                     <p className="text-xs text-muted-foreground">
                       Separate multiple tags with commas
                     </p>
+                    <AutoTagSuggestions
+                      postId={id}
+                      title={title}
+                      content={content}
+                      currentTags={tags}
+                      onAddTag={(tagName) => {
+                        markDirty();
+                        setTags((prev) => {
+                          const existing = prev.split(",").map((t) => t.trim()).filter(Boolean);
+                          if (existing.some((t) => t.toLowerCase() === tagName.toLowerCase())) return prev;
+                          return existing.length > 0 ? `${prev.trimEnd()}, ${tagName}` : tagName;
+                        });
+                      }}
+                    />
                   </div>
 
                   <div className="space-y-2">
@@ -1289,6 +1499,74 @@ export default function EditPostPage({
                     }}
                   />
                   <PostDraftMarkdownStats markdown={content} className="mt-2" />
+                  <ContentReadabilityScore markdown={content} className="mt-2" />
+                  <SeoPreviewCard title={title} slug={slug} description={description} content={content} className="mt-2" />
+                  <Card className="mt-2">
+                    <CardHeader className="pb-2">
+                      <CardTitle className="text-sm">Smart internal linker</CardTitle>
+                    </CardHeader>
+                    <CardContent className="space-y-3">
+                      <div className="flex flex-wrap items-center gap-2">
+                        <Button
+                          type="button"
+                          variant="outline"
+                          size="sm"
+                          onClick={() => void loadLinkSuggestions()}
+                          disabled={isLoadingLinkSuggestions}
+                          className="gap-2"
+                        >
+                          {isLoadingLinkSuggestions ? <Loader2 className="h-4 w-4 animate-spin" /> : <Link2 className="h-4 w-4" />}
+                          {isLoadingLinkSuggestions ? "Scanning..." : "Suggest internal links"}
+                        </Button>
+                        {scannedCandidateCount > 0 ? (
+                          <span className="text-xs text-muted-foreground">Scanned {scannedCandidateCount} candidate posts</span>
+                        ) : null}
+                      </div>
+                      {linkSuggestions.length > 0 ? (
+                        <ul className="space-y-2">
+                          {linkSuggestions.map((suggestion) => (
+                            <li
+                              key={suggestion.id}
+                              className="rounded-lg border border-border bg-card/60 px-3 py-2"
+                            >
+                              <div className="flex flex-wrap items-start justify-between gap-3">
+                                <div>
+                                  <p className="text-sm font-medium text-foreground">{suggestion.title}</p>
+                                  <p className="text-xs text-muted-foreground">
+                                    /blog/{suggestion.slug} · Score {suggestion.score}
+                                  </p>
+                                  {suggestion.reasons.length > 0 ? (
+                                    <p className="mt-1 text-xs text-muted-foreground">
+                                      {suggestion.reasons.join(" · ")}
+                                    </p>
+                                  ) : null}
+                                </div>
+                                <Button
+                                  type="button"
+                                  size="sm"
+                                  variant="outline"
+                                  onClick={() => insertInternalLinkSuggestion(suggestion)}
+                                  className="gap-1.5"
+                                >
+                                  <Link2 className="h-3.5 w-3.5" />
+                                  Insert link
+                                </Button>
+                              </div>
+                            </li>
+                          ))}
+                        </ul>
+                      ) : (
+                        <p className="text-xs text-muted-foreground">
+                          Generate suggestions to add context-aware backlinks between related posts.
+                        </p>
+                      )}
+                    </CardContent>
+                  </Card>
+                  <SocialShareCardControls
+                    title={title}
+                    subtitle={description}
+                    label={published ? "Blog Post" : "Draft Post"}
+                  />
                 </motion.div>
                 <div
                   className={splitEditor ? "grid items-start gap-4 lg:grid-cols-2" : ""}
@@ -1300,6 +1578,7 @@ export default function EditPostPage({
                       value={content}
                       onChange={(val) => {
                         markDirty();
+                        pulseFocusHeartbeat();
                         setContent(val || "");
                       }}
                       preview={splitEditor ? "edit" : "live"}
@@ -1322,7 +1601,7 @@ export default function EditPostPage({
                     <div
                       ref={rightRef}
                       className={cn(
-                        "max-h-[720px] min-h-[320px] min-w-0 overflow-y-auto rounded-xl border border-border bg-card p-4 shadow-sm lg:sticky lg:top-24",
+                        "max-h-[720px] min-h-[320px] min-w-0 overflow-y-auto rounded-xl border border-border bg-card p-4 shadow-[var(--elevation-1)] lg:sticky lg:top-24",
                         previewDevice === "mobile" && "mx-auto w-full max-w-[390px] shadow-inner",
                         previewDevice === "tablet" && "mx-auto w-full max-w-[820px] shadow-inner"
                       )}
@@ -1410,7 +1689,7 @@ export default function EditPostPage({
               )}
 
               {/* Sticky bar at bottom: status + actions (always visible when editing) */}
-              <div className="sticky bottom-0 -mx-6 -mb-6 mt-6 flex items-center justify-between gap-4 border-t border-border bg-muted/30 px-6 py-4 shadow-[0_-4px_6px_-1px_oklch(0.2_0.02_265/0.06)]">
+              <div className="sticky bottom-0 -mx-6 -mb-6 mt-6 flex items-center justify-between gap-4 border-t border-border bg-muted/30 px-6 py-4 shadow-[var(--elevation-1)]">
                 <div className="text-sm font-medium">
                   {savedMessage && (
                     <span className="text-green-700">
@@ -1427,32 +1706,7 @@ export default function EditPostPage({
                     <span className="text-muted-foreground">All changes saved</span>
                   )}
                 </div>
-                <div className="flex shrink-0 gap-2">
-                  <Button
-                    type="button"
-                    variant="destructive"
-                    onClick={() => setShowDeleteConfirm(true)}
-                    disabled={isDeleting || isSubmitting}
-                  >
-                    {isDeleting ? "Deleting..." : "Delete"}
-                  </Button>
-                  <Button
-                    type="button"
-                    variant="outline"
-                    onClick={() => {
-                      if (dirty) {
-                        setPendingLeaveUrl("/dashboard/posts");
-                        setShowLeaveConfirm(true);
-                      } else router.push("/dashboard/posts");
-                    }}
-                    disabled={isSubmitting || isDeleting}
-                  >
-                    Cancel
-                  </Button>
-                  <Button type="submit" disabled={isSubmitting || isDeleting}>
-                    {isSubmitting ? "Updating..." : "Update Post"}
-                  </Button>
-                </div>
+                <p className="text-xs text-muted-foreground">Primary actions stay in the top action bar.</p>
               </div>
             </form>
 
@@ -1541,6 +1795,19 @@ export default function EditPostPage({
                                 <Button
                                   variant="outline"
                                   size="sm"
+                                  onClick={() =>
+                                    setSelectedVersionForDiffId((current) =>
+                                      current === version.id ? null : version.id
+                                    )
+                                  }
+                                  className="flex items-center gap-2"
+                                >
+                                  <GitCompareArrows className="h-4 w-4" />
+                                  {selectedVersionForDiffId === version.id ? "Hide diff" : "Compare"}
+                                </Button>
+                                <Button
+                                  variant="outline"
+                                  size="sm"
                                   onClick={() => setRestoreConfirmId(version.id)}
                                   disabled={isRestoring === version.id}
                                   className="flex items-center gap-2"
@@ -1594,13 +1861,109 @@ export default function EditPostPage({
                         })}
                       </div>
                     )}
+                    {selectedVersionDiff ? (
+                      <div className="mt-4 rounded-lg border border-border bg-muted/20 p-3">
+                        <div className="flex items-center justify-between gap-3">
+                          <div>
+                            <p className="text-sm font-semibold text-foreground flex items-center gap-2">
+                              <GitCompareArrows className="h-4 w-4" />
+                              Diff: Version #{selectedVersionForDiff?.versionNumber} vs current draft
+                            </p>
+                            <p className="mt-1 text-xs text-muted-foreground">
+                              {selectedVersionDiff.summary}
+                            </p>
+                          </div>
+                          <Button
+                            type="button"
+                            variant="ghost"
+                            size="sm"
+                            onClick={() => setSelectedVersionForDiffId(null)}
+                            className="h-7 w-7 p-0 shrink-0"
+                            title="Close diff view"
+                          >
+                            <X className="h-4 w-4" />
+                          </Button>
+                        </div>
+                        <div className="mt-2 grid gap-2 sm:grid-cols-3">
+                          {[
+                            { label: "Title", changed: selectedVersionDiff.meta.titleChanged },
+                            { label: "Slug", changed: selectedVersionDiff.meta.slugChanged },
+                            { label: "Publish flag", changed: selectedVersionDiff.meta.publishedChanged },
+                          ].map(({ label, changed }) => (
+                            <div
+                              key={label}
+                              className={cn(
+                                "rounded-md border p-2 text-xs",
+                                changed
+                                  ? "border-amber-300 bg-amber-50 text-amber-800"
+                                  : "border-border bg-card text-muted-foreground"
+                              )}
+                            >
+                              <span className="font-medium">{label}:</span>{" "}
+                              {changed ? "Changed" : "Same"}
+                            </div>
+                          ))}
+                        </div>
+                        <div className="mt-3 max-h-[28rem] overflow-auto rounded-md border border-border bg-card">
+                          <div className="min-w-[480px]">
+                            {selectedVersionDiff.lineDiff.lines.slice(0, 200).map((line, idx) => {
+                              const bgClass =
+                                line.kind === "add"
+                                  ? "bg-emerald-50"
+                                  : line.kind === "remove"
+                                    ? "bg-rose-50"
+                                    : "";
+                              const textClass =
+                                line.kind === "add"
+                                  ? "text-emerald-800"
+                                  : line.kind === "remove"
+                                    ? "text-rose-800"
+                                    : "text-muted-foreground/70";
+                              const prefix =
+                                line.kind === "add"
+                                  ? "+"
+                                  : line.kind === "remove"
+                                    ? "-"
+                                    : " ";
+                              return (
+                                <div
+                                  key={idx}
+                                  className={cn(
+                                    "flex items-stretch font-mono text-xs leading-5 border-b border-border/30 last:border-b-0",
+                                    bgClass
+                                  )}
+                                >
+                                  <span className="w-10 shrink-0 select-none border-r border-border/40 px-1 text-right tabular-nums text-muted-foreground/50">
+                                    {line.oldLineNumber ?? ""}
+                                  </span>
+                                  <span className="w-10 shrink-0 select-none border-r border-border/40 px-1 text-right tabular-nums text-muted-foreground/50">
+                                    {line.newLineNumber ?? ""}
+                                  </span>
+                                  <span className={cn("w-4 shrink-0 select-none text-center font-semibold", textClass)}>
+                                    {prefix}
+                                  </span>
+                                  <span className={cn("flex-1 whitespace-pre-wrap break-all px-1", textClass)}>
+                                    {line.text || "\u00A0"}
+                                  </span>
+                                </div>
+                              );
+                            })}
+                          </div>
+                        </div>
+                        {selectedVersionDiff.lineDiff.lines.length > 200 ? (
+                          <p className="mt-2 text-xs text-muted-foreground">
+                            Showing first 200 lines. Full diff contains {selectedVersionDiff.lineDiff.lines.length} lines.
+                          </p>
+                        ) : null}
+                      </div>
+                    ) : null}
                   </CardContent>
                 </Card>
               </div>
             )}
           </CardContent>
         </Card>
-        <div className="fixed bottom-20 right-4 z-40 rounded-lg border border-border bg-card/95 p-2 shadow-lg backdrop-blur">
+        <div className="fixed bottom-20 right-4 z-40 rounded-xl border border-border bg-card/95 p-2 shadow-[var(--elevation-3)] backdrop-blur-md">
           <div className="flex items-center gap-2">
             <Button
               type="button"

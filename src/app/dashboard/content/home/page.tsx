@@ -183,13 +183,13 @@ export default function DashboardHomeSectionsPage() {
 
   if (loading) {
     return (
-      <div className="space-y-6 px-2 sm:px-0 max-w-4xl animate-pulse">
-        <div className="h-10 w-64 rounded bg-muted" />
-        <div className="h-5 w-full max-w-md rounded bg-muted" />
-        <div className="rounded-lg border border-border p-4 space-y-3">
-          <div className="h-5 w-48 rounded bg-muted" />
+      <div className="space-y-6 px-2 sm:px-0 max-w-4xl" role="status" aria-busy="true" aria-label="Loading home content">
+        <div className="h-10 w-64 rounded-lg skeleton-shimmer" />
+        <div className="h-5 w-full max-w-md rounded-lg skeleton-shimmer" />
+        <div className="rounded-xl border border-border p-4 shadow-[var(--elevation-1)] space-y-3">
+          <div className="h-5 w-48 rounded-lg skeleton-shimmer" />
           {[1, 2, 3].map((i) => (
-            <div key={i} className="h-14 rounded bg-muted/70" />
+            <div key={i} className="h-14 rounded-lg skeleton-shimmer" />
           ))}
         </div>
       </div>

@@ -86,12 +86,12 @@ export function Navbar({ siteConfig }: { siteConfig?: SiteConfigForRender | null
   );
 
   return (
-    <nav className="sticky top-0 z-50 w-full border-b border-border bg-background/80 backdrop-blur-md shadow-sm">
+    <nav className="sticky top-0 z-50 w-full border-b border-border bg-background/80 backdrop-blur-md shadow-[var(--elevation-1)]">
       <div className="container mx-auto max-w-6xl flex h-14 sm:h-16 items-center justify-between px-4 sm:px-6 lg:px-8">
         <Link
           href={isDashboard ? "/dashboard/analytics" : isEditor ? "/editor/home" : "/"}
           data-editor-site="navbar.brand"
-          className="text-lg sm:text-xl font-bold text-foreground hover:text-primary transition-colors duration-200 whitespace-nowrap flex items-center gap-1.5"
+          className="text-lg sm:text-xl font-semibold tracking-[-0.03em] text-foreground hover:text-primary transition-colors duration-200 whitespace-nowrap flex items-center gap-1.5"
         >
           {logoUrl ? (
             <Image src={logoUrl} alt="" width={28} height={28} data-editor-site-logo className="rounded object-contain shrink-0" />
@@ -148,8 +148,8 @@ export function Navbar({ siteConfig }: { siteConfig?: SiteConfigForRender | null
             initial={{ height: 0, opacity: 0 }}
             animate={{ height: "auto", opacity: 1 }}
             exit={{ height: 0, opacity: 0 }}
-            transition={{ duration: 0.2, ease: [0.25, 0.46, 0.45, 0.94] }}
-            className="sm:hidden overflow-hidden border-t border-border bg-background/80 backdrop-blur-md"
+            transition={{ duration: 0.25, ease: [0.22, 1, 0.36, 1] }}
+            className="sm:hidden overflow-hidden border-t border-border bg-background/90 backdrop-blur-lg shadow-[var(--elevation-2)]"
           >
             <div className="container mx-auto max-w-6xl px-4 py-3 flex flex-col gap-0.5">
               {!isDashboard && publicLinks}

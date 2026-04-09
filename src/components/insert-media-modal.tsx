@@ -146,7 +146,7 @@ export function InsertMediaModal({
       />
       <div className="absolute inset-0 flex items-start justify-center p-3 pt-6 pointer-events-none sm:p-4 sm:pt-10">
         <div
-          className="pointer-events-auto relative z-[2147483001] flex max-h-[90vh] w-full max-w-5xl flex-col overflow-hidden rounded-xl border border-[var(--border)] bg-[var(--card)] shadow-[var(--shadow-lg)]"
+          className="pointer-events-auto relative z-[2147483001] flex max-h-[90vh] w-full max-w-5xl flex-col overflow-hidden rounded-xl border border-[var(--border)] bg-[var(--card)] shadow-[var(--elevation-4)]"
           onClick={(e) => e.stopPropagation()}
           onMouseDown={(e) => e.stopPropagation()}
         >

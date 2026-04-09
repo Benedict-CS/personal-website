@@ -98,7 +98,7 @@ function SortableBlock({ id, children }: { id: string; children: React.ReactNode
       className="group relative rounded-xl border border-transparent hover:border-border"
       data-editable-block={id}
     >
-      <div className="pointer-events-none absolute right-2 top-2 z-20 hidden rounded-md border border-border bg-card/95 p-1 text-muted-foreground shadow-sm group-hover:block">
+      <div className="pointer-events-none absolute right-2 top-2 z-20 hidden rounded-lg border border-border bg-card/95 p-1 text-muted-foreground shadow-[var(--elevation-1)] group-hover:block">
         <button type="button" className="pointer-events-auto cursor-grab active:cursor-grabbing" aria-label={`Drag ${id}`} {...attributes} {...listeners}>
           <GripVertical className="h-4 w-4" />
         </button>
@@ -301,7 +301,7 @@ export function ImmersivePageEditor({ payload, isLoggedIn }: { payload: EditorPa
 
       {payload.kind === "about" && (
         <section className="container mx-auto max-w-5xl px-6 py-12">
-          <Card className="shadow-lg">
+          <Card className="shadow-[var(--elevation-3)]">
             <CardContent className="pt-8 pb-8">
               <div className="text-center">
                 {about.profileImage ? (
@@ -346,7 +346,7 @@ export function ImmersivePageEditor({ payload, isLoggedIn }: { payload: EditorPa
 
       {payload.kind === "custom" && (
         <section className="container mx-auto max-w-4xl px-4 py-12">
-          <Card className="shadow-lg">
+          <Card className="shadow-[var(--elevation-3)]">
             <CardContent className="space-y-6 p-6">
               <EditableText
                 className="text-3xl font-bold text-foreground"

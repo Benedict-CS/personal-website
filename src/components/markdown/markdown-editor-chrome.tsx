@@ -19,7 +19,7 @@ export function MarkdownEditorChrome({
   return (
     <div
       className={cn(
-        "rounded-lg border border-border bg-muted/25 p-2 shadow-sm",
+        "rounded-xl border border-border bg-muted/25 p-2 shadow-[var(--elevation-1)]",
         className,
       )}
     >

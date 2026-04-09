@@ -47,7 +47,7 @@ export function CodeSnippetBlock({
 
   return (
     <div
-      className={`overflow-hidden rounded-lg border border-border bg-muted shadow-sm ${className ?? ""}`}
+      className={`overflow-hidden rounded-xl border border-border bg-muted shadow-[var(--elevation-1)] ${className ?? ""}`}
     >
       <div className="flex items-center justify-between gap-2 border-b border-border bg-card px-3 py-2">
         <span className="truncate font-mono text-xs font-medium text-muted-foreground">

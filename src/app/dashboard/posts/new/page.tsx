@@ -2,9 +2,10 @@
 
 import { useState, useRef, useEffect, useMemo } from "react";
 import { useCmsFormSaveShortcut } from "@/hooks/use-cms-form-save-shortcut";
+import { useCmsCrudShortcuts } from "@/hooks/use-cms-crud-shortcuts";
 import { useRouter } from "next/navigation";
 import { motion, useReducedMotion } from "framer-motion";
-import { Paperclip, ImagePlus, Columns2, Smartphone, Tablet, Monitor } from "lucide-react";
+import { Paperclip, ImagePlus, Columns2, Smartphone, Tablet, Monitor, Loader2 } from "lucide-react";
 import dynamic from "next/dynamic";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -20,7 +21,6 @@ import { PostBodyPreview } from "@/components/dashboard/post-body-preview";
 import { useSplitEditorScroll } from "@/components/dashboard/use-split-editor-scroll";
 import { validateSlug, cn } from "@/lib/utils";
 import { slugifyPostTitle } from "@/lib/cms-slug-from-title";
-import { calculateReadingTime, formatReadingTime } from "@/lib/reading-time";
 import { markdownImageInsert } from "@/lib/markdown-image-insert";
 import { subscribeCmsMediaInsert } from "@/lib/cms-media-insert";
 import { useToast } from "@/contexts/toast-context";
@@ -28,6 +28,11 @@ import { DashboardKbd } from "@/components/dashboard/dashboard-ui";
 import { DASHBOARD_FORM_LABEL_CLASS } from "@/components/dashboard/dashboard-form-classes";
 import { normalizeMarkdownWhitespace } from "@/lib/cms-normalize-markdown";
 import { PostDraftMarkdownStats } from "@/components/dashboard/post-draft-markdown-stats";
+import { ContentReadabilityScore } from "@/components/dashboard/content-readability-score";
+import { SeoPreviewCard } from "@/components/dashboard/seo-preview-card";
+import { AutoTagSuggestions } from "@/components/dashboard/auto-tag-suggestions";
+import { DashboardGlobalActionBar } from "@/components/dashboard/dashboard-global-action-bar";
+import { getContentMetrics } from "@/lib/content-metrics";
 
 // Dynamic import MDEditor to avoid SSR issues
 const MDEditor = dynamic(
@@ -60,9 +65,7 @@ export default function NewPostPage() {
   const { leftWrapRef, rightRef } = useSplitEditorScroll(splitEditor, content.length);
 
   const contentStats = useMemo(() => {
-    const words = content.trim() ? content.trim().split(/\s+/).filter(Boolean).length : 0;
-    const rt = calculateReadingTime(content);
-    return { words, readingLabel: formatReadingTime(rt) };
+    return getContentMetrics(content);
   }, [content]);
 
   const splitChromeOpacity = splitEditor && editorChromeDim ? (reduceMotion ? 0.72 : 0.42) : 1;
@@ -269,6 +272,14 @@ export default function NewPostPage() {
   }, []);
 
   useCmsFormSaveShortcut(formRef, { enabled: true, submitting: isSubmitting });
+  useCmsCrudShortcuts({
+    enabled: true,
+    submitting: isSubmitting,
+    onPublishAndSave: () => {
+      setPublished(true);
+      window.setTimeout(() => formRef.current?.requestSubmit(), 0);
+    },
+  });
 
   return (
     <div className="w-full max-w-[min(100%,1400px)] py-8">
@@ -278,6 +289,20 @@ export default function NewPostPage() {
           </CardHeader>
           <CardContent>
             <form ref={formRef} onSubmit={handleSubmit} className="space-y-6">
+              <DashboardGlobalActionBar>
+                <Button
+                  type="button"
+                  variant="outline"
+                  onClick={() => router.push("/dashboard/posts")}
+                  disabled={isSubmitting}
+                >
+                  Cancel
+                </Button>
+                <Button type="submit" disabled={isSubmitting} className="gap-2">
+                  {isSubmitting ? <Loader2 className="h-4 w-4 animate-spin" /> : null}
+                  {isSubmitting ? "Creating..." : "Create Post"}
+                </Button>
+              </DashboardGlobalActionBar>
               <div className="space-y-2">
                 <label htmlFor="title" className={DASHBOARD_FORM_LABEL_CLASS}>
                   Title
@@ -359,6 +384,18 @@ export default function NewPostPage() {
                 <p className="text-xs text-muted-foreground">
                   Separate multiple tags with commas
                 </p>
+                <AutoTagSuggestions
+                  title={title}
+                  content={content}
+                  currentTags={tags}
+                  onAddTag={(tagName) => {
+                    setTags((prev) => {
+                      const existing = prev.split(",").map((t) => t.trim()).filter(Boolean);
+                      if (existing.some((t) => t.toLowerCase() === tagName.toLowerCase())) return prev;
+                      return existing.length > 0 ? `${prev.trimEnd()}, ${tagName}` : tagName;
+                    });
+                  }}
+                />
               </div>
 
               <div className="space-y-2">
@@ -499,6 +536,8 @@ export default function NewPostPage() {
                     onTidyBody={() => setContent((c) => normalizeMarkdownWhitespace(c))}
                   />
                   <PostDraftMarkdownStats markdown={content} className="mt-2" />
+                  <ContentReadabilityScore markdown={content} className="mt-2" />
+                  <SeoPreviewCard title={title} slug={slug} description={description} content={content} className="mt-2" />
                 </motion.div>
                 <div
                   className={splitEditor ? "grid items-start gap-4 lg:grid-cols-2" : ""}
@@ -528,7 +567,7 @@ export default function NewPostPage() {
                     <div
                       ref={rightRef}
                       className={cn(
-                        "max-h-[600px] min-h-[320px] min-w-0 overflow-y-auto rounded-xl border border-border bg-card p-4 shadow-sm lg:sticky lg:top-24",
+                        "max-h-[600px] min-h-[320px] min-w-0 overflow-y-auto rounded-xl border border-border bg-card p-4 shadow-[var(--elevation-1)] lg:sticky lg:top-24",
                         previewDevice === "mobile" && "mx-auto w-full max-w-[390px] shadow-inner",
                         previewDevice === "tablet" && "mx-auto w-full max-w-[820px] shadow-inner"
                       )}
@@ -585,28 +624,15 @@ export default function NewPostPage() {
                 </label>
               </div>
 
-              <div className="flex flex-col items-end gap-2">
-                <div className="flex justify-end gap-2">
-                  <Button
-                    type="button"
-                    variant="outline"
-                    onClick={() => router.push("/dashboard/posts")}
-                  >
-                    Cancel
-                  </Button>
-                  <Button type="submit" disabled={isSubmitting}>
-                    {isSubmitting ? "Creating..." : "Create Post"}
-                  </Button>
-                </div>
-                <p className="text-xs text-muted-foreground">
-                  <DashboardKbd className="px-1">⌘</DashboardKbd> or <DashboardKbd className="px-1">Ctrl</DashboardKbd> +{" "}
-                  <DashboardKbd className="px-1">S</DashboardKbd> to submit from anywhere on this page.
-                </p>
-              </div>
+              <p className="text-right text-xs text-muted-foreground">
+                <DashboardKbd className="px-1">⌘</DashboardKbd> or <DashboardKbd className="px-1">Ctrl</DashboardKbd> +{" "}
+                <DashboardKbd className="px-1">S</DashboardKbd> to submit.{" "}
+                <DashboardKbd className="px-1">⌘/Ctrl</DashboardKbd> + <DashboardKbd className="px-1">Enter</DashboardKbd> publishes and submits.
+              </p>
             </form>
           </CardContent>
         </Card>
-        <div className="fixed bottom-20 right-4 z-40 rounded-lg border border-border bg-card/95 p-2 shadow-lg backdrop-blur">
+        <div className="fixed bottom-20 right-4 z-40 rounded-xl border border-border bg-card/95 p-2 shadow-[var(--elevation-3)] backdrop-blur-md">
           <div className="flex items-center gap-2">
             <Button
               type="button"

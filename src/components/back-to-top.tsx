@@ -27,7 +27,7 @@ export function BackToTop() {
       <Button
         size="icon"
         variant="secondary"
-        className="h-11 w-11 rounded-full shadow-lg focus:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
+        className="h-11 w-11 rounded-full shadow-[var(--elevation-3)] hover:shadow-[var(--elevation-4)] transition-[box-shadow] duration-200 focus:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
         onClick={scrollToTop}
         aria-label="Back to top"
       >

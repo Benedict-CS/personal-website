@@ -8,6 +8,7 @@ import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { DashboardPageHeader } from "@/components/dashboard/dashboard-ui";
 import { formatAbsoluteDateTime, formatRelativeTime } from "@/lib/relative-time";
+import { classifyAuditActionSeverity, summarizeAuditSeverity, type AuditSeverity } from "@/lib/audit-severity";
 
 interface AuditEntry {
   id: string;
@@ -21,6 +22,7 @@ interface AuditEntry {
 }
 
 type AuditPreset = "all" | "deletes" | "bulk" | "imports" | "optimizations";
+type SeverityFilter = "all" | AuditSeverity;
 const AUDIT_PINNED_STORAGE_KEY = "audit-pinned-rows-v1";
 const AUDIT_SAVED_VIEWS_STORAGE_KEY = "audit-saved-views-v1";
 const AUDIT_LAST_VIEW_STORAGE_KEY = "audit-last-view-id-v1";
@@ -164,6 +166,17 @@ function matchesPreset(action: string, preset: AuditPreset): boolean {
   return true;
 }
 
+function topActionCounts(entries: AuditEntry[], limit = 5): Array<{ action: string; count: number }> {
+  const counts = new Map<string, number>();
+  for (const entry of entries) {
+    counts.set(entry.action, (counts.get(entry.action) ?? 0) + 1);
+  }
+  return Array.from(counts.entries())
+    .map(([action, count]) => ({ action, count }))
+    .sort((a, b) => b.count - a.count)
+    .slice(0, limit);
+}
+
 export default function AuditPage() {
   const searchParams = useSearchParams();
   const [entries, setEntries] = useState<AuditEntry[]>([]);
@@ -172,6 +185,7 @@ export default function AuditPage() {
   const [actionFilter, setActionFilter] = useState("");
   const [query, setQuery] = useState("");
   const [highRiskOnly, setHighRiskOnly] = useState(false);
+  const [severityFilter, setSeverityFilter] = useState<SeverityFilter>("all");
   const [presetFilter, setPresetFilter] = useState<AuditPreset>("all");
   const [expandedRows, setExpandedRows] = useState<Set<string>>(new Set());
   const [copiedNoteId, setCopiedNoteId] = useState<string | null>(null);
@@ -413,6 +427,7 @@ export default function AuditPage() {
   const filteredEntries = entries.filter((entry) => {
     const q = query.trim().toLowerCase();
     if (highRiskOnly && !isWarningAction(entry.action)) return false;
+    if (severityFilter !== "all" && classifyAuditActionSeverity(entry.action) !== severityFilter) return false;
     if (!matchesPreset(entry.action, presetFilter)) return false;
     if (pinnedOnly && !pinnedIds.has(entry.id)) return false;
     if (!q) return true;
@@ -494,7 +509,7 @@ export default function AuditPage() {
       `Resource: ${entry.resourceType}${entry.resourceId ? ` (${entry.resourceId})` : ""}`,
       `Actor: ${entry.actor ?? "Unknown"}`,
       `IP: ${entry.ip ?? "Unknown"}`,
-      `Risk: ${isWarningAction(entry.action) ? "Warning" : "Normal"}`,
+      `Risk: ${classifyAuditActionSeverity(entry.action).toUpperCase()}`,
       `Summary: ${detailSummary}`,
       "Assessment:",
       "- Impact:",
@@ -913,6 +928,9 @@ export default function AuditPage() {
     imports: entries.filter((entry) => matchesPreset(entry.action, "imports")).length,
     optimizations: entries.filter((entry) => matchesPreset(entry.action, "optimizations")).length,
   };
+  const riskCount = displayedEntries.filter((entry) => classifyAuditActionSeverity(entry.action) !== "info").length;
+  const severitySummary = summarizeAuditSeverity(displayedEntries.map((entry) => entry.action));
+  const topActions = topActionCounts(displayedEntries);
   const visibleSavedViews = savedViews.filter((view) => {
     const categoryMatch =
       savedViewCategoryFilter === "all" || view.category === savedViewCategoryFilter;
@@ -948,6 +966,7 @@ export default function AuditPage() {
   if (actionFilter.trim()) activeFiltersSummary.push(`Action: ${actionFilter.trim()}`);
   if (query.trim()) activeFiltersSummary.push(`Q: ${query.trim()}`);
   if (highRiskOnly) activeFiltersSummary.push("High risk");
+  if (severityFilter !== "all") activeFiltersSummary.push(`Severity: ${severityFilter}`);
   if (presetFilter !== "all") activeFiltersSummary.push(`Preset: ${presetFilter}`);
   if (pinnedOnly) activeFiltersSummary.push("Pinned only");
   const hasActiveFilters = activeFiltersSummary.length > 0;
@@ -1003,7 +1022,37 @@ export default function AuditPage() {
           <CardTitle className="text-lg">Recent activity</CardTitle>
         </CardHeader>
         <CardContent>
-          <div className="mb-3 grid gap-2 rounded-lg border border-border p-3 md:grid-cols-[1fr_1fr_1fr_auto_auto]">
+          <div className="mb-3 grid gap-2 sm:grid-cols-2 lg:grid-cols-6">
+            <div className="rounded-lg border border-border bg-card p-3">
+              <p className="text-xs text-muted-foreground">Visible entries</p>
+              <p className="text-xl font-semibold text-foreground">{displayedEntries.length}</p>
+            </div>
+            <div className="rounded-lg border border-border bg-card p-3">
+              <p className="text-xs text-muted-foreground">High-risk entries</p>
+              <p className="text-xl font-semibold text-foreground">{riskCount}</p>
+            </div>
+            <div className="rounded-lg border border-border bg-card p-3">
+              <p className="text-xs text-muted-foreground">Critical</p>
+              <p className="text-xl font-semibold text-rose-700">{severitySummary.critical}</p>
+            </div>
+            <div className="rounded-lg border border-border bg-card p-3">
+              <p className="text-xs text-muted-foreground">Warning</p>
+              <p className="text-xl font-semibold text-amber-700">{severitySummary.warning}</p>
+            </div>
+            <div className="rounded-lg border border-border bg-card p-3">
+              <p className="text-xs text-muted-foreground">Info</p>
+              <p className="text-xl font-semibold text-foreground">{severitySummary.info}</p>
+            </div>
+            <div className="rounded-lg border border-border bg-card p-3 sm:col-span-2 lg:col-span-2">
+              <p className="text-xs text-muted-foreground">Top actions</p>
+              <p className="mt-1 text-sm text-foreground">
+                {topActions.length > 0
+                  ? topActions.map((item) => `${item.action} (${item.count})`).join(" · ")
+                  : "No actions in current filter"}
+              </p>
+            </div>
+          </div>
+          <div className="mb-3 grid gap-2 rounded-lg border border-border p-3 lg:grid-cols-[1fr_1fr_1fr_auto_auto]">
             <Input
               value={resourceTypeFilter}
               onChange={(e) => setResourceTypeFilter(e.target.value)}
@@ -1027,6 +1076,7 @@ export default function AuditPage() {
                 setActionFilter("");
                 setQuery("");
                 setHighRiskOnly(false);
+                setSeverityFilter("all");
                 setPresetFilter("all");
                 setPinnedOnly(false);
                 setDateFrom("");
@@ -1108,7 +1158,7 @@ export default function AuditPage() {
               <select
                 value={savedViewCategory}
                 onChange={(e) => setSavedViewCategory(e.target.value as (typeof SAVED_VIEW_CATEGORIES)[number])}
-                className="h-9 rounded-lg border border-input bg-background px-2 text-sm text-foreground shadow-sm"
+                className="h-9 rounded-lg border border-input bg-background px-2 text-sm text-foreground shadow-[var(--elevation-1)]"
               >
                 {SAVED_VIEW_CATEGORIES.map((category) => (
                   <option key={category} value={category}>
@@ -1277,7 +1327,7 @@ export default function AuditPage() {
               <select
                 value={bulkCategory}
                 onChange={(e) => setBulkCategory(e.target.value as (typeof SAVED_VIEW_CATEGORIES)[number])}
-                className="h-8 rounded-lg border border-input bg-background px-2 text-xs text-foreground shadow-sm"
+                className="h-8 rounded-lg border border-input bg-background px-2 text-xs text-foreground shadow-[var(--elevation-1)]"
               >
                 {SAVED_VIEW_CATEGORIES.map((category) => (
                   <option key={category} value={category}>
@@ -1448,6 +1498,40 @@ export default function AuditPage() {
             <Button
               type="button"
               size="sm"
+              variant={severityFilter === "all" ? "default" : "outline"}
+              onClick={() => setSeverityFilter("all")}
+            >
+              Severity: all
+            </Button>
+            <Button
+              type="button"
+              size="sm"
+              variant={severityFilter === "critical" ? "destructive" : "outline"}
+              onClick={() => setSeverityFilter("critical")}
+            >
+              Critical
+            </Button>
+            <Button
+              type="button"
+              size="sm"
+              variant={severityFilter === "warning" ? "default" : "outline"}
+              onClick={() => setSeverityFilter("warning")}
+            >
+              Warning
+            </Button>
+            <Button
+              type="button"
+              size="sm"
+              variant={severityFilter === "info" ? "default" : "outline"}
+              onClick={() => setSeverityFilter("info")}
+            >
+              Info
+            </Button>
+          </div>
+          <div className="mb-3 flex flex-wrap items-center gap-2">
+            <Button
+              type="button"
+              size="sm"
               variant={presetFilter === "all" ? "default" : "outline"}
               onClick={() => setPresetFilter("all")}
             >
@@ -1487,15 +1571,20 @@ export default function AuditPage() {
             </Button>
           </div>
           {loading ? (
-            <div className="flex items-center gap-2 text-muted-foreground">
-              <Loader2 className="h-4 w-4 animate-spin" />
-              Loading…
+            <div className="space-y-2 rounded-lg border border-border bg-card/60 p-3">
+              <div className="flex items-center gap-2 text-muted-foreground">
+                <Loader2 className="h-4 w-4 animate-spin" />
+                Loading audit entries…
+              </div>
+              <div className="h-9 w-full rounded-lg skeleton-shimmer" />
+              <div className="h-9 w-full rounded-lg skeleton-shimmer" />
+              <div className="h-9 w-full rounded-lg skeleton-shimmer" />
             </div>
           ) : displayedEntries.length === 0 ? (
             <p className="text-muted-foreground">No audit entries yet.</p>
           ) : (
             <div className="overflow-x-auto">
-              <table className="w-full text-sm">
+              <table className="w-full min-w-[1100px] text-sm">
                 <thead>
                   <tr className="border-b border-border text-left">
                     <th className="pb-2 pr-4 font-medium text-foreground">Time</th>

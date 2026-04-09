@@ -8,16 +8,16 @@ export function PublicBreadcrumbs({ items }: { items: BreadcrumbItem[] }) {
   if (items.length === 0) return null;
   return (
     <nav aria-label="Breadcrumb" className="mb-6">
-      <ol className="flex flex-wrap items-center gap-1.5 text-sm text-[var(--muted-foreground)]">
+      <ol className="flex flex-wrap items-center gap-1 text-sm text-muted-foreground">
         {items.map((item, i) => (
-          <li key={i} className="flex items-center gap-1.5">
-            {i > 0 && <ChevronRight className="h-4 w-4 shrink-0 text-[var(--muted-foreground)]/70" aria-hidden />}
+          <li key={i} className="flex items-center gap-1">
+            {i > 0 && <ChevronRight className="h-3.5 w-3.5 shrink-0 text-muted-foreground/50" aria-hidden />}
             {item.href ? (
-              <Link href={item.href} className="hover:text-[var(--foreground)] focus:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 rounded transition-colors duration-150">
+              <Link href={item.href} className="rounded px-0.5 hover:text-foreground focus:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 transition-colors duration-150">
                 {item.label}
               </Link>
             ) : (
-              <span className="font-medium text-[var(--foreground)]">{item.label}</span>
+              <span className="px-0.5 font-medium text-foreground">{item.label}</span>
             )}
           </li>
         ))}

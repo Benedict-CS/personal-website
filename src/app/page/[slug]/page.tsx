@@ -10,6 +10,7 @@ import {
   stripScheduledPublishAt,
 } from "@/lib/custom-page-schedule";
 import { metaDescriptionFromMarkdown } from "@/lib/meta-description";
+import { buildSocialShareCardUrl } from "@/lib/social-share-card";
 
 export const dynamic = "force-dynamic";
 
@@ -27,6 +28,13 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
   const canonicalPath = `/page/${encodeURIComponent(slug)}`;
   const canonicalUrl = `${config.url.replace(/\/$/, "")}${canonicalPath}`;
   const description = metaDescriptionFromMarkdown(stripCustomPageDecoratorsForSeo(page.content ?? ""), 160);
+  const ogPath = buildSocialShareCardUrl({
+    title: page.title,
+    subtitle: description || canonicalPath,
+    label: "Custom Page",
+    theme: "slate",
+  });
+  const ogUrl = `${config.url.replace(/\/$/, "")}${ogPath}`;
   return {
     title: page.title,
     description: description || undefined,
@@ -36,11 +44,13 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
       description: description || undefined,
       url: canonicalUrl,
       type: "website",
+      images: [{ url: ogUrl, width: 1200, height: 630, alt: page.title }],
     },
     twitter: {
       card: "summary_large_image",
       title: page.title,
       description: description || undefined,
+      images: [ogUrl],
     },
   };
 }
@@ -77,11 +87,22 @@ export default async function CustomPageRoute({ params }: Props) {
     }
   }
   const content = brandMatch ? withoutTheme.replace(brandMatch[0], "") : withoutTheme;
+  const config = await getSiteConfigForRender();
+  const base = config.url.replace(/\/$/, "");
+  const canonicalUrl = `${base}/page/${encodeURIComponent(page.slug)}`;
+  const pageDescription = metaDescriptionFromMarkdown(stripCustomPageDecoratorsForSeo(page.content ?? ""), 160);
+  const jsonLd = {
+    "@context": "https://schema.org",
+    "@type": "WebPage",
+    name: page.title,
+    description: pageDescription || page.title,
+    url: canonicalUrl,
+  };
 
   // Light-only site: "bold" is high-contrast borders and shadow, not a dark panel.
   const containerClass =
     pageTheme === "bold"
-      ? "bg-card text-foreground border-2 border-foreground shadow-md"
+      ? "bg-card text-foreground border-2 border-foreground shadow-[var(--elevation-2)]"
       : pageTheme === "soft"
         ? "bg-muted/50 border-border"
         : "bg-card border-border";
@@ -89,7 +110,11 @@ export default async function CustomPageRoute({ params }: Props) {
 
   return (
     <div className="container mx-auto max-w-4xl px-4 py-12">
-      <Card className={`shadow-lg ${containerClass}`} style={{ borderTopColor: brand.primaryColor, borderTopWidth: "3px" }}>
+      <script
+        type="application/ld+json"
+        dangerouslySetInnerHTML={{ __html: JSON.stringify(jsonLd) }}
+      />
+      <Card className={`shadow-[var(--elevation-2)] ${containerClass}`} style={{ borderTopColor: brand.primaryColor, borderTopWidth: "3px" }}>
         <CardHeader>
           <CardTitle className={titleClass}>{page.title}</CardTitle>
           {(brand.brandName || brand.brandLogoUrl) && (

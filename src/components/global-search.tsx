@@ -187,14 +187,14 @@ export function GlobalSearch() {
 
       {open && (
         <>
-          <div className="fixed inset-0 z-[99] bg-[oklch(0.2_0.02_265/0.25)] backdrop-blur-[2px]" onClick={close} aria-hidden />
+          <div className="fixed inset-0 z-[99] bg-foreground/[0.10] backdrop-blur-[3px]" onClick={close} aria-hidden />
           <div
             ref={panelRef}
             id="global-search-panel"
             role="dialog"
             aria-modal="true"
             aria-labelledby="global-search-title"
-            className="search-panel-in fixed left-4 right-4 top-14 z-[100] overflow-hidden rounded-xl border border-[var(--border)] bg-card shadow-[var(--shadow-lg)] sm:absolute sm:left-auto sm:right-0 sm:top-full sm:mt-1 sm:w-[min(90vw,28rem)]"
+            className="search-panel-in fixed left-4 right-4 top-14 z-[100] overflow-hidden rounded-xl border border-[var(--border)] bg-card shadow-[var(--elevation-3)] sm:absolute sm:left-auto sm:right-0 sm:top-full sm:mt-1 sm:w-[min(90vw,28rem)]"
             onClick={(e) => e.stopPropagation()}
           >
             <span id="global-search-title" className="sr-only">
@@ -218,7 +218,11 @@ export function GlobalSearch() {
             </div>
             <div className="max-h-[70vh] overflow-y-auto">
               {loading && (
-                <p className="py-6 text-center text-sm text-[var(--muted-foreground)]">Searching...</p>
+                <div className="px-3 py-4 space-y-2.5">
+                  <div className="h-4 w-3/4 rounded-lg motion-safe:skeleton-shimmer motion-reduce:bg-muted/55" />
+                  <div className="h-4 w-1/2 rounded-lg motion-safe:skeleton-shimmer motion-reduce:bg-muted/55" />
+                  <div className="h-4 w-2/3 rounded-lg motion-safe:skeleton-shimmer motion-reduce:bg-muted/55" />
+                </div>
               )}
               {!loading && hasQuery && !hasResults && (
                 <p className="py-6 text-center text-sm text-[var(--muted-foreground)]">No results for &quot;{pendingQuery}&quot;</p>

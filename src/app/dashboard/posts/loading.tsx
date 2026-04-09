@@ -11,14 +11,14 @@ import { SkeletonLine } from "@/components/dashboard/dashboard-skeleton-primitiv
 export default function PostsLoading() {
   return (
     <div className="space-y-6" role="status" aria-busy="true" aria-label="Loading posts">
-      <div className="flex animate-pulse justify-between gap-4">
+      <div className="flex justify-between gap-4">
         <SkeletonLine className="h-9 w-40" />
         <div className="flex gap-2">
           <SkeletonLine className="h-9 w-16" />
           <SkeletonLine className="h-9 w-28" />
         </div>
       </div>
-      <div className="overflow-hidden rounded-lg border border-border bg-card">
+      <div className="overflow-hidden rounded-xl border border-border bg-card shadow-[var(--elevation-1)]">
         <Table>
           <TableHeader>
             <TableRow>

@@ -139,7 +139,7 @@ function SortableBlock({
       style={style}
       className={`rounded-lg border p-2 transition-shadow ${
         selected
-          ? "border-muted-foreground/40 bg-card shadow-sm ring-2 ring-border"
+          ? "border-muted-foreground/40 bg-card shadow-[var(--elevation-1)] ring-2 ring-border"
           : "border-border bg-card hover:border-border"
       }`}
     >
@@ -475,7 +475,7 @@ export function WysiwygEditor({ siteId, pageId }: { siteId: string; pageId: stri
 
   return (
     <div className="grid gap-4 lg:grid-cols-[280px_1fr_320px]">
-      <aside className="rounded-lg border border-border bg-card p-3 shadow-sm">
+      <aside className="rounded-xl border border-border bg-card p-3 shadow-[var(--elevation-1)]">
         <h3 className="mb-2 text-sm font-semibold text-foreground">Block Library (50+)</h3>
         <Input
           value={query}
@@ -498,7 +498,7 @@ export function WysiwygEditor({ siteId, pageId }: { siteId: string; pageId: stri
         </div>
       </aside>
 
-      <section className="rounded-lg border border-border bg-muted/80 p-3 shadow-sm">
+      <section className="rounded-xl border border-border bg-muted/80 p-3 shadow-[var(--elevation-1)]">
         <div className="mb-3 flex flex-wrap items-center justify-between gap-2">
           <h2 className="font-semibold text-foreground">Canvas (WYSIWYG Preview)</h2>
           <div className="flex flex-wrap gap-2">
@@ -592,7 +592,7 @@ export function WysiwygEditor({ siteId, pageId }: { siteId: string; pageId: stri
           />
           {slashOpen && slashMenuPos && filteredSlash.length > 0 ? (
             <ul
-              className="fixed z-50 max-h-60 min-w-[220px] overflow-auto rounded-lg border border-border bg-card py-1 shadow-lg"
+              className="fixed z-50 max-h-60 min-w-[220px] overflow-auto rounded-xl border border-border bg-card py-1 shadow-[var(--elevation-3)]"
               style={{ top: slashMenuPos.top, left: slashMenuPos.left }}
               role="listbox"
             >
@@ -619,13 +619,13 @@ export function WysiwygEditor({ siteId, pageId }: { siteId: string; pageId: stri
           ) : null}
         </div>
 
-        <div className="mt-4 rounded-lg border border-border bg-card p-4 shadow-sm">
+        <div className="mt-4 rounded-xl border border-border bg-card p-4 shadow-[var(--elevation-1)]">
           <BlockRenderer blocks={blocks} />
         </div>
         {statusText ? <p className="mt-3 text-sm text-muted-foreground">{statusText}</p> : null}
       </section>
 
-      <aside className="rounded-lg border border-border bg-card p-3 shadow-sm">
+      <aside className="rounded-xl border border-border bg-card p-3 shadow-[var(--elevation-1)]">
         <h3 className="mb-3 text-sm font-semibold text-foreground">Visual CSS Editor</h3>
         {!selectedBlock ? (
           <p className="text-sm text-muted-foreground">Select a block on canvas.</p>

@@ -112,14 +112,14 @@ export default async function TagPage({
       </div>
 
       {tag.posts.length === 0 ? (
-        <div className="rounded-xl border border-[var(--border)] bg-card p-12 text-center shadow-[var(--shadow-sm)]">
+        <div className="rounded-xl border border-[var(--border)] bg-card p-12 text-center shadow-[var(--elevation-1)]">
           <p className="text-muted-foreground">No posts found with this tag.</p>
         </div>
       ) : (
         <div className="grid gap-5 sm:gap-6 md:grid-cols-2 lg:grid-cols-3">
           {tag.posts.map((post) => (
             <Link key={post.id} href={`/blog/${post.slug}`} className="block rounded-xl transition-opacity hover:opacity-95">
-              <Card className="h-full border-[var(--border)] shadow-[var(--shadow-sm)] transition-all duration-200 hover:shadow-[var(--shadow-md)] hover:border-muted-foreground/25">
+              <Card className="h-full border-[var(--border)] shadow-[var(--elevation-1)] transition-[box-shadow,border-color] duration-200 hover:shadow-[var(--elevation-2)] hover:border-muted-foreground/25">
                 <CardHeader className="gap-2 p-5 sm:gap-3 sm:p-6">
                   <CardTitle className="line-clamp-2 text-foreground leading-relaxed flex items-start gap-1.5">
                     {post.pinned && (

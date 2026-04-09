@@ -10,7 +10,8 @@ import { Loader2, CheckCircle2, XCircle, AlertCircle, Merge, Search } from "luci
 import { useToast } from "@/contexts/toast-context";
 import { SkeletonLine } from "@/components/dashboard/dashboard-skeleton-primitives";
 import { DASHBOARD_NATIVE_SELECT_CLASS } from "@/components/dashboard/dashboard-form-classes";
-import { DashboardPageHeader } from "@/components/dashboard/dashboard-ui";
+import { DashboardPageHeader, dashboardCardClassName } from "@/components/dashboard/dashboard-ui";
+import { useCmsSync } from "@/contexts/cms-sync-context";
 
 interface CleanedTag {
   id: string;
@@ -33,6 +34,7 @@ interface TagRow {
 
 export default function TagsPage() {
   const { toast } = useToast();
+  const { publish } = useCmsSync();
   const [tagsLoading, setTagsLoading] = useState(true);
   const [isCleaning, setIsCleaning] = useState(false);
   const [result, setResult] = useState<CleanupResult | null>(null);
@@ -103,6 +105,14 @@ export default function TagsPage() {
       const data: CleanupResult = await response.json();
       setResult(data);
       toast(data.message || "Tag cleanup finished.", "success");
+      publish("tags");
+      fetch("/api/tags?all=1", { credentials: "include" })
+        .then(async (r) => {
+          if (!r.ok) throw new Error("reload failed");
+          return r.json() as Promise<unknown>;
+        })
+        .then((tags) => setAllTags(Array.isArray(tags) ? tags : []))
+        .catch(() => {});
     } catch (err) {
       console.error("Error cleaning tags:", err);
       const msg = err instanceof Error ? err.message : "Error occurred while cleaning tags";
@@ -131,6 +141,7 @@ export default function TagsPage() {
       if (!res.ok) throw new Error(data.error || "Merge failed");
       setMergeMessage({ type: "success", text: data.message ?? "Tags merged." });
       toast(`Merged “${fromName}” into “${toName}”.`, "success");
+      publish("tags");
     } catch (e) {
       setMergeMessage({ type: "error", text: e instanceof Error ? e.message : "Merge failed" });
       toast(e instanceof Error ? e.message : "Merge failed", "error");
@@ -150,9 +161,9 @@ export default function TagsPage() {
     return (
       <div className="container mx-auto max-w-4xl px-4 py-8 space-y-6" role="status" aria-busy="true" aria-label="Loading tags">
         <SkeletonLine className="h-5 w-full max-w-xl" />
-        <div className="rounded-xl border border-border bg-card p-6 shadow-sm">
+        <div className="rounded-xl border border-border bg-card p-6 shadow-[var(--elevation-1)]">
           <SkeletonLine className="mb-3 h-6 w-40" />
-          <div className="space-y-2">
+          <div className="space-y-2.5">
             {[1, 2, 3, 4].map((i) => (
               <SkeletonLine key={i} className="h-10 w-full max-w-lg" />
             ))}
@@ -205,7 +216,7 @@ export default function TagsPage() {
       />
 
       {allTags.length > 0 && (
-        <Card className="border-border shadow-sm">
+        <Card className={dashboardCardClassName()}>
           <CardHeader>
             <CardTitle className="flex items-center gap-2 text-foreground">
               <Merge className="h-5 w-5" />
@@ -282,7 +293,7 @@ export default function TagsPage() {
         </Card>
       )}
 
-      <Card className="border-border shadow-sm">
+      <Card className={dashboardCardClassName()}>
         <CardHeader>
           <CardTitle className="text-foreground">Tag Management — Clean Up Quotes</CardTitle>
         </CardHeader>

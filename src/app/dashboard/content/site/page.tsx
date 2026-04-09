@@ -9,7 +9,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { InsertMediaModal } from "@/components/insert-media-modal";
-import { ImageIcon } from "lucide-react";
+import { Download, ImageIcon, Loader2 } from "lucide-react";
 import type { SiteConfigResponse, NavItem } from "@/types/site";
 import { DEFAULT_NAV_ITEMS } from "@/lib/site-config-defaults";
 import { NavItemsEditor } from "@/components/nav-items-editor";
@@ -48,6 +48,7 @@ export default function SiteSettingsPage() {
   const [message, setMessage] = useState<{ type: "success" | "error"; text: string } | null>(null);
   const [mediaPickerFor, setMediaPickerFor] = useState<"logo" | "favicon" | "og" | null>(null);
   const [customPagesForNav, setCustomPagesForNav] = useState<{ slug: string; title: string }[]>([]);
+  const [exportingTarget, setExportingTarget] = useState<"posts" | "system" | null>(null);
 
   useEffect(() => {
     Promise.all([
@@ -98,6 +99,33 @@ export default function SiteSettingsPage() {
       setMessage({ type: "error", text: e instanceof Error ? e.message : "Failed to save." });
     } finally {
       setSaving(false);
+    }
+  };
+
+  const exportData = async (target: "posts" | "system") => {
+    setExportingTarget(target);
+    setMessage(null);
+    try {
+      const response = await fetch(`/api/data-liberation/export?target=${target}`, { method: "GET" });
+      if (!response.ok) {
+        const data = await response.json().catch(() => ({}));
+        throw new Error(typeof data?.error === "string" ? data.error : "Export failed");
+      }
+      const blob = await response.blob();
+      const objectUrl = URL.createObjectURL(blob);
+      const link = document.createElement("a");
+      link.href = objectUrl;
+      link.download =
+        target === "posts"
+          ? `cms-posts-${new Date().toISOString().slice(0, 10)}.zip`
+          : `cms-system-export-${new Date().toISOString().slice(0, 10)}.json`;
+      link.click();
+      URL.revokeObjectURL(objectUrl);
+      setMessage({ type: "success", text: `Exported ${target} data.` });
+    } catch (error) {
+      setMessage({ type: "error", text: error instanceof Error ? error.message : "Export failed." });
+    } finally {
+      setExportingTarget(null);
     }
   };
 
@@ -174,13 +202,18 @@ export default function SiteSettingsPage() {
 
   if (loading) {
     return (
-      <div className="space-y-8 animate-pulse">
-        <div className="h-10 w-56 rounded bg-muted" />
-        <div className="h-5 w-full max-w-md rounded bg-muted" />
-        <div className="rounded-lg border border-border p-6 space-y-4">
-          <div className="h-6 w-40 rounded bg-muted" />
-          <div className="h-10 w-full rounded bg-muted/70" />
-          <div className="h-10 w-full rounded bg-muted/70" />
+      <div className="space-y-8">
+        <div className="h-10 w-56 rounded-lg skeleton-shimmer" />
+        <div className="h-5 w-full max-w-md rounded-lg skeleton-shimmer" />
+        <div className="rounded-xl border border-border p-6 shadow-[var(--elevation-1)] space-y-4">
+          <div className="h-6 w-40 rounded-lg skeleton-shimmer" />
+          <div className="h-10 w-full rounded-lg skeleton-shimmer" />
+          <div className="h-10 w-full rounded-lg skeleton-shimmer" />
+        </div>
+        <div className="rounded-xl border border-border p-6 shadow-[var(--elevation-1)] space-y-4">
+          <div className="h-6 w-48 rounded-lg skeleton-shimmer" />
+          <div className="h-10 w-full rounded-lg skeleton-shimmer" />
+          <div className="h-10 w-2/3 rounded-lg skeleton-shimmer" />
         </div>
       </div>
     );
@@ -466,6 +499,42 @@ export default function SiteSettingsPage() {
               in the server environment for automation.
             </p>
           </div>
+        </CardContent>
+      </Card>
+
+      <Card>
+        <CardHeader>
+          <CardTitle>Data Liberation</CardTitle>
+          <p className="text-sm font-normal text-muted-foreground">
+            Export content and platform data in portable formats. Posts export as MDX files with frontmatter in a ZIP archive.
+          </p>
+        </CardHeader>
+        <CardContent className="space-y-3">
+          <div className="flex flex-wrap items-center gap-2">
+            <Button
+              type="button"
+              variant="outline"
+              className="gap-2"
+              disabled={exportingTarget !== null}
+              onClick={() => void exportData("posts")}
+            >
+              {exportingTarget === "posts" ? <Loader2 className="h-4 w-4 animate-spin" /> : <Download className="h-4 w-4" />}
+              Export posts ZIP
+            </Button>
+            <Button
+              type="button"
+              variant="outline"
+              className="gap-2"
+              disabled={exportingTarget !== null}
+              onClick={() => void exportData("system")}
+            >
+              {exportingTarget === "system" ? <Loader2 className="h-4 w-4 animate-spin" /> : <Download className="h-4 w-4" />}
+              Export system JSON
+            </Button>
+          </div>
+          <p className="text-xs text-muted-foreground">
+            System export includes site configuration, editable page content, custom pages, and analytics records.
+          </p>
         </CardContent>
       </Card>
 

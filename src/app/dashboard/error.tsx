@@ -53,7 +53,7 @@ export default function DashboardError({
 
   return (
     <div className="flex min-h-[60vh] flex-col items-center justify-center px-4">
-      <div className="w-full max-w-md rounded-xl border border-border bg-card/85 p-8 shadow-lg backdrop-blur-xl">
+      <div className="w-full max-w-md rounded-xl border border-border bg-card/85 p-8 shadow-[var(--elevation-3)] backdrop-blur-xl">
         <p className="mb-2 text-sm font-semibold uppercase tracking-wider text-muted-foreground">
           Something went wrong
         </p>

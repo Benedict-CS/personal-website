@@ -56,7 +56,7 @@ function LeetCodeStatsInner({ username }: { username: string }) {
   const hard = data.solvedByDifficulty["Hard"] ?? 0;
 
   return (
-    <div className="rounded-lg border border-border bg-card p-4 shadow-[var(--shadow-sm)]">
+    <div className="rounded-xl border border-border bg-card p-5 shadow-[var(--elevation-1)]">
       <div className="flex flex-wrap items-baseline justify-between gap-2">
         <h3 className="text-lg font-semibold text-foreground">LeetCode</h3>
         <Link href={data.profileUrl} className="text-sm font-medium text-orange-600 hover:underline" target="_blank" rel="noreferrer">
@@ -98,7 +98,7 @@ function LeetCodeStatsInner({ username }: { username: string }) {
                 title={b.displayName}
                 width={36}
                 height={36}
-                className="h-9 w-9 rounded border border-border bg-card object-contain p-0.5 shadow-sm"
+                className="h-9 w-9 rounded-lg border border-border bg-card object-contain p-0.5 shadow-[var(--elevation-1)]"
                 loading="lazy"
               />
             ))}

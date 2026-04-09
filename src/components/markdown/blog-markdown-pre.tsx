@@ -43,6 +43,12 @@ function parseLanguageFromPreChildren(children: React.ReactNode): string {
   return m?.[1] ?? "";
 }
 
+function parseFileNameFromPreChildren(children: React.ReactNode): string {
+  if (!React.isValidElement(children)) return "";
+  const code = children as React.ReactElement<{ ["data-filename"]?: string }>;
+  return typeof code.props?.["data-filename"] === "string" ? code.props["data-filename"] : "";
+}
+
 type Props = React.HTMLAttributes<HTMLPreElement> & {
   children?: React.ReactNode;
 };
@@ -60,6 +66,7 @@ export function BlogMarkdownPre({ children, className, ...props }: Props) {
 
   const [copied, setCopied] = useState(false);
   const instanceId = useId();
+  const fileName = useMemo(() => parseFileNameFromPreChildren(children), [children]);
 
   const handleCopy = async () => {
     try {
@@ -90,14 +97,21 @@ export function BlogMarkdownPre({ children, className, ...props }: Props) {
   return (
     <div
       className={cn(
-        "not-prose my-5 w-full max-w-full overflow-hidden rounded-xl border border-border/90 bg-muted/95 shadow-sm",
+        "not-prose my-5 w-full max-w-full overflow-hidden rounded-xl border border-border/90 bg-muted/95 shadow-[var(--elevation-1)]",
         "markdown-code-frame"
       )}
     >
       <div className="flex items-center justify-between gap-2 border-b border-border/90 bg-card/90 px-3 py-1.5">
-        <span className="text-[11px] font-semibold uppercase tracking-[0.12em] text-muted-foreground">
-          {langLabel}
-        </span>
+        <div className="flex items-center gap-2">
+          <span className="text-[11px] font-semibold uppercase tracking-[0.12em] text-muted-foreground">
+            {langLabel}
+          </span>
+          {fileName ? (
+            <span className="rounded border border-border bg-muted/60 px-1.5 py-px font-mono text-[10px] text-muted-foreground">
+              {fileName}
+            </span>
+          ) : null}
+        </div>
         {codeString ? (
           <Button
             type="button"

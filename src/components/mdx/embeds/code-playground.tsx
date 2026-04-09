@@ -32,7 +32,7 @@ export function CodePlayground({
   };
 
   return (
-    <div className="not-prose my-8 rounded-xl border border-border bg-card shadow-sm">
+    <div className="not-prose my-8 rounded-xl border border-border bg-card shadow-[var(--elevation-1)]">
       <div className="flex items-center justify-between border-b border-border/60 px-4 py-2">
         <span className="text-xs font-medium uppercase tracking-wide text-muted-foreground">
           {title} · {language}

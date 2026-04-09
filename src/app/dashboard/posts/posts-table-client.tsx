@@ -3,7 +3,7 @@
 import { useState, useRef, useEffect } from "react";
 import Link from "next/link";
 import { useRouter, usePathname, useSearchParams } from "next/navigation";
-import { Copy } from "lucide-react";
+import { ArrowDown, ArrowUp, ArrowUpDown, Copy, Loader2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import {
   Table,
@@ -15,8 +15,10 @@ import {
 } from "@/components/ui/table";
 import { ConfirmDialog } from "@/components/ui/confirm-dialog";
 import { useToast } from "@/contexts/toast-context";
+import { useCmsSync } from "@/contexts/cms-sync-context";
 import type { PostRow } from "@/types/post";
 import { formatAbsoluteDateTime, formatRelativeTime } from "@/lib/relative-time";
+import { UI_MODAL_OVERLAY_CLASS, UI_MODAL_PANEL_CLASS, UI_MOTION_EASE } from "@/components/ui/ui-cohesion";
 
 type SortKey = "updatedAt" | "createdAt" | "title";
 type Order = "asc" | "desc";
@@ -43,6 +45,8 @@ export function PostsTableClient({
   const pathname = usePathname();
   const searchParams = useSearchParams();
   const { toast } = useToast();
+  const { revisions } = useCmsSync();
+  const lastTagRevision = useRef(revisions.tags);
   /** Optimistic list; resets when server `posts` change after refresh. */
   const [listPosts, setListPosts] = useState<PostRow[]>(posts);
   useEffect(() => {
@@ -67,6 +71,12 @@ export function PostsTableClient({
   }, [selected.size, listPosts.length]);
 
   useEffect(() => {
+    if (revisions.tags === lastTagRevision.current) return;
+    lastTagRevision.current = revisions.tags;
+    router.refresh();
+  }, [revisions.tags, router]);
+
+  useEffect(() => {
     if (!bulkEditOpen) return;
     document.body.style.overflow = "hidden";
     const onKeyDown = (e: KeyboardEvent) => {
@@ -84,6 +94,18 @@ export function PostsTableClient({
     p.set("sort", newSort);
     p.set("order", newOrder);
     return `${pathname}?${p.toString()}`;
+  };
+
+  const toggleHeaderSort = (key: SortKey) => {
+    const nextOrder: Order = sort === key && order === "desc" ? "asc" : "desc";
+    router.push(buildUrl(key, nextOrder));
+  };
+
+  const sortIndicator = (key: SortKey) => {
+    if (sort !== key) return <ArrowUpDown className="h-3.5 w-3.5 text-muted-foreground/70" aria-hidden />;
+    return order === "asc"
+      ? <ArrowUp className="h-3.5 w-3.5 text-foreground" aria-hidden />
+      : <ArrowDown className="h-3.5 w-3.5 text-foreground" aria-hidden />;
   };
 
   const isPostPublic = (post: PostRow) => {
@@ -282,14 +304,15 @@ export function PostsTableClient({
       {/* Bulk edit modal */}
       {bulkEditOpen && (
         <div
-          className="fixed inset-0 z-50 flex items-center justify-center bg-[oklch(0.2_0.02_265/0.4)] backdrop-blur-sm p-4"
+          className={UI_MODAL_OVERLAY_CLASS}
           role="dialog"
           aria-modal="true"
           aria-labelledby="bulk-edit-title"
           onClick={() => setBulkEditOpen(false)}
         >
           <div
-            className="w-full max-w-md rounded-xl border border-border bg-card p-6 shadow-lg max-h-[90vh] overflow-y-auto"
+            className={`${UI_MODAL_PANEL_CLASS} max-h-[90vh] overflow-y-auto`}
+            style={{ transitionTimingFunction: `cubic-bezier(${UI_MOTION_EASE.join(",")})` }}
             onClick={(e) => e.stopPropagation()}
           >
             <h2 id="bulk-edit-title" className="text-lg font-semibold text-foreground">
@@ -302,10 +325,11 @@ export function PostsTableClient({
                 <input
                   id="bulk-category"
                   type="text"
+                  autoFocus
                   value={bulkEditCategory}
                   onChange={(e) => setBulkEditCategory(e.target.value)}
                   placeholder="e.g. LeetCode/Array"
-                  className="mt-1 w-full rounded-lg border border-input bg-background px-3 py-2 text-sm text-foreground shadow-sm"
+                  className="mt-1 w-full rounded-lg border border-input bg-background px-3 py-2 text-sm text-foreground shadow-[var(--elevation-1)]"
                 />
               </div>
               <div>
@@ -316,7 +340,7 @@ export function PostsTableClient({
                   value={bulkEditTags}
                   onChange={(e) => setBulkEditTags(e.target.value)}
                   placeholder="tag1, tag2"
-                  className="mt-1 w-full rounded-lg border border-input bg-background px-3 py-2 text-sm text-foreground shadow-sm"
+                  className="mt-1 w-full rounded-lg border border-input bg-background px-3 py-2 text-sm text-foreground shadow-[var(--elevation-1)]"
                 />
               </div>
               <div>
@@ -325,7 +349,7 @@ export function PostsTableClient({
                   id="bulk-published"
                   value={bulkEditPublished}
                   onChange={(e) => setBulkEditPublished((e.target.value || "") as "" | "publish" | "unpublish")}
-                  className="mt-1 w-full rounded-lg border border-input bg-background px-3 py-2 text-sm text-foreground shadow-sm"
+                  className="mt-1 w-full rounded-lg border border-input bg-background px-3 py-2 text-sm text-foreground shadow-[var(--elevation-1)]"
                 >
                   <option value="">No change</option>
                   <option value="publish">Publish</option>
@@ -338,7 +362,8 @@ export function PostsTableClient({
                 Cancel
               </Button>
               <Button onClick={runBulkUpdate} disabled={bulkLoading}>
-                {bulkLoading ? "..." : "Apply"}
+                {bulkLoading ? <Loader2 className="h-4 w-4 animate-spin" /> : null}
+                {bulkLoading ? "Applying..." : "Apply"}
               </Button>
             </div>
           </div>
@@ -353,7 +378,7 @@ export function PostsTableClient({
             const [s, o] = e.target.value.split("_") as [SortKey, Order];
             router.push(buildUrl(s, o));
           }}
-          className="rounded-lg border border-input bg-background px-3 py-1.5 text-sm text-foreground shadow-sm"
+          className="rounded-lg border border-input bg-background px-3 py-1.5 text-sm text-foreground shadow-[var(--elevation-1)]"
         >
           {SORT_OPTIONS.map((opt) => (
             <option key={opt.value} value={opt.value}>
@@ -364,7 +389,7 @@ export function PostsTableClient({
       </div>
 
       {/* Desktop: table */}
-      <div className="hidden md:block rounded-xl border border-border bg-card overflow-x-auto shadow-sm">
+      <div className="hidden md:block rounded-xl border border-border bg-card overflow-x-auto shadow-[var(--elevation-1)]">
         <Table className="min-w-[720px]">
           <TableHeader>
             <TableRow className="hover:bg-transparent border-border">
@@ -378,12 +403,40 @@ export function PostsTableClient({
                   aria-label="Select all"
                 />
               </TableHead>
-              <TableHead>Title</TableHead>
+              <TableHead>
+                <button
+                  type="button"
+                  className="inline-flex items-center gap-1 font-medium text-foreground hover:text-primary"
+                  onClick={() => toggleHeaderSort("title")}
+                >
+                  Title
+                  {sortIndicator("title")}
+                </button>
+              </TableHead>
               <TableHead className="w-[min(11rem,22vw)] max-w-[13rem]">Slug</TableHead>
+              <TableHead className="w-[min(12rem,26vw)] max-w-[14rem]">Category</TableHead>
               <TableHead>Published Status</TableHead>
               <TableHead className="text-right tabular-nums">Views</TableHead>
-              <TableHead>Published Date</TableHead>
-              <TableHead>Last Edited</TableHead>
+              <TableHead>
+                <button
+                  type="button"
+                  className="inline-flex items-center gap-1 font-medium text-foreground hover:text-primary"
+                  onClick={() => toggleHeaderSort("createdAt")}
+                >
+                  Published Date
+                  {sortIndicator("createdAt")}
+                </button>
+              </TableHead>
+              <TableHead>
+                <button
+                  type="button"
+                  className="inline-flex items-center gap-1 font-medium text-foreground hover:text-primary"
+                  onClick={() => toggleHeaderSort("updatedAt")}
+                >
+                  Last Edited
+                  {sortIndicator("updatedAt")}
+                </button>
+              </TableHead>
               <TableHead className="text-right">Actions</TableHead>
             </TableRow>
           </TableHeader>
@@ -405,6 +458,9 @@ export function PostsTableClient({
                   title={post.slug}
                 >
                   {post.slug}
+                </TableCell>
+                <TableCell className="max-w-[14rem] truncate text-xs text-muted-foreground" title={post.category ?? ""}>
+                  {post.category || "—"}
                 </TableCell>
                 <TableCell>
                   {post.published ? (
@@ -471,7 +527,7 @@ export function PostsTableClient({
         {listPosts.map((post) => (
           <div
             key={post.id}
-            className="rounded-xl border border-border bg-card p-4 shadow-sm flex flex-col gap-3 transition-shadow duration-200 hover:shadow-md"
+            className="rounded-xl border border-border bg-card p-4 shadow-[var(--elevation-1)] flex flex-col gap-3 transition-[box-shadow] duration-200 hover:shadow-[var(--elevation-2)]"
           >
             <div className="flex items-start gap-3">
               <input
@@ -490,6 +546,9 @@ export function PostsTableClient({
                   {post.slug}
                 </p>
                 <div className="flex flex-wrap items-center gap-2 mt-1 text-xs text-muted-foreground">
+                  <span className="rounded-full bg-muted px-2 py-0.5 font-medium">
+                    {post.category || "Uncategorized"}
+                  </span>
                   {post.published ? (
                     <span className="rounded-full bg-emerald-100 px-2 py-0.5 font-medium text-emerald-800">Published</span>
                   ) : (

@@ -9,9 +9,9 @@ export default function TagsLoading() {
           <SkeletonLine key={i} className="h-9 w-24 rounded-full" />
         ))}
       </div>
-      <div className="rounded-xl border border-border bg-card p-6 shadow-sm">
+      <div className="rounded-xl border border-border bg-card p-6 shadow-[var(--elevation-1)]">
         <SkeletonLine className="mb-4 h-6 w-56" />
-        <SkeletonLine className="h-4 w-full max-w-md opacity-90" />
+        <SkeletonLine className="h-4 w-full max-w-md" />
       </div>
     </div>
   );

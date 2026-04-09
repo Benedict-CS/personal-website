@@ -9,11 +9,14 @@ import { DashboardNav } from "./dashboard-nav";
 import { DashboardBreadcrumbs } from "./dashboard-breadcrumbs";
 import { DashboardCommandPalette } from "./dashboard-command-palette";
 import { DashboardKeyboardHelp } from "./dashboard-keyboard-help";
+import { DashboardGlobalHeader } from "./dashboard-global-header";
 import { DashboardConnectivityWatcher } from "@/components/dashboard/dashboard-connectivity-watcher";
 import { SessionExpiryBanner } from "@/components/session-expiry-banner";
 import { SessionGuard } from "@/components/session-guard";
+import { CmsSyncProvider } from "@/contexts/cms-sync-context";
 import { PanelLeftClose, PanelLeftOpen, Menu } from "lucide-react";
 import { Button } from "@/components/ui/button";
+import { TooltipHint } from "@/components/ui/tooltip-hint";
 
 const STORAGE_KEY = "dashboard-sidebar-collapsed";
 
@@ -46,10 +49,11 @@ export function DashboardShell({ children }: { children: React.ReactNode }) {
   return (
     <LeaveGuardProvider>
     <BreadcrumbProvider>
+    <CmsSyncProvider>
     <>
     <a
       href="#main-content"
-      className="sr-only focus:not-sr-only focus:absolute focus:left-4 focus:top-4 focus:z-[100] focus:rounded-lg focus:bg-primary focus:px-3 focus:py-2 focus:text-sm focus:text-primary-foreground focus:outline-none focus:shadow-md"
+      className="sr-only focus:not-sr-only focus:absolute focus:left-4 focus:top-4 focus:z-[100] focus:rounded-lg focus:bg-primary focus:px-3 focus:py-2 focus:text-sm focus:text-primary-foreground focus:outline-none focus:shadow-[var(--elevation-2)]"
     >
       Skip to main content
     </a>
@@ -59,17 +63,19 @@ export function DashboardShell({ children }: { children: React.ReactNode }) {
     <DashboardKeyboardHelp />
     {/* Mobile menu button: visible only on small screens */}
     <div className="fixed left-4 top-20 z-30 md:hidden">
-      <Button
-        type="button"
-        variant="outline"
-        size="icon"
-        onClick={() => setMobileOpen((o) => !o)}
-        aria-label={mobileOpen ? "Close menu" : "Open menu"}
-        aria-expanded={mobileOpen}
-        aria-controls="dashboard-mobile-nav"
-      >
-        <Menu className="h-5 w-5" />
-      </Button>
+      <TooltipHint label={mobileOpen ? "Close navigation" : "Open navigation"} side="bottom">
+        <Button
+          type="button"
+          variant="outline"
+          size="icon"
+          onClick={() => setMobileOpen((o) => !o)}
+          aria-label={mobileOpen ? "Close menu" : "Open menu"}
+          aria-expanded={mobileOpen}
+          aria-controls="dashboard-mobile-nav"
+        >
+          <Menu className="h-5 w-5" />
+        </Button>
+      </TooltipHint>
     </div>
     {/* Mobile drawer overlay */}
     {mobileOpen && (
@@ -82,7 +88,7 @@ export function DashboardShell({ children }: { children: React.ReactNode }) {
     {/* Mobile drawer */}
     <aside
       id="dashboard-mobile-nav"
-      className={`fixed left-0 top-16 z-20 h-[calc(100vh-4rem)] w-64 border-r border-border bg-card shadow-lg transition-transform duration-200 ease-out md:hidden ${
+      className={`fixed left-0 top-16 z-20 h-[calc(100vh-4rem)] w-64 border-r border-border bg-card shadow-[var(--elevation-3)] transition-transform duration-200 ease-out md:hidden ${
         mobileOpen ? "translate-x-0" : "-translate-x-full"
       }`}
     >
@@ -92,7 +98,7 @@ export function DashboardShell({ children }: { children: React.ReactNode }) {
     </aside>
     <div className="flex flex-1 min-h-0">
       <aside
-        className={`hidden md:flex fixed left-0 top-16 h-[calc(100vh-4rem)] border-r border-border bg-card z-10 transition-[width] duration-200 ease-out ${sidebarWidth} flex-col overflow-visible shadow-sm`}
+        className={`hidden md:flex fixed left-0 top-16 h-[calc(100vh-4rem)] border-r border-border bg-card z-10 transition-[width] duration-200 ease-out ${sidebarWidth} flex-col overflow-visible shadow-[var(--elevation-1)]`}
       >
         <div className={`flex flex-col flex-1 min-h-0 ${collapsed ? "p-2 overflow-visible" : "p-6 overflow-y-auto"}`}>
           <div className={`flex items-center shrink-0 ${collapsed ? "justify-center" : "justify-between"} mb-4`}>
@@ -107,20 +113,22 @@ export function DashboardShell({ children }: { children: React.ReactNode }) {
             >
               ⌘K
             </kbd>
-            <Button
-              type="button"
-              variant="ghost"
-              size="icon"
-              onClick={toggle}
-              className="shrink-0 h-8 w-8 rounded-lg text-muted-foreground hover:text-foreground"
-              title={collapsed ? "Expand sidebar" : "Collapse sidebar"}
-            >
-              {collapsed ? (
-                <PanelLeftOpen className="h-4 w-4" />
-              ) : (
-                <PanelLeftClose className="h-4 w-4" />
-              )}
-            </Button>
+            <TooltipHint label={collapsed ? "Expand sidebar" : "Collapse sidebar"}>
+              <Button
+                type="button"
+                variant="ghost"
+                size="icon"
+                onClick={toggle}
+                className="shrink-0 h-8 w-8 rounded-lg text-muted-foreground hover:text-foreground"
+                title={collapsed ? "Expand sidebar" : "Collapse sidebar"}
+              >
+                {collapsed ? (
+                  <PanelLeftOpen className="h-4 w-4" />
+                ) : (
+                  <PanelLeftClose className="h-4 w-4" />
+                )}
+              </Button>
+            </TooltipHint>
           </div>
           <DashboardNav collapsed={collapsed} />
         </div>
@@ -135,14 +143,15 @@ export function DashboardShell({ children }: { children: React.ReactNode }) {
           <SessionExpiryBanner />
           <div className="p-4 sm:p-6 lg:p-8 dashboard-content-in min-w-0 flex-1">
             <DashboardBreadcrumbs />
+            <DashboardGlobalHeader />
             <motion.div
               key={pathname ?? ""}
-              initial={reduceMotion ? false : { opacity: 0.88, y: 4 }}
+              initial={reduceMotion ? false : { opacity: 0, y: 6 }}
               animate={{ opacity: 1, y: 0 }}
               transition={
                 reduceMotion
                   ? { duration: 0 }
-                  : { duration: 0.22, ease: [0.25, 0.46, 0.45, 0.94] }
+                  : { type: "spring", stiffness: 260, damping: 28, mass: 0.9 }
               }
             >
               {children}
@@ -152,6 +161,7 @@ export function DashboardShell({ children }: { children: React.ReactNode }) {
       </main>
     </div>
     </>
+    </CmsSyncProvider>
     </BreadcrumbProvider>
     </LeaveGuardProvider>
   );

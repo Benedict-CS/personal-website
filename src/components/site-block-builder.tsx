@@ -761,7 +761,7 @@ function stylePreviewClasses(block: SiteBlock): string {
           ? "rounded-xl"
           : "rounded-lg";
   const shadow =
-    block.shadow === "none" ? "" : block.shadow === "md" ? "shadow-md" : "shadow-sm";
+    block.shadow === "none" ? "" : block.shadow === "md" ? "shadow-[var(--elevation-2)]" : "shadow-[var(--elevation-1)]";
   const align = block.align === "center" ? "text-center" : "text-left";
   return `${preset} ${spacing} ${radius} ${shadow} ${align}`;
 }
@@ -851,7 +851,7 @@ function BlockPreview({
           {projects.slice(0, 4).map((p, i) => (
             <div
               key={`${p.title}-${i}`}
-              className="flex flex-col overflow-hidden rounded-lg border border-border bg-card shadow-sm"
+              className="flex flex-col overflow-hidden rounded-xl border border-border bg-card shadow-[var(--elevation-1)]"
             >
               <div
                 className="h-24 bg-muted bg-cover bg-center"
@@ -877,7 +877,7 @@ function BlockPreview({
           {skills.slice(0, 12).map((s, i) => (
             <span
               key={`${s.name}-${i}`}
-              className="inline-flex items-center gap-1.5 rounded-full border border-border bg-card px-3 py-1.5 text-xs font-medium text-foreground shadow-sm"
+              className="inline-flex items-center gap-1.5 rounded-full border border-border bg-card px-3 py-1.5 text-xs font-medium text-foreground shadow-[var(--elevation-1)]"
             >
               <SkillPreviewIcon iconKey={s.iconKey} />
               {s.name}
@@ -1104,7 +1104,7 @@ function SortableBlockCard({
   const style = { transform: CSS.Transform.toString(transform), transition };
 
   return (
-    <Card ref={setNodeRef} style={style} className={isDragging ? "border-muted-foreground/40 shadow-md" : ""}>
+    <Card ref={setNodeRef} style={style} className={isDragging ? "border-muted-foreground/40 shadow-[var(--elevation-2)]" : ""}>
       <CardHeader className="pb-3">
         <div className="flex items-center justify-between gap-3">
           <div className="flex items-center gap-2">
