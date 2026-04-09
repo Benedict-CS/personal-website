@@ -1,6 +1,7 @@
 "use client";
 
 import { MarkdownRenderer } from "@/components/markdown-renderer";
+import { PublicSection } from "@/components/public/public-layout";
 
 export function HomeCustomMarkdownSection({
   id,
@@ -13,11 +14,7 @@ export function HomeCustomMarkdownSection({
 }) {
   if (!content?.trim()) return null;
   return (
-    <section
-      key={id}
-      data-home-section={id}
-      className="container mx-auto max-w-6xl px-6 py-16"
-    >
+    <PublicSection data-home-section={id} density="section">
       <div className="mx-auto max-w-3xl prose prose-slate max-w-none">
         {title?.trim() ? (
           <h2 className="text-3xl font-bold text-[var(--foreground)] mb-6">
@@ -26,6 +23,6 @@ export function HomeCustomMarkdownSection({
         ) : null}
         <MarkdownRenderer content={content} />
       </div>
-    </section>
+    </PublicSection>
   );
 }

@@ -7,6 +7,7 @@ import { motion } from "framer-motion";
 import { Pin, Rss } from "lucide-react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { PublicBreadcrumbs } from "@/components/public-breadcrumbs";
+import { PublicEmptyState, PublicPageHeader, PublicPageShell } from "@/components/public/public-layout";
 import { BackToTop } from "@/components/back-to-top";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -140,12 +141,9 @@ export default function BlogPageClient() {
   }, [postsByYear]);
 
   return (
-    <div className="container mx-auto max-w-6xl px-4 py-8 sm:px-6 sm:py-10 lg:px-8 lg:py-12">
+    <PublicPageShell>
       <PublicBreadcrumbs items={[{ label: "Home", href: "/" }, { label: "Blog" }]} />
-      <div className="mb-8">
-        <h1 className="text-3xl font-bold tracking-tight text-[var(--foreground)] sm:text-4xl">Blog</h1>
-        <p className="mt-2 text-[var(--muted-foreground)]">Articles and notes by topic.</p>
-      </div>
+      <PublicPageHeader title="Blog" description="Articles and notes by topic." />
 
       {/* Tag filter: All + tag buttons */}
       <div className="mb-6">
@@ -222,14 +220,14 @@ export default function BlogPageClient() {
           ))}
         </div>
       ) : posts.length === 0 ? (
-        <div className="rounded-xl border border-[var(--border)] bg-card p-12 text-center shadow-[var(--shadow-sm)]">
-          <p className="text-[var(--foreground)] font-medium">
-            {activeTag ? "No posts with this tag yet." : "No posts yet."}
-          </p>
-          <p className="mt-2 text-sm text-[var(--muted-foreground)]">
-            {activeTag ? "Try another tag or view all posts." : "Subscribe via RSS (link above) to get notified when new posts are published."}
-          </p>
-        </div>
+        <PublicEmptyState
+          title={activeTag ? "No posts with this tag yet." : "No posts yet."}
+          description={
+            activeTag
+              ? "Try another tag or view all posts."
+              : "Subscribe via RSS (link above) to get notified when new posts are published."
+          }
+        />
       ) : (
         <div className="space-y-10">
           {years.map((year) => (
@@ -300,6 +298,6 @@ export default function BlogPageClient() {
         </div>
       )}
       <BackToTop />
-    </div>
+    </PublicPageShell>
   );
 }

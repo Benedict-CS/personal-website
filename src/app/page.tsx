@@ -9,6 +9,7 @@ import { stripMarkdown } from "@/lib/utils";
 import { calculateReadingTime, formatReadingTime } from "@/lib/reading-time";
 import { getSiteConfigForRender } from "@/lib/site-config";
 import { HomeCustomMarkdownSection } from "@/components/home-custom-markdown-section";
+import { PublicEmptyState, PublicSection } from "@/components/public/public-layout";
 
 export const dynamic = "force-dynamic";
 
@@ -126,10 +127,10 @@ export default async function Home() {
         : "min-h-screen bg-gradient-to-br from-[var(--muted)] via-[var(--background)] to-[var(--muted)]";
 
   const heroSection = (
-    <section
+    <PublicSection
       key="hero"
       data-home-section="hero"
-      className={`container mx-auto max-w-6xl px-6 ${templateId === "minimal" ? "py-12 md:py-16" : "py-20 md:py-28 lg:py-32"}`}
+      density={templateId === "minimal" ? "heroMinimal" : "hero"}
     >
       <div className="mx-auto max-w-4xl text-center">
         <h1 className="mb-6 text-4xl font-bold tracking-tight text-[var(--foreground)] sm:text-5xl md:text-6xl lg:text-7xl">
@@ -162,19 +163,17 @@ export default async function Home() {
           </Link>
         </div>
       </div>
-    </section>
+    </PublicSection>
   );
 
   const latestPostsSection = (
-    <section key="latestPosts" data-home-section="latestPosts" className="container mx-auto max-w-6xl px-6 py-16">
+    <PublicSection key="latestPosts" data-home-section="latestPosts" density="section">
       <div className="w-full">
         <h2 className="mb-8 text-3xl font-bold text-[var(--foreground)]" data-inline-field="home.sectionTitleLatestPosts">
           {homeContent.sectionTitleLatestPosts ?? defaultHomeContent.sectionTitleLatestPosts}
         </h2>
         {latestPosts.length === 0 ? (
-          <div className="rounded-xl border border-[var(--border)] bg-card p-12 text-center shadow-[var(--shadow-sm)]">
-            <p className="text-[var(--muted-foreground)]">More content coming soon...</p>
-          </div>
+          <PublicEmptyState title="More content coming soon…" />
         ) : (
           <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-3">
             {latestPosts.map((post) => (
@@ -224,11 +223,11 @@ export default async function Home() {
           </div>
         )}
       </div>
-    </section>
+    </PublicSection>
   );
 
   const skillsSection = (
-    <section key="skills" data-home-section="skills" className="container mx-auto max-w-6xl px-6 py-16">
+    <PublicSection key="skills" data-home-section="skills" density="section">
       <div className="mx-auto max-w-4xl">
         <h2 className="mb-8 text-center text-3xl font-bold text-[var(--foreground)]" data-inline-field="home.sectionTitleSkills">
           {homeContent.sectionTitleSkills ?? defaultHomeContent.sectionTitleSkills}
@@ -241,7 +240,7 @@ export default async function Home() {
           ))}
         </div>
       </div>
-    </section>
+    </PublicSection>
   );
 
   const sectionMap: Record<string, React.ReactNode> = {

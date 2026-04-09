@@ -35,7 +35,7 @@ export async function generateMetadata(): Promise<Metadata> {
 
 function BlogSkeleton() {
   return (
-    <div className="container mx-auto max-w-6xl px-4 py-12 animate-pulse">
+    <div className="container mx-auto max-w-6xl px-4 py-8 sm:py-10 lg:py-12 animate-pulse sm:px-6 lg:px-8">
       <div className="h-10 w-32 rounded bg-[var(--muted)] mb-8" />
       <div className="flex flex-wrap gap-2 mb-6">
         <div className="h-9 w-16 rounded-full bg-[var(--muted)]" />

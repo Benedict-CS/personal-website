@@ -19,6 +19,7 @@ import { AboutSkillsAchievementsEditor } from "@/components/about-skills-achieve
 import { Suspense } from "react";
 import { getCvDownloadFilename } from "@/lib/cv-download-filename";
 import { AboutPrintToolbar } from "@/components/about-print-toolbar";
+import { PublicPageShell } from "@/components/public/public-layout";
 
 export const revalidate = 30;
 export const dynamic = "force-dynamic";
@@ -432,7 +433,7 @@ export default async function AboutPage({
   }
 
   return (
-    <div className="container mx-auto max-w-5xl px-6 py-12">
+    <PublicPageShell maxWidth="5xl" className="py-12">
       {isPrintMode && <AboutPrintToolbar />}
       {!isPrintMode && (
         <PublicBreadcrumbs items={[{ label: "Home", href: "/" }, { label: "About" }]} />
@@ -1328,6 +1329,6 @@ export default async function AboutPage({
         </>
         )}
       </div>
-    </div>
+    </PublicPageShell>
   );
 }

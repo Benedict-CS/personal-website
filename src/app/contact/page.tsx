@@ -9,6 +9,11 @@ import { Textarea } from "@/components/ui/textarea";
 import { Mail, Linkedin, Github, CheckCircle2, AlertCircle } from "lucide-react";
 import Link from "next/link";
 import { PublicBreadcrumbs } from "@/components/public-breadcrumbs";
+import {
+  publicMarketingBackgroundClassName,
+  PublicPageHeader,
+  PublicPageShell,
+} from "@/components/public/public-layout";
 
 const defaultIntro = "I'm open to new opportunities, collaborations, or a chat about tech.";
 const defaultFormNote = "Use the form below, or choose one of the contact buttons.";
@@ -155,15 +160,17 @@ export default function ContactPage() {
   }
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-[var(--muted)] via-[var(--background)] to-[var(--muted)]">
-      <section className="container mx-auto px-4 py-16 md:py-24">
+    <div className={publicMarketingBackgroundClassName}>
+      <PublicPageShell pad="spacious" className="pb-16 md:pb-24">
         <div className="mx-auto max-w-2xl">
           <PublicBreadcrumbs items={[{ label: "Home", href: "/" }, { label: "Contact" }]} />
-          <h1 className="mb-4 text-4xl font-bold text-[var(--foreground)]" data-inline-field="contact.title">{title}</h1>
-          <p className="mb-2 text-[var(--muted-foreground)]" data-inline-field="contact.intro">
-            {intro}
-          </p>
-          <p className="mb-1 text-sm text-[var(--muted-foreground)]" data-inline-field="contact.formNote">
+          <PublicPageHeader
+            className="mb-6 sm:mb-8"
+            title={<span data-inline-field="contact.title">{title}</span>}
+            titleClassName="text-4xl"
+            description={<span data-inline-field="contact.intro">{intro}</span>}
+          />
+          <p className="mb-6 text-sm text-muted-foreground" data-inline-field="contact.formNote">
             {formNote}
           </p>
           <div className="mb-10 flex flex-wrap gap-3" data-contact-buttons-container>
@@ -289,7 +296,7 @@ export default function ContactPage() {
             </CardContent>
           </Card>
         </div>
-      </section>
+      </PublicPageShell>
     </div>
   );
 }

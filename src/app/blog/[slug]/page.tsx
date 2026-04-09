@@ -18,6 +18,7 @@ import { HighlightScroll } from "@/components/highlight-scroll";
 import { BackToTop } from "@/components/back-to-top";
 import { GiscusComments } from "@/components/giscus-comments";
 import { PublicBreadcrumbs } from "@/components/public-breadcrumbs";
+import { publicWidePageContainerClassName } from "@/components/public/public-layout";
 import { metaDescriptionFromMarkdown } from "@/lib/meta-description";
 import { Pencil } from "lucide-react";
 import { calculateReadingTime, formatReadingTime } from "@/lib/reading-time";
@@ -233,7 +234,7 @@ export default async function BlogPostPage({
         prevHref={prevPost ? `/blog/${prevPost.slug}` : null}
         nextHref={nextPost ? `/blog/${nextPost.slug}` : null}
       />
-      <div className="container mx-auto max-w-[120rem] px-4 py-8 sm:px-6 sm:py-10 lg:px-8 lg:py-12">
+      <div className={`${publicWidePageContainerClassName} py-8 sm:py-10 lg:py-12`}>
       <PublicBreadcrumbs items={[{ label: "Home", href: "/" }, { label: "Blog", href: "/blog" }, { label: post.title }]} />
       <div className="grid grid-cols-1 gap-8 lg:grid-cols-[1fr_260px] lg:gap-12">
         {/* Main content */}
@@ -242,10 +243,10 @@ export default async function BlogPostPage({
             <CardContent className="px-4 pt-6 pb-8 sm:px-6 sm:pt-8 sm:pb-10 lg:px-8">
               <div className="space-y-8 overflow-hidden">
                 <header>
-                  <h1 className="text-3xl font-bold tracking-tight text-slate-900 sm:text-4xl">
+                  <h1 className="text-3xl font-bold tracking-tight text-foreground sm:text-4xl">
                     {post.title}
                   </h1>
-                  <div className="mt-3 flex flex-wrap items-center gap-x-4 gap-y-1 text-sm text-slate-500">
+                  <div className="mt-3 flex flex-wrap items-center gap-x-4 gap-y-1 text-sm text-muted-foreground">
                     <span>Published on {formatDate(post.createdAt)}</span>
                     <span aria-hidden>·</span>
                     <span>{formatReadingTime(readingTime)} read</span>
