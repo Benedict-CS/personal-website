@@ -7,11 +7,13 @@ import { MarkdownBodyServer } from "@/components/markdown/markdown-body-server";
 import { CodePlayground } from "@/components/mdx/embeds/code-playground";
 import { AbTestStats } from "@/components/mdx/embeds/ab-test-stats";
 import { TechStackGrid } from "@/components/mdx/embeds/tech-stack-grid";
+import { ReadingTimeLab } from "@/components/mdx/embeds/reading-time-lab";
 
 const mdxComponents = {
   CodePlayground,
   AbTestStats,
   TechStackGrid,
+  ReadingTimeLab,
 };
 
 type Props = {

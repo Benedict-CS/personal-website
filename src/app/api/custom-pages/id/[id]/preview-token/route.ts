@@ -3,6 +3,7 @@ import { requireSession } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 import { createCustomPagePreviewToken } from "@/lib/custom-page-preview";
 import { auditLog } from "@/lib/audit";
+import { checkRateLimitAsync, getClientIP } from "@/lib/rate-limit";
 
 export async function POST(
   request: NextRequest,
@@ -10,6 +11,21 @@ export async function POST(
 ) {
   const auth = await requireSession();
   if ("unauthorized" in auth) return auth.unauthorized;
+  const ip = getClientIP(request);
+  const { ok: allowed, remaining } = await checkRateLimitAsync(ip, "custom_page_preview_token");
+  if (!allowed) {
+    return NextResponse.json(
+      { error: "Too many preview-link requests. Please retry in a minute." },
+      {
+        status: 429,
+        headers: {
+          "X-RateLimit-Remaining": "0",
+          "Retry-After": "60",
+          "Cache-Control": "no-store, private",
+        },
+      }
+    );
+  }
 
   const { id } = await params;
   const page = await prisma.customPage.findUnique({ where: { id } });
@@ -34,6 +50,9 @@ export async function POST(
     ip: request.headers.get("x-forwarded-for") ?? null,
   });
 
-  return NextResponse.json({ previewUrl, token });
+  return NextResponse.json(
+    { previewUrl, token },
+    { headers: { "X-RateLimit-Remaining": String(remaining) } }
+  );
 }
 

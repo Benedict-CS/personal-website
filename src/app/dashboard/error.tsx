@@ -2,8 +2,9 @@
 
 import { useEffect, useCallback, useMemo, useState } from "react";
 import Link from "next/link";
+import { motion, useReducedMotion } from "framer-motion";
 import { Button } from "@/components/ui/button";
-import { BarChart3, Copy, LayoutDashboard, RefreshCw } from "lucide-react";
+import { BarChart3, Copy, LayoutDashboard, RefreshCw, Shield } from "lucide-react";
 import { useToast } from "@/contexts/toast-context";
 
 export default function DashboardError({
@@ -13,6 +14,7 @@ export default function DashboardError({
   error: Error & { digest?: string };
   reset: () => void;
 }) {
+  const reduceMotion = useReducedMotion();
   const { toast } = useToast();
   const [copied, setCopied] = useState(false);
 
@@ -53,13 +55,36 @@ export default function DashboardError({
 
   return (
     <div className="flex min-h-[60vh] flex-col items-center justify-center px-4">
-      <div className="w-full max-w-md rounded-xl border border-border bg-card/85 p-8 shadow-[var(--elevation-3)] backdrop-blur-xl">
+      <motion.div
+        className="w-full max-w-md rounded-xl border border-border bg-card/85 p-8 shadow-[var(--elevation-3)] backdrop-blur-xl"
+        initial={reduceMotion ? false : { opacity: 0, y: 10 }}
+        animate={{ opacity: 1, y: 0 }}
+        transition={
+          reduceMotion ? { duration: 0 } : { type: "spring", stiffness: 280, damping: 30, mass: 0.85 }
+        }
+      >
+        <svg
+          className="mx-auto mb-5 h-14 w-14 text-muted-foreground/45"
+          viewBox="0 0 64 64"
+          fill="none"
+          xmlns="http://www.w3.org/2000/svg"
+          aria-hidden
+        >
+          <path
+            d="M32 8L8 52h48L32 8z"
+            stroke="currentColor"
+            strokeWidth="2"
+            strokeLinejoin="round"
+          />
+          <path d="M32 24v14M32 44h.02" stroke="currentColor" strokeWidth="2" strokeLinecap="round" />
+        </svg>
         <p className="mb-2 text-sm font-semibold uppercase tracking-wider text-muted-foreground">
           Something went wrong
         </p>
         <h1 className="mb-2 text-xl font-bold text-foreground">Error</h1>
         <p className="mb-6 text-center text-sm text-muted-foreground">
-          An unexpected error occurred in the dashboard. You can try again or return to a safe area.
+          An unexpected error occurred in the dashboard. Try again, open System health for connectivity and maintenance tools,
+          or return to a safe area.
         </p>
         {errorDigest ? (
           <div className="mb-6 rounded-lg border border-border bg-muted/20 px-3 py-2.5">
@@ -108,8 +133,14 @@ export default function DashboardError({
               Analytics
             </Link>
           </Button>
+          <Button variant="outline" asChild className="gap-2">
+            <Link href="/dashboard/system">
+              <Shield className="h-4 w-4" />
+              System health
+            </Link>
+          </Button>
         </div>
-      </div>
+      </motion.div>
     </div>
   );
 }

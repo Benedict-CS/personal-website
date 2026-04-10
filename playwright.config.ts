@@ -30,8 +30,8 @@ export default defineConfig({
         // When CI already ran `npm run verify`, set PLAYWRIGHT_SKIP_BUILD=1 to run only `next start`.
         command:
           process.env.PLAYWRIGHT_SKIP_BUILD === "1"
-            ? `PORT=${ciListenPort} npm run start`
-            : `npm run build && PORT=${ciListenPort} npm run start`,
+            ? `PORT=${ciListenPort} node .next/standalone/server.js`
+            : `npm run build && PORT=${ciListenPort} node .next/standalone/server.js`,
         url: webServerReadyURL,
         reuseExistingServer: false,
       }

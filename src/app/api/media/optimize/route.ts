@@ -104,6 +104,7 @@ export async function POST(request: Request) {
   }
 
   const optimizedCount = results.filter((r) => r.status === "optimized").length;
+  const failedCount = results.filter((r) => r.status === "failed").length;
   const savedBytesTotal = results.reduce((sum, r) => sum + r.savedBytes, 0);
   await auditLog({
     action: "media.optimize",
@@ -111,6 +112,7 @@ export async function POST(request: Request) {
     resourceId: null,
     details: JSON.stringify({
       optimizedCount,
+      failedCount,
       attempted: executionCandidates.length,
       savedBytesTotal,
       minBytes,
@@ -128,6 +130,7 @@ export async function POST(request: Request) {
     estimatedSavedBytes: candidates.reduce((sum, item) => sum + item.estimatedSavedBytes, 0),
     executed: executionCandidates.length,
     optimizedCount,
+    failedCount,
     savedBytesTotal,
     maxItems,
     requestedCount: requestedKeys.length || undefined,

@@ -1,16 +1,55 @@
 import { NextRequest, NextResponse } from "next/server";
-import { revalidatePath } from "next/cache";
+import { revalidatePath, revalidateTag } from "next/cache";
 import { getServerSession } from "next-auth";
 import { requireSession, authOptions } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 import { Prisma } from "@prisma/client";
 import { auditLog } from "@/lib/audit";
-import { getClientIP } from "@/lib/rate-limit";
+import { checkRateLimitAsync, getClientIP } from "@/lib/rate-limit";
+import { normalizePublicationInput, withPublicationState } from "@/lib/post-publication-state";
 
 function publishedPublicWhere(now: Date): Prisma.PostWhereInput {
   return {
     OR: [{ published: true }, { publishedAt: { lte: now } }],
   };
+}
+
+function parseTagConnections(tags: string | undefined) {
+  if (!tags) return [];
+  return tags
+    .split(",")
+    .map((tag: string) => tag.trim())
+    .filter((tag: string) => tag.length > 0)
+    .map((tagName: string) => {
+      let cleanedTagName = tagName.trim();
+      cleanedTagName = cleanedTagName.replace(/^["']+/, "");
+      cleanedTagName = cleanedTagName.replace(/["']+$/, "");
+      const tagSlug = cleanedTagName
+        .toLowerCase()
+        .trim()
+        .replace(/[^\w\s-]/g, "")
+        .replace(/[\s_-]+/g, "-")
+        .replace(/^-+|-+$/g, "");
+      return {
+        where: { slug: tagSlug },
+        create: { name: cleanedTagName, slug: tagSlug },
+      };
+    });
+}
+
+function revalidatePublicPostSurfaces(slug: string, tagSlugs: string[]) {
+  revalidatePath("/");
+  revalidatePath("/blog");
+  revalidatePath("/blog/archive");
+  revalidatePath(`/blog/${slug}`);
+  revalidatePath("/feed.xml");
+  revalidatePath("/sitemap.xml");
+  revalidateTag("posts", "max");
+  revalidateTag(`post:${slug}`, "max");
+  for (const tagSlug of tagSlugs) {
+    revalidatePath(`/blog/tag/${tagSlug}`);
+    revalidateTag(`tag:${tagSlug}`, "max");
+  }
 }
 
 export async function GET(request: NextRequest) {
@@ -84,7 +123,7 @@ export async function GET(request: NextRequest) {
           include: { tags: true },
           orderBy: [{ pinned: "desc" }, { createdAt: "desc" }],
         });
-        return NextResponse.json(posts, { status: 200 });
+        return NextResponse.json(posts.map((post) => withPublicationState(post, now)), { status: 200 });
       }
 
       const orderMap = new Map(mergedIds.map((id, i) => [id, i]));
@@ -101,7 +140,7 @@ export async function GET(request: NextRequest) {
         include: { tags: true },
       });
       posts.sort((a, b) => (orderMap.get(a.id) ?? 999) - (orderMap.get(b.id) ?? 999));
-      return NextResponse.json(posts, { status: 200 });
+      return NextResponse.json(posts.map((post) => withPublicationState(post, now)), { status: 200 });
     }
 
     const posts = await prisma.post.findMany({
@@ -109,7 +148,7 @@ export async function GET(request: NextRequest) {
       include: { tags: true },
       orderBy: [{ pinned: "desc" }, { createdAt: "desc" }],
     });
-    return NextResponse.json(posts, { status: 200 });
+    return NextResponse.json(posts.map((post) => withPublicationState(post, now)), { status: 200 });
   } catch (error) {
     console.error("Error fetching posts:", error);
     return NextResponse.json(
@@ -123,9 +162,24 @@ export async function POST(request: NextRequest) {
   try {
     const auth = await requireSession();
     if ("unauthorized" in auth) return auth.unauthorized;
+    const ip = getClientIP(request);
+    const { ok: allowed, remaining } = await checkRateLimitAsync(ip, "posts_write");
+    if (!allowed) {
+      return NextResponse.json(
+        { error: "Too many post updates. Please try again in a minute." },
+        {
+          status: 429,
+          headers: {
+            "X-RateLimit-Remaining": "0",
+            "Retry-After": "60",
+            "Cache-Control": "no-store, private",
+          },
+        }
+      );
+    }
 
     const body = await request.json();
-    const { title, slug, content, description, published, tags, category } = body;
+    const { title, slug, content, description, published, publishedAt, tags, category } = body;
 
     if (!title || !slug || !content) {
       return NextResponse.json(
@@ -134,27 +188,14 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    const tagConnections = tags
-      ? tags
-          .split(",")
-          .map((tag: string) => tag.trim())
-          .filter((tag: string) => tag.length > 0)
-          .map((tagName: string) => {
-            let cleanedTagName = tagName.trim();
-            cleanedTagName = cleanedTagName.replace(/^["']+/, "");
-            cleanedTagName = cleanedTagName.replace(/["']+$/, "");
-            const tagSlug = cleanedTagName
-              .toLowerCase()
-              .trim()
-              .replace(/[^\w\s-]/g, "")
-              .replace(/[\s_-]+/g, "-")
-              .replace(/^-+|-+$/g, "");
-            return {
-              where: { slug: tagSlug },
-              create: { name: cleanedTagName, slug: tagSlug },
-            };
-          })
-      : [];
+    const tagConnections = parseTagConnections(tags);
+    const normalizedPublication = normalizePublicationInput({
+      published: typeof published === "boolean" ? published : false,
+      publishedAt:
+        typeof publishedAt === "string" && publishedAt.trim().length > 0
+          ? publishedAt
+          : null,
+    });
 
     const post = await prisma.post.create({
       data: {
@@ -162,7 +203,8 @@ export async function POST(request: NextRequest) {
         slug,
         content,
         description: description || null,
-        published: published ?? false,
+        published: normalizedPublication.published,
+        publishedAt: normalizedPublication.publishedAt,
         category: category || null,
         tags: {
           connectOrCreate: tagConnections,
@@ -173,15 +215,21 @@ export async function POST(request: NextRequest) {
       },
     });
 
-    revalidatePath("/blog");
+    revalidatePublicPostSurfaces(
+      post.slug,
+      post.tags.map((tag) => tag.slug)
+    );
     await auditLog({
       action: "post.create",
       resourceType: "post",
       resourceId: post.id,
       details: post.slug,
-      ip: getClientIP(request),
+      ip,
     });
-    return NextResponse.json(post, { status: 201 });
+    return NextResponse.json(withPublicationState(post), {
+      status: 201,
+      headers: { "X-RateLimit-Remaining": String(remaining) },
+    });
   } catch (error) {
     console.error("Error creating post:", error);
     return NextResponse.json(

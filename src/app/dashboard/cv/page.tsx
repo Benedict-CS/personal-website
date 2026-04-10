@@ -6,7 +6,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Download, Upload, FileText, CheckCircle2, XCircle, Loader2 } from "lucide-react";
 import Link from "next/link";
-import { DashboardPageHeader } from "@/components/dashboard/dashboard-ui";
+import { DashboardEmptyState, DashboardPageHeader } from "@/components/dashboard/dashboard-ui";
 import { formatAbsoluteDateTime, formatRelativeTime } from "@/lib/relative-time";
 
 export const dynamic = "force-dynamic";
@@ -25,6 +25,8 @@ export default function CVPage() {
     message: string;
   }>({ type: null, message: "" });
   const [cvStatus, setCvStatus] = useState<CvStatusPayload | null>(null);
+  const [profilePdfLoading, setProfilePdfLoading] = useState(false);
+  const [profilePdfMessage, setProfilePdfMessage] = useState<{ type: "error"; text: string } | null>(null);
 
   const refreshCvStatus = useCallback(async () => {
     try {
@@ -60,6 +62,34 @@ export default function CVPage() {
       }
       setFile(selectedFile);
       setUploadStatus({ type: null, message: "" });
+    }
+  };
+
+  const exportStructuredProfilePdf = async () => {
+    setProfilePdfMessage(null);
+    setProfilePdfLoading(true);
+    try {
+      const response = await fetch("/api/cv/export-profile-pdf", { credentials: "include", cache: "no-store" });
+      if (!response.ok) {
+        const data = (await response.json().catch(() => ({}))) as { error?: string };
+        throw new Error(typeof data.error === "string" ? data.error : "Could not generate profile PDF.");
+      }
+      const blob = await response.blob();
+      const objectUrl = URL.createObjectURL(blob);
+      const link = document.createElement("a");
+      link.href = objectUrl;
+      const cd = response.headers.get("Content-Disposition");
+      const match = cd?.match(/filename="([^"]+)"/);
+      link.download = match?.[1] ?? `cv-profile-${new Date().toISOString().slice(0, 10)}.pdf`;
+      link.click();
+      URL.revokeObjectURL(objectUrl);
+    } catch (e) {
+      setProfilePdfMessage({
+        type: "error",
+        text: e instanceof Error ? e.message : "Could not generate profile PDF.",
+      });
+    } finally {
+      setProfilePdfLoading(false);
     }
   };
 
@@ -128,12 +158,32 @@ export default function CVPage() {
           <p className="text-sm text-muted-foreground">
             Export your public About page as a PDF using the browser print dialog (Save as PDF).
           </p>
-          <Link href="/about?print=1" target="_blank" rel="noopener noreferrer">
-            <Button variant="outline" className="gap-2">
-              <FileText className="h-4 w-4" />
-              Open printable About page
+          <div className="flex flex-wrap gap-2">
+            <Link href="/about?print=1" target="_blank" rel="noopener noreferrer">
+              <Button variant="outline" className="gap-2">
+                <FileText className="h-4 w-4" />
+                Open printable About page
+              </Button>
+            </Link>
+            <Button
+              type="button"
+              variant="default"
+              className="gap-2"
+              disabled={profilePdfLoading}
+              onClick={() => void exportStructuredProfilePdf()}
+            >
+              {profilePdfLoading ? <Loader2 className="h-4 w-4 animate-spin" aria-hidden /> : <Download className="h-4 w-4" aria-hidden />}
+              Export profile PDF
             </Button>
-          </Link>
+          </div>
+          {profilePdfMessage ? (
+            <p className="text-xs text-rose-700" role="alert">
+              {profilePdfMessage.text}
+            </p>
+          ) : null}
+          <p className="text-xs text-muted-foreground">
+            Profile PDF is generated from structured About data (education, experience, projects, skills, and achievements).
+          </p>
         </CardContent>
       </Card>
 
@@ -195,9 +245,12 @@ export default function CVPage() {
           Checking whether a CV is on file…
         </p>
       ) : !cvStatus.exists ? (
-        <p className="text-sm text-muted-foreground" role="status">
-          No CV PDF is stored yet. Upload one above to enable public download links.
-        </p>
+        <DashboardEmptyState
+          illustration="documents"
+          title="No CV PDF on file"
+          description="Upload a PDF above to enable the public CV download route and dashboard preview."
+          className="py-8"
+        />
       ) : null}
 
       {cvStatus?.exists && (

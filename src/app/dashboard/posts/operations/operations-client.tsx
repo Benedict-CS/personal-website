@@ -10,7 +10,7 @@ import { Input } from "@/components/ui/input";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { useToast } from "@/contexts/toast-context";
 import { ConfirmDialog } from "@/components/ui/confirm-dialog";
-import { DashboardPageHeader } from "@/components/dashboard/dashboard-ui";
+import { DashboardPageHeader, dashboardCardClassName } from "@/components/dashboard/dashboard-ui";
 
 type PreviewMatch = {
   postId: string;
@@ -127,7 +127,7 @@ export function PostsOperationsClient() {
         description="Search and replace literal text across all post bodies (Markdown / MDX). Run preview first, then apply. This is a string operation, not an AST — use it for URLs, typos, and renames."
       />
 
-      <Card className="border-border shadow-md">
+      <Card className={dashboardCardClassName()}>
         <CardHeader>
           <CardTitle className="flex items-center gap-2 text-lg">
             <Search className="h-5 w-5 text-muted-foreground" aria-hidden />
@@ -200,7 +200,7 @@ export function PostsOperationsClient() {
             exit={{ opacity: 0 }}
             transition={{ duration: 0.2 }}
           >
-            <Card className="border-border shadow-sm">
+            <Card className={dashboardCardClassName()}>
               <CardHeader>
                 <CardTitle className="text-base">Preview</CardTitle>
                 <CardDescription>

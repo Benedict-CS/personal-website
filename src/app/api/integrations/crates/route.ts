@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
+import { EXTERNAL_INTEGRATION_RETRY_POLICY, fetchWithRetry } from "@/lib/self-healing-fetch";
 
 export const dynamic = "force-dynamic";
 
@@ -20,13 +21,13 @@ export async function GET(request: NextRequest) {
   const url = `https://crates.io/api/v1/crates/${encodeURIComponent(crate)}`;
 
   try {
-    const res = await fetch(url, {
+    const res = await fetchWithRetry(url, {
       headers: {
         Accept: "application/json",
         "User-Agent": "PersonalSite-CratesIntegration/1.0 (https://crates.io/policies)",
       },
       next: { revalidate: 600 },
-    });
+    }, EXTERNAL_INTEGRATION_RETRY_POLICY);
 
     if (!res.ok) {
       return NextResponse.json(

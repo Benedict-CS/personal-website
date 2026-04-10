@@ -6,9 +6,11 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Bookmark, BookmarkCheck, ChevronDown, ChevronUp, Loader2 } from "lucide-react";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
-import { DashboardPageHeader } from "@/components/dashboard/dashboard-ui";
+import { DashboardEmptyState, DashboardPageHeader } from "@/components/dashboard/dashboard-ui";
 import { formatAbsoluteDateTime, formatRelativeTime } from "@/lib/relative-time";
 import { classifyAuditActionSeverity, summarizeAuditSeverity, type AuditSeverity } from "@/lib/audit-severity";
+import { TooltipHint } from "@/components/ui/tooltip-hint";
+import { DASHBOARD_INTERNAL_FETCH, fetchWithRetry } from "@/lib/self-healing-fetch";
 
 interface AuditEntry {
   id: string;
@@ -21,7 +23,7 @@ interface AuditEntry {
   createdAt: string;
 }
 
-type AuditPreset = "all" | "deletes" | "bulk" | "imports" | "optimizations";
+type AuditPreset = "all" | "deletes" | "bulk" | "imports" | "optimizations" | "system" | "workflow";
 type SeverityFilter = "all" | AuditSeverity;
 const AUDIT_PINNED_STORAGE_KEY = "audit-pinned-rows-v1";
 const AUDIT_SAVED_VIEWS_STORAGE_KEY = "audit-saved-views-v1";
@@ -29,6 +31,8 @@ const AUDIT_LAST_VIEW_STORAGE_KEY = "audit-last-view-id-v1";
 const AUDIT_DEFAULT_VIEW_STORAGE_KEY = "audit-default-view-id-v1";
 const AUDIT_SAVED_VIEW_USAGE_STORAGE_KEY = "audit-saved-view-usage-v1";
 const AUDIT_SHOW_ARCHIVED_STORAGE_KEY = "audit-show-archived-v1";
+const AUDIT_PIN_BUTTON_CLASS =
+  "h-7 w-7 transition-transform duration-150 active:scale-[0.97] motion-reduce:active:scale-100";
 const SAVED_VIEW_CATEGORIES = ["General", "Incident", "Content", "Media", "System"] as const;
 
 type AuditSavedView = {
@@ -163,6 +167,8 @@ function matchesPreset(action: string, preset: AuditPreset): boolean {
   if (preset === "bulk") return normalized.includes(".bulk");
   if (preset === "imports") return normalized.includes(".import");
   if (preset === "optimizations") return normalized.includes(".optimize") || normalized.includes(".cleanup");
+  if (preset === "system") return normalized.startsWith("system.") || normalized.includes("link_check");
+  if (preset === "workflow") return normalized.startsWith("workflow.");
   return true;
 }
 
@@ -234,7 +240,14 @@ export default function AuditPage() {
     if (typeof qsAction === "string") setActionFilter(qsAction);
     if (typeof qsQuery === "string") setQuery(qsQuery);
     if (qsRisk === "high") setHighRiskOnly(true);
-    if (qsPreset === "deletes" || qsPreset === "bulk" || qsPreset === "imports" || qsPreset === "optimizations") {
+    if (
+      qsPreset === "deletes" ||
+      qsPreset === "bulk" ||
+      qsPreset === "imports" ||
+      qsPreset === "optimizations" ||
+      qsPreset === "system" ||
+      qsPreset === "workflow"
+    ) {
       setPresetFilter(qsPreset);
     }
     if (qsPinned === "1") setPinnedOnly(true);
@@ -275,7 +288,9 @@ export default function AuditPage() {
             view.presetFilter !== "deletes" &&
             view.presetFilter !== "bulk" &&
             view.presetFilter !== "imports" &&
-            view.presetFilter !== "optimizations"
+            view.presetFilter !== "optimizations" &&
+            view.presetFilter !== "system" &&
+            view.presetFilter !== "workflow"
           ) {
             return false;
           }
@@ -405,14 +420,29 @@ export default function AuditPage() {
   }, [defaultStartupViewId, savedViews, searchParams]);
 
   useEffect(() => {
+    let cancelled = false;
     const params = new URLSearchParams({ limit: "100" });
     if (resourceTypeFilter.trim()) params.set("resourceType", resourceTypeFilter.trim());
     if (actionFilter.trim()) params.set("action", actionFilter.trim());
-    fetch(`/api/audit?${params.toString()}`, { credentials: "include" })
-      .then((r) => r.json())
-      .then((data) => setEntries(Array.isArray(data) ? data : []))
-      .catch(() => setEntries([]))
-      .finally(() => setLoading(false));
+    setLoading(true);
+    void (async () => {
+      try {
+        const r = await fetchWithRetry(
+          `/api/audit?${params.toString()}`,
+          { credentials: "include" },
+          DASHBOARD_INTERNAL_FETCH,
+        );
+        const data = await r.json();
+        if (!cancelled) setEntries(Array.isArray(data) ? data : []);
+      } catch {
+        if (!cancelled) setEntries([]);
+      } finally {
+        if (!cancelled) setLoading(false);
+      }
+    })();
+    return () => {
+      cancelled = true;
+    };
   }, [actionFilter, resourceTypeFilter]);
 
   const formatDate = (d: string) =>
@@ -878,7 +908,9 @@ export default function AuditPage() {
             presetCandidate === "deletes" ||
             presetCandidate === "bulk" ||
             presetCandidate === "imports" ||
-            presetCandidate === "optimizations"
+            presetCandidate === "optimizations" ||
+            presetCandidate === "system" ||
+            presetCandidate === "workflow"
               ? presetCandidate
               : "all";
           return {
@@ -927,6 +959,8 @@ export default function AuditPage() {
     bulk: entries.filter((entry) => matchesPreset(entry.action, "bulk")).length,
     imports: entries.filter((entry) => matchesPreset(entry.action, "imports")).length,
     optimizations: entries.filter((entry) => matchesPreset(entry.action, "optimizations")).length,
+    system: entries.filter((entry) => matchesPreset(entry.action, "system")).length,
+    workflow: entries.filter((entry) => matchesPreset(entry.action, "workflow")).length,
   };
   const riskCount = displayedEntries.filter((entry) => classifyAuditActionSeverity(entry.action) !== "info").length;
   const severitySummary = summarizeAuditSeverity(displayedEntries.map((entry) => entry.action));
@@ -970,20 +1004,55 @@ export default function AuditPage() {
   if (presetFilter !== "all") activeFiltersSummary.push(`Preset: ${presetFilter}`);
   if (pinnedOnly) activeFiltersSummary.push("Pinned only");
   const hasActiveFilters = activeFiltersSummary.length > 0;
+  const workflowFailureDaily = Array.from({ length: 7 }, (_, index) => {
+    const day = new Date();
+    day.setHours(0, 0, 0, 0);
+    day.setDate(day.getDate() - (6 - index));
+    const nextDay = new Date(day);
+    nextDay.setDate(nextDay.getDate() + 1);
+    const count = entries.filter((entry) => {
+      if (entry.action !== "workflow.webhook.failed") return false;
+      const ts = new Date(entry.createdAt).getTime();
+      return ts >= day.getTime() && ts < nextDay.getTime();
+    }).length;
+    return {
+      label: day.toLocaleDateString(undefined, { month: "short", day: "numeric" }),
+      count,
+    };
+  });
+  const maxWorkflowFailure = Math.max(1, ...workflowFailureDaily.map((point) => point.count));
+
+  const applySavedViewRef = useRef(applySavedView);
+  applySavedViewRef.current = applySavedView;
+  const shortcutSortedViewsRef = useRef(sortedVisibleSavedViews);
+  shortcutSortedViewsRef.current = sortedVisibleSavedViews;
+  const shortcutSavedViewsRef = useRef(savedViews);
+  shortcutSavedViewsRef.current = savedViews;
+  const shortcutLastAppliedIdRef = useRef(lastAppliedViewId);
+  shortcutLastAppliedIdRef.current = lastAppliedViewId;
 
   useEffect(() => {
     const onKeyDown = (event: KeyboardEvent) => {
-      if (!event.altKey || !event.shiftKey) return;
+      const el = event.target as HTMLElement | null;
+      if (el?.closest("input, textarea, select, [contenteditable='true']")) return;
+      if (!event.altKey || !event.shiftKey || event.metaKey || event.ctrlKey) return;
+      if (event.key === "r" || event.key === "R") {
+        event.preventDefault();
+        const lastId = shortcutLastAppliedIdRef.current;
+        const view = shortcutSavedViewsRef.current.find((v) => v.id === lastId);
+        if (view) applySavedViewRef.current(view);
+        return;
+      }
       if (event.key < "1" || event.key > "9") return;
       const idx = Number(event.key) - 1;
-      const target = sortedVisibleSavedViews[idx];
-      if (!target) return;
+      const picked = shortcutSortedViewsRef.current[idx];
+      if (!picked) return;
       event.preventDefault();
-      applySavedView(target);
+      applySavedViewRef.current(picked);
     };
     window.addEventListener("keydown", onKeyDown);
     return () => window.removeEventListener("keydown", onKeyDown);
-  }, [sortedVisibleSavedViews]);
+  }, []);
 
   useEffect(() => {
     if (deletedSavedViewTimerRef.current) {
@@ -1050,6 +1119,29 @@ export default function AuditPage() {
                   ? topActions.map((item) => `${item.action} (${item.count})`).join(" · ")
                   : "No actions in current filter"}
               </p>
+            </div>
+            <div className="rounded-lg border border-border bg-card p-3 sm:col-span-2 lg:col-span-6">
+              <p className="text-xs text-muted-foreground">Workflow failures (7d)</p>
+              <p className="mt-0.5 text-[11px] leading-snug text-muted-foreground">
+                Count of <span className="font-mono text-foreground/80">workflow.webhook.failed</span> audit events per calendar day (UTC).
+                Cross-check delivery details on the System page under workflow pipeline health.
+              </p>
+              <div
+                className="mt-2 flex items-end gap-1"
+                role="img"
+                aria-label={`Workflow webhook failures by day: ${workflowFailureDaily.map((p) => `${p.label} ${p.count}`).join(", ")}`}
+              >
+                {workflowFailureDaily.map((point) => (
+                  <div key={point.label} className="flex flex-col items-center gap-1">
+                    <div
+                      className={`w-4 rounded-sm ${point.count > 0 ? "bg-amber-500" : "bg-muted"}`}
+                      style={{ height: `${Math.max(4, Math.round((point.count / maxWorkflowFailure) * 26))}px` }}
+                      title={`${point.label}: ${point.count}`}
+                    />
+                    <span className="text-[10px] text-muted-foreground">{point.count}</span>
+                  </div>
+                ))}
+              </div>
             </div>
           </div>
           <div className="mb-3 grid gap-2 rounded-lg border border-border p-3 lg:grid-cols-[1fr_1fr_1fr_auto_auto]">
@@ -1137,15 +1229,17 @@ export default function AuditPage() {
             >
               Clear dates
             </Button>
-            <Button
-              type="button"
-              size="sm"
-              variant="outline"
-              onClick={exportVisibleAsCsv}
-              disabled={displayedEntries.length === 0}
-            >
-              Export visible as CSV
-            </Button>
+            <TooltipHint label="Downloads the currently filtered rows (respects date range and presets) as a CSV file">
+              <Button
+                type="button"
+                size="sm"
+                variant="outline"
+                onClick={exportVisibleAsCsv}
+                disabled={displayedEntries.length === 0}
+              >
+                Export visible as CSV
+              </Button>
+            </TooltipHint>
           </div>
           <div className="mb-3 rounded-lg border border-border p-3">
             <div className="flex flex-wrap items-center gap-2">
@@ -1166,32 +1260,42 @@ export default function AuditPage() {
                   </option>
                 ))}
               </select>
-              <Button type="button" size="sm" variant="outline" onClick={saveCurrentView} disabled={!savedViewName.trim()}>
-                Save view
-              </Button>
-              <Button type="button" size="sm" variant="outline" onClick={quickSaveCurrentView}>
-                Quick save
-              </Button>
-              <Button
-                type="button"
-                size="sm"
-                variant="outline"
-                onClick={reapplyLastView}
-                disabled={!savedViews.some((view) => view.id === lastAppliedViewId)}
-              >
-                Reapply last view
-              </Button>
-              <Button type="button" size="sm" variant="outline" onClick={exportSavedViews} disabled={savedViews.length === 0}>
-                Export JSON
-              </Button>
-              <Button
-                type="button"
-                size="sm"
-                variant="outline"
-                onClick={() => importInputRef.current?.click()}
-              >
-                Import JSON
-              </Button>
+              <TooltipHint label="Stores the current filters, search text, preset, and pinned-only toggle under the name you enter (max 20 views)">
+                <Button type="button" size="sm" variant="outline" onClick={saveCurrentView} disabled={!savedViewName.trim()}>
+                  Save view
+                </Button>
+              </TooltipHint>
+              <TooltipHint label="Saves the current filter state with an automatic timestamp label">
+                <Button type="button" size="sm" variant="outline" onClick={quickSaveCurrentView}>
+                  Quick save
+                </Button>
+              </TooltipHint>
+              <TooltipHint label="Restores the most recently applied saved view without opening the list">
+                <Button
+                  type="button"
+                  size="sm"
+                  variant="outline"
+                  onClick={reapplyLastView}
+                  disabled={!savedViews.some((view) => view.id === lastAppliedViewId)}
+                >
+                  Reapply last view
+                </Button>
+              </TooltipHint>
+              <TooltipHint label="Exports all saved views and usage metadata as JSON for backup or another browser">
+                <Button type="button" size="sm" variant="outline" onClick={exportSavedViews} disabled={savedViews.length === 0}>
+                  Export JSON
+                </Button>
+              </TooltipHint>
+              <TooltipHint label="Merge views from a JSON file; respects the 20-view limit and shows a preview before commit">
+                <Button
+                  type="button"
+                  size="sm"
+                  variant="outline"
+                  onClick={() => importInputRef.current?.click()}
+                >
+                  Import JSON
+                </Button>
+              </TooltipHint>
               <input ref={importInputRef} type="file" accept="application/json" className="hidden" onChange={importSavedViews} />
             </div>
             {importError ? (
@@ -1278,7 +1382,9 @@ export default function AuditPage() {
               >
                 Sort: Name
               </Button>
-              <span className="text-xs text-muted-foreground">Quick apply: Alt+Shift+1..9</span>
+              <span className="text-xs text-muted-foreground">
+                Shortcuts (not in inputs): Alt+Shift+1–9 apply visible saved view · Alt+Shift+R reapply last
+              </span>
             </div>
             <div className="mt-2 flex flex-wrap items-center gap-2">
               <Button type="button" size="sm" variant="outline" onClick={selectAllVisibleSavedViews}>
@@ -1315,15 +1421,17 @@ export default function AuditPage() {
                   Cancel delete
                 </Button>
               ) : null}
-              <Button
-                type="button"
-                size="sm"
-                variant="outline"
-                onClick={exportSelectedSavedViews}
-                disabled={selectedViewIds.size === 0}
-              >
-                Export selected
-              </Button>
+              <TooltipHint label="Exports only the checked saved views as JSON (subset of full export)">
+                <Button
+                  type="button"
+                  size="sm"
+                  variant="outline"
+                  onClick={exportSelectedSavedViews}
+                  disabled={selectedViewIds.size === 0}
+                >
+                  Export selected
+                </Button>
+              </TooltipHint>
               <select
                 value={bulkCategory}
                 onChange={(e) => setBulkCategory(e.target.value as (typeof SAVED_VIEW_CATEGORIES)[number])}
@@ -1347,13 +1455,19 @@ export default function AuditPage() {
             </div>
             {confirmBulkDelete && selectedViewNames.length > 0 ? (
               <div className="mt-2 rounded-md border border-rose-200 bg-rose-50 px-2 py-2 text-xs text-rose-800">
-                <p className="font-medium">Delete preview</p>
+                <p className="font-medium">Confirm bulk delete</p>
+                <p className="mt-1 leading-relaxed">
+                  Saved views live in this browser only (local storage). Removing them deletes those filter shortcuts by
+                  name. If your default startup view or last-applied view pointed at one of them, that preference is
+                  cleared. Export JSON first if you need a backup; you can still use Undo for a few seconds after deletion.
+                </p>
+                <p className="mt-2 font-medium">Names to remove</p>
                 <p className="mt-1">
                   {selectedViewNames.slice(0, 5).join(", ")}
                   {selectedViewNames.length > 5 ? ` (+${selectedViewNames.length - 5} more)` : ""}
                 </p>
                 <div className="mt-2 flex flex-wrap items-center gap-2">
-                  <span>Type DELETE to enable confirm:</span>
+                  <span>Type the word DELETE to enable the final confirm (letter case is ignored):</span>
                   <Input
                     value={deleteConfirmText}
                     onChange={(e) => setDeleteConfirmText(e.target.value)}
@@ -1569,6 +1683,22 @@ export default function AuditPage() {
             >
               Optimizations ({presetCounts.optimizations})
             </Button>
+            <Button
+              type="button"
+              size="sm"
+              variant={presetFilter === "system" ? "default" : "outline"}
+              onClick={() => setPresetFilter("system")}
+            >
+              System checks ({presetCounts.system})
+            </Button>
+            <Button
+              type="button"
+              size="sm"
+              variant={presetFilter === "workflow" ? "default" : "outline"}
+              onClick={() => setPresetFilter("workflow")}
+            >
+              Workflow ({presetCounts.workflow})
+            </Button>
           </div>
           {loading ? (
             <div className="space-y-2 rounded-lg border border-border bg-card/60 p-3">
@@ -1581,9 +1711,53 @@ export default function AuditPage() {
               <div className="h-9 w-full rounded-lg skeleton-shimmer" />
             </div>
           ) : displayedEntries.length === 0 ? (
-            <p className="text-muted-foreground">No audit entries yet.</p>
+            <DashboardEmptyState
+              illustration="clipboard"
+              title="No audit entries for current filters"
+              description="Try clearing filters or expanding the date range to inspect older activity."
+            />
           ) : (
-            <div className="overflow-x-auto">
+            <>
+              <div className="md:hidden space-y-3">
+                {displayedEntries.map((e) => (
+                  <div key={e.id} className="rounded-lg border border-border bg-card p-3">
+                    <div className="flex items-center justify-between gap-2">
+                      <p className="text-xs text-muted-foreground" title={formatAbsoluteDateTime(e.createdAt)}>
+                        {formatRelativeTime(e.createdAt)}
+                      </p>
+                      <Button
+                        type="button"
+                        size="icon"
+                        variant={pinnedIds.has(e.id) ? "default" : "outline"}
+                        className={AUDIT_PIN_BUTTON_CLASS}
+                        onClick={() => togglePin(e.id)}
+                      >
+                        {pinnedIds.has(e.id) ? <BookmarkCheck className="h-3.5 w-3.5" /> : <Bookmark className="h-3.5 w-3.5" />}
+                      </Button>
+                    </div>
+                    <p className="mt-2 font-mono text-xs text-foreground break-all">{e.action}</p>
+                    <p className="mt-1 text-xs text-muted-foreground">
+                      {e.resourceType}
+                      {e.resourceId ? ` (${e.resourceId.slice(0, 8)}…)` : ""}
+                    </p>
+                    <p className="mt-2 text-xs text-foreground">
+                      {summarizeDetails(e.action, e.details).join(" · ")}
+                    </p>
+                    <p className="mt-2 text-xs text-muted-foreground">IP: {e.ip ?? "—"}</p>
+                    <div className="mt-2">
+                      <Button
+                        type="button"
+                        size="sm"
+                        variant="outline"
+                        onClick={() => void copyInvestigationNote(e)}
+                      >
+                        {copiedNoteId === e.id ? "Note copied" : "Copy note"}
+                      </Button>
+                    </div>
+                  </div>
+                ))}
+              </div>
+              <div className="hidden md:block overflow-x-auto">
               <table className="w-full min-w-[1100px] text-sm">
                 <thead>
                   <tr className="border-b border-border text-left">
@@ -1617,7 +1791,7 @@ export default function AuditPage() {
                               type="button"
                               size="icon"
                               variant={pinned ? "default" : "outline"}
-                              className="h-7 w-7"
+                              className={AUDIT_PIN_BUTTON_CLASS}
                               onClick={() => togglePin(e.id)}
                               title={pinned ? "Unpin row" : "Pin row"}
                             >
@@ -1703,6 +1877,7 @@ export default function AuditPage() {
                 </tbody>
               </table>
             </div>
+            </>
           )}
         </CardContent>
       </Card>

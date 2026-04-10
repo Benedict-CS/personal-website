@@ -14,13 +14,36 @@ import { GitHubStatsBlock } from "@/components/dev-blocks/github-stats-block";
 import { LeetCodeStatsBlock } from "@/components/dev-blocks/leetcode-stats-block";
 import { BlogMarkdownPre } from "@/components/markdown/blog-markdown-pre";
 import { BlogMarkdownImage } from "@/components/markdown/blog-markdown-image";
-import "highlight.js/styles/github.css";
+import { resolveMarkdownVideoEmbed } from "@/components/markdown/markdown-video-embed";
+import {
+  INLINE_CODE_CLASS,
+  MARKDOWN_LI_CLASS,
+  MARKDOWN_OL_CLASS,
+  MARKDOWN_TABLE_CLASS,
+  MARKDOWN_TABLE_SHELL_CLASS,
+  MARKDOWN_TD_CLASS,
+  MARKDOWN_TH_CLASS,
+  MARKDOWN_THEAD_CLASS,
+  MARKDOWN_TR_CLASS,
+  MARKDOWN_UL_CLASS,
+} from "@/components/markdown/markdown-component-classes";
 import "katex/dist/katex.min.css";
 
 interface MarkdownRendererProps {
   content: string;
   postId?: string; // Used to persist checkbox state
   editable?: boolean; // Whether checkbox can be toggled (saved to DB)
+}
+
+function extractCodeFilenameFromMeta(node: unknown): string | undefined {
+  const n = node as { data?: { meta?: unknown } } | undefined;
+  const meta = typeof n?.data?.meta === "string" ? n.data.meta : "";
+  if (!meta) return undefined;
+  const quoted = /(?:file|filename|title)=["']([^"']+)["']/i.exec(meta);
+  if (quoted?.[1]) return quoted[1];
+  const unquoted = /(?:file|filename|title)=([^\s]+)/i.exec(meta);
+  if (unquoted?.[1]) return unquoted[1];
+  return undefined;
 }
 
 export function MarkdownRenderer({ content, postId, editable = false }: MarkdownRendererProps) {
@@ -128,23 +151,24 @@ export function MarkdownRenderer({ content, postId, editable = false }: Markdown
       return <div className={className}>{children}</div>;
     },
     pre: ({ children, ...props }) => <BlogMarkdownPre {...props}>{children}</BlogMarkdownPre>,
-    code: ({ className, children, ...props }) => {
+    code: ({ className, children, node, ...props }) => {
       const match = /language-(\w+)/.exec(className || "");
       const isInline = !match;
 
       if (isInline) {
         return (
-          <code
-            className="bg-muted text-foreground px-1.5 py-0.5 rounded text-sm font-mono"
-            {...props}
-          >
+          <code className={INLINE_CODE_CLASS} {...props}>
             {children}
           </code>
         );
       }
 
       return (
-        <code className={className} {...props}>
+        <code
+          className={className}
+          data-filename={extractCodeFilenameFromMeta(node)}
+          {...props}
+        >
           {children}
         </code>
       );
@@ -167,27 +191,13 @@ export function MarkdownRenderer({ content, postId, editable = false }: Markdown
     // YouTube / Vimeo links: render as responsive embed; other links stay normal
     a: ({ href, children, ...props }) => {
       const url = typeof href === "string" ? href : "";
-      let embedUrl: string | null = null;
-      let title = "Video";
-      if (url.includes("youtube.com/watch?v=") || url.includes("youtu.be/")) {
-        const m = url.match(/(?:v=|\/)([a-zA-Z0-9_-]{11})(?:[?&]|$)/);
-        if (m) {
-          embedUrl = `https://www.youtube.com/embed/${m[1]}`;
-          title = "YouTube video";
-        }
-      } else if (url.includes("vimeo.com/") && !url.includes("/video/")) {
-        const m = url.match(/vimeo\.com\/(\d+)(?:\/|$)/);
-        if (m) {
-          embedUrl = `https://player.vimeo.com/video/${m[1]}`;
-          title = "Vimeo video";
-        }
-      }
-      if (embedUrl) {
+      const embed = resolveMarkdownVideoEmbed(url);
+      if (embed) {
         return (
           <div className="my-4 rounded-lg overflow-hidden bg-foreground" style={{ aspectRatio: "16/9", maxWidth: "100%" }}>
             <iframe
-              src={embedUrl}
-              title={title}
+              src={embed.embedUrl}
+              title={embed.title}
               allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share"
               allowFullScreen
               className="w-full h-full"
@@ -203,8 +213,8 @@ export function MarkdownRenderer({ content, postId, editable = false }: Markdown
     },
     table: ({ children, ...props }) => {
       return (
-        <div className="markdown-table-shell my-6 w-full overflow-x-auto rounded-lg border border-border/90 bg-card shadow-sm">
-          <table {...props} className="min-w-full border-collapse border-0 text-sm">
+        <div className={MARKDOWN_TABLE_SHELL_CLASS}>
+          <table {...props} className={MARKDOWN_TABLE_CLASS}>
             {children}
           </table>
         </div>
@@ -212,7 +222,7 @@ export function MarkdownRenderer({ content, postId, editable = false }: Markdown
     },
     thead: ({ children, ...props }) => {
       return (
-        <thead {...props} className="bg-muted">
+        <thead {...props} className={MARKDOWN_THEAD_CLASS}>
           {children}
         </thead>
       );
@@ -222,7 +232,7 @@ export function MarkdownRenderer({ content, postId, editable = false }: Markdown
     },
     tr: ({ children, ...props }) => {
       return (
-        <tr {...props} className="border-b border-border last:border-b-0">
+        <tr {...props} className={MARKDOWN_TR_CLASS}>
           {children}
         </tr>
       );
@@ -231,7 +241,7 @@ export function MarkdownRenderer({ content, postId, editable = false }: Markdown
       return (
         <th
           {...props}
-          className="border border-border bg-muted/90 px-4 py-2 text-left text-sm font-semibold text-foreground"
+          className={MARKDOWN_TH_CLASS}
         >
           {children}
         </th>
@@ -241,7 +251,7 @@ export function MarkdownRenderer({ content, postId, editable = false }: Markdown
       return (
         <ul
           {...props}
-          className="list-disc list-outside ml-6 mt-0.5 mb-2 space-y-1"
+          className={MARKDOWN_UL_CLASS}
         >
           {children}
         </ul>
@@ -251,7 +261,7 @@ export function MarkdownRenderer({ content, postId, editable = false }: Markdown
       return (
         <ol
           {...props}
-          className="list-decimal list-outside ml-6 mt-0.5 mb-2 space-y-1"
+          className={MARKDOWN_OL_CLASS}
         >
           {children}
         </ol>
@@ -261,7 +271,7 @@ export function MarkdownRenderer({ content, postId, editable = false }: Markdown
       return (
         <li
           {...props}
-          className="text-foreground/90"
+          className={MARKDOWN_LI_CLASS}
         >
           {children}
         </li>
@@ -322,7 +332,7 @@ export function MarkdownRenderer({ content, postId, editable = false }: Markdown
         return (
           <td
             {...props}
-            className="border border-border px-4 py-2 text-foreground/90"
+            className={MARKDOWN_TD_CLASS}
           >
             <div className="flex items-start gap-2">
               <input
@@ -342,7 +352,7 @@ export function MarkdownRenderer({ content, postId, editable = false }: Markdown
       return (
         <td
           {...props}
-          className="border border-border px-4 py-2 text-foreground/90"
+          className={MARKDOWN_TD_CLASS}
         >
           {children}
         </td>

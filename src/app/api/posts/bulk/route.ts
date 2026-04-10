@@ -1,6 +1,25 @@
 import { NextRequest, NextResponse } from "next/server";
+import { revalidatePath, revalidateTag } from "next/cache";
 import { requireSession } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
+import { withPublicationState } from "@/lib/post-publication-state";
+
+function revalidateBulkPostSurfaces(slugs: string[], tagSlugs: string[]) {
+  revalidatePath("/");
+  revalidatePath("/blog");
+  revalidatePath("/blog/archive");
+  revalidatePath("/feed.xml");
+  revalidatePath("/sitemap.xml");
+  revalidateTag("posts", "max");
+  for (const slug of slugs) {
+    revalidatePath(`/blog/${slug}`);
+    revalidateTag(`post:${slug}`, "max");
+  }
+  for (const tag of tagSlugs) {
+    revalidatePath(`/blog/tag/${tag}`);
+    revalidateTag(`tag:${tag}`, "max");
+  }
+}
 
 export async function POST(request: NextRequest) {
   const auth = await requireSession();
@@ -44,20 +63,50 @@ export async function POST(request: NextRequest) {
   }
 
   try {
+    const targetPosts = await prisma.post.findMany({
+      where: { id: { in: validIds } },
+      include: { tags: true },
+    });
+    if (targetPosts.length === 0) {
+      return NextResponse.json({ updated: 0, action });
+    }
+    const targetIds = targetPosts.map((post) => post.id);
+
     if (action === "delete") {
-      const result = await prisma.post.deleteMany({
-        where: { id: { in: validIds } },
+      const result = await prisma.$transaction(async (tx) => {
+        const deleted = await tx.post.deleteMany({
+          where: { id: { in: targetIds } },
+        });
+        return deleted.count;
       });
-      return NextResponse.json({ updated: result.count, action: "delete" });
+      revalidateBulkPostSurfaces(
+        targetPosts.map((post) => post.slug),
+        targetPosts.flatMap((post) => post.tags.map((tag) => tag.slug))
+      );
+      return NextResponse.json({ updated: result, action: "delete" });
     }
 
     if (action === "publish" || action === "unpublish") {
       const published = action === "publish";
-      const result = await prisma.post.updateMany({
-        where: { id: { in: validIds } },
-        data: { published },
+      const updatedPosts = await prisma.$transaction(async (tx) => {
+        await tx.post.updateMany({
+          where: { id: { in: targetIds } },
+          data: { published, publishedAt: published ? new Date() : null },
+        });
+        return tx.post.findMany({
+          where: { id: { in: targetIds } },
+          include: { tags: true },
+        });
       });
-      return NextResponse.json({ updated: result.count, action });
+      revalidateBulkPostSurfaces(
+        updatedPosts.map((post) => post.slug),
+        updatedPosts.flatMap((post) => post.tags.map((tag) => tag.slug))
+      );
+      return NextResponse.json({
+        updated: updatedPosts.length,
+        action,
+        posts: updatedPosts.map((post) => withPublicationState(post)),
+      });
     }
 
     if (action === "update") {
@@ -67,41 +116,56 @@ export async function POST(request: NextRequest) {
       if (category !== undefined) data.category = category === "" ? null : category;
       if (published !== undefined) data.published = published;
 
-      if (Object.keys(data).length > 0) {
-        await prisma.post.updateMany({
-          where: { id: { in: validIds } },
-          data,
+      const updatedPosts = await prisma.$transaction(async (tx) => {
+        if (Object.keys(data).length > 0) {
+          await tx.post.updateMany({
+            where: { id: { in: targetIds } },
+            data,
+          });
+        }
+
+        if (tagNames.length > 0) {
+          const tagSlugs = tagNames.map((name) => ({
+            name,
+            slug: name
+              .toLowerCase()
+              .replace(/[^\w\s-]/g, "")
+              .replace(/[\s_-]+/g, "-")
+              .replace(/^-+|-+$/g, ""),
+          }));
+          const tagIds: string[] = [];
+          for (const { name, slug } of tagSlugs) {
+            const tag = await tx.tag.upsert({
+              where: { slug },
+              create: { name, slug },
+              update: {},
+              select: { id: true },
+            });
+            tagIds.push(tag.id);
+          }
+          for (const postId of targetIds) {
+            await tx.post.update({
+              where: { id: postId },
+              data: { tags: { set: tagIds.map((tagId) => ({ id: tagId })) } },
+            });
+          }
+        }
+
+        return tx.post.findMany({
+          where: { id: { in: targetIds } },
+          include: { tags: true },
         });
-      }
+      });
 
-      if (tagNames.length > 0) {
-        const tagSlugs = tagNames.map((name) => ({
-          name,
-          slug: name
-            .toLowerCase()
-            .replace(/[^\w\s-]/g, "")
-            .replace(/[\s_-]+/g, "-")
-            .replace(/^-+|-+$/g, ""),
-        }));
-        const tagIds: string[] = [];
-        for (const { name, slug } of tagSlugs) {
-          const tag = await prisma.tag.upsert({
-            where: { slug },
-            create: { name, slug },
-            update: {},
-            select: { id: true },
-          });
-          tagIds.push(tag.id);
-        }
-        for (const id of validIds) {
-          await prisma.post.update({
-            where: { id },
-            data: { tags: { set: tagIds.map((tagId) => ({ id: tagId })) } },
-          });
-        }
-      }
-
-      return NextResponse.json({ updated: validIds.length, action: "update" });
+      revalidateBulkPostSurfaces(
+        updatedPosts.map((post) => post.slug),
+        updatedPosts.flatMap((post) => post.tags.map((tag) => tag.slug))
+      );
+      return NextResponse.json({
+        updated: updatedPosts.length,
+        action: "update",
+        posts: updatedPosts.map((post) => withPublicationState(post)),
+      });
     }
 
     return NextResponse.json(

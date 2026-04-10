@@ -1,3 +1,5 @@
+import { altTextFromImageFilename } from "@/lib/image-alt-from-filename";
+
 /**
  * Cross-tab / same-origin messaging so the Media library can push markdown
  * into an open post or custom-page editor (BroadcastChannel).
@@ -44,6 +46,6 @@ export function subscribeCmsMediaInsert(onInsert: (markdown: string) => void): (
 }
 
 export function markdownImageFromMediaFile(name: string, url: string): string {
-  const alt = name.replace(/\.[^.]+$/, "").replace(/[-_]+/g, " ").trim() || "Image";
+  const alt = altTextFromImageFilename(name);
   return `![${alt}](${url})`;
 }

@@ -30,6 +30,7 @@ export function BlogMarkdownImage({ src, alt, title, className, onOpenLightbox }
   const dims = dimensionsFromImageTitle(title);
   const aspectRatio =
     dims.w && dims.h && dims.w > 0 && dims.h > 0 ? dims.w / dims.h : undefined;
+  const fallbackAspectRatio = 16 / 10;
 
   const titleDims = dims.w && dims.h ? { w: dims.w, h: dims.h } : null;
   const { cleanSrc, srcSet } = parseBlogImageUrl(typeof src === "string" ? src : "", titleDims);
@@ -40,7 +41,7 @@ export function BlogMarkdownImage({ src, alt, title, className, onOpenLightbox }
       style={
         aspectRatio
           ? { aspectRatio: `${dims.w} / ${dims.h}` }
-          : { minHeight: "4.5rem" }
+          : { aspectRatio: `${fallbackAspectRatio}` }
       }
     >
       {!loaded && (
@@ -55,6 +56,8 @@ export function BlogMarkdownImage({ src, alt, title, className, onOpenLightbox }
         srcSet={srcSet || undefined}
         alt={alt ?? ""}
         title={dims.displayTitle ?? undefined}
+        width={dims.w}
+        height={dims.h}
         className={cn(
           "block h-full w-full max-w-full object-contain transition-opacity duration-300",
           aspectRatio ? "object-contain" : "h-auto",

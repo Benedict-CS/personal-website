@@ -16,6 +16,7 @@ jest.mock("@/lib/audit", () => ({
 
 jest.mock("@/lib/rate-limit", () => ({
   getClientIP: jest.fn(() => "9.9.9.9"),
+  checkRateLimitAsync: jest.fn().mockResolvedValue({ ok: true, remaining: 10 }),
 }));
 
 jest.mock("@/lib/prisma", () => ({

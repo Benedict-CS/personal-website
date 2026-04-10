@@ -40,6 +40,35 @@ const SHORTCUT_GROUPS: { title: string; rows: { keys: string; label: string }[] 
       { keys: "↵", label: "Copy URL of focused item" },
     ],
   },
+  {
+    title: "Audit log",
+    rows: [
+      { keys: "⌘ K", label: "Type “audit” in the command palette to open the audit page" },
+      { keys: "Bookmark", label: "Pin important rows (stored in this browser only)" },
+    ],
+  },
+  {
+    title: "Visual editor (markdown)",
+    rows: [
+      { keys: "⌘ Z  ·  Ctrl+Z", label: "Undo in the markdown field" },
+      { keys: "⌘ ⇧ Z  ·  Ctrl+Shift+Z", label: "Redo in the markdown field" },
+      { keys: "/  at line start", label: "Open slash menu to insert blocks" },
+    ],
+  },
+  {
+    title: "Visual page builder (blocks)",
+    rows: [
+      {
+        keys: "⌘ Z  ·  Ctrl+Z",
+        label: "Undo block, theme, or brand changes when focus is outside inputs and text areas",
+      },
+      { keys: "⌘ ⇧ Z  ·  Ctrl+Shift+Z", label: "Redo builder changes" },
+      {
+        keys: "Grip ⋮⋮",
+        label: "Focus the block drag handle, then use arrow keys to reorder sections (dnd-kit keyboard sorting)",
+      },
+    ],
+  },
 ];
 
 function isTypingTarget(target: EventTarget | null): boolean {

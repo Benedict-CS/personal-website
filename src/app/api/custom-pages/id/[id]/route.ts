@@ -4,6 +4,7 @@ import { prisma } from "@/lib/prisma";
 import { getScheduledPublishAt, setScheduledPublishAt } from "@/lib/custom-page-schedule";
 import { auditLog } from "@/lib/audit";
 import { revalidateSiteConfigRenderCache } from "@/lib/site-config";
+import { checkRateLimitAsync, getClientIP } from "@/lib/rate-limit";
 
 /** PATCH: update custom page (dashboard only) */
 export async function PATCH(
@@ -12,6 +13,21 @@ export async function PATCH(
 ) {
   const auth = await requireSession();
   if ("unauthorized" in auth) return auth.unauthorized;
+  const ip = getClientIP(request);
+  const { ok: allowed, remaining } = await checkRateLimitAsync(ip, "custom_pages_write");
+  if (!allowed) {
+    return NextResponse.json(
+      { error: "Too many custom page updates. Please try again in a minute." },
+      {
+        status: 429,
+        headers: {
+          "X-RateLimit-Remaining": "0",
+          "Retry-After": "60",
+          "Cache-Control": "no-store, private",
+        },
+      }
+    );
+  }
   const { id } = await params;
   const body = await request.json();
   const before = await prisma.customPage.findUnique({
@@ -77,7 +93,9 @@ export async function PATCH(
     ip: request.headers.get("x-forwarded-for") ?? null,
   });
   revalidateSiteConfigRenderCache();
-  return NextResponse.json(page);
+  return NextResponse.json(page, {
+    headers: { "X-RateLimit-Remaining": String(remaining) },
+  });
 }
 
 /** DELETE: remove custom page (dashboard only) */
@@ -87,6 +105,21 @@ export async function DELETE(
 ) {
   const auth = await requireSession();
   if ("unauthorized" in auth) return auth.unauthorized;
+  const ip = getClientIP(_request);
+  const { ok: allowed, remaining } = await checkRateLimitAsync(ip, "custom_pages_write");
+  if (!allowed) {
+    return NextResponse.json(
+      { error: "Too many custom page updates. Please try again in a minute." },
+      {
+        status: 429,
+        headers: {
+          "X-RateLimit-Remaining": "0",
+          "Retry-After": "60",
+          "Cache-Control": "no-store, private",
+        },
+      }
+    );
+  }
   const { id } = await params;
   await prisma.customPage.delete({ where: { id } });
   await auditLog({
@@ -97,5 +130,8 @@ export async function DELETE(
     ip: _request.headers.get("x-forwarded-for") ?? null,
   });
   revalidateSiteConfigRenderCache();
-  return new NextResponse(null, { status: 204 });
+  return new NextResponse(null, {
+    status: 204,
+    headers: { "X-RateLimit-Remaining": String(remaining) },
+  });
 }

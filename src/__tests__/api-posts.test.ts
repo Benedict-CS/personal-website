@@ -25,6 +25,7 @@ jest.mock("next-auth", () => ({
 }));
 jest.mock("next/cache", () => ({
   revalidatePath: jest.fn(),
+  revalidateTag: jest.fn(),
 }));
 jest.mock("@/lib/audit", () => ({
   auditLog: jest.fn(),
@@ -79,6 +80,7 @@ describe("GET /api/posts", () => {
     expect(data).toHaveLength(1);
     expect(data[0].title).toBe("First");
     expect(data[0].tags).toHaveLength(1);
+    expect(data[0].publicationState).toBe("published");
   });
 
   it("filters by published when query param set", async () => {
@@ -181,5 +183,6 @@ describe("POST /api/posts", () => {
     const data = await res.json();
     expect(data.title).toBe("New Post");
     expect(data.slug).toBe("new-post");
+    expect(data.publicationState).toBe("draft");
   });
 });

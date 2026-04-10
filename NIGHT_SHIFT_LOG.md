@@ -4,6 +4,123 @@ Uninterrupted five-loop session **2026-04-09**.
 
 ---
 
+## Eleventh pass (same day) — five-loop mega-task
+
+### Loop 1 — Deep UI/UX polish
+
+- **`src/components/dashboard/dashboard-ui.tsx`**
+  - Added dashboard-wide style primitives:
+    - **`dashboardSubtleActionButtonClassName()`**
+    - **`dashboardSectionEyebrowClassName()`**
+- Applied unified typography/action classes in:
+  - **`src/app/dashboard/content/page.tsx`** (section heading consistency)
+  - **`src/app/dashboard/overview/page.tsx`** (header action button rhythm)
+  - **`src/app/dashboard/analytics/page.tsx`** (quick-range compact actions)
+
+### Loop 2 — Advanced CMS feature injection
+
+- **`src/components/editor/immersive-editor.tsx`**
+  - Added immersive-editor **command palette** with **`Cmd/Ctrl + K`**.
+  - Added command actions:
+    - Save changes
+    - Open live preview in a new tab
+    - Toggle custom-page builder/raw mode
+    - Toggle writing-focus mode (raw custom-page mode)
+  - Added keyboard close behavior (`Esc`) and modal backdrop interactions.
+
+### Loop 3 — Refactoring & optimization
+
+- **`src/components/markdown/markdown-video-embed.ts`** (new)
+  - Shared YouTube/Vimeo embed resolver to remove duplicated parsing logic.
+- Refactored duplicate embed parsing in:
+  - **`src/components/markdown-renderer.tsx`**
+  - **`src/components/markdown/markdown-components-server.tsx`**
+- **`src/components/editor/immersive-editor.tsx`**
+  - Deferred heavy raw-markdown stats computation with **`useDeferredValue`** + **`useMemo`** to reduce keystroke-path rendering pressure.
+
+### Loop 4 — Developer/geek integration
+
+- **`src/app/api/integrations/github/route.ts`**
+  - Added **recent public activity** (`events/public`) to API payload.
+- **`src/components/dev-blocks/github-stats-block.tsx`**
+  - Added “Recent activity” panel in overview variant.
+- **`src/__tests__/api-github-integration-route.test.ts`**
+  - Extended mocks/assertions to validate recent-activity mapping.
+
+### Loop 5 — Infrastructure & health fortification
+
+- **`src/app/api/integrations/github/route.ts`**
+  - Added **`safeNumber`** normalization to avoid NaN propagation from upstream API data.
+  - Applied safe numeric parsing to stars, forks, followers, and public-repo counts.
+- Continued route-level resilience posture with guarded JSON parsing and catch-all 502 fallback.
+- Documented this full run in `NIGHT_SHIFT_LOG.md`.
+
+### Verification (eleventh pass)
+
+- `npm run lint` (passes; one unrelated pre-existing warning in `security-txt-route.test.ts`)
+- `npm run test -- editor-route.test.ts` (3/3 passing)
+- `npm run test -- api-github-integration-route.test.ts` (2/2 passing)
+
+---
+
+## Tenth pass (same day) — five-loop mega-task
+
+### Loop 1 — Deep dashboard UI/UX polish (light premium)
+
+- **`src/components/dashboard/dashboard-ui.tsx`** — added shared surface/action tokens:
+  - **`dashboardCardClassName()`**
+  - **`dashboardInteractiveCardClassName()`**
+  - **`dashboardPrimaryActionButtonClassName()`**
+  - **`dashboardSecondaryActionButtonClassName()`**
+- Applied consistent card styling to key dashboard pages:
+  - **`src/app/dashboard/content/page.tsx`**
+  - **`src/app/dashboard/overview/page.tsx`**
+  - **`src/app/dashboard/posts/operations/operations-client.tsx`**
+  - **`src/app/dashboard/tags/page.tsx`**
+
+### Loop 2 — CMS feature injection
+
+- **`src/components/editor/immersive-editor.tsx`**
+  - Added global **`Cmd/Ctrl + S`** save shortcut in immersive editor.
+  - Added contextual save shortcut hint (`DashboardKbd`) in the floating action bar.
+  - Added live raw-markdown writing stats for custom pages (**words / estimated read minutes / headings**).
+
+### Loop 3 — Refactor + typing-path optimization
+
+- **`src/components/markdown/markdown-component-classes.ts`** (new):
+  - Extracted repeated markdown renderer class strings into reusable constants.
+- Refactored duplicate style strings in:
+  - **`src/components/markdown-renderer.tsx`**
+  - **`src/components/markdown/markdown-components-server.tsx`**
+- **`src/components/editor/immersive-editor.tsx`**
+  - Wrapped `saveAndPublish` in **`useCallback`** to stabilize shortcut effect deps and reduce avoidable re-subscriptions.
+
+### Loop 4 — Developer/geek integration
+
+- Enhanced GitHub integration route + UI:
+  - **`src/app/api/integrations/github/route.ts`**
+    - Added derived metrics: **`totalStars`**, **`totalForks`**, **`topLanguages`**.
+  - **`src/components/dev-blocks/github-stats-block.tsx`**
+    - Added overview metric tiles and language distribution line for dev-profile cards.
+- Added API tests:
+  - **`src/__tests__/api-github-integration-route.test.ts`**
+    - Validates bad username handling.
+    - Validates derived metrics transformation from mocked GitHub responses.
+
+### Loop 5 — Infrastructure & health fortification
+
+- Added dedicated editor route error boundary:
+  - **`src/app/editor/error.tsx`**
+  - Ensures `/editor/*` failures fall back to recoverable UI with retry and safe navigation links.
+- This log section documents all changes for this uninterrupted run.
+
+### Verification (tenth pass)
+
+- `npm run lint` (passes; one unrelated pre-existing warning in `security-txt-route.test.ts`)
+- `npm run test -- api-github-integration-route.test.ts` (2/2 tests passing)
+
+---
+
 ## Ninth pass (same day) — five-loop mega-task
 
 ### Loop 1 — Public nav light polish

@@ -4,6 +4,32 @@ import { prisma } from "@/lib/prisma";
 import type { Prisma } from "@prisma/client";
 import { getExcludedIPsForNotIn, getExcludedIPsSet, getExcludedPrefixes, filterByExcludedIP } from "@/lib/analytics-excluded-ips";
 import { prismaWhereExcludeLocalAndUnknownIp, prismaWhereExcludeNoise } from "@/lib/analytics-noise";
+import { buildDailyAnalyticsTrendWithKernel } from "@/lib/analytics-trend";
+import { buildConversionAttributionBySlug, buildTopEngagedContent } from "@/lib/analytics-engagement";
+
+type ReferrerGroup = "Direct / Unknown" | "Search Engines" | "Social Media" | "GitHub" | "Developer Communities" | "Other";
+
+function categorizeReferrer(referrer: string | null): ReferrerGroup {
+  if (!referrer) return "Direct / Unknown";
+  const value = referrer.toLowerCase();
+  if (value.includes("google.") || value.includes("bing.") || value.includes("duckduckgo.") || value.includes("yahoo.")) {
+    return "Search Engines";
+  }
+  if (
+    value.includes("linkedin.") ||
+    value.includes("x.com") ||
+    value.includes("twitter.com") ||
+    value.includes("facebook.") ||
+    value.includes("instagram.")
+  ) {
+    return "Social Media";
+  }
+  if (value.includes("github.com")) return "GitHub";
+  if (value.includes("dev.to") || value.includes("hashnode.") || value.includes("reddit.")) {
+    return "Developer Communities";
+  }
+  return "Other";
+}
 
 export async function GET(request: NextRequest) {
   const auth = await requireSession();
@@ -80,11 +106,46 @@ export async function GET(request: NextRequest) {
     cvParts.push(prismaWhereExcludeLocalAndUnknownIp());
   }
   const cvWhere: Prisma.PageViewWhereInput = { AND: cvParts };
+  const eventWhere: Prisma.AuditLogWhereInput = {
+    ...(Object.keys(dateFilter).length ? { createdAt: dateFilter } : {}),
+    ...(filterIP ? { ip: filterIP } : {}),
+    action: { in: ["analytics.cv_download", "analytics.lead_generated"] },
+  };
+  const trendStart = fromDate ?? new Date(now.getTime() - 29 * 24 * 60 * 60 * 1000);
+  const trendEnd = toDate ?? now;
+  const trendDateFilter = { gte: trendStart, lte: trendEnd };
+  const trendWhere: Prisma.PageViewWhereInput = { ...where, createdAt: trendDateFilter };
+  const trendEventWhere: Prisma.AuditLogWhereInput = {
+    ...eventWhere,
+    createdAt: trendDateFilter,
+  };
 
   try {
-    const [total, cvDownloads, byPath, byIP, byCountry, byReferrer, withDuration, recent, topBlogPosts, accessBlockTotal, accessBlockedRecent] =
-      await Promise.all([
+    const [
+      total,
+      uniqueIpRows,
+      cvDownloads,
+      byPath,
+      byIP,
+      byCountry,
+      byReferrer,
+      withDuration,
+      recent,
+      topBlogPosts,
+      accessBlockTotal,
+      accessBlockedRecent,
+      conversionEvents,
+      conversionAttributionEvents,
+      trendPageViews,
+      trendEvents,
+      blogPathViews,
+    ] = await Promise.all([
       prisma.pageView.count({ where }),
+      prisma.pageView.groupBy({
+        by: ["ip"],
+        where,
+        _count: { ip: true },
+      }),
       prisma.pageView.count({ where: cvWhere }),
       prisma.pageView.groupBy({
         by: ["path"],
@@ -148,8 +209,64 @@ export async function GET(request: NextRequest) {
         take: 100,
         select: { ip: true, path: true, userAgent: true, createdAt: true },
       }),
+      prisma.auditLog.groupBy({
+        by: ["action"],
+        where: eventWhere,
+        _count: { action: true },
+      }),
+      prisma.auditLog.findMany({
+        where: eventWhere,
+        select: {
+          action: true,
+          details: true,
+        },
+        orderBy: { createdAt: "desc" },
+        take: 5000,
+      }),
+      prisma.pageView.findMany({
+        where: trendWhere,
+        select: { createdAt: true },
+        orderBy: { createdAt: "asc" },
+        take: 10000,
+      }),
+      prisma.auditLog.findMany({
+        where: trendEventWhere,
+        select: { createdAt: true, action: true },
+        orderBy: { createdAt: "asc" },
+        take: 10000,
+      }),
+      prisma.pageView.groupBy({
+        by: ["path"],
+        where: {
+          ...where,
+          path: { startsWith: "/blog/" },
+        },
+        _count: { path: true },
+        _avg: { durationSeconds: true },
+        orderBy: { _count: { path: "desc" } },
+        take: 200,
+      }),
     ]);
 
+    const uniqueVisitors = uniqueIpRows.length;
+    const leadGenerated = conversionEvents.find((entry) => entry.action === "analytics.lead_generated")?._count.action ?? 0;
+    const cvDownloadEvents = conversionEvents.find((entry) => entry.action === "analytics.cv_download")?._count.action ?? 0;
+    const effectiveCvDownloads = Math.max(cvDownloads, cvDownloadEvents);
+    const referrerGroups = byReferrer.reduce<Record<ReferrerGroup, number>>(
+      (acc, row) => {
+        const bucket = categorizeReferrer(row.referrer);
+        acc[bucket] = (acc[bucket] ?? 0) + row._count.referrer;
+        return acc;
+      },
+      {
+        "Direct / Unknown": 0,
+        "Search Engines": 0,
+        "Social Media": 0,
+        GitHub: 0,
+        "Developer Communities": 0,
+        Other: 0,
+      }
+    );
     const byIPFiltered = filterByExcludedIP(
       byIP.map((p) => ({
         ip: p.ip,
@@ -158,6 +275,46 @@ export async function GET(request: NextRequest) {
       }))
     );
     const recentFiltered = filterByExcludedIP(recent);
+    const trendByDay = await buildDailyAnalyticsTrendWithKernel({
+      start: trendStart.toISOString().slice(0, 10),
+      end: trendEnd.toISOString().slice(0, 10),
+      pageViews: trendPageViews,
+      events: trendEvents.map((event) => ({ createdAt: event.createdAt, action: event.action })),
+    });
+    const blogSlugs = Array.from(
+      new Set(
+        blogPathViews
+          .map((row) => row.path.replace("/blog/", "").split("/")[0]?.trim() ?? "")
+          .filter((slug) => slug.length > 0)
+      )
+    );
+    const postRows = await prisma.post.findMany({
+      where: { slug: { in: blogSlugs } },
+      select: { slug: true, title: true },
+    });
+    const postMap = new Map(postRows.map((row) => [row.slug, { title: row.title }]));
+    const conversionBySlug = buildConversionAttributionBySlug(
+      conversionAttributionEvents
+        .filter(
+          (event): event is { action: "analytics.cv_download" | "analytics.lead_generated"; details: string | null } =>
+            event.action === "analytics.cv_download" || event.action === "analytics.lead_generated"
+        )
+        .map((event) => ({ action: event.action, details: event.details }))
+    );
+    const topEngagedContent = buildTopEngagedContent({
+      paths: blogPathViews.map((row) => {
+        const slug = row.path.replace("/blog/", "").split("/")[0]?.trim() ?? "";
+        const conversion = conversionBySlug.get(slug) ?? { cvDownloads: 0, leads: 0 };
+        return {
+          path: row.path,
+          views: row._count.path,
+          avgDurationSeconds: Math.round((row._avg.durationSeconds ?? 0) * 10) / 10,
+          cvDownloads: conversion.cvDownloads,
+          leads: conversion.leads,
+        };
+      }),
+      postsBySlug: postMap,
+    });
 
     return NextResponse.json({
       total,
@@ -173,16 +330,28 @@ export async function GET(request: NextRequest) {
       byReferrer: byReferrer
         .filter((r) => r.referrer)
         .map((r) => ({ referrer: r.referrer!, count: r._count.referrer })),
+      byReferrerGroup: Object.entries(referrerGroups)
+        .filter(([, count]) => count > 0)
+        .map(([group, count]) => ({ group, count })),
       avgDurationSeconds: withDuration._count.durationSeconds
         ? Math.round((withDuration._avg.durationSeconds ?? 0) * 10) / 10
         : null,
       durationSampleCount: withDuration._count.durationSeconds,
-      cvDownloads,
+      cvDownloads: effectiveCvDownloads,
+      leadGenerated,
+      uniqueVisitors,
+      conversionFunnel: {
+        visitors: uniqueVisitors,
+        cvDownloads: effectiveCvDownloads,
+        leads: leadGenerated,
+      },
+      trendByDay,
       topBlogPosts: topBlogPosts.map((p) => ({
         title: p.title,
         slug: p.slug,
         viewCount: p.viewCount,
       })),
+      topEngagedContent,
       recent: recentFiltered.map((r) => ({
         path: r.path,
         ip: r.ip,

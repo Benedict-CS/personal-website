@@ -3,6 +3,7 @@
 import { useState, useEffect, use, useRef, useMemo } from "react";
 import { useCmsFormSaveShortcut } from "@/hooks/use-cms-form-save-shortcut";
 import { useCmsCrudShortcuts } from "@/hooks/use-cms-crud-shortcuts";
+import { useSyncedPresPairScroll } from "@/hooks/use-synced-pres-pair-scroll";
 import { useRouter } from "next/navigation";
 import { motion, useReducedMotion } from "framer-motion";
 import {
@@ -37,6 +38,7 @@ import {
 } from "@/components/ui/card";
 import { Skeleton } from "@/components/ui/skeleton";
 import { ConfirmDialog } from "@/components/ui/confirm-dialog";
+import { TooltipHint } from "@/components/ui/tooltip-hint";
 import { InsertMediaModal } from "@/components/insert-media-modal";
 import { MarkdownTemplateInserter } from "@/components/markdown-template-inserter";
 import { useBreadcrumb } from "@/contexts/breadcrumb-context";
@@ -54,9 +56,10 @@ import { normalizeMarkdownWhitespace } from "@/lib/cms-normalize-markdown";
 import { slugifyPostTitle } from "@/lib/cms-slug-from-title";
 import { DashboardGlobalActionBar } from "@/components/dashboard/dashboard-global-action-bar";
 import { PostDraftMarkdownStats } from "@/components/dashboard/post-draft-markdown-stats";
-import { ContentReadabilityScore } from "@/components/dashboard/content-readability-score";
-import { SeoPreviewCard } from "@/components/dashboard/seo-preview-card";
+import { ContentIntelligenceTabs } from "@/components/dashboard/content-intelligence-tabs";
+import { RelatedPostsPanel } from "@/components/dashboard/related-posts-panel";
 import { AutoTagSuggestions } from "@/components/dashboard/auto-tag-suggestions";
+import { ContentSummaryPanel } from "@/components/dashboard/content-summary-panel";
 import { SocialShareCardControls } from "@/components/dashboard/social-share-card-controls";
 import { PostBodyPreview } from "@/components/dashboard/post-body-preview";
 import { useSplitEditorScroll } from "@/components/dashboard/use-split-editor-scroll";
@@ -64,12 +67,20 @@ import { computeLineDiff, formatDiffSummary } from "@/lib/markdown-diff";
 import { exportPostAsMarkdown, exportFilename, downloadMarkdownFile } from "@/lib/post-export";
 import { useToast } from "@/contexts/toast-context";
 import { getContentMetrics } from "@/lib/content-metrics";
+import { buildPostDiffSemanticHints } from "@/lib/post-version-diff";
+import { buildTranslatedDraftScaffold, type SupportedTranslationLocale } from "@/lib/content-translator";
 
 // Dynamic import MDEditor to avoid SSR issues
 const MDEditor = dynamic(
   () => import("@uiw/react-md-editor"),
   { ssr: false }
 );
+
+const TRANSLATION_LOCALES: Array<{ value: SupportedTranslationLocale; label: string }> = [
+  { value: "zh-TW", label: "Traditional Chinese (zh-TW)" },
+  { value: "ja", label: "Japanese (ja)" },
+  { value: "es", label: "Spanish (es)" },
+];
 
 export default function EditPostPage({
   params,
@@ -111,6 +122,7 @@ export default function EditPostPage({
   const [isLoadingVersions, setIsLoadingVersions] = useState(false);
   const [isRestoring, setIsRestoring] = useState<string | null>(null);
   const [selectedVersionForDiffId, setSelectedVersionForDiffId] = useState<string | null>(null);
+  const [versionDiffLayout, setVersionDiffLayout] = useState<"unified" | "split">("unified");
   const [stayOnPageAfterSave, setStayOnPageAfterSave] = useState(true);
   const [savedMessage, setSavedMessage] = useState<string | null>(null);
   const [focusMode, setFocusMode] = useState(false);
@@ -135,10 +147,18 @@ export default function EditPostPage({
   >([]);
   const [scannedCandidateCount, setScannedCandidateCount] = useState(0);
   const [isLoadingLinkSuggestions, setIsLoadingLinkSuggestions] = useState(false);
+  const [translationLocale, setTranslationLocale] = useState<SupportedTranslationLocale>("zh-TW");
+  const [isCreatingTranslatedDraft, setIsCreatingTranslatedDraft] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
   const editorRef = useRef<{ textarea?: HTMLTextAreaElement } | null>(null);
   const focusHeartbeatTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const { leftWrapRef, rightRef } = useSplitEditorScroll(splitEditor, content.length);
+  const {
+    leftRef: versionDiffSplitLeftRef,
+    rightRef: versionDiffSplitRightRef,
+    onLeftScroll: onVersionDiffSplitLeftScroll,
+    onRightScroll: onVersionDiffSplitRightScroll,
+  } = useSyncedPresPairScroll();
   const cursorPosRef = useRef<{ start: number; end: number } | null>(null);
   const formRef = useRef<HTMLFormElement>(null);
   const initialRef = useRef<{
@@ -165,6 +185,10 @@ export default function EditPostPage({
     () => versions.find((version) => version.id === selectedVersionForDiffId) ?? null,
     [selectedVersionForDiffId, versions]
   );
+
+  useEffect(() => {
+    if (!selectedVersionForDiffId) setVersionDiffLayout("unified");
+  }, [selectedVersionForDiffId]);
   const selectedVersionDiff = useMemo(() => {
     if (!selectedVersionForDiff) return null;
     const meta = {
@@ -173,8 +197,19 @@ export default function EditPostPage({
       publishedChanged: published !== selectedVersionForDiff.published,
     };
     const lineDiff = computeLineDiff(selectedVersionForDiff.content, content);
-    return { meta, lineDiff, summary: formatDiffSummary(lineDiff) };
+    const semanticHints = buildPostDiffSemanticHints(lineDiff);
+    return { meta, lineDiff, summary: formatDiffSummary(lineDiff), semanticHints };
   }, [content, published, selectedVersionForDiff, slug, title]);
+  const translationPreview = useMemo(
+    () =>
+      buildTranslatedDraftScaffold({
+        title,
+        description,
+        content,
+        locale: translationLocale,
+      }),
+    [content, description, title, translationLocale]
+  );
 
   const splitChromeOpacity =
     (splitEditor && editorChromeDim) || (focusMode && focusHeartbeatDim) ? (reduceMotion ? 0.72 : 0.42) : 1;
@@ -984,6 +1019,29 @@ export default function EditPostPage({
     }
   };
 
+  const createTranslatedDraft = async () => {
+    setIsCreatingTranslatedDraft(true);
+    try {
+      const response = await fetch(`/api/posts/${id}/translate-draft`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ locale: translationLocale }),
+      });
+      const data = await response.json().catch(() => ({}));
+      if (!response.ok) {
+        throw new Error(typeof data?.error === "string" ? data.error : "Failed to create translated draft");
+      }
+      toast(`Translated draft created (${translationLocale}).`, "success");
+      if (typeof data?.id === "string") {
+        router.push(`/dashboard/posts/${data.id}`);
+      }
+    } catch (error) {
+      toast(error instanceof Error ? error.message : "Failed to create translated draft", "error");
+    } finally {
+      setIsCreatingTranslatedDraft(false);
+    }
+  };
+
   const insertInternalLinkSuggestion = (suggestion: {
     slug: string;
     title: string;
@@ -1048,7 +1106,12 @@ export default function EditPostPage({
         <Card>
           <CardHeader>
                 <div className="flex flex-wrap items-center justify-between gap-2">
-              <CardTitle>Edit Post</CardTitle>
+              <div className="min-w-0 space-y-0.5">
+                <CardTitle>Edit Post</CardTitle>
+                <p className="text-xs tabular-nums text-muted-foreground" aria-live="polite">
+                  {contentStats.words.toLocaleString()} words · ~{contentStats.readingLabel}
+                </p>
+              </div>
               <div className="flex items-center gap-2">
                 <Button
                   type="button"
@@ -1286,6 +1349,12 @@ export default function EditPostPage({
                     <p className="text-xs text-muted-foreground">
                       Optional, 1-2 sentences recommended (max 200 characters). Shown in Blog list cards
                     </p>
+                    <ContentSummaryPanel
+                      title={title}
+                      content={content}
+                      currentDescription={description}
+                      onUseDescription={(text) => { markDirty(); setDescription(text); }}
+                    />
                   </div>
 
                   <div className="space-y-2">
@@ -1499,8 +1568,51 @@ export default function EditPostPage({
                     }}
                   />
                   <PostDraftMarkdownStats markdown={content} className="mt-2" />
-                  <ContentReadabilityScore markdown={content} className="mt-2" />
-                  <SeoPreviewCard title={title} slug={slug} description={description} content={content} className="mt-2" />
+                  <ContentIntelligenceTabs title={title} slug={slug} description={description} content={content} tags={tags} className="mt-2" />
+                  <RelatedPostsPanel
+                    currentPostId={id}
+                    title={title}
+                    tags={tags}
+                    content={content}
+                    onInsertLink={(md) => { markDirty(); insertImageBlock(md); toast("Related post link inserted.", "success"); }}
+                    className="mt-2"
+                  />
+                  <Card className="mt-2">
+                    <CardHeader className="pb-2">
+                      <CardTitle className="text-sm">Bilingual draft translator</CardTitle>
+                    </CardHeader>
+                    <CardContent className="space-y-3">
+                      <p className="text-xs text-muted-foreground">
+                        Generate a translated draft scaffold and jump directly into editing.
+                      </p>
+                      <select
+                        value={translationLocale}
+                        onChange={(event) => setTranslationLocale(event.target.value as SupportedTranslationLocale)}
+                        className="h-9 w-full rounded-lg border border-input bg-background px-3 text-sm text-foreground shadow-[var(--elevation-1)]"
+                      >
+                        {TRANSLATION_LOCALES.map((locale) => (
+                          <option key={locale.value} value={locale.value}>
+                            {locale.label}
+                          </option>
+                        ))}
+                      </select>
+                      <div className="rounded-md border border-border bg-muted/20 p-2 text-xs">
+                        <p className="font-medium text-foreground">{translationPreview.translatedTitle}</p>
+                        <p className="mt-1 text-muted-foreground">
+                          {translationPreview.translatedDescription || "No translated description preview."}
+                        </p>
+                      </div>
+                      <Button
+                        type="button"
+                        variant="outline"
+                        className="w-full"
+                        disabled={isCreatingTranslatedDraft || !title.trim() || !slug.trim() || !content.trim()}
+                        onClick={() => void createTranslatedDraft()}
+                      >
+                        {isCreatingTranslatedDraft ? "Creating translated draft..." : "Create translated draft"}
+                      </Button>
+                    </CardContent>
+                  </Card>
                   <Card className="mt-2">
                     <CardHeader className="pb-2">
                       <CardTitle className="text-sm">Smart internal linker</CardTitle>
@@ -1792,26 +1904,35 @@ export default function EditPostPage({
                                     {new Date(version.createdAt).toLocaleString("en-US")}
                                   </div>
                                 </div>
-                                <Button
-                                  variant="outline"
-                                  size="sm"
-                                  onClick={() =>
-                                    setSelectedVersionForDiffId((current) =>
-                                      current === version.id ? null : version.id
-                                    )
-                                  }
-                                  className="flex items-center gap-2"
+                                <TooltipHint
+                                  label="Open a line-level visual diff between this snapshot and your current draft."
+                                  side="top"
                                 >
-                                  <GitCompareArrows className="h-4 w-4" />
-                                  {selectedVersionForDiffId === version.id ? "Hide diff" : "Compare"}
-                                </Button>
-                                <Button
-                                  variant="outline"
-                                  size="sm"
-                                  onClick={() => setRestoreConfirmId(version.id)}
-                                  disabled={isRestoring === version.id}
-                                  className="flex items-center gap-2"
+                                  <Button
+                                    variant="outline"
+                                    size="sm"
+                                    onClick={() =>
+                                      setSelectedVersionForDiffId((current) =>
+                                        current === version.id ? null : version.id
+                                      )
+                                    }
+                                    className="flex items-center gap-2"
+                                  >
+                                    <GitCompareArrows className="h-4 w-4" />
+                                    {selectedVersionForDiffId === version.id ? "Hide diff" : "Compare"}
+                                  </Button>
+                                </TooltipHint>
+                                <TooltipHint
+                                  label="Restore this snapshot as the working draft. Current content is preserved in history first."
+                                  side="top"
                                 >
+                                  <Button
+                                    variant="outline"
+                                    size="sm"
+                                    onClick={() => setRestoreConfirmId(version.id)}
+                                    disabled={isRestoring === version.id}
+                                    className="flex items-center gap-2"
+                                  >
                                   {isRestoring === version.id ? (
                                     <>
                                       <Loader2 className="h-4 w-4 animate-spin" />
@@ -1823,7 +1944,8 @@ export default function EditPostPage({
                                       Restore to this version
                                     </>
                                   )}
-                                </Button>
+                                  </Button>
+                                </TooltipHint>
                               </div>
                               <div className="space-y-2 text-sm">
                                 <div>
@@ -1831,7 +1953,7 @@ export default function EditPostPage({
                                   <span className="text-foreground">{version.title}</span>
                                 </div>
                                 <div>
-                                  <span className="font-medium text-foreground/90">Slug：</span>
+                                  <span className="font-medium text-foreground/90">Slug: </span>
                                   <span className="text-foreground">{version.slug}</span>
                                 </div>
                                 {versionTags.length > 0 && (
@@ -1863,7 +1985,7 @@ export default function EditPostPage({
                     )}
                     {selectedVersionDiff ? (
                       <div className="mt-4 rounded-lg border border-border bg-muted/20 p-3">
-                        <div className="flex items-center justify-between gap-3">
+                        <div className="flex flex-wrap items-center justify-between gap-3">
                           <div>
                             <p className="text-sm font-semibold text-foreground flex items-center gap-2">
                               <GitCompareArrows className="h-4 w-4" />
@@ -1873,16 +1995,36 @@ export default function EditPostPage({
                               {selectedVersionDiff.summary}
                             </p>
                           </div>
-                          <Button
-                            type="button"
-                            variant="ghost"
-                            size="sm"
-                            onClick={() => setSelectedVersionForDiffId(null)}
-                            className="h-7 w-7 p-0 shrink-0"
-                            title="Close diff view"
-                          >
-                            <X className="h-4 w-4" />
-                          </Button>
+                          <div className="flex items-center gap-1">
+                            <Button
+                              type="button"
+                              variant={versionDiffLayout === "unified" ? "secondary" : "ghost"}
+                              size="sm"
+                              className="h-8 text-xs"
+                              onClick={() => setVersionDiffLayout("unified")}
+                            >
+                              Unified
+                            </Button>
+                            <Button
+                              type="button"
+                              variant={versionDiffLayout === "split" ? "secondary" : "ghost"}
+                              size="sm"
+                              className="h-8 text-xs"
+                              onClick={() => setVersionDiffLayout("split")}
+                            >
+                              Split
+                            </Button>
+                            <Button
+                              type="button"
+                              variant="ghost"
+                              size="sm"
+                              onClick={() => setSelectedVersionForDiffId(null)}
+                              className="h-7 w-7 p-0 shrink-0"
+                              title="Close diff view"
+                            >
+                              <X className="h-4 w-4" />
+                            </Button>
+                          </div>
                         </div>
                         <div className="mt-2 grid gap-2 sm:grid-cols-3">
                           {[
@@ -1904,57 +2046,107 @@ export default function EditPostPage({
                             </div>
                           ))}
                         </div>
-                        <div className="mt-3 max-h-[28rem] overflow-auto rounded-md border border-border bg-card">
-                          <div className="min-w-[480px]">
-                            {selectedVersionDiff.lineDiff.lines.slice(0, 200).map((line, idx) => {
-                              const bgClass =
-                                line.kind === "add"
-                                  ? "bg-emerald-50"
-                                  : line.kind === "remove"
-                                    ? "bg-rose-50"
-                                    : "";
-                              const textClass =
-                                line.kind === "add"
-                                  ? "text-emerald-800"
-                                  : line.kind === "remove"
-                                    ? "text-rose-800"
-                                    : "text-muted-foreground/70";
-                              const prefix =
-                                line.kind === "add"
-                                  ? "+"
-                                  : line.kind === "remove"
-                                    ? "-"
-                                    : " ";
-                              return (
-                                <div
-                                  key={idx}
-                                  className={cn(
-                                    "flex items-stretch font-mono text-xs leading-5 border-b border-border/30 last:border-b-0",
-                                    bgClass
-                                  )}
+                        {selectedVersionDiff.semanticHints.length > 0 ? (
+                          <div className="mt-3 rounded-md border border-border bg-card p-2">
+                            <p className="text-[11px] font-semibold uppercase tracking-wide text-muted-foreground">
+                              Semantic change hints
+                            </p>
+                            <div className="mt-2 flex flex-wrap gap-1.5">
+                              {selectedVersionDiff.semanticHints.map((hint) => (
+                                <span
+                                  key={hint.key}
+                                  className="inline-flex items-center gap-1 rounded-full border border-border bg-muted/40 px-2 py-0.5 text-[11px] text-foreground"
                                 >
-                                  <span className="w-10 shrink-0 select-none border-r border-border/40 px-1 text-right tabular-nums text-muted-foreground/50">
-                                    {line.oldLineNumber ?? ""}
-                                  </span>
-                                  <span className="w-10 shrink-0 select-none border-r border-border/40 px-1 text-right tabular-nums text-muted-foreground/50">
-                                    {line.newLineNumber ?? ""}
-                                  </span>
-                                  <span className={cn("w-4 shrink-0 select-none text-center font-semibold", textClass)}>
-                                    {prefix}
-                                  </span>
-                                  <span className={cn("flex-1 whitespace-pre-wrap break-all px-1", textClass)}>
-                                    {line.text || "\u00A0"}
-                                  </span>
-                                </div>
-                              );
-                            })}
+                                  <span className="font-medium">{hint.label}</span>
+                                  <span className="tabular-nums text-muted-foreground">{hint.count}</span>
+                                </span>
+                              ))}
+                            </div>
                           </div>
-                        </div>
-                        {selectedVersionDiff.lineDiff.lines.length > 200 ? (
-                          <p className="mt-2 text-xs text-muted-foreground">
-                            Showing first 200 lines. Full diff contains {selectedVersionDiff.lineDiff.lines.length} lines.
-                          </p>
                         ) : null}
+                        {versionDiffLayout === "split" && selectedVersionForDiff ? (
+                          <div className="mt-3 grid max-h-[28rem] gap-2 overflow-hidden md:grid-cols-2">
+                            <div className="flex min-h-0 flex-col rounded-md border border-border bg-card">
+                              <p className="border-b border-border bg-muted/40 px-2 py-1.5 text-[11px] font-semibold uppercase tracking-wide text-muted-foreground">
+                                Version #{selectedVersionForDiff.versionNumber}
+                              </p>
+                              <pre
+                                ref={versionDiffSplitLeftRef}
+                                onScroll={onVersionDiffSplitLeftScroll}
+                                className="max-h-[24rem] flex-1 overflow-auto whitespace-pre-wrap break-words p-2 font-mono text-[11px] leading-relaxed text-foreground/90"
+                              >
+                                {selectedVersionForDiff.content || "\u00A0"}
+                              </pre>
+                            </div>
+                            <div className="flex min-h-0 flex-col rounded-md border border-border bg-card">
+                              <p className="border-b border-border bg-muted/40 px-2 py-1.5 text-[11px] font-semibold uppercase tracking-wide text-muted-foreground">
+                                Current draft
+                              </p>
+                              <pre
+                                ref={versionDiffSplitRightRef}
+                                onScroll={onVersionDiffSplitRightScroll}
+                                className="max-h-[24rem] flex-1 overflow-auto whitespace-pre-wrap break-words p-2 font-mono text-[11px] leading-relaxed text-foreground/90"
+                              >
+                                {content || "\u00A0"}
+                              </pre>
+                            </div>
+                          </div>
+                        ) : (
+                          <>
+                            <div className="mt-3 max-h-[28rem] overflow-auto rounded-md border border-border bg-card">
+                              <div className="min-w-[min(100%,480px)]">
+                                {selectedVersionDiff.lineDiff.lines.slice(0, 200).map((line, idx) => {
+                                  const bgClass =
+                                    line.kind === "add"
+                                      ? "bg-emerald-50"
+                                      : line.kind === "remove"
+                                        ? "bg-rose-50"
+                                        : "";
+                                  const textClass =
+                                    line.kind === "add"
+                                      ? "text-emerald-800"
+                                      : line.kind === "remove"
+                                        ? "text-rose-800"
+                                        : "text-muted-foreground/70";
+                                  const prefix =
+                                    line.kind === "add"
+                                      ? "+"
+                                      : line.kind === "remove"
+                                        ? "-"
+                                        : " ";
+                                  return (
+                                    <div
+                                      key={idx}
+                                      className={cn(
+                                        "flex items-stretch font-mono text-xs leading-5 border-b border-border/30 last:border-b-0",
+                                        bgClass
+                                      )}
+                                    >
+                                      <span className="w-10 shrink-0 select-none border-r border-border/40 px-1 text-right tabular-nums text-muted-foreground/50">
+                                        {line.oldLineNumber ?? ""}
+                                      </span>
+                                      <span className="w-10 shrink-0 select-none border-r border-border/40 px-1 text-right tabular-nums text-muted-foreground/50">
+                                        {line.newLineNumber ?? ""}
+                                      </span>
+                                      <span className={cn("w-4 shrink-0 select-none text-center font-semibold", textClass)}>
+                                        {prefix}
+                                      </span>
+                                      <span className={cn("flex-1 whitespace-pre-wrap break-all px-1", textClass)}>
+                                        {line.text || "\u00A0"}
+                                      </span>
+                                    </div>
+                                  );
+                                })}
+                              </div>
+                            </div>
+                            {selectedVersionDiff.lineDiff.lines.length > 200 ? (
+                              <p className="mt-2 text-xs text-muted-foreground">
+                                Showing first 200 lines. Full diff contains {selectedVersionDiff.lineDiff.lines.length}{" "}
+                                lines.
+                              </p>
+                            ) : null}
+                          </>
+                        )}
                       </div>
                     ) : null}
                   </CardContent>

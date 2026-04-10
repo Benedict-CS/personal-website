@@ -3,32 +3,37 @@ import { getSiteConfigForRender } from "@/lib/site-config";
 
 export async function generateMetadata(): Promise<Metadata> {
   const config = await getSiteConfigForRender();
-  const siteName = config.siteName;
   const base = config.url.replace(/\/$/, "");
-  const desc = `Get in touch with ${siteName}. Open to opportunities, collaborations, and conversations about technology.`;
-  const ogShort = `Get in touch with ${siteName}.`;
+  const canonical = `${base}/contact`;
+  const description = "Contact the site owner for opportunities, collaborations, or technical discussions.";
+  const ogUrl = config.ogImageUrl
+    ? (config.ogImageUrl.startsWith("http")
+      ? config.ogImageUrl
+      : new URL(config.ogImageUrl, config.url).toString())
+    : undefined;
+
   return {
     title: "Contact",
-    description: desc,
-    alternates: { canonical: `${base}/contact` },
+    description,
+    alternates: { canonical },
     openGraph: {
       title: "Contact",
-      description: ogShort,
-      url: `${base}/contact`,
+      description,
+      url: canonical,
       type: "website",
+      ...(ogUrl && { images: [ogUrl] }),
     },
     twitter: {
       card: "summary_large_image",
-      title: "Contact",
-      description: ogShort,
+      title: `Contact | ${config.siteName}`,
+      description,
+      ...(ogUrl && { images: [ogUrl] }),
     },
   };
 }
 
 export default function ContactLayout({
   children,
-}: {
-  children: React.ReactNode;
-}) {
+}: Readonly<{ children: React.ReactNode }>) {
   return children;
 }

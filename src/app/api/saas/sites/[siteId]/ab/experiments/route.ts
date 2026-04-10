@@ -4,6 +4,17 @@ import { prisma } from "@/lib/prisma";
 import { canWrite, requireTenantContext } from "@/lib/tenant-auth";
 import { evaluateABExperiment } from "@/lib/ab/statistics";
 
+function clampSplit(value: number): number {
+  if (!Number.isFinite(value)) return 50;
+  return Math.min(95, Math.max(5, Math.round(value)));
+}
+
+function getMinimumSamplePerVariant(): number {
+  const raw = Number(process.env.AB_MIN_SAMPLE_PER_VARIANT ?? "50");
+  if (!Number.isFinite(raw)) return 50;
+  return Math.max(10, Math.round(raw));
+}
+
 export async function GET(
   request: NextRequest,
   { params }: { params: Promise<{ siteId: string }> }
@@ -34,16 +45,22 @@ export async function POST(
     name?: string;
     blocksA?: unknown[];
     blocksB?: unknown[];
+    trafficSplitA?: number;
+    status?: "DRAFT" | "RUNNING";
   };
   if (!body.pageId) return NextResponse.json({ error: "pageId is required" }, { status: 400 });
+  const trafficSplitA = clampSplit(typeof body.trafficSplitA === "number" ? body.trafficSplitA : 50);
+  const status = body.status === "RUNNING" ? "RUNNING" : "DRAFT";
 
   const exp = await prisma.aBExperiment.create({
     data: {
       siteId,
       pageId: body.pageId,
       name: body.name?.trim() || "A/B Experiment",
-      status: "RUNNING",
-      startedAt: new Date(),
+      status,
+      startedAt: status === "RUNNING" ? new Date() : null,
+      trafficSplitA,
+      trafficSplitB: 100 - trafficSplitA,
     },
   });
   await prisma.pageVariant.createMany({
@@ -64,7 +81,13 @@ export async function PATCH(
   if ("unauthorized" in tenant) return tenant.unauthorized;
   if (!canWrite(tenant.context.role)) return NextResponse.json({ error: "Insufficient role" }, { status: 403 });
 
-  const body = (await request.json()) as { experimentId?: string; complete?: boolean };
+  const body = (await request.json()) as {
+    experimentId?: string;
+    complete?: boolean;
+    action?: "evaluate" | "start" | "stop" | "set_winner" | "set_split";
+    winnerVariant?: "A" | "B" | null;
+    trafficSplitA?: number;
+  };
   if (!body.experimentId) return NextResponse.json({ error: "experimentId is required" }, { status: 400 });
 
   const experiment = await prisma.aBExperiment.findFirst({
@@ -72,6 +95,77 @@ export async function PATCH(
     include: { variants: true },
   });
   if (!experiment) return NextResponse.json({ error: "Experiment not found" }, { status: 404 });
+
+  const action = body.action ?? "evaluate";
+  if (action === "set_split") {
+    const trafficSplitA = clampSplit(typeof body.trafficSplitA === "number" ? body.trafficSplitA : experiment.trafficSplitA);
+    const updated = await prisma.aBExperiment.update({
+      where: { id: experiment.id },
+      data: {
+        trafficSplitA,
+        trafficSplitB: 100 - trafficSplitA,
+      },
+    });
+    return NextResponse.json(updated);
+  }
+
+  if (action === "set_winner") {
+    const winnerVariant = body.winnerVariant === "A" || body.winnerVariant === "B" ? body.winnerVariant : null;
+    if (winnerVariant) {
+      const [eventsA, eventsB] = await Promise.all(
+        ["A", "B"].map((key) => {
+          const variant = experiment.variants.find((v) => v.key === key);
+          if (!variant) return Promise.resolve({ views: 0, conversions: 0 });
+          return prisma.variantEvent.findMany({
+            where: { siteId, variantId: variant.id, eventType: { in: ["view", "purchase"] } },
+          }).then((events) => ({
+            views: events.filter((e) => e.eventType === "view").length,
+            conversions: events.filter((e) => e.eventType === "purchase").length,
+          }));
+        })
+      );
+      const minSample = getMinimumSamplePerVariant();
+      if (eventsA.views < minSample || eventsB.views < minSample) {
+        return NextResponse.json(
+          {
+            error: `Sample too small to lock winner. Need at least ${minSample} views per variant.`,
+            minSamplePerVariant: minSample,
+          },
+          { status: 409 }
+        );
+      }
+    }
+    const updated = await prisma.aBExperiment.update({
+      where: { id: experiment.id },
+      data: {
+        winnerVariant,
+      },
+    });
+    return NextResponse.json(updated);
+  }
+
+  if (action === "start") {
+    const updated = await prisma.aBExperiment.update({
+      where: { id: experiment.id },
+      data: {
+        status: "RUNNING",
+        startedAt: experiment.startedAt ?? new Date(),
+        endedAt: null,
+      },
+    });
+    return NextResponse.json(updated);
+  }
+
+  if (action === "stop") {
+    const updated = await prisma.aBExperiment.update({
+      where: { id: experiment.id },
+      data: {
+        status: "COMPLETED",
+        endedAt: new Date(),
+      },
+    });
+    return NextResponse.json(updated);
+  }
 
   const [eventsA, eventsB] = await Promise.all(
     ["A", "B"].map((key) => {
@@ -87,11 +181,24 @@ export async function PATCH(
   );
 
   const evalResult = evaluateABExperiment(eventsA, eventsB);
+  const minSamplePerVariant = getMinimumSamplePerVariant();
+  const hasEnoughSample = eventsA.views >= minSamplePerVariant && eventsB.views >= minSamplePerVariant;
+  const guardedResult = {
+    ...evalResult,
+    viewsA: eventsA.views,
+    viewsB: eventsB.views,
+    conversionsA: eventsA.conversions,
+    conversionsB: eventsB.conversions,
+    minSamplePerVariant,
+    hasEnoughSample,
+    winner: hasEnoughSample ? evalResult.winner : "none",
+    significant: hasEnoughSample ? evalResult.significant : false,
+  };
   const updated = await prisma.aBExperiment.update({
     where: { id: experiment.id },
     data: {
-      stats: evalResult as Prisma.InputJsonValue,
-      winnerVariant: evalResult.winner === "none" ? null : evalResult.winner,
+      stats: guardedResult as Prisma.InputJsonValue,
+      winnerVariant: guardedResult.winner === "none" ? null : guardedResult.winner,
       ...(body.complete ? { status: "COMPLETED", endedAt: new Date() } : {}),
     },
   });

@@ -14,6 +14,11 @@ export type AuditAction =
   | "custom_page.delete"
   | "editor.draft.save"
   | "editor.publish"
+  | "analytics.cv_download"
+  | "analytics.lead_generated"
+  | "workflow.webhook.delivered"
+  | "workflow.webhook.failed"
+  | "system.link_check.scan"
   | "import";
 
 /**
@@ -25,9 +30,17 @@ export async function auditLog(params: {
   resourceId?: string | null;
   details?: string | null;
   ip?: string | null;
-}): Promise<void> {
+}): Promise<{
+  id: string;
+  action: string;
+  resourceType: string;
+  resourceId: string | null;
+  details: string | null;
+  ip: string | null;
+  createdAt: Date;
+} | null> {
   try {
-    await prisma.auditLog.create({
+    return await prisma.auditLog.create({
       data: {
         action: params.action,
         resourceType: params.resourceType,
@@ -38,5 +51,6 @@ export async function auditLog(params: {
     });
   } catch (e) {
     console.warn("Audit log write failed:", e);
+    return null;
   }
 }

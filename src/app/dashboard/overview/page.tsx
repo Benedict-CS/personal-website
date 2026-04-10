@@ -10,8 +10,12 @@ import { DashboardOverviewToolbar } from "@/components/dashboard-overview-toolba
 import { DashboardOperationsCard } from "@/components/dashboard-operations-card";
 import { WritingStatsCard } from "@/components/dashboard/writing-stats-card";
 import { ContentFreshnessCard } from "@/components/dashboard/content-freshness-card";
+import { ContentQualityReportCard } from "@/components/dashboard/content-quality-report-card";
+import { PublishCalendarCard } from "@/components/dashboard/publish-calendar-card";
 import { computeWritingStats, type WritingStats } from "@/lib/writing-stats";
 import { computeFreshnessSummary, type FreshnessSummary } from "@/lib/content-freshness";
+import { generateQualityReport, type QualityReport } from "@/lib/content-quality-report";
+import { buildPublishCalendarData, type PublishCalendarData } from "@/lib/publish-calendar";
 import {
   DashboardPageHeader,
   dashboardInteractiveCardClassName,
@@ -157,17 +161,35 @@ async function loadOverviewMetrics(): Promise<OverviewMetrics> {
   }
 }
 
-async function loadWritingStats(): Promise<WritingStats> {
+/**
+ * Single unified post query for all dashboard analytics cards.
+ * Previously 4 separate prisma.post.findMany calls — now 1.
+ */
+async function loadPostAnalytics(): Promise<{
+  writingStats: WritingStats;
+  freshness: FreshnessSummary;
+  qualityReport: QualityReport;
+  publishCalendar: PublishCalendarData;
+}> {
   try {
     const posts = await prisma.post.findMany({
       select: {
+        id: true,
+        title: true,
+        slug: true,
+        description: true,
         content: true,
         published: true,
         createdAt: true,
+        updatedAt: true,
+        publishedAt: true,
         tags: { select: { name: true } },
       },
     });
-    return computeWritingStats(
+
+    const now = new Date();
+
+    const writingStats = computeWritingStats(
       posts.map((p) => ({
         content: p.content,
         published: p.published,
@@ -175,23 +197,8 @@ async function loadWritingStats(): Promise<WritingStats> {
         tags: p.tags,
       }))
     );
-  } catch {
-    return computeWritingStats([]);
-  }
-}
 
-async function loadFreshnessSummary(): Promise<FreshnessSummary> {
-  try {
-    const posts = await prisma.post.findMany({
-      select: {
-        id: true,
-        title: true,
-        slug: true,
-        published: true,
-        updatedAt: true,
-      },
-    });
-    return computeFreshnessSummary(
+    const freshness = computeFreshnessSummary(
       posts.map((p) => ({
         id: p.id,
         title: p.title,
@@ -200,18 +207,42 @@ async function loadFreshnessSummary(): Promise<FreshnessSummary> {
         updatedAt: p.updatedAt.toISOString(),
       }))
     );
+
+    const qualityReport = generateQualityReport(
+      posts.map((p) => ({
+        id: p.id,
+        title: p.title,
+        slug: p.slug,
+        description: p.description ?? "",
+        content: p.content,
+        tags: p.tags.map((t) => t.name),
+        published: p.published,
+      }))
+    );
+
+    const publishedDates = posts
+      .filter((p) => p.published || (p.publishedAt && p.publishedAt <= now))
+      .map((p) => p.createdAt.toISOString().slice(0, 10));
+    const publishCalendar = buildPublishCalendarData(publishedDates);
+
+    return { writingStats, freshness, qualityReport, publishCalendar };
   } catch {
-    return computeFreshnessSummary([]);
+    return {
+      writingStats: computeWritingStats([]),
+      freshness: computeFreshnessSummary([]),
+      qualityReport: generateQualityReport([]),
+      publishCalendar: buildPublishCalendarData([]),
+    };
   }
 }
 
 export default async function DashboardOverviewPage() {
   const generatedAt = new Date().toISOString();
-  const [metrics, writingStats, freshness] = await Promise.all([
+  const [metrics, postAnalytics] = await Promise.all([
     loadOverviewMetrics(),
-    loadWritingStats(),
-    loadFreshnessSummary(),
+    loadPostAnalytics(),
   ]);
+  const { writingStats, freshness, qualityReport, publishCalendar } = postAnalytics;
 
   return (
     <div className="space-y-6">
@@ -336,21 +367,28 @@ export default async function DashboardOverviewPage() {
         </MotionCard>
       </div>
 
-      <div className="grid gap-4 lg:grid-cols-2">
+      <div className="grid gap-4 lg:grid-cols-2 xl:grid-cols-3">
         <MotionCard delayIndex={4}>
           <WritingStatsCard stats={writingStats} />
         </MotionCard>
         <MotionCard delayIndex={5}>
           <ContentFreshnessCard summary={freshness} />
         </MotionCard>
+        <MotionCard delayIndex={6}>
+          <PublishCalendarCard data={publishCalendar} />
+        </MotionCard>
       </div>
 
+      <MotionCard delayIndex={7}>
+        <ContentQualityReportCard report={qualityReport} />
+      </MotionCard>
+
       <div className="grid gap-4 xl:grid-cols-3">
-        <MotionCard delayIndex={6} className="space-y-4 xl:col-span-2">
+        <MotionCard delayIndex={8} className="space-y-4 xl:col-span-2">
           <DashboardSystemStatus />
           <DashboardRecentActivity entries={metrics.recentActivity} />
         </MotionCard>
-        <MotionCard delayIndex={7} className="space-y-4">
+        <MotionCard delayIndex={9} className="space-y-4">
           <DashboardOperationsCard />
           <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
             <DashboardExportImport />

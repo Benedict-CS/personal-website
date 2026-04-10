@@ -1,11 +1,18 @@
 /**
- * Next.js server bootstrap hook (runs once per Node.js server process).
- * Use for optional startup wiring (APM, metrics registries). Avoid heavy work here.
+ * Next.js server bootstrap hook (runs per runtime: nodejs or edge).
+ * Loads Sentry for server/edge and wires request error capture for App Router.
  * @see https://nextjs.org/docs/app/api-reference/file-conventions/instrumentation
  */
+import * as Sentry from "@sentry/nextjs";
+
 export async function register() {
-  if (process.env.NEXT_RUNTIME !== "nodejs") {
-    return;
+  if (process.env.NEXT_RUNTIME === "nodejs") {
+    await import("../sentry.server.config");
   }
-  // Intentionally minimal: Sentry is configured via next.config / sentry.*.config.ts.
+  if (process.env.NEXT_RUNTIME === "edge") {
+    await import("../sentry.edge.config");
+  }
 }
+
+/** Capture errors from Server Components, middleware, and proxies (Next.js 15+). */
+export const onRequestError = Sentry.captureRequestError;

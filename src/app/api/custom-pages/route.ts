@@ -4,6 +4,7 @@ import { prisma } from "@/lib/prisma";
 import { getScheduledPublishAt, isScheduledLive, setScheduledPublishAt } from "@/lib/custom-page-schedule";
 import { auditLog } from "@/lib/audit";
 import { revalidateSiteConfigRenderCache } from "@/lib/site-config";
+import { checkRateLimitAsync, getClientIP } from "@/lib/rate-limit";
 
 export const dynamic = "force-dynamic";
 
@@ -35,6 +36,21 @@ export async function GET() {
 export async function POST(request: Request) {
   const auth = await requireSession();
   if ("unauthorized" in auth) return auth.unauthorized;
+  const ip = getClientIP(request);
+  const { ok: allowed, remaining } = await checkRateLimitAsync(ip, "custom_pages_write");
+  if (!allowed) {
+    return NextResponse.json(
+      { error: "Too many custom page updates. Please try again in a minute." },
+      {
+        status: 429,
+        headers: {
+          "X-RateLimit-Remaining": "0",
+          "Retry-After": "60",
+          "Cache-Control": "no-store, private",
+        },
+      }
+    );
+  }
   const body = await request.json();
   const { slug, title, content, order, published, scheduledPublishAt } = body;
   const slugNorm = typeof slug === "string" ? slug.trim().toLowerCase().replace(/[^a-z0-9-]/g, "-") : "";
@@ -65,5 +81,7 @@ export async function POST(request: Request) {
     ip: request.headers.get("x-forwarded-for") ?? null,
   });
   revalidateSiteConfigRenderCache();
-  return NextResponse.json(page);
+  return NextResponse.json(page, {
+    headers: { "X-RateLimit-Remaining": String(remaining) },
+  });
 }

@@ -1,4 +1,4 @@
-import { GET, HEAD } from "@/app/.well-known/security.txt/route";
+import { GET } from "@/app/.well-known/security.txt/route";
 
 describe("GET /.well-known/security.txt", () => {
   const prevContact = process.env.SECURITY_TXT_CONTACT;

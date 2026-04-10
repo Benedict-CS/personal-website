@@ -74,6 +74,36 @@ describe("GET /api/search", () => {
     }
   });
 
+  it("ranks title matches above weak content matches", async () => {
+    mockQueryRaw.mockRejectedValue(new Error("no search_vector"));
+    mockPostFindMany.mockResolvedValue([
+      {
+        id: "2",
+        title: "General Notes",
+        slug: "general-notes",
+        description: "misc",
+        content: "includes nycu once in body text",
+        createdAt: new Date("2026-01-01T00:00:00.000Z"),
+        tags: [],
+      },
+      {
+        id: "1",
+        title: "NYCU Research Journey",
+        slug: "nycu-research-journey",
+        description: "Deep dive",
+        content: "research content",
+        createdAt: new Date("2025-01-01T00:00:00.000Z"),
+        tags: [{ name: "networking" }],
+      },
+    ]);
+
+    const req = createRequest("nycu");
+    const res = await GET(req);
+    expect(res.status).toBe(200);
+    const data = await res.json();
+    expect(data.posts[0]?.slug).toBe("nycu-research-journey");
+  });
+
   it("returns 500 on unexpected error", async () => {
     const spy = jest.spyOn(console, "error").mockImplementation(() => {});
     mockQueryRaw.mockRejectedValue(new Error("db error"));

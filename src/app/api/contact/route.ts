@@ -5,6 +5,8 @@ import { checkRateLimitAsync, getClientIP } from "@/lib/rate-limit";
 import { prisma } from "@/lib/prisma";
 import { postContactWebhook } from "@/lib/contact-webhook";
 import { siteUrl } from "@/config/site";
+import { trackAnalyticsEvent } from "@/lib/analytics-events";
+import { auditLog } from "@/lib/audit";
 
 const CC = process.env.CONTACT_CC ? process.env.CONTACT_CC.split(",").map((e) => e.trim()).filter(Boolean) : undefined;
 const BCC = process.env.CONTACT_BCC ? process.env.CONTACT_BCC.split(",").map((e) => e.trim()).filter(Boolean) : undefined;
@@ -21,6 +23,15 @@ function getSmtpTransporter() {
 }
 
 const smtpTransporter = getSmtpTransporter();
+
+function toSafeDetails(details: Record<string, unknown>): string {
+  try {
+    const raw = JSON.stringify(details);
+    return raw.length <= 2000 ? raw : `${raw.slice(0, 1997)}...`;
+  } catch {
+    return "{}";
+  }
+}
 
 /**
  * Resolve the recipient for contact form emails: tenant contactEmail from DB, then footer/author email, then env fallback.
@@ -72,9 +83,11 @@ export async function POST(request: NextRequest) {
       select: { tenantSiteId: true, contactEmail: true, links: true, contactWebhookUrl: true },
     });
     const tenantSiteId = configRow?.tenantSiteId ?? null;
+    const eventId = crypto.randomUUID();
+    let submissionId: string | undefined;
 
     if (tenantSiteId) {
-      await prisma.formSubmission.create({
+      const createdSubmission = await prisma.formSubmission.create({
         data: {
           siteId: tenantSiteId,
           pageSlug: "contact",
@@ -87,6 +100,7 @@ export async function POST(request: NextRequest) {
           },
         },
       });
+      submissionId = createdSubmission.id;
     }
 
     const recipient = await getContactRecipient();
@@ -103,6 +117,46 @@ export async function POST(request: NextRequest) {
     const subjectLine = subject?.trim() || `Message from ${name.trim()}`;
     const textBody = `From: ${name.trim()} <${email.trim()}>\n\n${message.trim()}`;
     const visitorEmail = email.trim();
+    const webhookPayload = {
+      event: "contact.form_submitted" as const,
+      version: 1 as const,
+      eventId,
+      submittedAt: new Date().toISOString(),
+      source: "contact" as const,
+      siteUrl: process.env.NEXT_PUBLIC_SITE_URL?.trim() || siteUrl,
+      workflow: {
+        submissionId,
+        trigger: "contact_form" as const,
+      },
+      data: {
+        name: name.trim(),
+        email: email.trim(),
+        subject: subject?.trim() ?? "",
+        message: message.trim(),
+      },
+    };
+
+    const logWebhookResult = (ipForAudit: string, payloadEventId: string) => (result: {
+      delivered: boolean;
+      attempts: number;
+      statusCode: number | null;
+      error: string | null;
+      targetHost: string | null;
+    }) =>
+      auditLog({
+        action: result.delivered ? "workflow.webhook.delivered" : "workflow.webhook.failed",
+        resourceType: "contact_webhook",
+        resourceId: payloadEventId,
+        ip: ipForAudit,
+        details: toSafeDetails({
+          trigger: "contact_form",
+          delivered: result.delivered,
+          attempts: result.attempts,
+          statusCode: result.statusCode,
+          error: result.error,
+          targetHost: result.targetHost,
+        }),
+      });
 
     if (resend) {
       const from = process.env.RESEND_FROM_EMAIL || "onboarding@resend.dev";
@@ -122,17 +176,13 @@ export async function POST(request: NextRequest) {
           { status: 500 }
         );
       }
-      void postContactWebhook(configRow?.contactWebhookUrl, {
-        event: "contact.form_submitted",
-        version: 1,
-        submittedAt: new Date().toISOString(),
-        source: "contact",
-        siteUrl: process.env.NEXT_PUBLIC_SITE_URL?.trim() || siteUrl,
-        data: {
-          name: name.trim(),
-          email: email.trim(),
-          subject: subject?.trim() ?? "",
-          message: message.trim(),
+      void postContactWebhook(configRow?.contactWebhookUrl, webhookPayload).then(logWebhookResult(ip, eventId));
+      void trackAnalyticsEvent({
+        request,
+        event: "LEAD_GENERATED",
+        details: {
+          source: "contact_form",
+          subject: subject?.trim() || null,
         },
       });
       return NextResponse.json({ success: true, id: data?.id }, { headers: rateLimitHeaders });
@@ -149,17 +199,13 @@ export async function POST(request: NextRequest) {
         subject: subjectLine,
         text: textBody,
       });
-      void postContactWebhook(configRow?.contactWebhookUrl, {
-        event: "contact.form_submitted",
-        version: 1,
-        submittedAt: new Date().toISOString(),
-        source: "contact",
-        siteUrl: process.env.NEXT_PUBLIC_SITE_URL?.trim() || siteUrl,
-        data: {
-          name: name.trim(),
-          email: email.trim(),
-          subject: subject?.trim() ?? "",
-          message: message.trim(),
+      void postContactWebhook(configRow?.contactWebhookUrl, webhookPayload).then(logWebhookResult(ip, eventId));
+      void trackAnalyticsEvent({
+        request,
+        event: "LEAD_GENERATED",
+        details: {
+          source: "contact_form",
+          subject: subject?.trim() || null,
         },
       });
       return NextResponse.json({ success: true }, { headers: rateLimitHeaders });

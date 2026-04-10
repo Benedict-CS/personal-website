@@ -1,6 +1,6 @@
 "use client";
 
-import { memo } from "react";
+import { memo, type MutableRefObject } from "react";
 import { MarkdownSlashTextarea } from "@/components/editor/markdown-slash-textarea";
 
 type Props = {
@@ -8,6 +8,7 @@ type Props = {
   onContentChange: (next: string) => void;
   placeholder?: string;
   "aria-label"?: string;
+  textareaRef?: MutableRefObject<HTMLTextAreaElement | null>;
   /** Default true: TOC, date, callout, rule without typing `/`. */
   showQuickInsertBar?: boolean;
   onTypingPulse?: () => void;
@@ -23,6 +24,7 @@ export const ImmersiveCustomMarkdownField = memo(function ImmersiveCustomMarkdow
   onContentChange,
   placeholder,
   "aria-label": ariaLabel,
+  textareaRef,
   showQuickInsertBar = true,
   onTypingPulse,
   onTypingEnd,
@@ -33,6 +35,7 @@ export const ImmersiveCustomMarkdownField = memo(function ImmersiveCustomMarkdow
       onChange={onContentChange}
       placeholder={placeholder}
       aria-label={ariaLabel}
+      textareaRef={textareaRef}
       showQuickInsertBar={showQuickInsertBar}
       onTypingPulse={onTypingPulse}
       onTypingEnd={onTypingEnd}

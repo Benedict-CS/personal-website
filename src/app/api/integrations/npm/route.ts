@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
+import { EXTERNAL_INTEGRATION_RETRY_POLICY, fetchWithRetry } from "@/lib/self-healing-fetch";
 
 export const dynamic = "force-dynamic";
 
@@ -28,10 +29,10 @@ export async function GET(request: NextRequest) {
   const path = encodeURIComponent(pkg);
 
   try {
-    const res = await fetch(`https://registry.npmjs.org/${path}/latest`, {
+    const res = await fetchWithRetry(`https://registry.npmjs.org/${path}/latest`, {
       headers: { Accept: "application/json" },
       next: { revalidate: 600 },
-    });
+    }, EXTERNAL_INTEGRATION_RETRY_POLICY);
 
     if (!res.ok) {
       return NextResponse.json(

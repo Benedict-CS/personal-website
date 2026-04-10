@@ -24,6 +24,7 @@ import { Pencil } from "lucide-react";
 import { calculateReadingTime, formatReadingTime } from "@/lib/reading-time";
 import { getSiteConfigForRender } from "@/lib/site-config";
 import { extractTocHeadingsFromMarkdown, estimateTocReadingByHeading } from "@/lib/markdown-toc";
+import { getContentMetrics } from "@/lib/content-metrics";
 
 export const revalidate = 60;
 
@@ -195,29 +196,33 @@ export default async function BlogPostPage({
 
   const configForRender = await getSiteConfigForRender();
   const canonicalUrl = `${configForRender.url}/blog/${post.slug}`;
-  const publisherLogoUrl = configForRender.ogImageUrl
-    ? (configForRender.ogImageUrl.startsWith("http")
-        ? configForRender.ogImageUrl
-        : new URL(configForRender.ogImageUrl, configForRender.url).toString())
-    : undefined;
   const baseUrl = configForRender.url.replace(/\/$/, "");
+  const ogImageAbsolute = `${baseUrl}/blog/${post.slug}/opengraph-image`;
+  const contentMetrics = getContentMetrics(post.content);
+  const authorUsesRootPublisher = Boolean(configForRender.authorName?.trim());
   const articleLd = {
-    "@type": "Article",
+    "@type": "BlogPosting",
+    "@id": `${canonicalUrl}#blogposting`,
     headline: post.title,
     description: metaDescriptionFromMarkdown(post.content, 160) || post.title,
+    url: canonicalUrl,
     datePublished: post.createdAt.toISOString(),
     dateModified: post.updatedAt.toISOString(),
-    author: {
-      "@type": "Person",
-      name: configForRender.authorName ?? configForRender.siteName,
-    },
-    publisher: {
-      "@type": "Organization",
-      name: configForRender.siteName,
-      ...(publisherLogoUrl && {
-        logo: { "@type": "ImageObject", url: publisherLogoUrl },
-      }),
-    },
+    image: [ogImageAbsolute],
+    wordCount: contentMetrics.words,
+    timeRequired: `PT${readingTime}M`,
+    ...(post.tags.length > 0 && {
+      keywords: post.tags.map((t) => t.name).join(", "),
+    }),
+    author: authorUsesRootPublisher
+      ? { "@id": `${baseUrl}/#publisher` }
+      : {
+          "@type": "Person",
+          name: configForRender.siteName,
+        },
+    publisher: { "@id": `${baseUrl}/#publisher` },
+    // Links to JsonLdRoot WebSite @id (no duplicate WebSite node in this graph).
+    isPartOf: { "@id": `${baseUrl}/#website` },
     mainEntityOfPage: {
       "@type": "WebPage",
       "@id": canonicalUrl,

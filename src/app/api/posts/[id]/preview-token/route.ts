@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { requireSession } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 import { randomBytes } from "crypto";
+import { checkRateLimitAsync, getClientIP } from "@/lib/rate-limit";
 
 /**
  * POST /api/posts/[id]/preview-token
@@ -9,12 +10,27 @@ import { randomBytes } from "crypto";
  * Returns { previewUrl }.
  */
 export async function POST(
-  _request: NextRequest,
+  request: NextRequest,
   { params }: { params: Promise<{ id: string }> }
 ) {
   try {
     const auth = await requireSession();
     if ("unauthorized" in auth) return auth.unauthorized;
+    const ip = getClientIP(request);
+    const { ok: allowed, remaining } = await checkRateLimitAsync(ip, "post_preview_token");
+    if (!allowed) {
+      return NextResponse.json(
+        { error: "Too many preview-link requests. Please retry in a minute." },
+        {
+          status: 429,
+          headers: {
+            "X-RateLimit-Remaining": "0",
+            "Retry-After": "60",
+            "Cache-Control": "no-store, private",
+          },
+        }
+      );
+    }
 
     const { id } = await params;
     const token = randomBytes(32).toString("hex");
@@ -27,7 +43,10 @@ export async function POST(
     const base = process.env.NEXTAUTH_URL || "http://localhost:3000";
     const previewUrl = `${base}/blog/preview?token=${token}`;
 
-    return NextResponse.json({ previewUrl, token }, { status: 200 });
+    return NextResponse.json(
+      { previewUrl, token },
+      { status: 200, headers: { "X-RateLimit-Remaining": String(remaining) } }
+    );
   } catch (error) {
     console.error("Error generating preview token:", error);
     return NextResponse.json(
@@ -42,12 +61,27 @@ export async function POST(
  * Revoke preview token (auth required).
  */
 export async function DELETE(
-  _request: NextRequest,
+  request: NextRequest,
   { params }: { params: Promise<{ id: string }> }
 ) {
   try {
     const auth = await requireSession();
     if ("unauthorized" in auth) return auth.unauthorized;
+    const ip = getClientIP(request);
+    const { ok: allowed, remaining } = await checkRateLimitAsync(ip, "post_preview_token");
+    if (!allowed) {
+      return NextResponse.json(
+        { error: "Too many preview-link requests. Please retry in a minute." },
+        {
+          status: 429,
+          headers: {
+            "X-RateLimit-Remaining": "0",
+            "Retry-After": "60",
+            "Cache-Control": "no-store, private",
+          },
+        }
+      );
+    }
 
     const { id } = await params;
 
@@ -56,7 +90,10 @@ export async function DELETE(
       data: { previewToken: null },
     });
 
-    return NextResponse.json({ ok: true }, { status: 200 });
+    return NextResponse.json(
+      { ok: true },
+      { status: 200, headers: { "X-RateLimit-Remaining": String(remaining) } }
+    );
   } catch (error) {
     console.error("Error revoking preview token:", error);
     return NextResponse.json(

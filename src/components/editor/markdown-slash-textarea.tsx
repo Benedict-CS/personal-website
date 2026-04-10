@@ -20,6 +20,7 @@ import {
   Sigma,
   Table2,
   Redo2,
+  Strikethrough,
   Undo2,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
@@ -557,7 +558,7 @@ export function MarkdownSlashTextarea({
             animate={{ opacity: 1, y: 0 }}
             exit={{ opacity: 0, y: 4 }}
             transition={{ duration: 0.15 }}
-            className="pointer-events-auto fixed z-[70] flex items-center gap-0.5 rounded-xl border border-border bg-card p-1 shadow-[var(--elevation-3)]"
+            className="pointer-events-auto fixed z-[70] flex items-center gap-0.5 rounded-xl border border-border bg-card p-1 shadow-[var(--elevation-3)] backdrop-blur-sm"
             style={{
               top: toolbar.top,
               left: toolbar.left,
@@ -568,7 +569,7 @@ export function MarkdownSlashTextarea({
               type="button"
               size="sm"
               variant="ghost"
-              className="h-8 px-2"
+              className="h-8 px-2 transition-transform duration-150 active:scale-95 motion-reduce:active:scale-100"
               title="Bold"
               onClick={() => wrapSelection("**", "**")}
             >
@@ -578,7 +579,7 @@ export function MarkdownSlashTextarea({
               type="button"
               size="sm"
               variant="ghost"
-              className="h-8 px-2"
+              className="h-8 px-2 transition-transform duration-150 active:scale-95 motion-reduce:active:scale-100"
               title="Italic"
               onClick={() => wrapSelection("*", "*")}
             >
@@ -588,7 +589,17 @@ export function MarkdownSlashTextarea({
               type="button"
               size="sm"
               variant="ghost"
-              className="h-8 px-2"
+              className="h-8 px-2 transition-transform duration-150 active:scale-95 motion-reduce:active:scale-100"
+              title="Strikethrough"
+              onClick={() => wrapSelection("~~", "~~")}
+            >
+              <Strikethrough className="h-4 w-4" />
+            </Button>
+            <Button
+              type="button"
+              size="sm"
+              variant="ghost"
+              className="h-8 px-2 transition-transform duration-150 active:scale-95 motion-reduce:active:scale-100"
               title="Inline code"
               onClick={() => wrapSelection("`", "`")}
             >
@@ -598,7 +609,7 @@ export function MarkdownSlashTextarea({
               type="button"
               size="sm"
               variant="ghost"
-              className="h-8 px-2"
+              className="h-8 px-2 transition-transform duration-150 active:scale-95 motion-reduce:active:scale-100"
               title="Link"
               onClick={() => wrapSelection("[", "](https://)")}
             >

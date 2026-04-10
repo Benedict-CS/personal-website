@@ -5,6 +5,7 @@ type WasmPerfKernel = {
     ax: number, ay: number, az: number, ar: number,
     bx: number, by: number, bz: number, br: number
   ) => boolean;
+  aggregate_daily_counts?: (timestampsMs: number[], startDayMs: number, endDayMs: number) => number[];
 };
 
 let wasmModulePromise: Promise<WasmPerfKernel | null> | null = null;
@@ -13,12 +14,16 @@ async function loadWasm(): Promise<WasmPerfKernel | null> {
   if (!wasmModulePromise) {
     wasmModulePromise = (async () => {
       try {
-        const mod = await import("../../../wasm/perf-kernel/pkg");
-        const init = (mod as { default?: unknown }).default;
+        // Optional wasm-pack output: not bundled — avoids "Module not found" at build when pkg is absent.
+        const mod = (await import(
+          /* webpackIgnore: true */
+          "../../../wasm/perf-kernel/pkg"
+        )) as WasmPerfKernel & { default?: unknown };
+        const init = mod.default;
         if (typeof init === "function") {
           await (init as () => Promise<void> | void)();
         }
-        return mod as WasmPerfKernel;
+        return mod;
       } catch {
         return null;
       }
@@ -58,5 +63,41 @@ export async function broadphaseCollision(
   const dy = a.y - b.y;
   const dz = a.z - b.z;
   return dx * dx + dy * dy + dz * dz <= (a.r + b.r) * (a.r + b.r);
+}
+
+function aggregateDailyCountsFallback(
+  timestampsMs: number[],
+  startDayMs: number,
+  endDayMs: number
+): number[] {
+  const dayMs = 24 * 60 * 60 * 1000;
+  if (endDayMs < startDayMs) return [];
+  const days = Math.floor((endDayMs - startDayMs) / dayMs) + 1;
+  const out = Array<number>(days).fill(0);
+  for (const ts of timestampsMs) {
+    const idx = Math.floor((ts - startDayMs) / dayMs);
+    if (idx >= 0 && idx < out.length) out[idx] += 1;
+  }
+  return out;
+}
+
+/**
+ * Aggregates per-day counts from unix timestamps.
+ * Uses WASM when available and falls back to JS.
+ */
+export async function aggregateDailyCounts(
+  timestampsMs: number[],
+  startDayMs: number,
+  endDayMs: number
+): Promise<number[]> {
+  const wasm = await loadWasm();
+  if (wasm?.aggregate_daily_counts) {
+    try {
+      return wasm.aggregate_daily_counts(timestampsMs, startDayMs, endDayMs);
+    } catch {
+      // Fall back when function signature mismatches the loaded WASM.
+    }
+  }
+  return aggregateDailyCountsFallback(timestampsMs, startDayMs, endDayMs);
 }
 

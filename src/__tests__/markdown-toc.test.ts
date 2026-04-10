@@ -1,5 +1,6 @@
 import {
   buildAutoTocMarkdownBlock,
+  estimateTocReadingByHeading,
   extractTocHeadingsFromMarkdown,
 } from "@/lib/markdown-toc";
 
@@ -54,5 +55,23 @@ describe("buildAutoTocMarkdownBlock", () => {
     const block = buildAutoTocMarkdownBlock("Just prose.\n");
     expect(block).toContain("## Contents");
     expect(block).toContain("_Add");
+  });
+});
+
+describe("estimateTocReadingByHeading", () => {
+  it("returns per-heading reading estimates", () => {
+    const md = `
+## Intro
+Alpha beta gamma delta.
+
+## Deep Dive
+This section has more words than intro and should still produce at least one minute.
+`;
+    const estimates = estimateTocReadingByHeading(md);
+    expect(estimates).toHaveLength(2);
+    expect(estimates[0]).toMatchObject({ id: "intro" });
+    expect(estimates[1]).toMatchObject({ id: "deep-dive" });
+    expect(estimates[0].readingMinutes).toBeGreaterThanOrEqual(1);
+    expect(estimates[1].words).toBeGreaterThan(estimates[0].words);
   });
 });

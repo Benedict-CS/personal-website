@@ -6,7 +6,11 @@ import { isExcludedIP, normalizeIP } from "@/lib/analytics-excluded-ips";
 import { getRequestOrigin } from "@/lib/get-request-origin";
 import { getBlogPostSlugFromPath, incrementPublishedPostViewCount } from "@/lib/blog-analytics";
 import { sanitizeReferrerForAnalytics } from "@/lib/analytics-referrer";
-import { isJunkAnalyticsPath, isLikelyScannerUserAgent } from "@/lib/analytics-noise";
+import {
+  isJunkAnalyticsPath,
+  isLikelyMonitoringUserAgent,
+  isLikelyScannerUserAgent,
+} from "@/lib/analytics-noise";
 
 export const dynamic = "force-dynamic";
 
@@ -64,6 +68,9 @@ export async function POST(request: NextRequest) {
 
   if (isJunkAnalyticsPath(viewPath)) {
     return NextResponse.json({ ok: true, skipped: "junk_path" });
+  }
+  if (isLikelyMonitoringUserAgent(userAgent)) {
+    return NextResponse.json({ ok: true, skipped: "monitoring_ua" });
   }
   if (isLikelyScannerUserAgent(userAgent)) {
     return NextResponse.json({ ok: true, skipped: "scanner_ua" });

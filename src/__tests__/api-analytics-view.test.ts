@@ -196,6 +196,23 @@ describe("POST /api/analytics/view", () => {
     expect(mockCreate).not.toHaveBeenCalled();
   });
 
+  it("returns monitoring_ua skip for health-monitor user agents", async () => {
+    const POST = await loadRoute();
+    const req = new NextRequest("http://localhost/api/analytics/view", {
+      method: "POST",
+      headers: {
+        origin: "https://site.test",
+        "content-type": "application/json",
+        "x-forwarded-for": "3.3.3.3",
+      },
+      body: JSON.stringify({ path: "/ok", userAgent: "kube-probe/1.29" }),
+    });
+    const res = await POST(req);
+    const data = await res.json();
+    expect(data).toEqual({ ok: true, skipped: "monitoring_ua" });
+    expect(mockCreate).not.toHaveBeenCalled();
+  });
+
   it("creates page view on valid request", async () => {
     const POST = await loadRoute();
     const req = new NextRequest("http://localhost/api/analytics/view", {
@@ -223,7 +240,12 @@ describe("POST /api/analytics/view", () => {
         "content-type": "application/json",
         "x-forwarded-for": "3.3.3.3",
       },
-      body: JSON.stringify({ path: "/blog/hello-world", referrer: "https://google.com/", userAgent: "TestAgent/1.0" }),
+      body: JSON.stringify({
+        path: "/blog/hello-world",
+        referrer: "https://google.com/",
+        userAgent:
+          "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 Chrome/124.0.0.0 Safari/537.36",
+      }),
     });
     const res = await POST(req);
     expect(res.status).toBe(200);
@@ -232,7 +254,8 @@ describe("POST /api/analytics/view", () => {
         data: expect.objectContaining({
           path: "/blog/hello-world",
           referrer: "https://google.com/",
-          userAgent: "TestAgent/1.0",
+          userAgent:
+            "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 Chrome/124.0.0.0 Safari/537.36",
         }),
       })
     );

@@ -7,7 +7,11 @@ import { Input } from "@/components/ui/input";
 import { PlatformLocaleSwitcher } from "@/components/saas/platform-locale-switcher";
 import { usePlatformLocale } from "@/hooks/use-platform-locale";
 import { getPlatformMessages } from "@/i18n/messages";
-import { DashboardPageHeader, DashboardPanel } from "@/components/dashboard/dashboard-ui";
+import {
+  DashboardEmptyState,
+  DashboardPageHeader,
+  DashboardPanel,
+} from "@/components/dashboard/dashboard-ui";
 
 type SiteSummary = {
   accountId: string;
@@ -33,15 +37,20 @@ export default function DashboardSitesPage() {
   const locale = usePlatformLocale();
   const t = getPlatformMessages(locale);
   const [sites, setSites] = useState<SiteSummary[]>([]);
+  const [sitesLoaded, setSitesLoaded] = useState(false);
   const [name, setName] = useState("");
   const [slug, setSlug] = useState("");
   const [templateKey, setTemplateKey] = useState("corporate");
   const [status, setStatus] = useState("");
 
   const load = useCallback(async () => {
-    const res = await fetch("/api/saas/sites");
-    if (!res.ok) return;
-    setSites(await res.json());
+    try {
+      const res = await fetch("/api/saas/sites");
+      if (!res.ok) return;
+      setSites(await res.json());
+    } finally {
+      setSitesLoaded(true);
+    }
   }, []);
 
   useEffect(() => {
@@ -96,6 +105,18 @@ export default function DashboardSitesPage() {
         {status ? <p className="mt-2 text-sm text-muted-foreground">{status}</p> : null}
       </DashboardPanel>
 
+      {!sitesLoaded ? (
+        <p className="text-sm text-muted-foreground" aria-live="polite">
+          Loading sites…
+        </p>
+      ) : sites.length === 0 ? (
+        <DashboardEmptyState
+          illustration="layers"
+          title="No sites yet"
+          description="Use the form above to provision a tenant. Each site gets its own pages, media, commerce, and AI tools."
+          className="py-10"
+        />
+      ) : (
       <div className="grid gap-3 md:grid-cols-2">
         {sites.map((item) => (
           <DashboardPanel key={item.site.id} padding="none" className="p-4">
@@ -140,6 +161,7 @@ export default function DashboardSitesPage() {
           </DashboardPanel>
         ))}
       </div>
+      )}
     </div>
   );
 }

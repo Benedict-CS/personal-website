@@ -5,6 +5,7 @@ import { stripMarkdown } from "@/lib/utils";
 
 const SNIPPET_RADIUS = 80;
 const MAX_SNIPPETS_PER_POST = 10;
+const MAX_QUERY_TOKENS = 8;
 
 function extractOneSnippet(
   plain: string,
@@ -47,6 +48,37 @@ function extractSnippets(
     idx = found + termLen;
   }
   return results;
+}
+
+function tokenizeQuery(input: string): string[] {
+  return input
+    .toLowerCase()
+    .replace(/[^a-z0-9\s-]/g, " ")
+    .split(/\s+/)
+    .filter((token) => token.length > 1)
+    .slice(0, MAX_QUERY_TOKENS);
+}
+
+function scoreTokenMatches(text: string, tokens: string[]): number {
+  if (!text || tokens.length === 0) return 0;
+  const source = text.toLowerCase();
+  return tokens.reduce((score, token) => (source.includes(token) ? score + 1 : score), 0);
+}
+
+function buildPostSemanticScore(input: {
+  title: string;
+  description: string | null;
+  tags: Array<{ name: string }>;
+  snippets: string[];
+  createdAt: Date;
+  tokens: string[];
+}): number {
+  const titleScore = scoreTokenMatches(input.title, input.tokens) * 4;
+  const descriptionScore = scoreTokenMatches(input.description ?? "", input.tokens) * 2;
+  const tagScore = scoreTokenMatches(input.tags.map((tag) => tag.name).join(" "), input.tokens) * 3;
+  const snippetScore = scoreTokenMatches(input.snippets.join(" "), input.tokens) * 1.5;
+  const recencyBoost = Math.max(0, 180 - Math.floor((Date.now() - input.createdAt.getTime()) / (1000 * 60 * 60 * 24))) / 180;
+  return titleScore + descriptionScore + tagScore + snippetScore + recencyBoost;
 }
 
 const STATIC_PAGES: { path: string; title: string; searchableText: string }[] = [
@@ -108,6 +140,7 @@ export async function GET(request: NextRequest) {
     const publishedOnly = true;
 
     let postIds: string[] = [];
+    let postgresFullTextRank = false;
     try {
       const sql =
         publishedOnly
@@ -115,8 +148,9 @@ export async function GET(request: NextRequest) {
           : Prisma.sql`SELECT id FROM "Post" WHERE search_vector @@ plainto_tsquery('english', ${term}) ORDER BY ts_rank(search_vector, plainto_tsquery('english', ${term})) DESC`;
       const rows = await prisma.$queryRaw<{ id: string }[]>(sql);
       postIds = rows.map((r) => r.id);
+      postgresFullTextRank = true;
     } catch {
-      // fallback
+      // SQLite or missing search_vector: use ILIKE-style fallback below.
     }
 
     const tagMatch = await prisma.post.findMany({
@@ -218,27 +252,55 @@ export async function GET(request: NextRequest) {
       });
     }
 
-    const queryLower = q.toLowerCase();
-    const tokens = queryLower.replace(/[()]/g, " ").split(/\s+/).filter(Boolean);
+    const tokens = tokenizeQuery(q);
     const pages = STATIC_PAGES.filter((p) => {
       const text = p.searchableText.toLowerCase();
-      return tokens.every((token) => token.length < 2 || text.includes(token));
-    }).map((p) => {
-      const snippets = extractSnippets(p.searchableText, q, 5);
-      return {
-        path: p.path,
-        title: p.title,
-        snippets: snippets.length > 0 ? snippets : [p.searchableText.slice(0, 120) + "…"],
-      };
-    });
+      return tokens.length === 0 || tokens.some((token) => text.includes(token));
+    })
+      .map((p) => {
+        const snippets = extractSnippets(p.searchableText, q, 5);
+        const semanticScore = scoreTokenMatches(`${p.title} ${p.searchableText}`, tokens);
+        return {
+          path: p.path,
+          title: p.title,
+          snippets: snippets.length > 0 ? snippets : [p.searchableText.slice(0, 120) + "…"],
+          semanticScore,
+        };
+      })
+      .sort((a, b) => b.semanticScore - a.semanticScore || a.title.localeCompare(b.title))
+      .map((entry) => {
+        const { semanticScore, ...page } = entry;
+        void semanticScore;
+        return page;
+      });
+
+    const rankedPosts = posts
+      .map((post) => ({
+        ...post,
+        semanticScore: buildPostSemanticScore({
+          title: post.title,
+          description: post.description,
+          tags: post.tags,
+          snippets: post.snippets,
+          createdAt: post.createdAt,
+          tokens,
+        }),
+      }))
+      .sort((a, b) => b.semanticScore - a.semanticScore || b.createdAt.getTime() - a.createdAt.getTime())
+      .map((entry) => {
+        const { semanticScore, ...post } = entry;
+        void semanticScore;
+        return post;
+      });
 
     return NextResponse.json({
-      posts: posts.map((post) => {
+      posts: rankedPosts.map((post) => {
         const { content, ...rest } = post;
         void content;
         return rest;
       }),
       pages,
+      rankingMode: postgresFullTextRank ? "postgres_fulltext" : "basic_match",
     });
   } catch (e) {
     console.error("Search API error:", e);

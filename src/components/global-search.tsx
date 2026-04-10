@@ -27,6 +27,7 @@ interface SearchPage {
 interface SearchResult {
   posts: SearchPost[];
   pages: SearchPage[];
+  rankingMode?: "postgres_fulltext" | "basic_match";
 }
 
 const DEBOUNCE_MS = 280;
@@ -39,6 +40,7 @@ export function GlobalSearch() {
   const [query, setQuery] = useState("");
   const [pendingQuery, setPendingQuery] = useState("");
   const [result, setResult] = useState<SearchResult>({ posts: [], pages: [] });
+  const [rankingMode, setRankingMode] = useState<"postgres_fulltext" | "basic_match" | null>(null);
   const [loading, setLoading] = useState(false);
   const inputRef = useRef<HTMLInputElement>(null);
   const panelRef = useRef<HTMLDivElement>(null);
@@ -53,6 +55,7 @@ export function GlobalSearch() {
       setPendingQuery(term);
       if (!term) {
         setResult({ posts: [], pages: [] });
+        setRankingMode(null);
         setLoading(false);
         debounceRef.current = null;
         return;
@@ -60,8 +63,18 @@ export function GlobalSearch() {
       setLoading(true);
       fetch(`/api/search?q=${encodeURIComponent(term)}`)
         .then((res) => (res.ok ? res.json() : { posts: [], pages: [] }))
-        .then((data: SearchResult) => setResult({ posts: data.posts || [], pages: data.pages || [] }))
-        .catch(() => setResult({ posts: [], pages: [] }))
+        .then((data: SearchResult) => {
+          setResult({ posts: data.posts || [], pages: data.pages || [] });
+          if (data.rankingMode === "postgres_fulltext" || data.rankingMode === "basic_match") {
+            setRankingMode(data.rankingMode);
+          } else {
+            setRankingMode(null);
+          }
+        })
+        .catch(() => {
+          setResult({ posts: [], pages: [] });
+          setRankingMode(null);
+        })
         .finally(() => setLoading(false));
       debounceRef.current = null;
     }, DEBOUNCE_MS);
@@ -71,6 +84,7 @@ export function GlobalSearch() {
     setQuery("");
     setPendingQuery("");
     setResult({ posts: [], pages: [] });
+    setRankingMode(null);
     setLoading(false);
     setOpen(true);
   }, []);
@@ -217,6 +231,13 @@ export function GlobalSearch() {
               </Button>
             </div>
             <div className="max-h-[70vh] overflow-y-auto">
+              {!loading && hasQuery && rankingMode ? (
+                <p className="border-b border-[var(--border)] px-3 py-1.5 text-[11px] text-[var(--muted-foreground)]">
+                  {rankingMode === "postgres_fulltext"
+                    ? "Post ranking uses PostgreSQL full-text search when available."
+                    : "Post ranking uses text contains matching (full-text index unavailable)."}
+                </p>
+              ) : null}
               {loading && (
                 <div className="px-3 py-4 space-y-2.5">
                   <div className="h-4 w-3/4 rounded-lg motion-safe:skeleton-shimmer motion-reduce:bg-muted/55" />

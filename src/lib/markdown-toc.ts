@@ -7,6 +7,12 @@ export type MarkdownTocHeading = {
   id: string;
 };
 
+export type MarkdownTocEstimate = {
+  id: string;
+  words: number;
+  readingMinutes: number;
+};
+
 /**
  * Extract h1–h3 headings from markdown source for TOC navigation.
  * Uses the same slug algorithm as rehype-slug (github-slugger) so anchor links match rendered HTML.
@@ -40,6 +46,63 @@ export function extractTocHeadingsFromMarkdown(markdown: string): MarkdownTocHea
   }
 
   return out;
+}
+
+/**
+ * Estimate words and reading minutes per heading section (h1–h3).
+ * A section spans from one heading line to the next heading line.
+ */
+export function estimateTocReadingByHeading(markdown: string): MarkdownTocEstimate[] {
+  const slugger = new GithubSlugger();
+  const lines = markdown.split(/\r?\n/);
+  const headingRows: Array<{ id: string; line: number }> = [];
+  let inFence = false;
+
+  for (let idx = 0; idx < lines.length; idx++) {
+    const line = lines[idx];
+    const fence = line.trim().match(/^(`{3,}|~{3,})/);
+    if (fence) {
+      inFence = !inFence;
+      continue;
+    }
+    if (inFence) continue;
+    const m = line.match(/^(#{1,3})\s+(.+?)\s*$/);
+    if (!m) continue;
+    const text = m[2]
+      .trim()
+      .replace(/\[(.*?)]\([^)]*\)/g, "$1")
+      .replace(/[*_`]/g, "")
+      .trim();
+    if (!text) continue;
+    headingRows.push({ id: slugger.slug(text), line: idx });
+  }
+
+  if (headingRows.length === 0) return [];
+
+  const estimates: MarkdownTocEstimate[] = [];
+  for (let i = 0; i < headingRows.length; i++) {
+    const start = headingRows[i].line + 1;
+    const end = i + 1 < headingRows.length ? headingRows[i + 1].line : lines.length;
+    const sectionRaw = lines.slice(start, end).join("\n");
+    const plain = sectionRaw
+      .replace(/```[\s\S]*?```/g, " ")
+      .replace(/`[^`]*`/g, " ")
+      .replace(/!\[.*?\]\(.*?\)/g, " ")
+      .replace(/\[([^\]]*)\]\([^)]*\)/g, "$1")
+      .replace(/[*_~>#-]/g, " ");
+    const words = plain
+      .split(/\s+/)
+      .map((w) => w.trim())
+      .filter(Boolean).length;
+    const readingMinutes = Math.max(1, Math.ceil(words / 220));
+    estimates.push({
+      id: headingRows[i].id,
+      words,
+      readingMinutes,
+    });
+  }
+
+  return estimates;
 }
 
 /** Build parent h2 links for h3 items (for nested TOC display). */

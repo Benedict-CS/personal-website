@@ -1,7 +1,8 @@
 "use client";
 
-import { useEffect, useMemo } from "react";
+import { useEffect, useMemo, useState } from "react";
 import Link from "next/link";
+import * as Sentry from "@sentry/nextjs";
 
 /**
  * Root-level error boundary. Renders when an error is not caught by error.tsx.
@@ -15,8 +16,10 @@ export default function GlobalError({
   error: Error & { digest?: string };
   reset: () => void;
 }) {
+  const [resetting, setResetting] = useState(false);
   useEffect(() => {
     console.error("Global error boundary:", error);
+    Sentry.captureException(error);
   }, [error]);
 
   const digest = useMemo(() => {
@@ -38,6 +41,17 @@ export default function GlobalError({
   const primary = "oklch(0.208 0.042 265.755)";
   const primaryFg = "oklch(0.984 0.003 247.858)";
   const background = "oklch(0.99 0.002 247)";
+
+  const tryRecover = () => {
+    if (resetting) return;
+    setResetting(true);
+    try {
+      reset();
+      window.setTimeout(() => setResetting(false), 1800);
+    } catch {
+      window.location.replace("/");
+    }
+  };
 
   return (
     <html lang="en">
@@ -100,25 +114,21 @@ export default function GlobalError({
           <div style={{ display: "flex", flexWrap: "wrap", gap: "0.75rem", justifyContent: "center" }}>
             <button
               type="button"
-              onClick={() => {
-                try {
-                  reset();
-                } catch {
-                  window.location.href = "/";
-                }
-              }}
+              onClick={tryRecover}
+              disabled={resetting}
               style={{
                 padding: "0.5rem 1rem",
                 background: primary,
                 color: primaryFg,
                 border: "none",
                 borderRadius: "0.375rem",
-                cursor: "pointer",
+                cursor: resetting ? "not-allowed" : "pointer",
+                opacity: resetting ? 0.82 : 1,
                 fontSize: "0.875rem",
                 fontWeight: 500,
               }}
             >
-              Try again
+              {resetting ? "Recovering..." : "Try again"}
             </button>
             <Link
               href="/"

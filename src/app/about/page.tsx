@@ -432,8 +432,49 @@ export default async function AboutPage({
     }
   }
 
+  const siteRender = await getSiteConfigForRender();
+  const siteBase = siteRender.url.replace(/\/$/, "");
+  const sameAsRaw = [
+    siteRender.links?.github,
+    siteRender.links?.linkedin,
+    ...Object.values(siteRender.socialLinks ?? {}),
+  ].filter((u): u is string => typeof u === "string" && /^https?:\/\//i.test(u));
+  const personSameAs = [...new Set(sameAsRaw)];
+  const profileImageAbsolute =
+    profileImage?.trim() && !profileImage.trim().startsWith("data:")
+      ? new URL(profileImage.trim(), `${siteBase}/`).toString()
+      : undefined;
+  const personDisplayName = heroName?.trim() || siteRender.siteName;
+  const aboutPersonJsonLd = {
+    "@context": "https://schema.org",
+    "@graph": [
+      {
+        "@type": "Person",
+        "@id": `${siteBase}/about#person`,
+        name: personDisplayName,
+        url: `${siteBase}/about`,
+        ...(heroTagline?.trim() ? { jobTitle: heroTagline.trim() } : {}),
+        ...(profileImageAbsolute ? { image: profileImageAbsolute } : {}),
+        ...(personSameAs.length > 0 ? { sameAs: personSameAs } : {}),
+      },
+      {
+        "@type": "WebPage",
+        "@id": `${siteBase}/about#webpage`,
+        url: `${siteBase}/about`,
+        name: `About | ${siteRender.siteName}`,
+        isPartOf: { "@id": `${siteBase}/#website` },
+        about: { "@id": `${siteBase}/about#person` },
+        primaryTopicOfPage: { "@id": `${siteBase}/about#person` },
+      },
+    ],
+  };
+
   return (
     <PublicPageShell maxWidth="5xl" className="py-12">
+      <script
+        type="application/ld+json"
+        dangerouslySetInnerHTML={{ __html: JSON.stringify(aboutPersonJsonLd) }}
+      />
       {isPrintMode && <AboutPrintToolbar />}
       {!isPrintMode && (
         <PublicBreadcrumbs items={[{ label: "Home", href: "/" }, { label: "About" }]} />

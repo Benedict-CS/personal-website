@@ -55,12 +55,19 @@ export async function PATCH(request: NextRequest) {
       ...(textEdits["home.sectionTitleSkills"] ? { sectionTitleSkills: textEdits["home.sectionTitleSkills"] } : {}),
     };
 
-    await prisma.sitePageContent.upsert({
+    const saved = await prisma.sitePageContent.upsert({
       where: { page: "home" },
       create: { page: "home", content: next as object },
       update: { content: next as object },
     });
-    return NextResponse.json({ ok: true, persisted: true, publishRequested: Boolean(body.publish) });
+    return NextResponse.json({
+      ok: true,
+      persisted: true,
+      publishRequested: Boolean(body.publish),
+      page: "home",
+      content: saved.content,
+      updatedAt: saved.updatedAt,
+    });
   }
 
   if (slug === "contact") {
@@ -73,12 +80,19 @@ export async function PATCH(request: NextRequest) {
       ...(textEdits["contact.formNote"] ? { formNote: textEdits["contact.formNote"] } : {}),
       ...(imageEdits["contact.heroImage"] ? { heroImage: imageEdits["contact.heroImage"] } : {}),
     };
-    await prisma.sitePageContent.upsert({
+    const saved = await prisma.sitePageContent.upsert({
       where: { page: "contact" },
       create: { page: "contact", content: next as object },
       update: { content: next as object },
     });
-    return NextResponse.json({ ok: true, persisted: true, publishRequested: Boolean(body.publish) });
+    return NextResponse.json({
+      ok: true,
+      persisted: true,
+      publishRequested: Boolean(body.publish),
+      page: "contact",
+      content: saved.content,
+      updatedAt: saved.updatedAt,
+    });
   }
 
   return NextResponse.json({ ok: true, persisted: false, publishRequested: Boolean(body.publish) });

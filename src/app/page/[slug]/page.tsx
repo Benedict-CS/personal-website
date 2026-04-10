@@ -93,10 +93,14 @@ export default async function CustomPageRoute({ params }: Props) {
   const pageDescription = metaDescriptionFromMarkdown(stripCustomPageDecoratorsForSeo(page.content ?? ""), 160);
   const jsonLd = {
     "@context": "https://schema.org",
-    "@type": "WebPage",
+    "@type": ["WebPage", "CreativeWork"],
+    "@id": `${canonicalUrl}#webpage`,
     name: page.title,
     description: pageDescription || page.title,
     url: canonicalUrl,
+    isPartOf: { "@id": `${base}/#website` },
+    publisher: { "@id": `${base}/#publisher` },
+    inLanguage: "en",
   };
 
   // Light-only site: "bold" is high-contrast borders and shadow, not a dark panel.

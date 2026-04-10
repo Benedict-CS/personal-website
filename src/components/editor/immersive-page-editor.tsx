@@ -295,6 +295,16 @@ export function ImmersivePageEditor({ payload, isLoggedIn }: { payload: EditorPa
                 <p className="text-sm text-muted-foreground">Form block (live frontend style preview)</p>
               </CardContent>
             </Card>
+            <p className="mt-4 text-xs text-muted-foreground">
+              Form delivery (recipient email, HTTPS webhooks) is configured in{" "}
+              <Link
+                href="/dashboard/content/site"
+                className="font-medium text-primary underline-offset-2 hover:underline"
+              >
+                Site settings
+              </Link>
+              .
+            </p>
           </section>
         </div>
       )}

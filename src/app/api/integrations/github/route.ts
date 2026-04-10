@@ -1,6 +1,12 @@
 import { NextRequest, NextResponse } from "next/server";
+import { fetchWithRetry } from "@/lib/self-healing-fetch";
 
 export const dynamic = "force-dynamic";
+
+function safeNumber(value: unknown): number {
+  const parsed = Number(value);
+  return Number.isFinite(parsed) ? parsed : 0;
+}
 
 /**
  * Public GitHub user + recent repos (no token; rate limit applies).
@@ -23,12 +29,18 @@ export async function GET(request: NextRequest) {
   }
 
   try {
-    const [profileRes, reposRes] = await Promise.all([
-      fetch(`https://api.github.com/users/${encodeURIComponent(user)}`, { headers }),
-      fetch(
+    const [profileRes, reposRes, eventsRes] = await Promise.all([
+      fetchWithRetry(`https://api.github.com/users/${encodeURIComponent(user)}`, { headers }, { retries: 2, timeoutMs: 4000 }),
+      fetchWithRetry(
         `https://api.github.com/users/${encodeURIComponent(user)}/repos?sort=updated&per_page=8&type=owner`,
-        { headers }
-      ),
+        { headers },
+        { retries: 2, timeoutMs: 4000 }
+      ).catch(() => null),
+      fetchWithRetry(
+        `https://api.github.com/users/${encodeURIComponent(user)}/events/public?per_page=5`,
+        { headers },
+        { retries: 2, timeoutMs: 4000 }
+      ).catch(() => null),
     ]);
 
     if (!profileRes.ok) {
@@ -49,12 +61,21 @@ export async function GET(request: NextRequest) {
     }
 
     let reposJson: unknown[] = [];
-    if (reposRes.ok) {
+    if (reposRes?.ok) {
       try {
         const raw = (await reposRes.json()) as unknown;
         reposJson = Array.isArray(raw) ? raw : [];
       } catch {
         reposJson = [];
+      }
+    }
+    let eventsJson: unknown[] = [];
+    if (eventsRes?.ok) {
+      try {
+        const raw = (await eventsRes.json()) as unknown;
+        eventsJson = Array.isArray(raw) ? raw : [];
+      } catch {
+        eventsJson = [];
       }
     }
 
@@ -65,8 +86,33 @@ export async function GET(request: NextRequest) {
         description: row.description != null ? String(row.description) : null,
         htmlUrl: String(row.html_url ?? ""),
         language: row.language != null ? String(row.language) : null,
-        stargazersCount: Number(row.stargazers_count ?? 0),
+        stargazersCount: safeNumber(row.stargazers_count),
         pushedAt: row.pushed_at != null ? String(row.pushed_at) : null,
+      };
+    });
+    const totalStars = repos.reduce((sum, repo) => sum + repo.stargazersCount, 0);
+    const totalForks = reposJson.reduce<number>((sum, repo) => {
+      const row = repo as Record<string, unknown>;
+      return sum + safeNumber(row.forks_count);
+    }, 0);
+    const languageCounts = repos.reduce<Map<string, number>>((map, repo) => {
+      if (!repo.language) return map;
+      map.set(repo.language, (map.get(repo.language) ?? 0) + 1);
+      return map;
+    }, new Map());
+    const topLanguages = Array.from(languageCounts.entries())
+      .sort((a, b) => b[1] - a[1])
+      .slice(0, 5)
+      .map(([name, reposCount]) => ({ name, reposCount }));
+    const recentActivity = eventsJson.slice(0, 5).map((event) => {
+      const row = event as Record<string, unknown>;
+      const repoObj = row.repo as Record<string, unknown> | undefined;
+      const repoName = String(repoObj?.name ?? "");
+      return {
+        type: String(row.type ?? "Event"),
+        repo: repoName,
+        createdAt: row.created_at != null ? String(row.created_at) : null,
+        url: repoName ? `https://github.com/${repoName}` : `https://github.com/${user}`,
       };
     });
 
@@ -75,9 +121,13 @@ export async function GET(request: NextRequest) {
       name: profile.name != null ? String(profile.name) : null,
       bio: profile.bio != null ? String(profile.bio) : null,
       avatarUrl: profile.avatar_url != null ? String(profile.avatar_url) : null,
-      publicRepos: Number(profile.public_repos ?? 0),
-      followers: Number(profile.followers ?? 0),
+      publicRepos: safeNumber(profile.public_repos),
+      followers: safeNumber(profile.followers),
       htmlUrl: String(profile.html_url ?? `https://github.com/${user}`),
+      totalStars,
+      totalForks,
+      topLanguages,
+      recentActivity,
       repos,
     };
 

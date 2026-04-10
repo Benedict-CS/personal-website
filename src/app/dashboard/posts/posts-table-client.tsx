@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useRef, useEffect } from "react";
+import { useState, useRef, useEffect, useMemo } from "react";
 import Link from "next/link";
 import { useRouter, usePathname, useSearchParams } from "next/navigation";
 import { ArrowDown, ArrowUp, ArrowUpDown, Copy, Loader2 } from "lucide-react";
@@ -19,6 +19,10 @@ import { useCmsSync } from "@/contexts/cms-sync-context";
 import type { PostRow } from "@/types/post";
 import { formatAbsoluteDateTime, formatRelativeTime } from "@/lib/relative-time";
 import { UI_MODAL_OVERLAY_CLASS, UI_MODAL_PANEL_CLASS, UI_MOTION_EASE } from "@/components/ui/ui-cohesion";
+import { DASHBOARD_INTERNAL_FETCH, fetchWithRetry, formatDashboardFetchFailure } from "@/lib/self-healing-fetch";
+import { validateBulkPostEdit } from "@/lib/dashboard-form-validation";
+
+const postsMutationFetch = { ...DASHBOARD_INTERNAL_FETCH, retries: 0 };
 
 type SortKey = "updatedAt" | "createdAt" | "title";
 type Order = "asc" | "desc";
@@ -61,6 +65,11 @@ export function PostsTableClient({
   const [bulkEditPublished, setBulkEditPublished] = useState<"" | "publish" | "unpublish">("");
   const [duplicatingId, setDuplicatingId] = useState<string | null>(null);
   const selectAllRef = useRef<HTMLInputElement>(null);
+
+  const bulkEditIssues = useMemo(
+    () => validateBulkPostEdit(bulkEditCategory, bulkEditTags),
+    [bulkEditCategory, bulkEditTags],
+  );
 
   useEffect(() => {
     const el = selectAllRef.current;
@@ -131,7 +140,11 @@ export function PostsTableClient({
   const handleDuplicate = async (postId: string) => {
     setDuplicatingId(postId);
     try {
-      const res = await fetch(`/api/posts/${postId}/duplicate`, { method: "POST", credentials: "include" });
+      const res = await fetchWithRetry(
+        `/api/posts/${postId}/duplicate`,
+        { method: "POST", credentials: "include" },
+        postsMutationFetch,
+      );
       const data = await res.json().catch(() => ({}));
       if (!res.ok) {
         toast(data.error || "Duplicate failed", "error");
@@ -140,7 +153,7 @@ export function PostsTableClient({
       toast("Post duplicated as draft", "success");
       router.push(`/dashboard/posts/${data.id}`);
     } catch (e) {
-      toast((e as Error).message || "Request failed", "error");
+      toast(formatDashboardFetchFailure(e), "error");
     } finally {
       setDuplicatingId(null);
     }
@@ -163,11 +176,15 @@ export function PostsTableClient({
     applyOptimisticBulk(action, ids);
     setBulkLoading(true);
     try {
-      const res = await fetch("/api/posts/bulk", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ action, ids }),
-      });
+      const res = await fetchWithRetry(
+        "/api/posts/bulk",
+        {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ action, ids }),
+        },
+        postsMutationFetch,
+      );
       const data = await res.json().catch(() => ({}));
       if (!res.ok) {
         setListPosts(posts);
@@ -180,7 +197,7 @@ export function PostsTableClient({
     } catch (e) {
       setListPosts(posts);
       setSelected(new Set(ids));
-      toast((e as Error).message || "Request failed", "error");
+      toast(formatDashboardFetchFailure(e), "error");
     } finally {
       setBulkLoading(false);
     }
@@ -204,11 +221,15 @@ export function PostsTableClient({
     setBulkEditOpen(false);
     setBulkLoading(true);
     try {
-      const res = await fetch("/api/posts/bulk", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(payload),
-      });
+      const res = await fetchWithRetry(
+        "/api/posts/bulk",
+        {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify(payload),
+        },
+        postsMutationFetch,
+      );
       const data = await res.json().catch(() => ({}));
       if (!res.ok) {
         toast(data.error || "Bulk update failed", "error");
@@ -221,7 +242,7 @@ export function PostsTableClient({
       setBulkEditPublished("");
       router.refresh();
     } catch (e) {
-      toast((e as Error).message || "Request failed", "error");
+      toast(formatDashboardFetchFailure(e), "error");
     } finally {
       setBulkLoading(false);
     }
@@ -319,6 +340,13 @@ export function PostsTableClient({
               Bulk edit {selected.size} post(s)
             </h2>
             <p className="mt-1 text-sm text-muted-foreground">Leave a field empty to keep current value.</p>
+            {bulkEditIssues.length > 0 ? (
+              <ul className="mt-3 list-disc space-y-1 pl-5 text-sm text-amber-800">
+                {bulkEditIssues.map((msg) => (
+                  <li key={msg}>{msg}</li>
+                ))}
+              </ul>
+            ) : null}
             <div className="mt-4 space-y-4">
               <div>
                 <label htmlFor="bulk-category" className="block text-sm font-medium text-foreground">Category</label>
@@ -329,7 +357,8 @@ export function PostsTableClient({
                   value={bulkEditCategory}
                   onChange={(e) => setBulkEditCategory(e.target.value)}
                   placeholder="e.g. LeetCode/Array"
-                  className="mt-1 w-full rounded-lg border border-input bg-background px-3 py-2 text-sm text-foreground shadow-[var(--elevation-1)]"
+                  aria-invalid={bulkEditIssues.some((m) => m.startsWith("Category"))}
+                  className="mt-1 w-full rounded-lg border border-input bg-background px-3 py-2 text-sm text-foreground shadow-[var(--elevation-1)] aria-invalid:border-amber-500"
                 />
               </div>
               <div>
@@ -340,7 +369,8 @@ export function PostsTableClient({
                   value={bulkEditTags}
                   onChange={(e) => setBulkEditTags(e.target.value)}
                   placeholder="tag1, tag2"
-                  className="mt-1 w-full rounded-lg border border-input bg-background px-3 py-2 text-sm text-foreground shadow-[var(--elevation-1)]"
+                  aria-invalid={bulkEditIssues.some((m) => m.includes("tag"))}
+                  className="mt-1 w-full rounded-lg border border-input bg-background px-3 py-2 text-sm text-foreground shadow-[var(--elevation-1)] aria-invalid:border-amber-500"
                 />
               </div>
               <div>
@@ -361,7 +391,7 @@ export function PostsTableClient({
               <Button variant="outline" onClick={() => setBulkEditOpen(false)} disabled={bulkLoading}>
                 Cancel
               </Button>
-              <Button onClick={runBulkUpdate} disabled={bulkLoading}>
+              <Button onClick={runBulkUpdate} disabled={bulkLoading || bulkEditIssues.length > 0}>
                 {bulkLoading ? <Loader2 className="h-4 w-4 animate-spin" /> : null}
                 {bulkLoading ? "Applying..." : "Apply"}
               </Button>

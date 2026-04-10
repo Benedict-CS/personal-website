@@ -4,12 +4,12 @@ import { useEffect, useMemo, useState } from "react";
 import Link from "next/link";
 import { useSearchParams } from "next/navigation";
 import { AnimatePresence, motion } from "framer-motion";
-import { FilePlus2, LayoutTemplate, SearchX } from "lucide-react";
+import { LayoutTemplate, Megaphone, Package, Scale, User, type LucideIcon } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { ConfirmDialog } from "@/components/ui/confirm-dialog";
 import { Input } from "@/components/ui/input";
-import { DashboardPageHeader } from "@/components/dashboard/dashboard-ui";
+import { DashboardEmptyState, DashboardPageHeader } from "@/components/dashboard/dashboard-ui";
 import { SocialShareCardControls } from "@/components/dashboard/social-share-card-controls";
 import { formatAbsoluteDateTime, formatRelativeTime } from "@/lib/relative-time";
 import {
@@ -29,6 +29,8 @@ type CustomPageItem = {
   updatedAt?: string;
 };
 
+type PageTemplateCategory = "profile" | "marketing" | "legal" | "product";
+
 type PageTemplate = {
   id: string;
   label: string;
@@ -36,11 +38,20 @@ type PageTemplate = {
   defaultTitle: string;
   defaultSlug: string;
   content: string;
+  category: PageTemplateCategory;
+};
+
+const TEMPLATE_CATEGORY_META: Record<PageTemplateCategory, { label: string; Icon: LucideIcon }> = {
+  profile: { label: "Profile", Icon: User },
+  marketing: { label: "Marketing", Icon: Megaphone },
+  legal: { label: "Legal", Icon: Scale },
+  product: { label: "Product", Icon: Package },
 };
 
 const PAGE_TEMPLATES: PageTemplate[] = [
   {
     id: "about-pro",
+    category: "profile",
     label: "About / Profile",
     description: "Personal story, expertise, and call to action.",
     defaultTitle: "About Me",
@@ -63,6 +74,7 @@ Add one clear next step (email form, booking link, or social profile).`,
   },
   {
     id: "services",
+    category: "marketing",
     label: "Services",
     description: "Clear offer page with pricing-style sections.",
     defaultTitle: "Services",
@@ -95,6 +107,7 @@ Describe your core service and the business result it creates.
   },
   {
     id: "landing",
+    category: "marketing",
     label: "Landing Page",
     description: "Marketing layout for campaigns and product launches.",
     defaultTitle: "Landing",
@@ -117,6 +130,7 @@ Repeat one strong call to action.`,
   },
   {
     id: "contact",
+    category: "profile",
     label: "Contact",
     description: "Simple page with contact methods and FAQs.",
     defaultTitle: "Contact",
@@ -136,10 +150,240 @@ Tell visitors how quickly you reply and what details to include.
 - Typical timeline?
 - Budget range?`,
   },
+  {
+    id: "project-case-study",
+    category: "marketing",
+    label: "Project / Case study",
+    description: "Showcase one build with context, stack, and measurable outcomes.",
+    defaultTitle: "Project Case Study",
+    defaultSlug: "project-case-study",
+    content: `# Project Name
+
+## Overview
+One paragraph on the problem, constraints, and your role.
+
+## Challenge
+What made this hard — timeline, scale, unknowns, or integrations.
+
+## Approach
+- Decision 1
+- Decision 2
+- Decision 3
+
+## Stack
+Technologies, hosting, and tooling.
+
+## Outcomes
+Quantified results (latency, conversion, cost, or reliability).
+
+## Gallery / Links
+Add screenshots, a demo URL, or repository links.`,
+  },
+  {
+    id: "changelog",
+    category: "product",
+    label: "Changelog",
+    description: "Product updates with version headings and release notes.",
+    defaultTitle: "Changelog",
+    defaultSlug: "changelog",
+    content: `# Changelog
+
+## [Unreleased]
+### Added
+- 
+
+### Changed
+- 
+
+### Fixed
+- 
+
+## [1.0.0] — YYYY-MM-DD
+### Highlights
+- 
+
+### Notes
+Full release notes for readers who need detail.`,
+  },
+  {
+    id: "pricing",
+    category: "marketing",
+    label: "Pricing",
+    description: "Tiered plans with comparison-style sections.",
+    defaultTitle: "Pricing",
+    defaultSlug: "pricing",
+    content: `# Pricing
+
+## Plans at a glance
+One sentence on who each tier is for.
+
+## Starter
+**$X / mo**
+
+- Feature 1
+- Feature 2
+- Limit or caveat
+
+**CTA:** Get started
+
+## Professional
+**$Y / mo**
+
+- Everything in Starter
+- Feature 3
+- Priority support
+
+**CTA:** Start trial
+
+## Enterprise
+**Custom**
+
+- SSO, SLA, and dedicated support
+- Custom limits and integrations
+
+**CTA:** Talk to sales
+
+## FAQ
+- Can I change plans later?
+- Do you offer annual billing?
+- What payment methods are supported?`,
+  },
+  {
+    id: "resume-cv",
+    category: "profile",
+    label: "Resume / CV",
+    description: "Structured profile for hiring managers and recruiters.",
+    defaultTitle: "Resume",
+    defaultSlug: "resume",
+    content: `# Your Name
+**Role title** · City, Region · [email@domain.com](mailto:email@domain.com)
+
+## Summary
+Three lines on impact, domains, and what you want next.
+
+## Experience
+### Company — Role
+*Dates*
+
+- Outcome-oriented bullet
+- Technologies and scope
+
+### Company — Role
+*Dates*
+
+- Outcome-oriented bullet
+
+## Education
+### School — Degree
+*Years*
+
+## Skills
+Group by area: Languages · Frameworks · Platforms · Leadership
+
+## Selected projects
+- [Project name](https://) — one line each`,
+  },
+  {
+    id: "privacy-policy",
+    category: "legal",
+    label: "Privacy policy",
+    description: "Baseline legal sections — replace placeholders with your counsel-approved text.",
+    defaultTitle: "Privacy Policy",
+    defaultSlug: "privacy",
+    content: `# Privacy Policy
+
+**Last updated:** YYYY-MM-DD
+
+## Who we are
+Site or product name and contact email.
+
+## Data we collect
+Describe categories (account data, analytics, form submissions, cookies).
+
+## How we use data
+Processing purposes and legal bases where applicable.
+
+## Sharing
+Subprocessors, hosting, analytics, and payment providers.
+
+## Retention
+How long data is kept and deletion requests.
+
+## Your rights
+Access, correction, deletion, and portability where applicable.
+
+## Contact
+Privacy contact channel and response timeframe.
+
+---
+
+*This template is not legal advice. Have qualified counsel review before publishing.*`,
+  },
+  {
+    id: "terms-of-service",
+    category: "legal",
+    label: "Terms of service",
+    description: "Baseline ToS sections — replace with counsel-approved language.",
+    defaultTitle: "Terms of Service",
+    defaultSlug: "terms",
+    content: `# Terms of Service
+
+**Last updated:** YYYY-MM-DD
+
+## Agreement
+By accessing this site or using its services, you agree to these terms.
+
+## Use of the service
+Permitted use, acceptable conduct, and restrictions.
+
+## Accounts and security
+Account responsibilities, credentials, and notification of unauthorized use.
+
+## Intellectual property
+Ownership of content, licenses you grant, and third-party materials.
+
+## Disclaimers
+Service provided “as is” and limitation of warranties (as permitted by law).
+
+## Limitation of liability
+Cap on liability and excluded damages (as permitted by law).
+
+## Termination
+When access may be suspended or ended and what survives termination.
+
+## Governing law
+Jurisdiction and dispute resolution approach.
+
+## Changes
+How updates to these terms are communicated.
+
+## Contact
+Legal or support contact for questions about these terms.
+
+---
+
+*This template is not legal advice. Have qualified counsel review before publishing.*`,
+  },
 ];
 
 const TACTILE_ACTION_CLASS =
   "transition-transform duration-150 active:scale-[0.98] motion-safe:hover:-translate-y-px";
+
+const TEMPLATE_LIST_MOTION = {
+  hidden: {},
+  show: {
+    transition: { staggerChildren: 0.045 },
+  },
+} as const;
+
+const TEMPLATE_CARD_MOTION = {
+  hidden: { opacity: 0, y: 8 },
+  show: {
+    opacity: 1,
+    y: 0,
+    transition: { duration: 0.2, ease: [0.25, 0.46, 0.45, 0.94] as [number, number, number, number] },
+  },
+} as const;
 
 function normalizeCustomPageItem(p: Partial<CustomPageItem>): CustomPageItem {
   return {
@@ -172,6 +416,7 @@ export default function CustomPagesPage() {
   const [statusFilter, setStatusFilter] = useState<"all" | "published" | "draft">("all");
   const [deleteConfirmPage, setDeleteConfirmPage] = useState<CustomPageItem | null>(null);
   const [selectedSharePageId, setSelectedSharePageId] = useState("");
+  const [templateCategoryFilter, setTemplateCategoryFilter] = useState<"all" | PageTemplateCategory>("all");
 
   const slugify = (value: string): string => sanitizeSlugForStorage(value);
 
@@ -458,6 +703,12 @@ export default function CustomPagesPage() {
       return passStatus && passQuery;
     });
   }, [pages, searchQuery, statusFilter]);
+
+  const filteredPageTemplates = useMemo(() => {
+    if (templateCategoryFilter === "all") return PAGE_TEMPLATES;
+    return PAGE_TEMPLATES.filter((t) => t.category === templateCategoryFilter);
+  }, [templateCategoryFilter]);
+
   const existingSlugs = useMemo(() => new Set(pages.map((page) => sanitizeSlugForStorage(page.slug))), [pages]);
   const selectedSharePage = useMemo(
     () => pages.find((page) => page.id === selectedSharePageId) ?? pages[0] ?? null,
@@ -608,36 +859,90 @@ export default function CustomPagesPage() {
         </CardContent>
       </Card>
 
-      <Card>
+      <Card className="shadow-[var(--elevation-1)]">
         <CardHeader>
           <CardTitle className="flex items-center gap-2">
             <LayoutTemplate className="h-4 w-4 text-muted-foreground" aria-hidden />
             Quick start templates
           </CardTitle>
-        </CardHeader>
-        <CardContent className="grid gap-3 md:grid-cols-2">
-          {PAGE_TEMPLATES.map((template) => (
-            <motion.div
-              key={template.id}
-              initial={{ opacity: 0, y: 6 }}
-              animate={{ opacity: 1, y: 0 }}
-              transition={{ duration: 0.2 }}
-              whileHover={{ y: -2 }}
-              className="rounded-lg border border-border p-3"
+          <p className="text-xs text-muted-foreground">
+            Filter by intent, then create a page and open the visual editor to customize blocks and copy.
+          </p>
+          <div className="flex flex-wrap gap-2 pt-1">
+            <Button
+              type="button"
+              size="sm"
+              variant={templateCategoryFilter === "all" ? "default" : "outline"}
+              className={TACTILE_ACTION_CLASS}
+              onClick={() => setTemplateCategoryFilter("all")}
             >
-              <p className="text-sm font-semibold text-foreground">{template.label}</p>
-              <p className="mt-1 text-xs text-muted-foreground">{template.description}</p>
-              <Button
-                className={`mt-3 ${TACTILE_ACTION_CLASS}`}
-                variant="outline"
-                size="sm"
-                disabled={creating}
-                onClick={() => void createPageFromTemplate(template)}
-              >
-                {creating ? "Creating..." : "Use template"}
-              </Button>
-            </motion.div>
-          ))}
+              All
+            </Button>
+            {(Object.keys(TEMPLATE_CATEGORY_META) as PageTemplateCategory[]).map((cat) => {
+              const CategoryIcon = TEMPLATE_CATEGORY_META[cat].Icon;
+              return (
+                <Button
+                  key={cat}
+                  type="button"
+                  size="sm"
+                  variant={templateCategoryFilter === cat ? "default" : "outline"}
+                  className={`gap-1.5 ${TACTILE_ACTION_CLASS}`}
+                  onClick={() => setTemplateCategoryFilter(cat)}
+                >
+                  <CategoryIcon className="h-3.5 w-3.5" aria-hidden />
+                  {TEMPLATE_CATEGORY_META[cat].label}
+                </Button>
+              );
+            })}
+          </div>
+        </CardHeader>
+        <CardContent>
+          <motion.div
+            key={templateCategoryFilter}
+            className="grid gap-3 md:grid-cols-2"
+            initial="hidden"
+            animate="show"
+            variants={TEMPLATE_LIST_MOTION}
+          >
+            {filteredPageTemplates.map((template) => {
+              const { Icon, label: catLabel } = TEMPLATE_CATEGORY_META[template.category];
+              return (
+                <motion.div
+                  key={template.id}
+                  variants={TEMPLATE_CARD_MOTION}
+                  whileHover={{ y: -2, transition: { duration: 0.18 } }}
+                  className="rounded-xl border border-border bg-card p-3 shadow-[var(--elevation-1)]"
+                >
+                  <div className="flex gap-3">
+                    <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-lg border border-border/80 bg-muted/35 text-muted-foreground">
+                      <Icon className="h-5 w-5" aria-hidden />
+                    </div>
+                    <div className="min-w-0 flex-1">
+                      <div className="flex flex-wrap items-center gap-2 gap-y-1">
+                        <p className="text-sm font-semibold text-foreground">{template.label}</p>
+                        <span className="rounded-full border border-border/70 bg-muted/50 px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wide text-muted-foreground">
+                          {catLabel}
+                        </span>
+                      </div>
+                      <p className="mt-1 text-xs text-muted-foreground">{template.description}</p>
+                      <Button
+                        className={`mt-3 ${TACTILE_ACTION_CLASS}`}
+                        variant="outline"
+                        size="sm"
+                        disabled={creating}
+                        onClick={() => void createPageFromTemplate(template)}
+                      >
+                        {creating ? "Creating..." : "Use template"}
+                      </Button>
+                    </div>
+                  </div>
+                </motion.div>
+              );
+            })}
+          </motion.div>
+          {filteredPageTemplates.length === 0 ? (
+            <p className="mt-3 text-sm text-muted-foreground">No templates in this category.</p>
+          ) : null}
         </CardContent>
       </Card>
 
@@ -686,21 +991,19 @@ export default function CustomPagesPage() {
             </div>
           </div>
           {pages.length === 0 ? (
-            <div className="rounded-lg border border-dashed border-border bg-muted/30 p-8 text-center">
-              <div className="mb-3 inline-flex h-10 w-10 items-center justify-center rounded-full border border-border bg-card text-muted-foreground">
-                <FilePlus2 className="h-5 w-5" aria-hidden />
-              </div>
-              <p className="text-sm font-medium text-foreground">No custom pages yet</p>
-              <p className="mt-1 text-sm text-muted-foreground">Create one above (title + slug) or use a template, then edit content in the visual editor.</p>
-            </div>
+            <DashboardEmptyState
+              illustration="documents"
+              title="No custom pages yet"
+              description="Create one above (title + slug) or pick a template, then open the visual editor to write content."
+              className="border-dashed py-10"
+            />
           ) : filteredPages.length === 0 ? (
-            <div className="rounded-lg border border-dashed border-border bg-muted/20 p-6 text-center">
-              <div className="mb-2 inline-flex h-9 w-9 items-center justify-center rounded-full border border-border bg-card text-muted-foreground">
-                <SearchX className="h-4.5 w-4.5" aria-hidden />
-              </div>
-              <p className="text-sm font-medium text-foreground">No pages match your filters</p>
-              <p className="mt-1 text-xs text-muted-foreground">Adjust status/search filters or clear your query.</p>
-            </div>
+            <DashboardEmptyState
+              illustration="magnifier"
+              title="No pages match your filters"
+              description="Adjust status or search, or clear your query to see the full list."
+              className="border-dashed py-8"
+            />
           ) : (
             <AnimatePresence initial={false}>
               {filteredPages.map((page) => {

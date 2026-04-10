@@ -5,7 +5,7 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { ConfirmDialog } from "@/components/ui/confirm-dialog";
-import { Trash2, Image as ImageIcon, Loader2, Upload, Copy, Check, FileEdit } from "lucide-react";
+import { Trash2, Loader2, Upload, Copy, Check, FileEdit } from "lucide-react";
 import {
   broadcastCmsMediaMarkdown,
   markdownImageFromMediaFile,
@@ -19,11 +19,19 @@ import {
 } from "@/lib/media-grid-sort";
 import Image from "next/image";
 import { useToast } from "@/contexts/toast-context";
-import { DashboardPageHeader } from "@/components/dashboard/dashboard-ui";
+import { DashboardEmptyIllustration, DashboardPageHeader } from "@/components/dashboard/dashboard-ui";
 import {
   DASHBOARD_DROP_ZONE_ACTIVE,
   DASHBOARD_DROP_ZONE_IDLE,
 } from "@/components/dashboard/dashboard-drag-zone-classes";
+import { DASHBOARD_INTERNAL_FETCH, fetchWithRetry, formatDashboardFetchFailure } from "@/lib/self-healing-fetch";
+import {
+  MEDIA_OPTIMIZE_MIN_BYTES_CEILING,
+  MEDIA_OPTIMIZE_MIN_BYTES_FLOOR,
+  validateMediaOptimizePanel,
+} from "@/lib/dashboard-form-validation";
+
+const mediaMutationFetch = { ...DASHBOARD_INTERNAL_FETCH, retries: 0 };
 
 interface MediaFile {
   name: string;
@@ -60,6 +68,17 @@ type OptimizeSummary = {
   requestedCount?: number;
   candidates?: OptimizeCandidate[];
   results?: OptimizeResult[];
+};
+
+type OptimizeHistoryItem = {
+  id: string;
+  createdAt: string;
+  optimizedCount: number;
+  failedCount: number;
+  attempted: number;
+  savedBytesTotal: number;
+  minBytes: number | null;
+  maxItems: number | null;
 };
 
 function classifyErrorCategory(error?: string): string {
@@ -143,11 +162,19 @@ export default function MediaContent() {
   const [copiedFailedKeysAt, setCopiedFailedKeysAt] = useState<number | null>(null);
   const [lastAssessmentRefreshedAt, setLastAssessmentRefreshedAt] = useState<string | null>(null);
   const [assessmentRefreshStatus, setAssessmentRefreshStatus] = useState<"idle" | "running" | "success" | "error">("idle");
+
+  const optimizePanelIssues = useMemo(
+    () => validateMediaOptimizePanel(optimizeMinBytes, optimizeMaxItems),
+    [optimizeMinBytes, optimizeMaxItems],
+  );
+  const optimizePanelValid = optimizePanelIssues.length === 0;
   const [assessmentDelta, setAssessmentDelta] = useState<{
     candidateDelta: number;
     estimatedSavedBytesDelta: number;
   } | null>(null);
   const [optimizeSummary, setOptimizeSummary] = useState<OptimizeSummary | null>(null);
+  const [optimizeHistory, setOptimizeHistory] = useState<OptimizeHistoryItem[]>([]);
+  const [loadingOptimizeHistory, setLoadingOptimizeHistory] = useState(false);
   const batchCancelRef = useRef(false);
   const assessmentRefreshTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const lastAssessmentSnapshotRef = useRef<{
@@ -183,11 +210,15 @@ export default function MediaContent() {
     setDeleting(true);
     setDeleteStatus(null);
     try {
-      const res = await fetch("/api/media/delete", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ keys: Array.from(selectedSnapshot) }),
-      });
+      const res = await fetchWithRetry(
+        "/api/media/delete",
+        {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ keys: Array.from(selectedSnapshot) }),
+        },
+        mediaMutationFetch,
+      );
       const data = await res.json().catch(() => ({}));
       if (!res.ok) {
         setFiles(previousFiles);
@@ -254,7 +285,7 @@ export default function MediaContent() {
   const fetchMediaFiles = async () => {
     try {
       setIsLoading(true);
-      const response = await fetch("/api/media", { credentials: "include" });
+      const response = await fetchWithRetry("/api/media", { credentials: "include" }, DASHBOARD_INTERNAL_FETCH);
       if (!response.ok) {
         throw new Error("Failed to fetch media files");
       }
@@ -264,7 +295,7 @@ export default function MediaContent() {
       console.error("Error fetching media files:", error);
       setDeleteStatus({
         show: true,
-        message: "Failed to load media files",
+        message: formatDashboardFetchFailure(error),
         type: "error",
       });
       setTimeout(() => {
@@ -275,9 +306,35 @@ export default function MediaContent() {
     }
   };
 
+  const loadOptimizeHistory = useCallback(async () => {
+    setLoadingOptimizeHistory(true);
+    try {
+      const response = await fetchWithRetry(
+        "/api/system/media-optimize-history",
+        {
+          method: "GET",
+          credentials: "include",
+        },
+        DASHBOARD_INTERNAL_FETCH,
+      );
+      const data = (await response.json().catch(() => ({}))) as {
+        ok?: boolean;
+        history?: OptimizeHistoryItem[];
+      };
+      if (!response.ok || !data.ok) return;
+      setOptimizeHistory(Array.isArray(data.history) ? data.history : []);
+    } finally {
+      setLoadingOptimizeHistory(false);
+    }
+  }, []);
+
   useEffect(() => {
     fetchMediaFiles();
   }, []);
+
+  useEffect(() => {
+    void loadOptimizeHistory();
+  }, [loadOptimizeHistory]);
 
   useEffect(() => {
     setDisplayLimit(MEDIA_PAGE_SIZE);
@@ -385,10 +442,15 @@ export default function MediaContent() {
         optimizeMaxItems?: number;
       };
       if (Number.isFinite(parsed.optimizeMinBytes)) {
-        setOptimizeMinBytes(Math.max(50000, Number(parsed.optimizeMinBytes)));
+        setOptimizeMinBytes(
+          Math.min(
+            MEDIA_OPTIMIZE_MIN_BYTES_CEILING,
+            Math.max(MEDIA_OPTIMIZE_MIN_BYTES_FLOOR, Math.round(Number(parsed.optimizeMinBytes))),
+          ),
+        );
       }
       if (Number.isFinite(parsed.optimizeMaxItems)) {
-        setOptimizeMaxItems(Math.min(25, Math.max(1, Number(parsed.optimizeMaxItems))));
+        setOptimizeMaxItems(Math.min(25, Math.max(1, Math.round(Number(parsed.optimizeMaxItems)))));
       }
     } catch {
       // Ignore malformed localStorage.
@@ -413,9 +475,7 @@ export default function MediaContent() {
     setShowCleanupConfirm(false);
     try {
       setIsCleaning(true);
-      const response = await fetch("/api/media/cleanup", {
-        method: "POST",
-      });
+      const response = await fetchWithRetry("/api/media/cleanup", { method: "POST" }, mediaMutationFetch);
 
       if (!response.ok) {
         throw new Error("Failed to clean up media files");
@@ -548,11 +608,15 @@ export default function MediaContent() {
     maxItems: number;
     keys?: string[];
   }): Promise<OptimizeSummary> => {
-    const response = await fetch("/api/media/optimize", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify(payload),
-    });
+    const response = await fetchWithRetry(
+      "/api/media/optimize",
+      {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(payload),
+      },
+      mediaMutationFetch,
+    );
     const data = (await response.json().catch(() => ({}))) as OptimizeSummary & { error?: string };
     if (!response.ok) throw new Error(data.error || "Optimize request failed");
     return data;
@@ -623,6 +687,7 @@ export default function MediaContent() {
       if (!dryRun) {
         await fetchMediaFiles();
         scheduleAssessmentRefresh();
+        void loadOptimizeHistory();
       }
       setDeleteStatus({
         show: true,
@@ -703,6 +768,7 @@ export default function MediaContent() {
       });
       await fetchMediaFiles();
       scheduleAssessmentRefresh();
+      void loadOptimizeHistory();
       setDeleteStatus({
         show: true,
         message: cancelled
@@ -1004,6 +1070,7 @@ export default function MediaContent() {
       });
       await fetchMediaFiles();
       scheduleAssessmentRefresh();
+      void loadOptimizeHistory();
       setDeleteStatus({
         show: true,
         message: cancelled
@@ -1294,7 +1361,11 @@ export default function MediaContent() {
                 min={50000}
                 step={10000}
                 value={optimizeMinBytes}
-                onChange={(e) => setOptimizeMinBytes(Math.max(50000, Number(e.target.value || 0)))}
+                onChange={(e) => {
+                  const n = Number(e.target.value);
+                  if (!Number.isFinite(n)) return;
+                  setOptimizeMinBytes(Math.round(n));
+                }}
                 className="mt-1 w-[170px]"
               />
             </label>
@@ -1305,14 +1376,25 @@ export default function MediaContent() {
                 min={1}
                 max={25}
                 value={optimizeMaxItems}
-                onChange={(e) => setOptimizeMaxItems(Math.min(25, Math.max(1, Number(e.target.value || 1))))}
+                onChange={(e) => {
+                  const n = Number(e.target.value);
+                  if (!Number.isFinite(n)) return;
+                  setOptimizeMaxItems(Math.round(n));
+                }}
                 className="mt-1 w-[150px]"
               />
             </label>
+            {optimizePanelIssues.length > 0 ? (
+              <ul className="w-full basis-full text-xs text-amber-800">
+                {optimizePanelIssues.map((msg) => (
+                  <li key={msg}>{msg}</li>
+                ))}
+              </ul>
+            ) : null}
             <Button
               variant="outline"
               onClick={() => runOptimize(true)}
-              disabled={isAssessingOptimize || isRunningOptimize || isRunningBatchOptimize}
+              disabled={!optimizePanelValid || isAssessingOptimize || isRunningOptimize || isRunningBatchOptimize}
             >
               {isAssessingOptimize ? <Loader2 className="h-4 w-4 animate-spin" /> : null}
               Assess optimize
@@ -1321,6 +1403,7 @@ export default function MediaContent() {
               variant="outline"
               onClick={() => void refreshOptimizeAssessment()}
               disabled={
+                !optimizePanelValid ||
                 isAssessingOptimize ||
                 isRunningOptimize ||
                 isRunningBatchOptimize ||
@@ -1339,7 +1422,7 @@ export default function MediaContent() {
             </Button>
             <Button
               onClick={() => runOptimize(false)}
-              disabled={isAssessingOptimize || isRunningOptimize || isRunningBatchOptimize}
+              disabled={!optimizePanelValid || isAssessingOptimize || isRunningOptimize || isRunningBatchOptimize}
             >
               {isRunningOptimize ? <Loader2 className="h-4 w-4 animate-spin" /> : null}
               Run optimize
@@ -1347,7 +1430,7 @@ export default function MediaContent() {
             <Button
               variant="outline"
               onClick={runBatchOptimizeAll}
-              disabled={isAssessingOptimize || isRunningOptimize || isRunningBatchOptimize}
+              disabled={!optimizePanelValid || isAssessingOptimize || isRunningOptimize || isRunningBatchOptimize}
             >
               {isRunningBatchOptimize ? <Loader2 className="h-4 w-4 animate-spin" /> : null}
               Run optimize all (batched)
@@ -1355,7 +1438,13 @@ export default function MediaContent() {
             <Button
               variant="outline"
               onClick={retryFailedOnly}
-              disabled={isAssessingOptimize || isRunningOptimize || isRunningBatchOptimize || failedKeys.length === 0}
+              disabled={
+                !optimizePanelValid ||
+                isAssessingOptimize ||
+                isRunningOptimize ||
+                isRunningBatchOptimize ||
+                failedKeys.length === 0
+              }
             >
               Retry failed only {failedKeys.length > 0 ? `(${failedKeys.length})` : ""}
             </Button>
@@ -1368,9 +1457,26 @@ export default function MediaContent() {
             </Button>
           </div>
           {batchProgress ? (
-            <p className="text-xs text-muted-foreground">
-              Batch progress: {batchProgress.current}/{batchProgress.total}
-            </p>
+            <div
+              className="max-w-md space-y-2"
+              aria-busy={isRunningBatchOptimize}
+              aria-label={`Batch optimize progress ${batchProgress.current} of ${batchProgress.total}`}
+            >
+              <div className="flex items-center justify-between gap-2 text-xs text-muted-foreground">
+                <span>Batch optimize</span>
+                <span className="tabular-nums">
+                  {batchProgress.current}/{batchProgress.total}
+                </span>
+              </div>
+              <div className="h-2 w-full overflow-hidden rounded-full bg-muted">
+                <div
+                  className="h-full rounded-full bg-primary/85 transition-[width] duration-300 motion-reduce:transition-none"
+                  style={{
+                    width: `${batchProgress.total > 0 ? Math.min(100, (batchProgress.current / batchProgress.total) * 100) : 0}%`,
+                  }}
+                />
+              </div>
+            </div>
           ) : null}
           {lastAssessmentRefreshedAt ? (
             <div className="flex flex-wrap items-center gap-2">
@@ -1602,6 +1708,46 @@ export default function MediaContent() {
         </CardContent>
       </Card>
 
+      <Card>
+        <CardContent className="space-y-3 p-4">
+          <div className="flex items-center justify-between">
+            <p className="text-sm font-medium text-foreground">Optimization run history</p>
+            <Button
+              type="button"
+              variant="outline"
+              size="sm"
+              onClick={() => void loadOptimizeHistory()}
+              disabled={loadingOptimizeHistory}
+            >
+              {loadingOptimizeHistory ? <Loader2 className="h-4 w-4 animate-spin" /> : null}
+              Refresh history
+            </Button>
+          </div>
+          {optimizeHistory.length === 0 ? (
+            <p className="text-xs text-muted-foreground">No optimization runs recorded yet.</p>
+          ) : (
+            <div className="space-y-2">
+              {optimizeHistory.slice(0, 8).map((item) => (
+                <div key={item.id} className="rounded-lg border border-border bg-muted/20 p-2 text-xs">
+                  <p className="text-foreground">
+                    {new Date(item.createdAt).toLocaleString()} · optimized {item.optimizedCount}/{item.attempted} ·
+                    failed {item.failedCount} · saved {formatFileSize(item.savedBytesTotal)}
+                  </p>
+                  <div className="mt-1 h-1.5 w-full overflow-hidden rounded bg-muted">
+                    <div
+                      className="h-full bg-primary"
+                      style={{
+                        width: `${item.attempted > 0 ? Math.min(100, Math.round((item.optimizedCount / item.attempted) * 100)) : 0}%`,
+                      }}
+                    />
+                  </div>
+                </div>
+              ))}
+            </div>
+          )}
+        </CardContent>
+      </Card>
+
       {isLoading ? (
         <div className="columns-2 gap-4 sm:columns-3 lg:columns-4 xl:columns-5 [column-fill:_balance]">
           {[1, 2, 3, 4, 5, 6].map((i) => (
@@ -1628,10 +1774,8 @@ export default function MediaContent() {
           onDrop={handleDrop}
         >
           <CardContent className="py-16 text-center">
-            <div className="mx-auto flex h-16 w-16 items-center justify-center rounded-full bg-muted/40">
-              <ImageIcon className="h-10 w-10 text-muted-foreground" />
-            </div>
-            <p className="mt-6 text-lg font-medium text-foreground">No media files yet</p>
+            <DashboardEmptyIllustration variant="gallery" />
+            <p className="mt-2 text-lg font-medium text-foreground">No media files yet</p>
             <p className="mt-2 text-sm text-muted-foreground max-w-sm mx-auto leading-relaxed">
               Upload images to use in posts, or drag and drop here. Supported: JPEG, PNG, GIF, WebP.
             </p>

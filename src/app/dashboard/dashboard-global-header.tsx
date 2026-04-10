@@ -3,6 +3,7 @@
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { Button } from "@/components/ui/button";
+import { TooltipHint } from "@/components/ui/tooltip-hint";
 import { FilePlus2, FolderTree, Settings, Wrench } from "lucide-react";
 
 export function DashboardGlobalHeader() {
@@ -14,30 +15,38 @@ export function DashboardGlobalHeader() {
       <div className="flex flex-wrap items-center justify-between gap-2">
         <p className="text-sm font-medium text-foreground">Global actions</p>
         <div className="flex flex-wrap items-center gap-2">
-          <Button asChild size="sm" variant={isActive("/dashboard/posts/new") ? "default" : "outline"} className="gap-2">
-            <Link href="/dashboard/posts/new">
-              <FilePlus2 className="h-4 w-4" />
-              New Post
-            </Link>
-          </Button>
-          <Button asChild size="sm" variant={isActive("/dashboard/hubs/taxonomy-assets") ? "default" : "outline"} className="gap-2">
-            <Link href="/dashboard/hubs/taxonomy-assets">
-              <FolderTree className="h-4 w-4" />
-              Taxonomy & Assets
-            </Link>
-          </Button>
-          <Button asChild size="sm" variant={isActive("/dashboard/hubs/global-settings") ? "default" : "outline"} className="gap-2">
-            <Link href="/dashboard/hubs/global-settings">
-              <Settings className="h-4 w-4" />
-              Global Settings
-            </Link>
-          </Button>
-          <Button asChild size="sm" variant={isActive("/dashboard/tools/ast-lab") ? "default" : "outline"} className="gap-2">
-            <Link href="/dashboard/tools/ast-lab">
-              <Wrench className="h-4 w-4" />
-              AST Lab
-            </Link>
-          </Button>
+          <TooltipHint label="Start a new blog post draft" side="bottom">
+            <Button asChild size="sm" variant={isActive("/dashboard/posts/new") ? "default" : "outline"} className="gap-2">
+              <Link href="/dashboard/posts/new">
+                <FilePlus2 className="h-4 w-4" />
+                New Post
+              </Link>
+            </Button>
+          </TooltipHint>
+          <TooltipHint label="Tags, media, and content operations in one place" side="bottom">
+            <Button asChild size="sm" variant={isActive("/dashboard/hubs/taxonomy-assets") ? "default" : "outline"} className="gap-2">
+              <Link href="/dashboard/hubs/taxonomy-assets">
+                <FolderTree className="h-4 w-4" />
+                Taxonomy & Assets
+              </Link>
+            </Button>
+          </TooltipHint>
+          <TooltipHint label="Branding, SEO defaults, and site-wide configuration" side="bottom">
+            <Button asChild size="sm" variant={isActive("/dashboard/hubs/global-settings") ? "default" : "outline"} className="gap-2">
+              <Link href="/dashboard/hubs/global-settings">
+                <Settings className="h-4 w-4" />
+                Global Settings
+              </Link>
+            </Button>
+          </TooltipHint>
+          <TooltipHint label="Inspect Markdown AST and parser output" side="bottom">
+            <Button asChild size="sm" variant={isActive("/dashboard/tools/ast-lab") ? "default" : "outline"} className="gap-2">
+              <Link href="/dashboard/tools/ast-lab">
+                <Wrench className="h-4 w-4" />
+                AST Lab
+              </Link>
+            </Button>
+          </TooltipHint>
         </div>
       </div>
     </div>

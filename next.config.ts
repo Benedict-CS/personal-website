@@ -1,5 +1,10 @@
 import type { NextConfig } from "next";
 import { withSentryConfig } from "@sentry/nextjs";
+import createBundleAnalyzer from "@next/bundle-analyzer";
+
+const withBundleAnalyzer = createBundleAnalyzer({
+  enabled: process.env.ANALYZE === "true",
+});
 
 const nextConfig: NextConfig = {
   poweredByHeader: false,
@@ -60,8 +65,10 @@ const nextConfig: NextConfig = {
   },
 };
 
-export default withSentryConfig(nextConfig, {
-  silent: !process.env.SENTRY_DSN,
-  org: process.env.SENTRY_ORG,
-  project: process.env.SENTRY_PROJECT,
-});
+export default withBundleAnalyzer(
+  withSentryConfig(nextConfig, {
+    silent: !process.env.SENTRY_DSN,
+    org: process.env.SENTRY_ORG,
+    project: process.env.SENTRY_PROJECT,
+  }),
+);

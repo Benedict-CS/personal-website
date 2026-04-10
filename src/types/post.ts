@@ -3,6 +3,7 @@ export type PostRow = {
   id: string;
   title: string;
   slug: string;
+  category?: string | null;
   published: boolean;
   publishedAt?: string | null;
   viewCount?: number;

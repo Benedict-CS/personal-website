@@ -3,6 +3,36 @@ import { Suspense } from "react";
 import { getSiteConfigForRender } from "@/lib/site-config";
 import BlogPageClient from "./page-client";
 
+function BlogListingJsonLd({ siteName, baseUrl }: { siteName: string; baseUrl: string }) {
+  const blogId = `${baseUrl}/blog#blog`;
+  const pageId = `${baseUrl}/blog#webpage`;
+  const graph = {
+    "@context": "https://schema.org",
+    "@graph": [
+      {
+        "@type": "Blog",
+        "@id": blogId,
+        name: `${siteName} Blog`,
+        url: `${baseUrl}/blog`,
+        inLanguage: "en",
+        publisher: { "@id": `${baseUrl}/#publisher` },
+        isPartOf: { "@id": `${baseUrl}/#website` },
+      },
+      {
+        "@type": "CollectionPage",
+        "@id": pageId,
+        name: `Blog | ${siteName}`,
+        url: `${baseUrl}/blog`,
+        isPartOf: { "@id": `${baseUrl}/#website` },
+        about: { "@id": blogId },
+      },
+    ],
+  };
+  return (
+    <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: JSON.stringify(graph) }} />
+  );
+}
+
 export const revalidate = 60;
 
 export async function generateMetadata(): Promise<Metadata> {
@@ -56,10 +86,16 @@ function BlogSkeleton() {
   );
 }
 
-export default function BlogPage() {
+export default async function BlogPage() {
+  const config = await getSiteConfigForRender();
+  const base = config.url.replace(/\/$/, "");
+  const siteName = (config.metaTitle || config.siteName).trim() || "Site";
   return (
-    <Suspense fallback={<BlogSkeleton />}>
-      <BlogPageClient />
-    </Suspense>
+    <>
+      <BlogListingJsonLd siteName={siteName} baseUrl={base} />
+      <Suspense fallback={<BlogSkeleton />}>
+        <BlogPageClient />
+      </Suspense>
+    </>
   );
 }

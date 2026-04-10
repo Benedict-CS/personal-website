@@ -20,7 +20,19 @@ import {
   verticalListSortingStrategy,
 } from "@dnd-kit/sortable";
 import { CSS } from "@dnd-kit/utilities";
-import { GripVertical, Image as ImageIcon, Save, Send, Upload, Check, Focus, Command } from "lucide-react";
+import {
+  GripVertical,
+  Image as ImageIcon,
+  Save,
+  Send,
+  Upload,
+  Check,
+  Focus,
+  Command,
+  Monitor,
+  Tablet,
+  Smartphone,
+} from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Card, CardContent } from "@/components/ui/card";
@@ -32,6 +44,7 @@ import { ContentEditableField } from "@/components/editor/content-editable-field
 import { DevBlockMutedNotice } from "@/components/dev-blocks/dev-block-muted-notice";
 import { EditorImmersiveHeader } from "@/components/editor/editor-immersive-header";
 import { DashboardEmptyState, DashboardKbd } from "@/components/dashboard/dashboard-ui";
+import { TooltipHint } from "@/components/ui/tooltip-hint";
 import { publicSiteContainerClassName } from "@/components/public/public-layout";
 import type { EditorTarget } from "@/lib/editor-route";
 import { cn } from "@/lib/utils";
@@ -105,6 +118,9 @@ const defaultContact: ContactContent = {
 
 const PREMIUM_MOTION_EASE: [number, number, number, number] = [0.25, 0.46, 0.45, 0.94];
 const PREMIUM_MOTION_DURATION = 0.35;
+
+const PREVIEW_FRAME_KEY = "immersive-editor-preview-frame";
+type EditorPreviewFrame = "site" | "tablet" | "mobile";
 
 function SortableSection({
   id,
@@ -193,10 +209,21 @@ export function ImmersiveEditor({ target }: { target: EditorTarget }) {
   /** Dims chrome while editing raw markdown on custom pages (writing focus). */
   const [writingFocus, setWritingFocus] = useState(false);
   const [commandPaletteOpen, setCommandPaletteOpen] = useState(false);
+  const [previewFrame, setPreviewFrame] = useState<EditorPreviewFrame>(() => {
+    if (typeof window === "undefined") return "site";
+    try {
+      const raw = sessionStorage.getItem(PREVIEW_FRAME_KEY);
+      if (raw === "tablet" || raw === "mobile") return raw;
+    } catch {
+      /* ignore */
+    }
+    return "site";
+  });
   /** Auto-dim secondary UI while typing in raw markdown (distraction-free without toggling focus mode). */
   const [immersiveTypingDim, setImmersiveTypingDim] = useState(false);
   const immersiveTypingIdleRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const reduceMotion = useReducedMotion();
+  const previewActive = target.kind === "custom-page";
 
   const [isEditing] = useState(true);
   const [savedAt, setSavedAt] = useState<number | null>(null);
@@ -269,6 +296,14 @@ export function ImmersiveEditor({ target }: { target: EditorTarget }) {
   }, [clearImmersiveTypingTimer]);
 
   useEffect(() => () => clearImmersiveTypingTimer(), [clearImmersiveTypingTimer]);
+
+  useEffect(() => {
+    try {
+      sessionStorage.setItem(PREVIEW_FRAME_KEY, previewFrame);
+    } catch {
+      /* ignore */
+    }
+  }, [previewFrame]);
 
   useEffect(() => {
     if (customEditorMode !== "raw") endImmersiveTypingChrome();
@@ -831,7 +866,7 @@ export function ImmersiveEditor({ target }: { target: EditorTarget }) {
             animate={{ opacity: 1 }}
             exit={{ opacity: 0 }}
             transition={{ duration: 0.22 }}
-            className="fixed inset-0 z-40 cursor-default border-0 bg-background/[0.92] p-0 backdrop-blur-[3px]"
+            className="fixed inset-0 z-40 cursor-default border-0 bg-background/[0.92] p-0 backdrop-blur-[6px]"
             aria-label="Exit writing focus"
             onClick={() => setWritingFocus(false)}
           />
@@ -867,7 +902,44 @@ export function ImmersiveEditor({ target }: { target: EditorTarget }) {
           />
         </div>
       ) : null}
-      <div className={cn(publicSiteContainerClassName, "py-10")}>
+      <div
+        className={cn(
+          !previewActive || previewFrame === "site"
+            ? cn(publicSiteContainerClassName, "py-10")
+            : "mx-auto w-full min-h-[calc(min(72vh,820px)+2.25rem)] px-3 py-10 transition-[max-width] duration-300 ease-out sm:px-5",
+          previewActive &&
+            previewFrame === "tablet" &&
+            "max-w-[min(100%,820px)] rounded-xl border border-border/60 bg-background/40 shadow-[var(--elevation-1)]",
+          previewActive &&
+            previewFrame === "mobile" &&
+            "max-w-[min(100%,400px)] rounded-xl border border-border/60 bg-background/40 shadow-[var(--elevation-1)]",
+        )}
+      >
+        {previewActive && previewFrame !== "site" ? (
+          <motion.div
+            key={previewFrame}
+            initial={reduceMotion ? false : { opacity: 0, y: -6 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ duration: 0.22, ease: PREMIUM_MOTION_EASE }}
+            className="relative -mx-px -mt-px mb-0 flex h-9 shrink-0 items-center justify-between gap-2 rounded-t-xl border-b border-border/55 bg-gradient-to-b from-muted/45 to-muted/25 px-3 text-[10px] font-medium tabular-nums text-muted-foreground"
+            aria-hidden
+          >
+            {previewFrame === "mobile" ? (
+              <div
+                className="pointer-events-none absolute left-1/2 top-0 h-1.5 w-[4.5rem] -translate-x-1/2 rounded-b-md bg-foreground/12"
+                aria-hidden
+              />
+            ) : null}
+            <span className="min-w-[2.25rem]">9:41</span>
+            <span className="truncate text-center text-[9px] font-semibold uppercase tracking-[0.12em] text-muted-foreground/90">
+              {previewFrame === "mobile" ? "Live preview" : "Tablet preview"}
+            </span>
+            <span className="flex min-w-[2.25rem] items-center justify-end gap-1" aria-hidden>
+              <span className="h-1.5 w-4 rounded-sm bg-foreground/12" />
+              <span className="h-2 w-2 rounded-full border border-foreground/20 bg-transparent" />
+            </span>
+          </motion.div>
+        ) : null}
         <EditorImmersiveHeader target={target} customPageTitle={customPage?.title} />
         {target.kind === "home" && (
           <DndContext sensors={sensors} collisionDetection={closestCenter} onDragEnd={onDragEnd}>
@@ -948,6 +1020,16 @@ export function ImmersiveEditor({ target }: { target: EditorTarget }) {
                 Contact form block (live behavior remains on public route).
               </CardContent>
             </Card>
+            <p className="mt-4 text-xs text-muted-foreground">
+              Form delivery (recipient email, HTTPS webhooks) is configured in{" "}
+              <Link
+                href="/dashboard/content/site"
+                className="font-medium text-primary underline-offset-2 hover:underline"
+              >
+                Site settings
+              </Link>
+              .
+            </p>
           </section>
         )}
 
@@ -1162,7 +1244,7 @@ export function ImmersiveEditor({ target }: { target: EditorTarget }) {
                           <p className="text-xs font-medium uppercase tracking-wide text-muted-foreground">Live preview</p>
                           <div
                             ref={rawPreviewRef}
-                            className="max-h-[32rem] overflow-y-auto rounded-lg border border-border bg-card p-4"
+                            className="max-h-[32rem] overflow-y-auto rounded-lg border border-border bg-card p-4 [contain:layout]"
                           >
                             <MarkdownRenderer content={customPage.content} />
                           </div>
@@ -1206,9 +1288,55 @@ export function ImmersiveEditor({ target }: { target: EditorTarget }) {
           writingFocus && target.kind === "custom-page" ? "z-[60]" : "z-50"
         }`}
       >
-        <span className="rounded-full bg-muted/80 px-2.5 py-1 text-xs font-medium text-muted-foreground">
-          Editor Mode
-        </span>
+        <TooltipHint label="Immersive editor — saves sync to the server when you use Save or publish controls." side="top">
+          <span className="inline-flex cursor-default rounded-full bg-muted/80 px-2.5 py-1 text-xs font-medium text-muted-foreground">
+            Editor Mode
+          </span>
+        </TooltipHint>
+        {previewActive ? (
+          <div
+            className="flex items-center gap-0.5 rounded-lg border border-border/60 bg-muted/25 p-0.5"
+            role="group"
+            aria-label="Preview width"
+          >
+            <TooltipHint label="Site width — default container" side="top">
+              <Button
+                type="button"
+                size="icon"
+                variant={previewFrame === "site" ? "secondary" : "ghost"}
+                className="h-8 w-8 shrink-0"
+                aria-pressed={previewFrame === "site"}
+                onClick={() => setPreviewFrame("site")}
+              >
+                <Monitor className="h-4 w-4" aria-hidden />
+              </Button>
+            </TooltipHint>
+            <TooltipHint label="Tablet frame (~820px)" side="top">
+              <Button
+                type="button"
+                size="icon"
+                variant={previewFrame === "tablet" ? "secondary" : "ghost"}
+                className="h-8 w-8 shrink-0"
+                aria-pressed={previewFrame === "tablet"}
+                onClick={() => setPreviewFrame("tablet")}
+              >
+                <Tablet className="h-4 w-4" aria-hidden />
+              </Button>
+            </TooltipHint>
+            <TooltipHint label="Mobile frame (~400px)" side="top">
+              <Button
+                type="button"
+                size="icon"
+                variant={previewFrame === "mobile" ? "secondary" : "ghost"}
+                className="h-8 w-8 shrink-0"
+                aria-pressed={previewFrame === "mobile"}
+                onClick={() => setPreviewFrame("mobile")}
+              >
+                <Smartphone className="h-4 w-4" aria-hidden />
+              </Button>
+            </TooltipHint>
+          </div>
+        ) : null}
         {target.kind === "custom-page" && customEditorMode === "raw" && customRawStats ? (
           <span className="rounded-full bg-muted/80 px-2.5 py-1 text-xs font-medium text-muted-foreground">
             {customRawStats.words} words · {customRawStats.readingLabel} · {customRawStats.headings} headings

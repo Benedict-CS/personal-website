@@ -39,8 +39,10 @@ if rg "ENOENT: no such file or directory, open '.+_buildManifest\\.js\\.tmp" "$L
 fi
 
 # OOM during build: retry with more Node heap (webpack is heavier than Turbopack).
-if rg "Killed" "$LOG1" >/dev/null 2>&1; then
-  echo "Detected OOM kill during build. Retrying with more Node memory..."
+# Match Linux OOM killer ("Killed") and V8 heap limit ("Reached heap limit", "heap out of memory").
+if rg "Killed" "$LOG1" >/dev/null 2>&1 || \
+   rg "Reached heap limit|JavaScript heap out of memory" "$LOG1" >/dev/null 2>&1; then
+  echo "Detected OOM during build. Retrying with more Node memory..."
   export NODE_OPTIONS="${NODE_OPTIONS:-} --max-old-space-size=8192"
   LOG3="$(mktemp)"
   if run_build "$LOG3" "${build_cmd[@]}"; then

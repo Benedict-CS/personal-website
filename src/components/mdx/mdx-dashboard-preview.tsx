@@ -9,11 +9,13 @@ import { jsx, jsxs } from "react/jsx-runtime";
 import { CodePlayground } from "@/components/mdx/embeds/code-playground";
 import { AbTestStats } from "@/components/mdx/embeds/ab-test-stats";
 import { TechStackGrid } from "@/components/mdx/embeds/tech-stack-grid";
+import { ReadingTimeLab } from "@/components/mdx/embeds/reading-time-lab";
 
 const useMDXComponents = () => ({
   CodePlayground,
   AbTestStats,
   TechStackGrid,
+  ReadingTimeLab,
 });
 
 const DEBOUNCE_MS = 380;

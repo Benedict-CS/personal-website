@@ -9,7 +9,7 @@ import { Input } from "@/components/ui/input";
 import { Skeleton } from "@/components/ui/skeleton";
 import { FileText, Edit, ChevronDown, ChevronRight, Folder, Tag, Check, X, Search } from "lucide-react";
 import { useToast } from "@/contexts/toast-context";
-import { DashboardPageHeader } from "@/components/dashboard/dashboard-ui";
+import { DashboardEmptyState, DashboardPageHeader } from "@/components/dashboard/dashboard-ui";
 import { formatAbsoluteDateTime, formatRelativeTime } from "@/lib/relative-time";
 
 interface Note {
@@ -457,15 +457,30 @@ export default function NotesPage() {
       )}
 
       {notes.length === 0 ? (
-        <div className="rounded-lg border border-border bg-card p-12 text-center">
-          <FileText className="mx-auto h-12 w-12 text-muted-foreground/80 mb-4" />
-          <p className="text-muted-foreground">No notes yet</p>
-          <p className="text-sm text-muted-foreground/80 mt-2">Create a new post and keep it as Draft to use as a note</p>
-        </div>
+        <DashboardEmptyState
+          illustration="documents"
+          title="No notes yet"
+          description="Create a new post and keep it as a draft — drafts appear here grouped by category."
+          className="py-12"
+        >
+          <Button asChild>
+            <Link href="/dashboard/posts/new">New draft post</Link>
+          </Button>
+          <Button variant="outline" asChild>
+            <Link href="/dashboard/posts">Published posts</Link>
+          </Button>
+        </DashboardEmptyState>
       ) : filteredNotes.length === 0 && searchQuery ? (
-        <div className="rounded-lg border border-border bg-card p-12 text-center">
-          <p className="text-muted-foreground">No notes found matching &quot;{searchQuery}&quot;</p>
-        </div>
+        <DashboardEmptyState
+          illustration="magnifier"
+          title={`No notes match “${searchQuery}”`}
+          description="Try different keywords, or clear the search to see all drafts."
+          className="py-12"
+        >
+          <Button variant="outline" type="button" onClick={() => setSearchQuery("")}>
+            Clear search
+          </Button>
+        </DashboardEmptyState>
       ) : (
         <div className="space-y-6">
           {sortedRootCategories.map((categoryName) => {

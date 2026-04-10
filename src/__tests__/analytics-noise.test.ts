@@ -1,4 +1,9 @@
-import { prismaWhereExcludeLocalAndUnknownIp, prismaWhereExcludeNoise } from "@/lib/analytics-noise";
+import {
+  isLikelyMonitoringUserAgent,
+  isLikelyScannerUserAgent,
+  prismaWhereExcludeLocalAndUnknownIp,
+  prismaWhereExcludeNoise,
+} from "@/lib/analytics-noise";
 
 describe("prismaWhereExcludeLocalAndUnknownIp", () => {
   it("excludes unknown, loopback, and private IPv4 prefixes", () => {
@@ -37,5 +42,25 @@ describe("prismaWhereExcludeNoise", () => {
     expect(first).toEqual(
       expect.arrayContaining([{ userAgent: { not: null } }, expect.objectContaining({ userAgent: expect.anything() })])
     );
+  });
+});
+
+describe("user-agent filters", () => {
+  it("detects major crawlers and headless automation", () => {
+    expect(isLikelyScannerUserAgent("Mozilla/5.0 (compatible; Googlebot/2.1; +http://www.google.com/bot.html)")).toBe(true);
+    expect(isLikelyScannerUserAgent("Mozilla/5.0 HeadlessChrome/124.0.0.0")).toBe(true);
+    expect(isLikelyScannerUserAgent("Mozilla/5.0 (compatible; SemrushBot/7~bl; +https://www.semrush.com/bot.html)")).toBe(true);
+    expect(
+      isLikelyScannerUserAgent("Mozilla/5.0 (Windows NT 10.0; rv:109.0) Gecko/20100101 Firefox/115.0")
+    ).toBe(false);
+  });
+
+  it("detects monitoring and health agents", () => {
+    expect(isLikelyMonitoringUserAgent("kube-probe/1.29")).toBe(true);
+    expect(isLikelyMonitoringUserAgent("UptimeRobot/2.0")).toBe(true);
+    expect(isLikelyMonitoringUserAgent("curl/8.7.1")).toBe(true);
+    expect(
+      isLikelyMonitoringUserAgent("Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 Chrome/124.0.0.0 Safari/537.36")
+    ).toBe(false);
   });
 });

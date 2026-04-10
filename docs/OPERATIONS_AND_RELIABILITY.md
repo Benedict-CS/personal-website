@@ -14,6 +14,13 @@ This document describes how to run the site for **high availability (HA)**, **re
 
 - The **`app`** service uses **`stop_grace_period: 30s`** so Node can finish in-flight work before the container receives SIGKILL after the default stop timeout.
 
+## Memory-aware runtime tuning (Docker Compose)
+
+- `NODE_OPTIONS=--max-old-space-size=${NODE_MAX_OLD_SPACE_SIZE:-2048}` caps Node heap to reduce OOM risk on smaller hosts.
+- `UV_THREADPOOL_SIZE=${UV_THREADPOOL_SIZE:-8}` increases libuv worker pool for I/O-heavy operations (image processing, crypto, compression).
+- `MALLOC_ARENA_MAX=${MALLOC_ARENA_MAX:-2}` reduces allocator arena bloat under sustained concurrent workloads.
+- `NEXT_TELEMETRY_DISABLED=1` avoids background telemetry noise in production containers.
+
 ## Log rotation (Docker Compose)
 
 - **`postgres`**, **`rustfs`**, and **`app`** use the **`json-file`** logging driver with **`max-size`** / **`max-file`** limits so container logs do not grow without bound on disk.

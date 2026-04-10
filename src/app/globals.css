@@ -616,6 +616,43 @@ html {
 .prose .align-center {
   text-align: center;
 }
+
+/* Site builder: masonry gallery (persisted HTML inside markdown) */
+.prose .site-gallery-masonry .site-gallery-masonry__grid {
+  column-count: 2;
+  column-gap: 0.75rem;
+  margin-top: 0.75rem;
+  list-style: none;
+  padding: 0;
+}
+@media (min-width: 640px) {
+  .prose .site-gallery-masonry .site-gallery-masonry__grid {
+    column-count: 3;
+  }
+}
+.prose .site-gallery-masonry .site-gallery-masonry__item {
+  break-inside: avoid;
+  margin-bottom: 0.75rem;
+}
+.prose .site-gallery-masonry .site-gallery-masonry__img {
+  width: 100%;
+  height: auto;
+  display: block;
+  border-radius: 0.5rem;
+  border: 1px solid #e2e8f0;
+  object-fit: cover;
+  aspect-ratio: 4 / 3;
+}
+.prose .site-gallery-masonry .site-gallery-masonry__item:nth-child(3n + 1) .site-gallery-masonry__img {
+  aspect-ratio: 4 / 5;
+}
+.prose .site-gallery-masonry .site-gallery-masonry__item:nth-child(3n + 2) .site-gallery-masonry__img {
+  aspect-ratio: 1 / 1;
+}
+.prose .site-gallery-masonry .site-gallery-masonry__item:nth-child(3n) .site-gallery-masonry__img {
+  aspect-ratio: 5 / 4;
+}
+
 .prose figure p {
   margin-top: 0.2rem;
   margin-bottom: 0.5rem;
@@ -885,8 +922,8 @@ pre .hljs[class*="language-"],
   }
 }
 
-/* RWD table: card view on mobile for wide data tables */
-@media (max-width: 639px) {
+/* RWD table: card view on mobile and tablet for wide analytics tables */
+@media (max-width: 1023px) {
   .rwd-table thead {
     display: none;
   }

@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
@@ -22,6 +22,8 @@ import {
   FileUp,
   ChevronDown,
   ChevronUp,
+  Undo2,
+  Redo2,
 } from "lucide-react";
 import {
   DndContext,
@@ -53,6 +55,146 @@ import {
   timelineToMarkdown,
 } from "@/lib/personal-brand-blocks";
 import { SkillBlockIcon } from "@/components/personal-brand/skill-block-icon";
+import { TooltipHint } from "@/components/ui/tooltip-hint";
+
+const BUILDER_PRESET_TACTILE =
+  "transition-transform duration-150 active:scale-[0.98] motion-reduce:active:scale-100";
+
+function parseGalleryLines(text: string): string[] {
+  return text.split("\n").map((s) => s.trim()).filter(Boolean);
+}
+
+function escapeHtmlAttr(value: string): string {
+  return value
+    .replace(/&/g, "&amp;")
+    .replace(/"/g, "&quot;")
+    .replace(/'/g, "&#39;")
+    .replace(/</g, "&lt;")
+    .replace(/>/g, "&gt;");
+}
+
+/** Reject obvious script/data URLs; relative and https/http paths are allowed (matches sanitizer-friendly src). */
+function isSafeGalleryImageUrl(url: string): boolean {
+  const t = url.trim();
+  if (!t) return false;
+  const lower = t.toLowerCase();
+  if (/^(javascript|vbscript|data):/i.test(lower)) return false;
+  return true;
+}
+
+function galleryImageUrlsToHtmlGrid(urls: string[]): string {
+  const safe = urls.map((s) => s.trim()).filter(isSafeGalleryImageUrl);
+  if (safe.length === 0) return "";
+  const items = safe.map(
+    (url, idx) =>
+      `<div class="site-gallery-masonry__item" role="listitem"><img class="site-gallery-masonry__img" src="${escapeHtmlAttr(url)}" alt="Gallery image ${idx + 1}" loading="lazy" decoding="async" /></div>`
+  );
+  return `<div class="site-gallery-masonry__grid" role="list">${items.join("\n")}</div>`;
+}
+
+function galleryLinesToText(lines: string[]): string {
+  return lines.join("\n");
+}
+
+/**
+ * Masonry-style editor for gallery image URLs: reorder without nested drag contexts (parent block list uses dnd-kit).
+ */
+function GalleryLinksField({
+  linksText,
+  onLinksTextChange,
+}: {
+  linksText: string;
+  onLinksTextChange: (next: string) => void;
+}) {
+  const lines = useMemo(() => parseGalleryLines(linksText), [linksText]);
+  const commit = (next: string[]) => onLinksTextChange(galleryLinesToText(next));
+
+  const move = (from: number, to: number) => {
+    if (to < 0 || to >= lines.length) return;
+    commit(arrayMove(lines, from, to));
+  };
+
+  const setLine = (index: number, value: string) => {
+    const next = [...lines];
+    next[index] = value;
+    commit(next);
+  };
+
+  const removeAt = (index: number) => {
+    commit(lines.filter((_, i) => i !== index));
+  };
+
+  const addEmptyRow = () => commit([...lines, ""]);
+
+  return (
+    <div className="space-y-2">
+      <p className="text-xs text-muted-foreground">
+        Reorder with the arrow buttons (one URL per row). The live preview uses a masonry-style layout.
+      </p>
+      {lines.length === 0 ? (
+        <p className="rounded-md border border-dashed border-border/70 bg-muted/20 px-3 py-2 text-xs text-muted-foreground">
+          No image URLs yet. Add from Media or paste a URL row below.
+        </p>
+      ) : (
+        <ul className="space-y-2" aria-label="Gallery image URLs">
+          {lines.map((url, i) => (
+            <li key={i} className="flex flex-wrap items-center gap-2">
+              <Input
+                className="min-w-[12rem] flex-1 font-mono text-sm"
+                placeholder="https://…"
+                value={url}
+                onChange={(e) => setLine(i, e.target.value)}
+                aria-label={`Image URL ${i + 1}`}
+              />
+              <TooltipHint label="Move up" side="top">
+                <Button
+                  type="button"
+                  size="icon"
+                  variant="outline"
+                  className={`h-9 w-9 shrink-0 ${BUILDER_PRESET_TACTILE}`}
+                  disabled={i === 0}
+                  aria-label={`Move image ${i + 1} up`}
+                  onClick={() => move(i, i - 1)}
+                >
+                  <ChevronUp className="h-4 w-4" aria-hidden />
+                </Button>
+              </TooltipHint>
+              <TooltipHint label="Move down" side="top">
+                <Button
+                  type="button"
+                  size="icon"
+                  variant="outline"
+                  className={`h-9 w-9 shrink-0 ${BUILDER_PRESET_TACTILE}`}
+                  disabled={i === lines.length - 1}
+                  aria-label={`Move image ${i + 1} down`}
+                  onClick={() => move(i, i + 1)}
+                >
+                  <ChevronDown className="h-4 w-4" aria-hidden />
+                </Button>
+              </TooltipHint>
+              <TooltipHint label="Remove this URL from the gallery" side="top">
+                <Button
+                  type="button"
+                  size="icon"
+                  variant="outline"
+                  className={`h-9 w-9 shrink-0 text-red-600 ${BUILDER_PRESET_TACTILE}`}
+                  aria-label={`Remove image ${i + 1}`}
+                  onClick={() => removeAt(i)}
+                >
+                  <Trash2 className="h-4 w-4" aria-hidden />
+                </Button>
+              </TooltipHint>
+            </li>
+          ))}
+        </ul>
+      )}
+      <Button type="button" variant="outline" size="sm" className={`gap-1 ${BUILDER_PRESET_TACTILE}`} onClick={addEmptyRow}>
+        <Plus className="h-3.5 w-3.5" aria-hidden />
+        Add URL row
+      </Button>
+    </div>
+  );
+}
 
 type BlockType =
   | "hero"
@@ -156,6 +298,21 @@ type BrandConfig = {
 
 const TEMPLATE_STORAGE_KEY = "site-builder-templates-v1";
 const COMPONENT_STORAGE_KEY = "site-builder-components-v1";
+const BUILDER_HISTORY_LIMIT = 40;
+
+type BuilderHistorySnapshot = {
+  blocks: SiteBlock[];
+  theme: SiteTheme;
+  brand: BrandConfig;
+};
+
+function cloneBlocksForHistory(blocks: SiteBlock[]): SiteBlock[] {
+  return blocks.map((b) => ({ ...b }));
+}
+
+function cloneBrandForHistory(b: BrandConfig): BrandConfig {
+  return { ...b };
+}
 
 function makeId(): string {
   try {
@@ -409,13 +566,14 @@ function splitColumns(text: string, desiredCount: number): string[] {
   return safe;
 }
 
-function applyStyleWrappers(markdown: string, block: SiteBlock): string {
+function applyStyleWrappers(markdown: string, block: SiteBlock, extraRootClasses?: string): string {
   const cls = [
     `preset-${block.stylePreset ?? "minimal"}`,
     `spacing-${block.spacing ?? "normal"}`,
     `radius-${block.radius ?? "md"}`,
     `shadow-${block.shadow ?? "none"}`,
     `align-${block.align ?? "left"}`,
+    ...(extraRootClasses?.trim() ? [extraRootClasses.trim()] : []),
   ].join(" ");
   return `<div class="${cls}">\n\n${markdown}\n\n</div>`;
 }
@@ -559,8 +717,12 @@ function blocksToMarkdown(blocks: SiteBlock[], theme: SiteTheme, brand: BrandCon
           .split("\n")
           .map((s) => s.trim())
           .filter(Boolean);
-        const images = links.map((url, idx) => `![Gallery image ${idx + 1}](${url})`).join("\n\n");
-        return applyStyleWrappers([`## ${title || "Gallery"}`, images].filter(Boolean).join("\n\n"), b);
+        const gridHtml = galleryImageUrlsToHtmlGrid(links);
+        const heading = `## ${title || "Gallery"}`;
+        const body = gridHtml
+          ? `${heading}\n\n${gridHtml}`
+          : `${heading}\n\n_Add valid image URLs above. Only http(s) and normal paths are published._`;
+        return applyStyleWrappers(body, b, "site-gallery-masonry");
       }
       if (b.type === "cta") {
         const title = (b.title || "").trim();
@@ -766,6 +928,40 @@ function stylePreviewClasses(block: SiteBlock): string {
   return `${preset} ${spacing} ${radius} ${shadow} ${align}`;
 }
 
+function GalleryPreviewTile({ url, aspectClass }: { url: string; aspectClass: string }) {
+  const [broken, setBroken] = useState(false);
+  if (!isSafeGalleryImageUrl(url)) {
+    return (
+      <div
+        className={`mb-2 break-inside-avoid rounded-lg border border-dashed border-border/60 bg-muted/40 ${aspectClass}`}
+        title="Unsupported URL for preview"
+      />
+    );
+  }
+  if (broken) {
+    return (
+      <div
+        className={`mb-2 break-inside-avoid rounded-lg border border-border/50 bg-muted/70 ${aspectClass}`}
+        title={url}
+      />
+    );
+  }
+  return (
+    <div className={`mb-2 break-inside-avoid overflow-hidden rounded-lg border border-border/50 ${aspectClass}`}>
+      {/* Arbitrary remote URLs; next/image domain allowlist is not guaranteed for builder previews. */}
+      {/* eslint-disable-next-line @next/next/no-img-element */}
+      <img
+        src={url}
+        alt=""
+        loading="lazy"
+        decoding="async"
+        className="h-full w-full object-cover"
+        onError={() => setBroken(true)}
+      />
+    </div>
+  );
+}
+
 function BlockPreview({
   block,
   device,
@@ -950,11 +1146,21 @@ function BlockPreview({
     return (
       <div className={`${base} ${styleClass}`}>
         <h4 className={`font-semibold ${titleClass}`}>{block.title || "Gallery"}</h4>
-        <div className="mt-3 grid grid-cols-2 gap-2">
-          {urls.slice(0, 4).map((u, i) => (
-            <div key={`${u}-${i}`} className="h-16 rounded bg-muted/80" title={u} />
+        <div
+          className="mt-3 columns-2 gap-2 [column-fill:balance] sm:columns-3"
+          style={{ columnGap: "0.5rem" }}
+        >
+          {urls.slice(0, 12).map((u, i) => (
+            <GalleryPreviewTile
+              key={`${u}-${i}`}
+              url={u}
+              aspectClass={i % 3 === 0 ? "aspect-[4/5]" : i % 3 === 1 ? "aspect-square" : "aspect-[5/4]"}
+            />
           ))}
         </div>
+        {urls.length > 12 ? (
+          <p className="mt-2 text-xs text-muted-foreground">+{urls.length - 12} more in the published gallery.</p>
+        ) : null}
       </div>
     );
   }
@@ -1108,15 +1314,20 @@ function SortableBlockCard({
       <CardHeader className="pb-3">
         <div className="flex items-center justify-between gap-3">
           <div className="flex items-center gap-2">
-            <button
-              type="button"
-              className="cursor-grab rounded border border-border p-1.5 text-muted-foreground hover:text-foreground/90"
-              aria-label="Drag block"
-              {...attributes}
-              {...listeners}
+            <TooltipHint
+              label="Drag to reorder this section. You can also focus this handle and use arrow keys to move the block (with dnd-kit keyboard sorting)."
+              side="top"
             >
-              <GripVertical className="h-4 w-4" />
-            </button>
+              <button
+                type="button"
+                className={`cursor-grab rounded border border-border p-1.5 text-muted-foreground hover:text-foreground/90 ${BUILDER_PRESET_TACTILE}`}
+                aria-label="Drag or keyboard-reorder block"
+                {...attributes}
+                {...listeners}
+              >
+                <GripVertical className="h-4 w-4" aria-hidden />
+              </button>
+            </TooltipHint>
             <CardTitle className="text-base">{blockTypeLabel(block.type)} block</CardTitle>
           </div>
           <div className="flex items-center gap-2">
@@ -1392,17 +1603,32 @@ function SortableBlockCard({
         {block.type === "gallery" && (
           <>
             <Input placeholder="Section title" value={block.title ?? ""} onChange={(e) => onChange({ ...block, title: e.target.value })} />
-            <Button type="button" variant="outline" size="sm" className="gap-1" onClick={() => onOpenMedia("gallery")}>
-              <ImagePlus className="h-4 w-4" />
-              Add image from Media
-            </Button>
-            <Textarea
-              placeholder="One image URL per line"
-              value={block.linksText ?? ""}
-              onChange={(e) => onChange({ ...block, linksText: e.target.value })}
-              rows={6}
-              className="font-mono text-sm"
+            <TooltipHint label="Append uploaded or library image URLs to the gallery list." side="top">
+              <Button
+                type="button"
+                variant="outline"
+                size="sm"
+                className={`gap-1 ${BUILDER_PRESET_TACTILE}`}
+                onClick={() => onOpenMedia("gallery")}
+              >
+                <ImagePlus className="h-4 w-4" aria-hidden />
+                Add image from Media
+              </Button>
+            </TooltipHint>
+            <GalleryLinksField
+              linksText={block.linksText ?? ""}
+              onLinksTextChange={(next) => onChange({ ...block, linksText: next })}
             />
+            <details className="rounded-md border border-border/60 bg-muted/15 px-2 py-1.5 text-xs text-muted-foreground">
+              <summary className="cursor-pointer select-none font-medium text-foreground/80">Raw lines (advanced)</summary>
+              <Textarea
+                className="mt-2 font-mono text-sm"
+                rows={4}
+                placeholder="One image URL per line"
+                value={block.linksText ?? ""}
+                onChange={(e) => onChange({ ...block, linksText: e.target.value })}
+              />
+            </details>
           </>
         )}
 
@@ -1606,6 +1832,16 @@ export function SiteBlockBuilder({
   const uploadInputRef = useRef<HTMLInputElement>(null);
   const importInputRef = useRef<HTMLInputElement>(null);
   const lastGeneratedRef = useRef<string>(value);
+  const builderRootRef = useRef<HTMLDivElement>(null);
+  const pastRef = useRef<BuilderHistorySnapshot[]>([]);
+  const futureRef = useRef<BuilderHistorySnapshot[]>([]);
+  const isRestoringRef = useRef(false);
+  const blocksRef = useRef(blocks);
+  const themeRef = useRef(theme);
+  const brandRef = useRef(brand);
+  const brandSessionPushedRef = useRef(false);
+  const blockEditFlushRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const [historyEpoch, setHistoryEpoch] = useState(0);
 
   const sensors = useSensors(
     useSensor(PointerSensor, { activationConstraint: { distance: 8 } }),
@@ -1613,13 +1849,125 @@ export function SiteBlockBuilder({
   );
 
   useEffect(() => {
+    blocksRef.current = blocks;
+  }, [blocks]);
+  useEffect(() => {
+    themeRef.current = theme;
+  }, [theme]);
+  useEffect(() => {
+    brandRef.current = brand;
+  }, [brand]);
+
+  const bumpHistory = useCallback(() => setHistoryEpoch((e) => e + 1), []);
+
+  const pushHistorySnapshot = useCallback(() => {
+    if (isRestoringRef.current) return;
+    if (blockEditFlushRef.current) {
+      clearTimeout(blockEditFlushRef.current);
+      blockEditFlushRef.current = null;
+    }
+    const snap: BuilderHistorySnapshot = {
+      blocks: cloneBlocksForHistory(blocksRef.current),
+      theme: themeRef.current,
+      brand: cloneBrandForHistory(brandRef.current),
+    };
+    pastRef.current = [...pastRef.current.slice(-(BUILDER_HISTORY_LIMIT - 1)), snap];
+    futureRef.current = [];
+    bumpHistory();
+  }, [bumpHistory]);
+
+  const undoBuilder = useCallback(() => {
+    if (pastRef.current.length === 0) return;
+    const current: BuilderHistorySnapshot = {
+      blocks: cloneBlocksForHistory(blocksRef.current),
+      theme: themeRef.current,
+      brand: cloneBrandForHistory(brandRef.current),
+    };
+    const prev = pastRef.current[pastRef.current.length - 1]!;
+    pastRef.current = pastRef.current.slice(0, -1);
+    futureRef.current = [current, ...futureRef.current].slice(0, BUILDER_HISTORY_LIMIT);
+    if (blockEditFlushRef.current) {
+      clearTimeout(blockEditFlushRef.current);
+      blockEditFlushRef.current = null;
+    }
+    isRestoringRef.current = true;
+    brandSessionPushedRef.current = false;
+    setBlocks(cloneBlocksForHistory(prev.blocks));
+    setTheme(prev.theme);
+    setBrand(cloneBrandForHistory(prev.brand));
+    requestAnimationFrame(() => {
+      isRestoringRef.current = false;
+    });
+    bumpHistory();
+  }, [bumpHistory]);
+
+  const redoBuilder = useCallback(() => {
+    if (futureRef.current.length === 0) return;
+    const current: BuilderHistorySnapshot = {
+      blocks: cloneBlocksForHistory(blocksRef.current),
+      theme: themeRef.current,
+      brand: cloneBrandForHistory(brandRef.current),
+    };
+    const next = futureRef.current[0]!;
+    futureRef.current = futureRef.current.slice(1);
+    pastRef.current = [...pastRef.current.slice(-(BUILDER_HISTORY_LIMIT - 1)), current];
+    if (blockEditFlushRef.current) {
+      clearTimeout(blockEditFlushRef.current);
+      blockEditFlushRef.current = null;
+    }
+    isRestoringRef.current = true;
+    brandSessionPushedRef.current = false;
+    setBlocks(cloneBlocksForHistory(next.blocks));
+    setTheme(next.theme);
+    setBrand(cloneBrandForHistory(next.brand));
+    requestAnimationFrame(() => {
+      isRestoringRef.current = false;
+    });
+    bumpHistory();
+  }, [bumpHistory]);
+
+  useEffect(() => {
+    const isTypingTarget = (target: EventTarget | null) => {
+      if (!(target instanceof HTMLElement)) return false;
+      const tag = target.tagName;
+      if (tag === "INPUT" || tag === "TEXTAREA" || tag === "SELECT") return true;
+      if (target.isContentEditable) return true;
+      if (target.closest('[role="textbox"]')) return true;
+      return false;
+    };
+
+    const onKeyDown = (e: KeyboardEvent) => {
+      if (!builderRootRef.current?.contains(document.activeElement)) return;
+      if (isTypingTarget(e.target)) return;
+      const mod = e.metaKey || e.ctrlKey;
+      if (!mod || e.altKey) return;
+      if (e.key !== "z" && e.key !== "Z") return;
+      e.preventDefault();
+      if (e.shiftKey) redoBuilder();
+      else undoBuilder();
+    };
+    window.addEventListener("keydown", onKeyDown);
+    return () => window.removeEventListener("keydown", onKeyDown);
+  }, [undoBuilder, redoBuilder]);
+
+  useEffect(() => {
+    return () => {
+      if (blockEditFlushRef.current) clearTimeout(blockEditFlushRef.current);
+    };
+  }, []);
+
+  useEffect(() => {
     if (value !== lastGeneratedRef.current) {
       const nextParsed = parseBuilderMeta(value);
       setTheme(nextParsed.theme);
       setBrand(nextParsed.brand);
       setBlocks(nextParsed.body.trim() ? [{ id: makeId(), type: "text", markdown: nextParsed.body }] : [createBlock("hero")]);
+      pastRef.current = [];
+      futureRef.current = [];
+      brandSessionPushedRef.current = false;
+      bumpHistory();
     }
-  }, [value]);
+  }, [value, bumpHistory]);
 
   useEffect(() => {
     const loadTemplates = async () => {
@@ -1703,14 +2051,30 @@ export function SiteBlockBuilder({
     onChange(generatedMarkdown);
   }, [generatedMarkdown, onChange]);
 
-  const addBlock = (type: BlockType) => setBlocks((prev) => [...prev, createBlock(type)]);
-  const updateBlock = (id: string, next: SiteBlock) => setBlocks((prev) => prev.map((b) => (b.id === id ? next : b)));
-  const deleteBlock = (id: string) =>
+  const addBlock = (type: BlockType) => {
+    pushHistorySnapshot();
+    setBlocks((prev) => [...prev, createBlock(type)]);
+  };
+  const updateBlock = (id: string, next: SiteBlock) => {
+    if (blockEditFlushRef.current) {
+      clearTimeout(blockEditFlushRef.current);
+    } else {
+      pushHistorySnapshot();
+    }
+    blockEditFlushRef.current = setTimeout(() => {
+      blockEditFlushRef.current = null;
+    }, 500);
+    setBlocks((prev) => prev.map((b) => (b.id === id ? next : b)));
+  };
+  const deleteBlock = (id: string) => {
+    pushHistorySnapshot();
     setBlocks((prev) => {
       const next = prev.filter((b) => b.id !== id);
       return next.length > 0 ? next : [createBlock("text")];
     });
-  const duplicateBlock = (id: string) =>
+  };
+  const duplicateBlock = (id: string) => {
+    pushHistorySnapshot();
     setBlocks((prev) => {
       const idx = prev.findIndex((b) => b.id === id);
       if (idx < 0) return prev;
@@ -1719,10 +2083,12 @@ export function SiteBlockBuilder({
       next.splice(idx + 1, 0, copy);
       return next;
     });
+  };
 
   const handleDragEnd = (event: DragEndEvent) => {
     const { active, over } = event;
     if (!over || active.id === over.id) return;
+    pushHistorySnapshot();
     setBlocks((prev) => {
       const oldIndex = prev.findIndex((p) => p.id === active.id);
       const newIndex = prev.findIndex((p) => p.id === over.id);
@@ -1741,6 +2107,7 @@ export function SiteBlockBuilder({
 
   const handleMediaSelect = (url: string) => {
     if (!mediaTarget) return;
+    pushHistorySnapshot();
     setBlocks((prev) =>
       prev.map((b) => {
         if (b.id !== mediaTarget.blockId) return b;
@@ -1813,6 +2180,7 @@ export function SiteBlockBuilder({
   );
 
   const applyStarterTemplate = () => {
+    pushHistorySnapshot();
     setTheme("clean");
     setBlocks([
       createBlock("professionalHero"),
@@ -1823,6 +2191,7 @@ export function SiteBlockBuilder({
   };
 
   const applyAgencyTemplate = () => {
+    pushHistorySnapshot();
     setTheme("soft");
     const hero = createBlock("professionalHero");
     hero.title = "Creative technologist";
@@ -1835,6 +2204,7 @@ export function SiteBlockBuilder({
   };
 
   const applyPortfolioTemplate = () => {
+    pushHistorySnapshot();
     setTheme("bold");
     const hero = createBlock("professionalHero");
     hero.title = "Your personal brand";
@@ -1843,6 +2213,47 @@ export function SiteBlockBuilder({
     const faq = createBlock("faq");
     const cta = createBlock("cta");
     setBlocks([hero, stats, timeline, faq, cta]);
+  };
+
+  /** Matrix #1 — Resume-oriented module stack (hero + timeline + skills + contact). */
+  const applyResumeModuleKit = () => {
+    pushHistorySnapshot();
+    setTheme("clean");
+    const hero = createBlock("professionalHero");
+    hero.title = "Your name";
+    hero.tagline = "Role · Location or focus";
+    setBlocks([hero, createBlock("resumeTimeline"), createBlock("skillGrid"), createBlock("contactFormModular")]);
+  };
+
+  /** Matrix #1 — Project-focused landing (marketing hero + showcase + proof + CTA). */
+  const applyProjectModuleKit = () => {
+    pushHistorySnapshot();
+    setTheme("clean");
+    const hero = createBlock("hero");
+    hero.title = "Featured work";
+    hero.subtitle = "Case studies, shipped products, and experiments.";
+    setBlocks([hero, createBlock("projectShowcase"), createBlock("stats"), createBlock("cta")]);
+  };
+
+  /** Matrix #1 — Hero-led marketing strip (hero + social proof + CTA). */
+  const applyHeroModuleKit = () => {
+    pushHistorySnapshot();
+    setTheme("soft");
+    const hero = createBlock("hero");
+    hero.title = "Build something remarkable";
+    hero.subtitle = "Clear value proposition and one primary action.";
+    setBlocks([hero, createBlock("logoCloud"), createBlock("testimonials"), createBlock("cta")]);
+  };
+
+  /** Matrix #1 — Skills-first page (profile + skill grid + narrative + FAQ + contact). */
+  const applySkillsModuleKit = () => {
+    pushHistorySnapshot();
+    setTheme("clean");
+    const skills = createBlock("skillGrid");
+    skills.title = "Core competencies";
+    const story = createBlock("text");
+    story.markdown = "## How I work\n\nShort paragraph on collaboration, tools, and delivery style.";
+    setBlocks([createBlock("professionalHero"), skills, story, createBlock("faq"), createBlock("contactFormModular")]);
   };
 
   const saveCurrentAsTemplate = async () => {
@@ -1892,6 +2303,7 @@ export function SiteBlockBuilder({
   const applySavedTemplate = (id: string) => {
     const t = savedTemplates.find((x) => x.id === id);
     if (!t) return;
+    pushHistorySnapshot();
     setTheme(t.theme);
     setBrand({
       brandName: "",
@@ -1950,6 +2362,7 @@ export function SiteBlockBuilder({
   const insertSavedComponent = (id: string) => {
     const c = savedComponents.find((x) => x.id === id);
     if (!c) return;
+    pushHistorySnapshot();
     setBlocks((prev) => [...prev, { ...c.block, id: makeId() }]);
   };
 
@@ -2067,6 +2480,7 @@ export function SiteBlockBuilder({
         if (data.url) urls.push(data.url);
       }
       if (urls.length === 0) return;
+      pushHistorySnapshot();
       setBlocks((prev) =>
         prev.map((b) => {
           if (b.id !== mediaTarget.blockId) return b;
@@ -2097,31 +2511,82 @@ export function SiteBlockBuilder({
     }
   };
 
+  void historyEpoch;
+  const canUndo = pastRef.current.length > 0;
+  const canRedo = futureRef.current.length > 0;
+
+  const commitBrandChange = (updater: (b: BrandConfig) => BrandConfig) => {
+    if (!brandSessionPushedRef.current) {
+      pushHistorySnapshot();
+      brandSessionPushedRef.current = true;
+    }
+    setBrand(updater);
+  };
+
   return (
-    <div className="space-y-4 rounded-lg border border-border bg-muted/60 p-3">
+    <div
+      ref={builderRootRef}
+      className="space-y-4 rounded-lg border border-border bg-muted/60 p-3"
+      data-site-block-builder
+    >
       <div className="flex flex-wrap items-center gap-2">
         <div className="mr-2 inline-flex items-center gap-1.5 rounded-full bg-card px-2.5 py-1 text-xs font-medium text-foreground/90">
           <Sparkles className="h-3.5 w-3.5" />
           Visual builder
         </div>
+        <TooltipHint label="Undo block, theme, or brand changes (⌘Z when focus is outside text fields)." side="top">
+          <Button
+            type="button"
+            variant="outline"
+            size="icon"
+            className={`h-8 w-8 shrink-0 ${BUILDER_PRESET_TACTILE}`}
+            disabled={!canUndo}
+            aria-label="Undo"
+            onClick={undoBuilder}
+          >
+            <Undo2 className="h-4 w-4" aria-hidden />
+          </Button>
+        </TooltipHint>
+        <TooltipHint label="Redo (⌘⇧Z when focus is outside text fields)." side="top">
+          <Button
+            type="button"
+            variant="outline"
+            size="icon"
+            className={`h-8 w-8 shrink-0 ${BUILDER_PRESET_TACTILE}`}
+            disabled={!canRedo}
+            aria-label="Redo"
+            onClick={redoBuilder}
+          >
+            <Redo2 className="h-4 w-4" aria-hidden />
+          </Button>
+        </TooltipHint>
         <div className="inline-flex items-center rounded border border-border bg-card p-1 text-xs">
           <button
             type="button"
-            onClick={() => setTheme("clean")}
+            onClick={() => {
+              pushHistorySnapshot();
+              setTheme("clean");
+            }}
             className={`rounded px-2 py-1 ${theme === "clean" ? "bg-foreground text-primary-foreground" : "text-foreground/90"}`}
           >
             Clean
           </button>
           <button
             type="button"
-            onClick={() => setTheme("soft")}
+            onClick={() => {
+              pushHistorySnapshot();
+              setTheme("soft");
+            }}
             className={`rounded px-2 py-1 ${theme === "soft" ? "bg-foreground text-primary-foreground" : "text-foreground/90"}`}
           >
             Soft
           </button>
           <button
             type="button"
-            onClick={() => setTheme("bold")}
+            onClick={() => {
+              pushHistorySnapshot();
+              setTheme("bold");
+            }}
             className={`rounded px-2 py-1 ${theme === "bold" ? "bg-foreground text-primary-foreground" : "text-foreground/90"}`}
           >
             Bold
@@ -2158,19 +2623,96 @@ export function SiteBlockBuilder({
         <div className="space-y-3">
           <Card>
             <CardHeader className="pb-2">
-              <CardTitle className="text-sm">One-click starter templates</CardTitle>
+              <CardTitle className="text-sm">Layouts &amp; module kits</CardTitle>
+              <p className="text-xs text-muted-foreground">
+                Full-page starters and curated block stacks aligned with the site builder matrix (Resume, Project, Hero,
+                Skills).
+              </p>
             </CardHeader>
-            <CardContent className="space-y-2">
-              <div className="flex flex-wrap gap-2">
-                <Button type="button" variant="outline" size="sm" onClick={applyStarterTemplate}>
-                  Personal starter
-                </Button>
-                <Button type="button" variant="outline" size="sm" onClick={applyAgencyTemplate}>
-                  Creative portfolio
-                </Button>
-                <Button type="button" variant="outline" size="sm" onClick={applyPortfolioTemplate}>
-                  Resume &amp; FAQ
-                </Button>
+            <CardContent className="space-y-3">
+              <div>
+                <p className="mb-1.5 text-xs font-medium text-muted-foreground">Full-page starters</p>
+                <div className="flex flex-wrap gap-2">
+                  <Button
+                    type="button"
+                    variant="outline"
+                    size="sm"
+                    className={BUILDER_PRESET_TACTILE}
+                    onClick={applyStarterTemplate}
+                  >
+                    Personal starter
+                  </Button>
+                  <Button
+                    type="button"
+                    variant="outline"
+                    size="sm"
+                    className={BUILDER_PRESET_TACTILE}
+                    onClick={applyAgencyTemplate}
+                  >
+                    Creative portfolio
+                  </Button>
+                  <Button
+                    type="button"
+                    variant="outline"
+                    size="sm"
+                    className={BUILDER_PRESET_TACTILE}
+                    onClick={applyPortfolioTemplate}
+                  >
+                    Resume &amp; FAQ
+                  </Button>
+                </div>
+              </div>
+              <div>
+                <p className="mb-1.5 text-xs font-medium text-muted-foreground">Module kits</p>
+                <div className="flex flex-wrap gap-2">
+                  <TooltipHint label="Professional hero, experience timeline, skill grid, and contact form." side="top">
+                    <Button
+                      type="button"
+                      variant="outline"
+                      size="sm"
+                      className={BUILDER_PRESET_TACTILE}
+                      onClick={applyResumeModuleKit}
+                    >
+                      Resume
+                    </Button>
+                  </TooltipHint>
+                  <TooltipHint label="Marketing hero, project showcase, stats strip, and call to action." side="top">
+                    <Button
+                      type="button"
+                      variant="outline"
+                      size="sm"
+                      className={BUILDER_PRESET_TACTILE}
+                      onClick={applyProjectModuleKit}
+                    >
+                      Project
+                    </Button>
+                  </TooltipHint>
+                  <TooltipHint label="Hero, logo cloud, testimonials, and CTA — campaign-style landing flow." side="top">
+                    <Button
+                      type="button"
+                      variant="outline"
+                      size="sm"
+                      className={BUILDER_PRESET_TACTILE}
+                      onClick={applyHeroModuleKit}
+                    >
+                      Hero
+                    </Button>
+                  </TooltipHint>
+                  <TooltipHint
+                    label="Profile header, skill grid, narrative text, FAQ, and contact — competency-focused page."
+                    side="top"
+                  >
+                    <Button
+                      type="button"
+                      variant="outline"
+                      size="sm"
+                      className={BUILDER_PRESET_TACTILE}
+                      onClick={applySkillsModuleKit}
+                    >
+                      Skills
+                    </Button>
+                  </TooltipHint>
+                </div>
               </div>
               {savedTemplates.length > 0 && (
                 <div className="space-y-2">
@@ -2202,16 +2744,23 @@ export function SiteBlockBuilder({
             <CardHeader className="pb-2">
               <CardTitle className="text-sm">Brand (white-label prep)</CardTitle>
             </CardHeader>
-            <CardContent className="grid gap-2 sm:grid-cols-2">
+            <CardContent
+              className="grid gap-2 sm:grid-cols-2"
+              onBlurCapture={(e) => {
+                const next = e.relatedTarget as Node | null;
+                if (next && e.currentTarget.contains(next)) return;
+                brandSessionPushedRef.current = false;
+              }}
+            >
               <Input
                 placeholder="Brand name"
                 value={brand.brandName}
-                onChange={(e) => setBrand((b) => ({ ...b, brandName: e.target.value }))}
+                onChange={(e) => commitBrandChange((b) => ({ ...b, brandName: e.target.value }))}
               />
               <Input
                 placeholder="Brand logo URL"
                 value={brand.brandLogoUrl}
-                onChange={(e) => setBrand((b) => ({ ...b, brandLogoUrl: e.target.value }))}
+                onChange={(e) => commitBrandChange((b) => ({ ...b, brandLogoUrl: e.target.value }))}
               />
               <label className="text-xs text-muted-foreground">
                 Primary color
@@ -2219,11 +2768,11 @@ export function SiteBlockBuilder({
                   <input
                     type="color"
                     value={brand.primaryColor}
-                    onChange={(e) => setBrand((b) => ({ ...b, primaryColor: e.target.value }))}
+                    onChange={(e) => commitBrandChange((b) => ({ ...b, primaryColor: e.target.value }))}
                   />
                   <Input
                     value={brand.primaryColor}
-                    onChange={(e) => setBrand((b) => ({ ...b, primaryColor: e.target.value }))}
+                    onChange={(e) => commitBrandChange((b) => ({ ...b, primaryColor: e.target.value }))}
                   />
                 </div>
               </label>
@@ -2233,11 +2782,11 @@ export function SiteBlockBuilder({
                   <input
                     type="color"
                     value={brand.accentColor}
-                    onChange={(e) => setBrand((b) => ({ ...b, accentColor: e.target.value }))}
+                    onChange={(e) => commitBrandChange((b) => ({ ...b, accentColor: e.target.value }))}
                   />
                   <Input
                     value={brand.accentColor}
-                    onChange={(e) => setBrand((b) => ({ ...b, accentColor: e.target.value }))}
+                    onChange={(e) => commitBrandChange((b) => ({ ...b, accentColor: e.target.value }))}
                   />
                 </div>
               </label>
@@ -2300,7 +2849,9 @@ export function SiteBlockBuilder({
 
           <DndContext sensors={sensors} collisionDetection={closestCenter} onDragEnd={handleDragEnd}>
             <SortableContext items={blocks.map((b) => b.id)} strategy={verticalListSortingStrategy}>
-              <div className="space-y-3">
+              <div
+                className="max-h-[min(70vh,52rem)] space-y-3 overflow-y-auto overscroll-y-contain rounded-lg border border-border/50 bg-card/20 p-1 [content-visibility:auto] motion-reduce:[content-visibility:visible] [contain-intrinsic-size:1px_28rem]"
+              >
                 {blocks.map((block) => (
                   <SortableBlockCard
                     key={block.id}

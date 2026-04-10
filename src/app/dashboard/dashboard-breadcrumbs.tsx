@@ -36,6 +36,10 @@ const SEGMENT_LABELS: Record<string, string> = {
   showroom: "Showroom",
   tools: "Tools",
   "ast-lab": "Markdown AST",
+  system: "System health",
+  hubs: "Hubs",
+  "global-settings": "Global settings hub",
+  "taxonomy-assets": "Content taxonomy & assets",
 };
 
 /** Slugs and database IDs: avoid raw opaque strings in the breadcrumb trail. */

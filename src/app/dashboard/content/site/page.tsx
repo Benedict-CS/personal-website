@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, useMemo } from "react";
 import Link from "next/link";
 import { api } from "@/lib/api";
 import { Button } from "@/components/ui/button";
@@ -9,12 +9,15 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { InsertMediaModal } from "@/components/insert-media-modal";
-import { Download, ImageIcon, Loader2 } from "lucide-react";
+import { Download, HardDrive, ImageIcon, Loader2 } from "lucide-react";
 import type { SiteConfigResponse, NavItem } from "@/types/site";
 import { DEFAULT_NAV_ITEMS } from "@/lib/site-config-defaults";
 import { NavItemsEditor } from "@/components/nav-items-editor";
 import { FieldHelp } from "@/components/ui/field-help";
+import { TooltipHint } from "@/components/ui/tooltip-hint";
 import { DashboardPageHeader } from "@/components/dashboard/dashboard-ui";
+import { validateSiteSettingsForm } from "@/lib/dashboard-form-validation";
+import { buildSiteSettingsLiveHints } from "@/lib/site-settings-field-hints";
 
 const defaults: SiteConfigResponse = {
   siteName: "My Site",
@@ -48,7 +51,13 @@ export default function SiteSettingsPage() {
   const [message, setMessage] = useState<{ type: "success" | "error"; text: string } | null>(null);
   const [mediaPickerFor, setMediaPickerFor] = useState<"logo" | "favicon" | "og" | null>(null);
   const [customPagesForNav, setCustomPagesForNav] = useState<{ slug: string; title: string }[]>([]);
-  const [exportingTarget, setExportingTarget] = useState<"posts" | "system" | null>(null);
+  const [exportingTarget, setExportingTarget] = useState<"posts" | "system" | "bundle" | null>(null);
+  const [backupTriggerLoading, setBackupTriggerLoading] = useState(false);
+  const [backupTriggerMessage, setBackupTriggerMessage] = useState<{ type: "success" | "error" | "info"; text: string } | null>(
+    null
+  );
+  const validationErrors = useMemo(() => validateSiteSettingsForm(config), [config]);
+  const liveHints = useMemo(() => buildSiteSettingsLiveHints(config), [config]);
 
   useEffect(() => {
     Promise.all([
@@ -102,7 +111,7 @@ export default function SiteSettingsPage() {
     }
   };
 
-  const exportData = async (target: "posts" | "system") => {
+  const exportData = async (target: "posts" | "system" | "bundle") => {
     setExportingTarget(target);
     setMessage(null);
     try {
@@ -118,7 +127,9 @@ export default function SiteSettingsPage() {
       link.download =
         target === "posts"
           ? `cms-posts-${new Date().toISOString().slice(0, 10)}.zip`
-          : `cms-system-export-${new Date().toISOString().slice(0, 10)}.json`;
+          : target === "system"
+            ? `cms-system-export-${new Date().toISOString().slice(0, 10)}.json`
+            : `cms-full-bundle-${new Date().toISOString().slice(0, 10)}.zip`;
       link.click();
       URL.revokeObjectURL(objectUrl);
       setMessage({ type: "success", text: `Exported ${target} data.` });
@@ -126,6 +137,42 @@ export default function SiteSettingsPage() {
       setMessage({ type: "error", text: error instanceof Error ? error.message : "Export failed." });
     } finally {
       setExportingTarget(null);
+    }
+  };
+
+  const triggerServerBackup = async () => {
+    setBackupTriggerLoading(true);
+    setBackupTriggerMessage(null);
+    try {
+      const res = await fetch("/api/backup/trigger", { method: "POST", credentials: "include" });
+      const data = (await res.json().catch(() => ({}))) as {
+        ok?: boolean;
+        ran?: boolean;
+        message?: string;
+        error?: string;
+      };
+      if (!res.ok) {
+        setBackupTriggerMessage({
+          type: "error",
+          text: typeof data.error === "string" ? data.error : "Backup request failed.",
+        });
+        return;
+      }
+      if (data.ran === false && typeof data.message === "string") {
+        setBackupTriggerMessage({ type: "info", text: data.message });
+        return;
+      }
+      setBackupTriggerMessage({
+        type: "success",
+        text: data.ran ? "Backup script finished successfully on the server." : "Backup request acknowledged.",
+      });
+    } catch (e) {
+      setBackupTriggerMessage({
+        type: "error",
+        text: e instanceof Error ? e.message : "Could not reach backup API.",
+      });
+    } finally {
+      setBackupTriggerLoading(false);
     }
   };
 
@@ -243,15 +290,21 @@ export default function SiteSettingsPage() {
           <p className="text-sm text-muted-foreground">One-click apply: set navigation and layout style. You can still edit everything after.</p>
         </CardHeader>
         <CardContent className="flex flex-wrap gap-2">
-          <Button variant="outline" onClick={() => applyTemplate("personal")} disabled={saving}>
-            Personal
-          </Button>
-          <Button variant="outline" onClick={() => applyTemplate("portfolio")} disabled={saving}>
-            Portfolio
-          </Button>
-          <Button variant="outline" onClick={() => applyTemplate("blog")} disabled={saving}>
-            Blog
-          </Button>
+          <TooltipHint label="Best for CV-style personal profile websites">
+            <Button variant="outline" onClick={() => applyTemplate("personal")} disabled={saving}>
+              Personal
+            </Button>
+          </TooltipHint>
+          <TooltipHint label="Best for project showcase and portfolio layout">
+            <Button variant="outline" onClick={() => applyTemplate("portfolio")} disabled={saving}>
+              Portfolio
+            </Button>
+          </TooltipHint>
+          <TooltipHint label="Best for writing-first blog navigation">
+            <Button variant="outline" onClick={() => applyTemplate("blog")} disabled={saving}>
+              Blog
+            </Button>
+          </TooltipHint>
         </CardContent>
       </Card>
 
@@ -459,6 +512,11 @@ export default function SiteSettingsPage() {
               <code className="rounded bg-muted px-1">data</code> with name, email, subject, message, and{" "}
               <code className="rounded bg-muted px-1">submittedAt</code>.
             </p>
+            {liveHints.contactWebhookUrl ? (
+              <p className="text-xs text-amber-800" role="status">
+                {liveHints.contactWebhookUrl}
+              </p>
+            ) : null}
           </div>
         </CardContent>
       </Card>
@@ -485,6 +543,11 @@ export default function SiteSettingsPage() {
               Also set <code className="rounded bg-muted px-1">BACKUP_RSYNC_TARGET</code> on the server to match, or export
               it before running the backup script.
             </p>
+            {liveHints.backupRsyncTarget ? (
+              <p className="text-xs text-amber-800" role="status">
+                {liveHints.backupRsyncTarget}
+              </p>
+            ) : null}
           </div>
           <div className="space-y-2">
             <Label htmlFor="backupPostHookUrl">Post-backup webhook (optional)</Label>
@@ -498,6 +561,44 @@ export default function SiteSettingsPage() {
               Script POSTs JSON when an archive is created. Set <code className="rounded bg-muted px-1">BACKUP_POST_HOOK_URL</code>{" "}
               in the server environment for automation.
             </p>
+            {liveHints.backupPostHookUrl ? (
+              <p className="text-xs text-amber-800" role="status">
+                {liveHints.backupPostHookUrl}
+              </p>
+            ) : null}
+          </div>
+          <div className="rounded-lg border border-border bg-muted/20 p-3">
+            <p className="text-sm font-medium text-foreground">Run backup on server</p>
+            <p className="mt-1 text-xs text-muted-foreground">
+              Calls <code className="rounded bg-muted px-1 text-foreground">scripts/backup-data.sh</code> when{" "}
+              <code className="rounded bg-muted px-1">ALLOW_SERVER_BACKUP=true</code>. Targets above (or server env) apply.
+            </p>
+            <div className="mt-3 flex flex-wrap items-center gap-2">
+              <Button
+                type="button"
+                variant="outline"
+                className="gap-2"
+                disabled={backupTriggerLoading}
+                onClick={() => void triggerServerBackup()}
+              >
+                {backupTriggerLoading ? <Loader2 className="h-4 w-4 animate-spin" aria-hidden /> : <HardDrive className="h-4 w-4" aria-hidden />}
+                Trigger backup now
+              </Button>
+            </div>
+            {backupTriggerMessage ? (
+              <p
+                className={`mt-2 text-xs ${
+                  backupTriggerMessage.type === "error"
+                    ? "text-rose-700"
+                    : backupTriggerMessage.type === "success"
+                      ? "text-emerald-800"
+                      : "text-muted-foreground"
+                }`}
+                role="status"
+              >
+                {backupTriggerMessage.text}
+              </p>
+            ) : null}
           </div>
         </CardContent>
       </Card>
@@ -511,29 +612,45 @@ export default function SiteSettingsPage() {
         </CardHeader>
         <CardContent className="space-y-3">
           <div className="flex flex-wrap items-center gap-2">
-            <Button
-              type="button"
-              variant="outline"
-              className="gap-2"
-              disabled={exportingTarget !== null}
-              onClick={() => void exportData("posts")}
-            >
-              {exportingTarget === "posts" ? <Loader2 className="h-4 w-4 animate-spin" /> : <Download className="h-4 w-4" />}
-              Export posts ZIP
-            </Button>
-            <Button
-              type="button"
-              variant="outline"
-              className="gap-2"
-              disabled={exportingTarget !== null}
-              onClick={() => void exportData("system")}
-            >
-              {exportingTarget === "system" ? <Loader2 className="h-4 w-4 animate-spin" /> : <Download className="h-4 w-4" />}
-              Export system JSON
-            </Button>
+            <TooltipHint label="Downloads all published and draft posts as MDX files">
+              <Button
+                type="button"
+                variant="outline"
+                className="gap-2"
+                disabled={exportingTarget !== null}
+                onClick={() => void exportData("posts")}
+              >
+                {exportingTarget === "posts" ? <Loader2 className="h-4 w-4 animate-spin" /> : <Download className="h-4 w-4" />}
+                Export posts ZIP
+              </Button>
+            </TooltipHint>
+            <TooltipHint label="Downloads site config, audit, and analytics system data as JSON">
+              <Button
+                type="button"
+                variant="outline"
+                className="gap-2"
+                disabled={exportingTarget !== null}
+                onClick={() => void exportData("system")}
+              >
+                {exportingTarget === "system" ? <Loader2 className="h-4 w-4 animate-spin" /> : <Download className="h-4 w-4" />}
+                Export system JSON
+              </Button>
+            </TooltipHint>
+            <TooltipHint label="Downloads one complete portability bundle (content + system)">
+              <Button
+                type="button"
+                variant="outline"
+                className="gap-2"
+                disabled={exportingTarget !== null}
+                onClick={() => void exportData("bundle")}
+              >
+                {exportingTarget === "bundle" ? <Loader2 className="h-4 w-4 animate-spin" /> : <Download className="h-4 w-4" />}
+                Export full bundle ZIP
+              </Button>
+            </TooltipHint>
           </div>
           <p className="text-xs text-muted-foreground">
-            System export includes site configuration, editable page content, custom pages, and analytics records.
+            Full bundle includes posts as MDX and the full system JSON in one portable archive.
           </p>
         </CardContent>
       </Card>
@@ -714,9 +831,21 @@ export default function SiteSettingsPage() {
           )}
         </p>
       )}
-      <Button onClick={save} disabled={saving}>
-        {saving ? "Saving..." : "Save"}
-      </Button>
+      {validationErrors.length > 0 ? (
+        <div className="rounded-lg border border-amber-200 bg-amber-50 p-3 text-sm text-amber-900">
+          <p className="font-medium">Fix these fields before saving:</p>
+          <ul className="mt-2 list-disc space-y-1 pl-5">
+            {validationErrors.slice(0, 8).map((item) => (
+              <li key={item}>{item}</li>
+            ))}
+          </ul>
+        </div>
+      ) : null}
+      <TooltipHint label="Saves all site settings and metadata in one transaction">
+        <Button onClick={save} disabled={saving || validationErrors.length > 0}>
+          {saving ? "Saving..." : "Save"}
+        </Button>
+      </TooltipHint>
 
       <InsertMediaModal
         open={mediaPickerFor !== null}

@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { normalizeIP } from "@/lib/analytics-excluded-ips";
 import { getRequestOrigin } from "@/lib/get-request-origin";
+import { checkRateLimitAsync } from "@/lib/rate-limit";
 
 const siteOrigin = process.env.NEXT_PUBLIC_SITE_URL || process.env.NEXTAUTH_URL || "";
 
@@ -38,6 +39,13 @@ export async function POST(request: NextRequest) {
   if (!ip || ip === "unknown") {
     return NextResponse.json({ ok: true });
   }
+  const { ok: rateAllowed, remaining } = await checkRateLimitAsync(ip, "analytics_leave");
+  if (!rateAllowed) {
+    return NextResponse.json(
+      { ok: true, skipped: "rate_limited" },
+      { headers: { "X-RateLimit-Remaining": "0", "Cache-Control": "no-store, private" } }
+    );
+  }
   const since = new Date(Date.now() - 30 * 60 * 1000);
   try {
     const row = await prisma.pageView.findFirst({
@@ -51,7 +59,7 @@ export async function POST(request: NextRequest) {
         data: { durationSeconds: duration },
       });
     }
-    return NextResponse.json({ ok: true });
+    return NextResponse.json({ ok: true }, { headers: { "X-RateLimit-Remaining": String(remaining) } });
   } catch (e) {
     console.error("Analytics leave error:", e);
     return NextResponse.json({ error: "Failed" }, { status: 500 });

@@ -8,6 +8,7 @@ import { isExcludedIP, normalizeIP } from "@/lib/analytics-excluded-ips";
 import { getCvDownloadFilename } from "@/lib/cv-download-filename";
 import { sanitizeReferrerForAnalytics } from "@/lib/analytics-referrer";
 import { getTrustedClientIp } from "@/lib/client-ip";
+import { trackAnalyticsEvent } from "@/lib/analytics-events";
 
 export const dynamic = "force-dynamic";
 
@@ -34,37 +35,46 @@ export async function GET(request: NextRequest) {
     !!rawIp && !!ip && ip !== "unknown" && !isPrivateIP(rawIp) && !isExcludedIP(rawIp);
 
   if (canLog) {
-    let country: string | null = null;
-    let city: string | null = null;
-    try {
-      ensureGeoIPDataDir();
-      const geoip = (await import("geoip-lite")).default;
-      const geo = geoip.lookup(ip);
-      if (geo) {
-        country = (geo.country ?? "").trim() || null;
-        city = (geo.city ?? "").trim() || null;
+    const rawUa = request.headers.get("user-agent");
+    const userAgent = truncateMeta(rawUa, 512);
+    const rawRef = request.headers.get("referer");
+    const referrer = truncateMeta(sanitizeReferrerForAnalytics(rawRef), 512);
+    void (async () => {
+      let country: string | null = null;
+      let city: string | null = null;
+      try {
+        ensureGeoIPDataDir();
+        const geoip = (await import("geoip-lite")).default;
+        const geo = geoip.lookup(ip);
+        if (geo) {
+          country = (geo.country ?? "").trim() || null;
+          city = (geo.city ?? "").trim() || null;
+        }
+      } catch {
+        // GeoIP optional
       }
-    } catch {
-      // GeoIP optional
-    }
-    try {
-      const rawUa = request.headers.get("user-agent");
-      const userAgent = truncateMeta(rawUa, 512);
-      const rawRef = request.headers.get("referer");
-      const referrer = truncateMeta(sanitizeReferrerForAnalytics(rawRef), 512);
-      await prisma.pageView.create({
-        data: {
-          path: "/cv.pdf",
-          ip,
-          country,
-          city,
-          userAgent,
-          referrer,
-        },
-      });
-    } catch (e) {
-      console.error("[cv/download] Failed to log PageView:", e);
-    }
+      try {
+        await prisma.pageView.create({
+          data: {
+            path: "/cv.pdf",
+            ip,
+            country,
+            city,
+            userAgent,
+            referrer,
+          },
+        });
+      } catch (e) {
+        console.error("[cv/download] Failed to log PageView:", e);
+      }
+    })();
+    void trackAnalyticsEvent({
+      request,
+      event: "CV_DOWNLOAD",
+      details: {
+        path: "/cv.pdf",
+      },
+    });
   }
 
   try {

@@ -1,4 +1,4 @@
-import rehypeHighlight from "rehype-highlight";
+import rehypePrettyCode from "rehype-pretty-code";
 import rehypeRaw from "rehype-raw";
 import rehypeSanitize, { defaultSchema } from "rehype-sanitize";
 import rehypeSlug from "rehype-slug";
@@ -14,7 +14,7 @@ export const markdownBlogPostSchema = {
   tagNames: [...(defaultSchema.tagNames ?? []), "style"],
   attributes: {
     ...defaultSchema.attributes,
-    div: [...(defaultSchema.attributes?.div ?? []), "className", "data-user", "data-variant"],
+    div: [...(defaultSchema.attributes?.div ?? []), "className", "data-user", "data-variant", "role"],
     span: [...(defaultSchema.attributes?.span ?? []), "className"],
     img: [...(defaultSchema.attributes?.img ?? []), "title", "loading", "decoding", "sizes", "srcSet"],
     "*": [...(defaultSchema.attributes?.["*"] ?? []), "style"],
@@ -28,12 +28,19 @@ export const markdownRehypePlugins = [
   [rehypeSanitize, markdownBlogPostSchema],
   rehypeSlug,
   rehypeKatex,
-  rehypeHighlight,
+  [
+    rehypePrettyCode,
+    {
+      theme: "github-light",
+      keepBackground: false,
+      defaultLang: "txt",
+    },
+  ],
   rehypePanguSpacing,
 ];
 
 export const markdownArticleClassName =
-  "prose prose-lg max-w-none markdown-renderer font-[family-name:var(--font-geist-sans)] [&_code]:font-[family-name:var(--font-geist-mono)] [&_pre]:font-[family-name:var(--font-geist-mono)]";
+  "prose prose-lg max-w-none markdown-renderer font-[family-name:var(--font-geist-sans)] leading-7 [overflow-wrap:anywhere] [&_code]:font-[family-name:var(--font-geist-mono)] [&_pre]:font-[family-name:var(--font-geist-mono)]";
 
 /** Smaller type for About block cards (matches previous `prose prose-slate prose-sm` wrapper). */
 export const markdownArticleClassNameProseSm =

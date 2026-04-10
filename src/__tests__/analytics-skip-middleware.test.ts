@@ -4,6 +4,7 @@ describe("shouldSkipMiddlewareAnalytics", () => {
   it("skips API and Next internals", () => {
     expect(shouldSkipMiddlewareAnalytics("/api/posts", "Mozilla/5.0")).toBe(true);
     expect(shouldSkipMiddlewareAnalytics("/_next/data/foo", "Mozilla/5.0")).toBe(true);
+    expect(shouldSkipMiddlewareAnalytics("/api/health", "kube-probe/1.29")).toBe(true);
   });
 
   it("skips SEO and feed paths", () => {
@@ -25,6 +26,12 @@ describe("shouldSkipMiddlewareAnalytics", () => {
     ).toBe(true);
     expect(
       shouldSkipMiddlewareAnalytics("/", "Mozilla/5.0 AppleWebKit/537.36 (compatible; GPTBot/1.3)")
+    ).toBe(true);
+    expect(
+      shouldSkipMiddlewareAnalytics("/", "Mozilla/5.0 (compatible; SemrushBot/7~bl; +https://www.semrush.com/bot.html)")
+    ).toBe(true);
+    expect(
+      shouldSkipMiddlewareAnalytics("/", "Mozilla/5.0 (X11; Linux x86_64) HeadlessChrome/124.0.0.0")
     ).toBe(true);
   });
 

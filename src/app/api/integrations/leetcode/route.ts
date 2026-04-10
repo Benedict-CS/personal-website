@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
+import { fetchWithRetry } from "@/lib/self-healing-fetch";
 
 export const dynamic = "force-dynamic";
 
@@ -43,16 +44,23 @@ export async function GET(request: NextRequest) {
   }
 
   try {
-    const res = await fetch("https://leetcode.com/graphql", {
-      method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-        Referer: `https://leetcode.com/${encodeURIComponent(user)}/`,
-        "User-Agent": "Mozilla/5.0 (compatible; PersonalSite-LeetCode/1.0)",
+    const res = await fetchWithRetry(
+      "https://leetcode.com/graphql",
+      {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          Referer: `https://leetcode.com/${encodeURIComponent(user)}/`,
+          "User-Agent": "Mozilla/5.0 (compatible; PersonalSite-LeetCode/1.0)",
+        },
+        body: JSON.stringify({ query: QUERY, variables: { username: user } }),
+        next: { revalidate: 300 },
       },
-      body: JSON.stringify({ query: QUERY, variables: { username: user } }),
-      next: { revalidate: 300 },
-    });
+      {
+        retries: 2,
+        timeoutMs: 5000,
+      }
+    );
 
     if (!res.ok) {
       return NextResponse.json({ error: "LeetCode request failed" }, { status: 502 });

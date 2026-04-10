@@ -2,7 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { requireSession } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 import { auditLog } from "@/lib/audit";
-import { getClientIP } from "@/lib/rate-limit";
+import { checkRateLimitAsync, getClientIP } from "@/lib/rate-limit";
 
 /**
  * POST /api/import — import posts (and optionally custom pages) from JSON (auth required).
@@ -12,6 +12,21 @@ import { getClientIP } from "@/lib/rate-limit";
 export async function POST(request: NextRequest) {
   const auth = await requireSession();
   if ("unauthorized" in auth) return auth.unauthorized;
+  const ip = getClientIP(request);
+  const { ok: allowed, remaining } = await checkRateLimitAsync(ip, "import_write");
+  if (!allowed) {
+    return NextResponse.json(
+      { error: "Too many import attempts. Please retry in a minute." },
+      {
+        status: 429,
+        headers: {
+          "X-RateLimit-Remaining": "0",
+          "Retry-After": "60",
+          "Cache-Control": "no-store, private",
+        },
+      }
+    );
+  }
 
   try {
     const body = await request.json();
@@ -95,11 +110,16 @@ export async function POST(request: NextRequest) {
       ip: getClientIP(request),
     });
 
-    return NextResponse.json({
-      ok: true,
-      created: `${created.posts} posts, ${created.pages} pages`,
-      ...created,
-    });
+    return NextResponse.json(
+      {
+        ok: true,
+        created: `${created.posts} posts, ${created.pages} pages`,
+        ...created,
+      },
+      {
+        headers: { "X-RateLimit-Remaining": String(remaining) },
+      }
+    );
   } catch (error) {
     console.error("Import error:", error);
     return NextResponse.json({ error: "Import failed" }, { status: 500 });

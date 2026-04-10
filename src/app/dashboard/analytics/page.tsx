@@ -23,6 +23,12 @@ import { DASHBOARD_FORM_LABEL_CLASS } from "@/components/dashboard/dashboard-for
 import { buildAnalyticsInsight } from "@/lib/analytics-insight";
 import { AnalyticsTrendChart } from "@/components/dashboard/analytics-trend-chart";
 import { buildAnalyticsAnomalyCallouts } from "@/lib/analytics-anomaly";
+import { buildAnalyticsTrendInterpretationCards } from "@/lib/analytics-trend-interpretation";
+import { TooltipHint } from "@/components/ui/tooltip-hint";
+import { Skeleton } from "@/components/ui/skeleton";
+import { DASHBOARD_INTERNAL_FETCH, fetchWithRetry, formatDashboardFetchFailure } from "@/lib/self-healing-fetch";
+
+const analyticsMutationFetch = { ...DASHBOARD_INTERNAL_FETCH, retries: 0 };
 
 type Stats = {
   total: number;
@@ -32,6 +38,13 @@ type Stats = {
   byReferrer?: { referrer: string; count: number }[];
   byReferrerGroup?: { group: string; count: number }[];
   topBlogPosts?: { title: string; slug: string; viewCount: number }[];
+  topEngagedContent?: {
+    title: string;
+    slug: string;
+    views: number;
+    avgDurationSeconds: number;
+    engagementScore: number;
+  }[];
   avgDurationSeconds?: number | null;
   durationSampleCount?: number;
   cvDownloads?: number;
@@ -83,6 +96,38 @@ function daysAgo(n: number) {
   const d = new Date();
   d.setDate(d.getDate() - n);
   return d.toISOString().slice(0, 10);
+}
+
+function parseDateOnly(input: string): Date | null {
+  if (!/^\d{4}-\d{2}-\d{2}$/.test(input)) return null;
+  const date = new Date(`${input}T00:00:00`);
+  return Number.isNaN(date.getTime()) ? null : date;
+}
+
+function shiftDate(input: Date, dayOffset: number): Date {
+  const next = new Date(input);
+  next.setDate(next.getDate() + dayOffset);
+  return next;
+}
+
+function buildPreviousRange(from: string, to: string): { from: string; to: string } | null {
+  const fromDate = parseDateOnly(from);
+  const toDate = parseDateOnly(to);
+  if (!fromDate || !toDate || toDate.getTime() < fromDate.getTime()) return null;
+  const msPerDay = 24 * 60 * 60 * 1000;
+  const spanDays = Math.floor((toDate.getTime() - fromDate.getTime()) / msPerDay) + 1;
+  const prevTo = shiftDate(fromDate, -1);
+  const prevFrom = shiftDate(prevTo, -(spanDays - 1));
+  return {
+    from: prevFrom.toISOString().slice(0, 10),
+    to: prevTo.toISOString().slice(0, 10),
+  };
+}
+
+function formatSignedDelta(current: number, previous: number): string {
+  const delta = current - previous;
+  const sign = delta > 0 ? "+" : "";
+  return `${sign}${delta}`;
 }
 
 function escapeCsvCell(s: string | number | null | undefined): string {
@@ -166,6 +211,9 @@ export default function AnalyticsPage() {
   /** When true, stats API includes unknown / 127.0.0.1 / private LAN IPs (default off). */
   const [includeDevIps, setIncludeDevIps] = useState(false);
   const [refreshKey, setRefreshKey] = useState(0);
+  const [previousPeriodStats, setPreviousPeriodStats] = useState<Stats | null>(null);
+  const [previousPeriodRange, setPreviousPeriodRange] = useState<{ from: string; to: string } | null>(null);
+  const [loadingPreviousPeriod, setLoadingPreviousPeriod] = useState(false);
 
   const [error, setError] = useState<string | null>(null);
   const [clearBefore, setClearBefore] = useState("");
@@ -185,6 +233,7 @@ export default function AnalyticsPage() {
     node?: string;
     loaded: boolean;
   }>({ ok: false, db: "—", loaded: false });
+  const [healthFetchError, setHealthFetchError] = useState<string | null>(null);
 
   useEffect(() => {
     try {
@@ -204,7 +253,7 @@ export default function AnalyticsPage() {
     if (includeDevIps) params.set("includeDevIps", "1");
     setLoading(true);
     setError(null);
-    fetch(`/api/analytics/stats?${params}`, { credentials: "include" })
+    fetchWithRetry(`/api/analytics/stats?${params}`, { credentials: "include" }, DASHBOARD_INTERNAL_FETCH)
       .then(async (r) => {
         if (!r.ok) {
           const body = await r.json().catch(() => ({}));
@@ -213,18 +262,54 @@ export default function AnalyticsPage() {
         }
         return r.json();
       })
-      .then(setStats)
+      .then((payload: Stats | null) => {
+        setStats(payload);
+        if (!payload || filterIP.trim()) {
+          setPreviousPeriodStats(null);
+          setPreviousPeriodRange(null);
+          return;
+        }
+        const previousRange = buildPreviousRange(from, to);
+        if (!previousRange) {
+          setPreviousPeriodStats(null);
+          setPreviousPeriodRange(null);
+          return;
+        }
+        const previousParams = new URLSearchParams({
+          from: previousRange.from,
+          to: previousRange.to,
+        });
+        if (includeDevIps) previousParams.set("includeDevIps", "1");
+        setLoadingPreviousPeriod(true);
+        setPreviousPeriodRange(previousRange);
+        void fetchWithRetry(
+          `/api/analytics/stats?${previousParams.toString()}`,
+          { credentials: "include" },
+          DASHBOARD_INTERNAL_FETCH,
+        )
+          .then(async (response) => {
+            if (!response.ok) return null;
+            return (await response.json().catch(() => null)) as Stats | null;
+          })
+          .then((previousPayload) => setPreviousPeriodStats(previousPayload))
+          .catch(() => setPreviousPeriodStats(null))
+          .finally(() => setLoadingPreviousPeriod(false));
+      })
       .catch((e) => {
-        setError(e?.message || "Network error");
+        setError(formatDashboardFetchFailure(e));
         setStats(null);
+        setPreviousPeriodStats(null);
+        setPreviousPeriodRange(null);
       })
       .finally(() => setLoading(false));
   }, [from, to, filterIP, includeDevIps, refreshKey]);
 
   useEffect(() => {
-    fetch("/api/health", { cache: "no-store" })
+    setHealthFetchError(null);
+    fetchWithRetry("/api/health", { cache: "no-store" }, DASHBOARD_INTERNAL_FETCH)
       .then((r) => r.json())
       .then((d: { ok?: boolean; db?: string; uptimeSeconds?: number; appVersion?: string; node?: string }) => {
+        setHealthFetchError(null);
         setHealthSnapshot({
           ok: !!d.ok,
           db: typeof d.db === "string" ? d.db : "—",
@@ -234,7 +319,8 @@ export default function AnalyticsPage() {
           loaded: true,
         });
       })
-      .catch(() => {
+      .catch((e) => {
+        setHealthFetchError(formatDashboardFetchFailure(e));
         setHealthSnapshot({ ok: false, db: "unreachable", loaded: true });
       });
   }, [refreshKey]);
@@ -248,11 +334,15 @@ export default function AnalyticsPage() {
     setClearLoading(true);
     setClearMessage(null);
     try {
-      const res = await fetch("/api/analytics/clear", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ before: date }),
-      });
+      const res = await fetchWithRetry(
+        "/api/analytics/clear",
+        {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ before: date }),
+        },
+        analyticsMutationFetch,
+      );
       const data = await res.json().catch(() => ({}));
       if (!res.ok) {
         setClearMessage(data.error || `Error ${res.status}`);
@@ -273,8 +363,9 @@ export default function AnalyticsPage() {
         "success"
       );
     } catch (e) {
-      setClearMessage((e as Error)?.message || "Request failed");
-      toast((e as Error)?.message || "Request failed", "error");
+      const msg = formatDashboardFetchFailure(e);
+      setClearMessage(msg);
+      toast(msg, "error");
     } finally {
       setClearLoading(false);
     }
@@ -290,11 +381,15 @@ export default function AnalyticsPage() {
     setClearLoading(true);
     setClearMessage(null);
     try {
-      const res = await fetch("/api/analytics/clear", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ ip }),
-      });
+      const res = await fetchWithRetry(
+        "/api/analytics/clear",
+        {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ ip }),
+        },
+        analyticsMutationFetch,
+      );
       const data = await res.json().catch(() => ({}));
       if (!res.ok) {
         setClearMessage(data.error || `Error ${res.status}`);
@@ -316,8 +411,9 @@ export default function AnalyticsPage() {
         "success"
       );
     } catch (e) {
-      setClearMessage((e as Error)?.message || "Request failed");
-      toast((e as Error)?.message || "Request failed", "error");
+      const msg = formatDashboardFetchFailure(e);
+      setClearMessage(msg);
+      toast(msg, "error");
     } finally {
       setClearLoading(false);
     }
@@ -332,11 +428,15 @@ export default function AnalyticsPage() {
     setClearLoading(true);
     setClearMessage(null);
     try {
-      const res = await fetch("/api/analytics/clear", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ onDate: date }),
-      });
+      const res = await fetchWithRetry(
+        "/api/analytics/clear",
+        {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ onDate: date }),
+        },
+        analyticsMutationFetch,
+      );
       const data = await res.json().catch(() => ({}));
       if (!res.ok) {
         setClearMessage(data.error || `Error ${res.status}`);
@@ -358,8 +458,9 @@ export default function AnalyticsPage() {
         "success"
       );
     } catch (e) {
-      setClearMessage((e as Error)?.message || "Request failed");
-      toast((e as Error)?.message || "Request failed", "error");
+      const msg = formatDashboardFetchFailure(e);
+      setClearMessage(msg);
+      toast(msg, "error");
     } finally {
       setClearLoading(false);
     }
@@ -374,11 +475,15 @@ export default function AnalyticsPage() {
     setClearLoading(true);
     setClearMessage(null);
     try {
-      const res = await fetch("/api/analytics/clear", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ confirmAll: true }),
-      });
+      const res = await fetchWithRetry(
+        "/api/analytics/clear",
+        {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ confirmAll: true }),
+        },
+        analyticsMutationFetch,
+      );
       const data = await res.json().catch(() => ({}));
       if (!res.ok) {
         setClearMessage(data.error || `Error ${res.status}`);
@@ -400,8 +505,9 @@ export default function AnalyticsPage() {
         "success"
       );
     } catch (e) {
-      setClearMessage((e as Error)?.message || "Request failed");
-      toast((e as Error)?.message || "Request failed", "error");
+      const msg = formatDashboardFetchFailure(e);
+      setClearMessage(msg);
+      toast(msg, "error");
     } finally {
       setClearLoading(false);
     }
@@ -437,6 +543,42 @@ export default function AnalyticsPage() {
     if (!stats?.trendByDay || stats.trendByDay.length === 0) return [];
     return buildAnalyticsAnomalyCallouts(stats.trendByDay);
   }, [stats?.trendByDay]);
+  const trendInterpretationCards = useMemo(() => {
+    if (!stats?.trendByDay || stats.trendByDay.length === 0) return [];
+    return buildAnalyticsTrendInterpretationCards(stats.trendByDay);
+  }, [stats?.trendByDay]);
+  const periodDeltaSummary = useMemo(() => {
+    if (!stats || !previousPeriodStats) return null;
+    const currentVisitors = stats.uniqueVisitors ?? 0;
+    const previousVisitors = previousPeriodStats.uniqueVisitors ?? 0;
+    const currentCv = stats.cvDownloads ?? 0;
+    const previousCv = previousPeriodStats.cvDownloads ?? 0;
+    const currentLeads = stats.leadGenerated ?? 0;
+    const previousLeads = previousPeriodStats.leadGenerated ?? 0;
+    const currentLeadRate = currentCv > 0 ? (currentLeads / currentCv) * 100 : 0;
+    const previousLeadRate = previousCv > 0 ? (previousLeads / previousCv) * 100 : 0;
+    const previousTopBySlug = new Map(
+      (previousPeriodStats.topEngagedContent ?? []).map((row) => [row.slug, row.engagementScore])
+    );
+    const topMovers = (stats.topEngagedContent ?? [])
+      .slice(0, 5)
+      .map((row) => ({
+        slug: row.slug,
+        title: row.title,
+        current: row.engagementScore,
+        previous: previousTopBySlug.get(row.slug) ?? 0,
+      }))
+      .map((row) => ({ ...row, delta: row.current - row.previous }))
+      .sort((a, b) => Math.abs(b.delta) - Math.abs(a.delta))
+      .slice(0, 3);
+    return {
+      visitors: { current: currentVisitors, previous: previousVisitors },
+      cv: { current: currentCv, previous: previousCv },
+      leads: { current: currentLeads, previous: previousLeads },
+      leadRate: { current: currentLeadRate, previous: previousLeadRate },
+      topMovers,
+    };
+  }, [stats, previousPeriodStats]);
 
   return (
     <div className="space-y-6">
@@ -497,19 +639,106 @@ export default function AnalyticsPage() {
           </CardContent>
         </Card>
       ) : null}
+      {previousPeriodRange ? (
+        <Card className="border-border bg-card">
+          <CardHeader className="pb-2">
+            <CardTitle className="text-base">Period-over-period delta</CardTitle>
+          </CardHeader>
+          <CardContent className="space-y-3">
+            <p className="text-xs text-muted-foreground">
+              Comparing current window ({from} → {to}) against previous window ({previousPeriodRange.from} → {previousPeriodRange.to}).
+            </p>
+            {loadingPreviousPeriod ? (
+              <div className="space-y-3" aria-busy="true" aria-label="Loading previous period comparison">
+                <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
+                  {[0, 1, 2, 3].map((key) => (
+                    <Skeleton key={key} className="h-[4.5rem] w-full" />
+                  ))}
+                </div>
+                <Skeleton className="h-24 w-full max-w-2xl" />
+              </div>
+            ) : periodDeltaSummary ? (
+              <>
+                <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
+                  <div className="rounded-lg border border-border bg-muted/30 p-3">
+                    <p className="text-xs uppercase tracking-wide text-muted-foreground">Visitors delta</p>
+                    <p className="mt-1 text-xl font-semibold text-foreground">
+                      {formatSignedDelta(periodDeltaSummary.visitors.current, periodDeltaSummary.visitors.previous)}
+                    </p>
+                  </div>
+                  <div className="rounded-lg border border-border bg-muted/30 p-3">
+                    <p className="text-xs uppercase tracking-wide text-muted-foreground">CV delta</p>
+                    <p className="mt-1 text-xl font-semibold text-foreground">
+                      {formatSignedDelta(periodDeltaSummary.cv.current, periodDeltaSummary.cv.previous)}
+                    </p>
+                  </div>
+                  <div className="rounded-lg border border-border bg-muted/30 p-3">
+                    <p className="text-xs uppercase tracking-wide text-muted-foreground">Leads delta</p>
+                    <p className="mt-1 text-xl font-semibold text-foreground">
+                      {formatSignedDelta(periodDeltaSummary.leads.current, periodDeltaSummary.leads.previous)}
+                    </p>
+                  </div>
+                  <div className="rounded-lg border border-border bg-muted/30 p-3">
+                    <p className="text-xs uppercase tracking-wide text-muted-foreground">Lead/CV rate delta</p>
+                    <p className="mt-1 text-xl font-semibold text-foreground">
+                      {(periodDeltaSummary.leadRate.current - periodDeltaSummary.leadRate.previous).toFixed(1)}pp
+                    </p>
+                  </div>
+                </div>
+                {periodDeltaSummary.topMovers.length > 0 ? (
+                  <div className="rounded-lg border border-border bg-muted/20 p-3">
+                    <p className="text-xs uppercase tracking-wide text-muted-foreground">Top engagement movers</p>
+                    <ul className="mt-2 space-y-1 text-sm text-foreground">
+                      {periodDeltaSummary.topMovers.map((mover) => (
+                        <li key={mover.slug}>
+                          {mover.title}: {mover.delta > 0 ? "+" : ""}
+                          {mover.delta.toFixed(2)}
+                        </li>
+                      ))}
+                    </ul>
+                  </div>
+                ) : null}
+              </>
+            ) : (
+              <p className="text-sm text-muted-foreground">Not enough data to calculate period deltas.</p>
+            )}
+          </CardContent>
+        </Card>
+      ) : null}
 
       <Card className="border-border bg-card">
         <CardHeader className="pb-2">
-          <CardTitle className="flex items-center gap-2 text-base">
-            <Server className="h-4 w-4 text-muted-foreground" aria-hidden />
-            Application health
+          <CardTitle className="flex flex-wrap items-center justify-between gap-2 text-base">
+            <span className="flex items-center gap-2">
+              <Server className="h-4 w-4 text-muted-foreground" aria-hidden />
+              Application health
+            </span>
+            <Button
+              type="button"
+              variant="outline"
+              size="sm"
+              className="h-8 text-xs"
+              onClick={() => setRefreshKey((k) => k + 1)}
+            >
+              Refresh health
+            </Button>
           </CardTitle>
         </CardHeader>
         <CardContent className="text-sm text-foreground">
           {!healthSnapshot.loaded ? (
-            <p className="text-muted-foreground">Checking /api/health…</p>
+            <div className="space-y-2" aria-busy="true" aria-label="Loading application health">
+              <Skeleton className="h-4 w-52" />
+              <Skeleton className="h-4 w-64" />
+              <Skeleton className="h-4 w-48" />
+              <Skeleton className="h-4 max-w-xl" />
+            </div>
           ) : (
             <div className="flex flex-wrap items-baseline gap-x-6 gap-y-2">
+              {healthFetchError ? (
+                <p className="w-full rounded-md border border-amber-200 bg-amber-50 px-2 py-1.5 text-xs text-amber-900">
+                  {healthFetchError}
+                </p>
+              ) : null}
               <p>
                 <span className="text-muted-foreground">Database:</span>{" "}
                 <span
@@ -725,18 +954,20 @@ export default function AnalyticsPage() {
             </span>
           </label>
           {stats && !loading && (
-            <Button
-              variant="outline"
-              size="sm"
-              className="gap-2"
-              onClick={() => {
-                exportStatsToCsv(stats, from, to);
-                toast("CSV downloaded", "success");
-              }}
-            >
-              <Download className="h-4 w-4" />
-              Export CSV
-            </Button>
+            <TooltipHint label="Exports visible analytics rows and summary tables as CSV">
+              <Button
+                variant="outline"
+                size="sm"
+                className="gap-2"
+                onClick={() => {
+                  exportStatsToCsv(stats, from, to);
+                  toast("CSV downloaded", "success");
+                }}
+              >
+                <Download className="h-4 w-4" />
+                Export CSV
+              </Button>
+            </TooltipHint>
           )}
         </div>
       </div>
@@ -747,7 +978,13 @@ export default function AnalyticsPage() {
           {stats.filterIP && (
             <p className="text-sm text-muted-foreground bg-muted rounded px-3 py-2">
               Showing only IP: <strong className="font-mono">{stats.filterIP}</strong> — all views and paths for this visitor.{" "}
-              <button type="button" onClick={() => setFilterIP("")} className="text-blue-600 hover:underline">Clear filter</button>
+              <button
+                type="button"
+                onClick={() => setFilterIP("")}
+                className="rounded-sm px-1 py-0.5 text-blue-600 transition-colors hover:underline active:opacity-70 motion-reduce:transition-none"
+              >
+                Clear filter
+              </button>
             </p>
           )}
           {stats.excludedIPs && stats.excludedIPs.length > 0 && !stats.filterIP && (
@@ -762,6 +999,7 @@ export default function AnalyticsPage() {
           )}
           {stats.total === 0 && !stats.filterIP && (
             <DashboardEmptyState
+              illustration="chart"
               title="No page views in this date range"
               description={
                 <>
@@ -860,6 +1098,32 @@ export default function AnalyticsPage() {
               </CardContent>
             </Card>
           ) : null}
+          {trendInterpretationCards.length > 0 ? (
+            <Card>
+              <CardHeader>
+                <CardTitle>Trend interpretation</CardTitle>
+              </CardHeader>
+              <CardContent>
+                <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
+                  {trendInterpretationCards.map((card) => (
+                    <div
+                      key={card.title}
+                      className={`rounded-lg border p-3 text-sm ${
+                        card.tone === "positive"
+                          ? "border-emerald-200 bg-emerald-50/80 text-emerald-950"
+                          : card.tone === "caution"
+                            ? "border-amber-200 bg-amber-50/80 text-amber-950"
+                            : "border-border bg-muted/25 text-foreground"
+                      }`}
+                    >
+                      <p className="font-medium text-foreground">{card.title}</p>
+                      <p className="mt-1 text-xs leading-relaxed opacity-90">{card.detail}</p>
+                    </div>
+                  ))}
+                </div>
+              </CardContent>
+            </Card>
+          ) : null}
           {stats.conversionFunnel ? (
             <Card>
               <CardHeader>
@@ -937,6 +1201,42 @@ export default function AnalyticsPage() {
               </CardContent>
             </Card>
           )}
+          {stats.topEngagedContent && stats.topEngagedContent.length > 0 && (
+            <Card>
+              <CardHeader>
+                <CardTitle>Top content by engagement score</CardTitle>
+              </CardHeader>
+              <CardContent>
+                <p className="mb-2 text-xs text-muted-foreground lg:hidden">
+                  Scroll sideways if columns are clipped on this screen size.
+                </p>
+                <div className="max-h-80 overflow-auto overscroll-x-contain">
+                  <table className="w-full text-sm min-w-[520px]">
+                    <thead>
+                      <tr className="border-b border-border text-left">
+                        <th className="py-2 pr-4 text-muted-foreground font-medium text-xs uppercase tracking-wide">Post</th>
+                        <th className="py-2 pr-4 text-muted-foreground font-medium text-xs uppercase tracking-wide">Views</th>
+                        <th className="py-2 pr-4 text-muted-foreground font-medium text-xs uppercase tracking-wide">Avg. time</th>
+                        <th className="py-2 text-muted-foreground font-medium text-xs uppercase tracking-wide">Score</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {stats.topEngagedContent.map((p) => (
+                        <tr key={p.slug} className="border-b border-border/70">
+                          <td className="py-2 pr-4 text-foreground">{p.title}</td>
+                          <td className="py-2 pr-4 tabular-nums">{p.views.toLocaleString()}</td>
+                          <td className="py-2 pr-4 tabular-nums text-muted-foreground">
+                            {Math.floor(p.avgDurationSeconds / 60)}m {Math.round(p.avgDurationSeconds % 60)}s
+                          </td>
+                          <td className="py-2 tabular-nums font-medium">{p.engagementScore.toFixed(2)}</td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
+              </CardContent>
+            </Card>
+          )}
           {stats.byReferrer && stats.byReferrer.length > 0 && (
             <Card>
               <CardHeader>
@@ -997,9 +1297,12 @@ export default function AnalyticsPage() {
                 <CardTitle>By path</CardTitle>
               </CardHeader>
               <CardContent>
+                <p className="mb-2 text-xs text-muted-foreground md:hidden">
+                  Scroll horizontally to read long paths.
+                </p>
                 <AnalyticsPathBars rows={stats.byPath} />
-                <div className="max-h-80 overflow-auto">
-                  <table className="w-full text-sm">
+                <div className="max-h-80 overflow-auto overscroll-x-contain">
+                  <table className="w-full text-sm min-w-[280px]">
                     <thead>
                       <tr className="border-b border-border text-left">
                         <th className="py-2 pr-4 text-muted-foreground font-medium text-xs uppercase tracking-wide">Path</th>
@@ -1040,7 +1343,7 @@ export default function AnalyticsPage() {
                             <button
                               type="button"
                               onClick={() => setFilterIP(p.ip)}
-                              className="font-mono text-foreground hover:text-primary hover:underline text-left"
+                              className="rounded-sm px-0.5 -mx-0.5 text-left font-mono text-foreground transition-colors hover:text-primary hover:underline active:opacity-75 motion-reduce:transition-none"
                               title="Show only this IP"
                             >
                               {p.ip}
@@ -1110,7 +1413,7 @@ export default function AnalyticsPage() {
                           <button
                             type="button"
                             onClick={() => setFilterIP(r.ip)}
-                            className="font-mono text-foreground hover:text-primary hover:underline text-left"
+                            className="rounded-sm px-0.5 -mx-0.5 text-left font-mono text-foreground transition-colors hover:text-primary hover:underline active:opacity-75 motion-reduce:transition-none"
                             title="Show only this IP"
                           >
                             {r.ip}
@@ -1136,6 +1439,7 @@ export default function AnalyticsPage() {
               </p>
               {(stats.accessBlockedRecent?.length ?? 0) === 0 ? (
                 <DashboardEmptyState
+                  illustration="chart"
                   title="No blocked requests in this range"
                   description="No rows matched the current date and filter settings."
                   className="px-4 py-6"
@@ -1159,7 +1463,7 @@ export default function AnalyticsPage() {
                             <button
                               type="button"
                               onClick={() => setFilterIP(r.ip)}
-                              className="font-mono text-foreground hover:text-primary hover:underline text-left"
+                              className="rounded-sm px-0.5 -mx-0.5 text-left font-mono text-foreground transition-colors hover:text-primary hover:underline active:opacity-75 motion-reduce:transition-none"
                               title="Filter page views by this IP"
                             >
                               {r.ip}
@@ -1262,14 +1566,16 @@ export default function AnalyticsPage() {
                   />
                   I want to delete all analytics records
                 </label>
-                <Button
-                  variant="destructive"
-                  size="sm"
-                  onClick={handleClearAll}
-                  disabled={clearLoading || !clearAllConfirm}
-                >
-                  {clearLoading ? "..." : "Clear all"}
-                </Button>
+                <TooltipHint label="Deletes all analytics rows in the database. This cannot be undone.">
+                  <Button
+                    variant="destructive"
+                    size="sm"
+                    onClick={handleClearAll}
+                    disabled={clearLoading || !clearAllConfirm}
+                  >
+                    {clearLoading ? "..." : "Clear all"}
+                  </Button>
+                </TooltipHint>
               </div>
               {clearMessage && (
                 <p className="text-sm text-muted-foreground">{clearMessage}</p>

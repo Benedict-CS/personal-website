@@ -10,7 +10,11 @@ import { Loader2, CheckCircle2, XCircle, AlertCircle, Merge, Search } from "luci
 import { useToast } from "@/contexts/toast-context";
 import { SkeletonLine } from "@/components/dashboard/dashboard-skeleton-primitives";
 import { DASHBOARD_NATIVE_SELECT_CLASS } from "@/components/dashboard/dashboard-form-classes";
-import { DashboardPageHeader, dashboardCardClassName } from "@/components/dashboard/dashboard-ui";
+import {
+  DashboardEmptyState,
+  DashboardPageHeader,
+  dashboardCardClassName,
+} from "@/components/dashboard/dashboard-ui";
 import { useCmsSync } from "@/contexts/cms-sync-context";
 
 interface CleanedTag {
@@ -126,6 +130,7 @@ export default function TagsPage() {
   const runMerge = async () => {
     if (!mergeConfirm) return;
     const { fromTagId, toTagId, fromName, toName } = mergeConfirm;
+    const tagsSnapshot = allTags;
     setMergeConfirm(null);
     setMergeLoading(fromTagId);
     setMergeMessage(null);
@@ -143,6 +148,7 @@ export default function TagsPage() {
       toast(`Merged “${fromName}” into “${toName}”.`, "success");
       publish("tags");
     } catch (e) {
+      setAllTags(tagsSnapshot);
       setMergeMessage({ type: "error", text: e instanceof Error ? e.message : "Merge failed" });
       toast(e instanceof Error ? e.message : "Merge failed", "error");
       fetch("/api/tags?all=1", { credentials: "include" })
@@ -215,7 +221,18 @@ export default function TagsPage() {
         loading={mergeLoading !== null}
       />
 
-      {allTags.length > 0 && (
+      {allTags.length === 0 ? (
+        <DashboardEmptyState
+          illustration="tags"
+          title="No tags yet"
+          description="Tags are created when you add them to posts. Open an article, add tags in the editor, then return here to merge or clean them up."
+          className="py-10"
+        >
+          <Button asChild>
+            <Link href="/dashboard/posts">Go to Posts</Link>
+          </Button>
+        </DashboardEmptyState>
+      ) : (
         <Card className={dashboardCardClassName()}>
           <CardHeader>
             <CardTitle className="flex items-center gap-2 text-foreground">
@@ -249,7 +266,12 @@ export default function TagsPage() {
               />
             </div>
             {displayedTags.length === 0 ? (
-              <p className="text-sm text-muted-foreground">No tags match your filter.</p>
+              <DashboardEmptyState
+                illustration="magnifier"
+                title="No tags match your filter"
+                description="Try another name or slug, or clear the search field."
+                className="border-dashed py-8"
+              />
             ) : (
               <ul className="space-y-2">
                 {displayedTags.map((tag) => (

@@ -1,4 +1,5 @@
 import type { Prisma } from "@prisma/client";
+import { isbot } from "isbot";
 
 /**
  * Security scans and broken URLs that should not count as real page views.
@@ -30,6 +31,11 @@ const JUNK_PATH_EQUALS = [
   "/aws.json",
   "/aws-config.js",
   "/aws.config.js",
+  "/api/health",
+  "/api/live",
+  "/health",
+  "/healthz",
+  "/readyz",
 ] as const;
 
 /** Substrings that indicate probe paths or malformed chunk URLs */
@@ -54,6 +60,13 @@ const SCANNER_USER_AGENT_MARKERS = [
   "dirbuster",
   "wpscan",
   "httpx/",
+  "semrush",
+  "headlesschrome",
+  "headless",
+  "playwright",
+  "puppeteer",
+  "selenium",
+  "webdriver",
 ] as const;
 
 function stripQuery(path: string): string {
@@ -80,7 +93,27 @@ export function isJunkAnalyticsPath(pathname: string): boolean {
 export function isLikelyScannerUserAgent(userAgent: string | null | undefined): boolean {
   const u = (userAgent || "").toLowerCase();
   if (!u) return false;
+  if (isbot(u)) return true;
   return SCANNER_USER_AGENT_MARKERS.some((m) => u.includes(m));
+}
+
+/**
+ * Monitoring clients and internal health agents that should never count as real traffic.
+ */
+export function isLikelyMonitoringUserAgent(userAgent: string | null | undefined): boolean {
+  const u = (userAgent || "").toLowerCase();
+  if (!u) return false;
+  return [
+    "kube-probe",
+    "docker-healthcheck",
+    "healthcheck",
+    "uptimerobot",
+    "statuscake",
+    "pingdom",
+    "prometheus",
+    "curl/",
+    "wget/",
+  ].some((marker) => u.includes(marker));
 }
 
 /** Private IPv4 / localhost stored as IPv4-mapped IPv6 (::ffff:x.x.x.x). */

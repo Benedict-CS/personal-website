@@ -28,9 +28,10 @@ import { DashboardKbd } from "@/components/dashboard/dashboard-ui";
 import { DASHBOARD_FORM_LABEL_CLASS } from "@/components/dashboard/dashboard-form-classes";
 import { normalizeMarkdownWhitespace } from "@/lib/cms-normalize-markdown";
 import { PostDraftMarkdownStats } from "@/components/dashboard/post-draft-markdown-stats";
-import { ContentReadabilityScore } from "@/components/dashboard/content-readability-score";
-import { SeoPreviewCard } from "@/components/dashboard/seo-preview-card";
+import { ContentIntelligenceTabs } from "@/components/dashboard/content-intelligence-tabs";
 import { AutoTagSuggestions } from "@/components/dashboard/auto-tag-suggestions";
+import { ContentSummaryPanel } from "@/components/dashboard/content-summary-panel";
+import { PostTemplateSelector } from "@/components/dashboard/post-template-selector";
 import { DashboardGlobalActionBar } from "@/components/dashboard/dashboard-global-action-bar";
 import { getContentMetrics } from "@/lib/content-metrics";
 
@@ -285,7 +286,12 @@ export default function NewPostPage() {
     <div className="w-full max-w-[min(100%,1400px)] py-8">
       <Card>
           <CardHeader>
-            <CardTitle>Create New Post</CardTitle>
+            <div className="space-y-0.5">
+              <CardTitle>Create New Post</CardTitle>
+              <p className="text-xs tabular-nums text-muted-foreground" aria-live="polite">
+                {contentStats.words.toLocaleString()} words · ~{contentStats.readingLabel}
+              </p>
+            </div>
           </CardHeader>
           <CardContent>
             <form ref={formRef} onSubmit={handleSubmit} className="space-y-6">
@@ -303,6 +309,14 @@ export default function NewPostPage() {
                   {isSubmitting ? "Creating..." : "Create Post"}
                 </Button>
               </DashboardGlobalActionBar>
+              <PostTemplateSelector
+                hasContent={content.trim().length > 0}
+                onApply={(result) => {
+                  setContent(result.content);
+                  setTags(result.tags);
+                  setDescription(result.description);
+                }}
+              />
               <div className="space-y-2">
                 <label htmlFor="title" className={DASHBOARD_FORM_LABEL_CLASS}>
                   Title
@@ -368,6 +382,12 @@ export default function NewPostPage() {
                 <p className="text-xs text-muted-foreground">
                   Optional, 1-2 sentences recommended (max 200 characters). Shown in Blog list cards
                 </p>
+                <ContentSummaryPanel
+                  title={title}
+                  content={content}
+                  currentDescription={description}
+                  onUseDescription={(text) => setDescription(text)}
+                />
               </div>
 
               <div className="space-y-2">
@@ -536,8 +556,7 @@ export default function NewPostPage() {
                     onTidyBody={() => setContent((c) => normalizeMarkdownWhitespace(c))}
                   />
                   <PostDraftMarkdownStats markdown={content} className="mt-2" />
-                  <ContentReadabilityScore markdown={content} className="mt-2" />
-                  <SeoPreviewCard title={title} slug={slug} description={description} content={content} className="mt-2" />
+                  <ContentIntelligenceTabs title={title} slug={slug} description={description} content={content} tags={tags} className="mt-2" />
                 </motion.div>
                 <div
                   className={splitEditor ? "grid items-start gap-4 lg:grid-cols-2" : ""}

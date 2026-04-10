@@ -36,6 +36,9 @@ export function JsonLdRoot({ config }: { config: SiteConfigForRender }) {
   if (publisherType === "Organization" && logoUrl) {
     publisher.logo = { "@type": "ImageObject", url: logoUrl };
   }
+  if (publisherType === "Person" && logoUrl) {
+    publisher.image = { "@type": "ImageObject", url: logoUrl };
+  }
 
   const website: Record<string, unknown> = {
     "@type": "WebSite",

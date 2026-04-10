@@ -74,7 +74,7 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({ error: "snapshot is too large" }, { status: 413 });
   }
 
-  await auditLog({
+  const created = await auditLog({
     action: mode === "publish" ? "editor.publish" : "editor.draft.save",
     resourceType: "editor_page",
     resourceId: slug,
@@ -82,6 +82,15 @@ export async function POST(request: NextRequest) {
     ip: request.headers.get("x-forwarded-for") ?? null,
   });
 
-  return NextResponse.json({ ok: true });
+  return NextResponse.json({
+    ok: true,
+    revision: {
+      id: created?.id ?? null,
+      slug: created?.resourceId ?? slug,
+      mode,
+      createdAt: created?.createdAt ?? new Date().toISOString(),
+      details: detailsObject,
+    },
+  });
 }
 
