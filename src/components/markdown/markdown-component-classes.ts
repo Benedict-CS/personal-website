@@ -2,13 +2,14 @@ export const INLINE_CODE_CLASS =
   "bg-muted text-foreground px-1.5 py-0.5 rounded text-sm font-mono";
 
 export const MARKDOWN_TABLE_SHELL_CLASS =
-  "markdown-table-shell my-6 w-full overflow-x-auto rounded-lg border border-border/90 bg-card shadow-sm";
-export const MARKDOWN_TABLE_CLASS = "min-w-full border-collapse border-0 text-sm";
+  "markdown-table-shell my-6 w-full max-w-full rounded-lg border border-border/90 bg-card shadow-sm";
+export const MARKDOWN_TABLE_CLASS = "w-full min-w-0 table-auto border-collapse border-0 text-sm";
 export const MARKDOWN_THEAD_CLASS = "bg-muted";
 export const MARKDOWN_TR_CLASS = "border-b border-border last:border-b-0";
 export const MARKDOWN_TH_CLASS =
-  "border border-border bg-muted/90 px-4 py-2 text-left text-sm font-semibold text-foreground";
-export const MARKDOWN_TD_CLASS = "border border-border px-4 py-2 text-foreground/90";
+  "border border-border bg-muted/90 px-4 py-2 text-left align-top text-sm font-semibold text-foreground break-words";
+export const MARKDOWN_TD_CLASS =
+  "border border-border px-4 py-2 align-top text-foreground/90 break-words whitespace-normal";
 export const MARKDOWN_TD_CHECKBOX_ONLY_CLASS = "border border-border px-4 py-2 text-center";
 export const MARKDOWN_TD_CHECKBOX_CLASS =
   "h-4 w-4 rounded border-border text-blue-600 pointer-events-none";

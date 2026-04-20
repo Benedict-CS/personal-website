@@ -12,6 +12,8 @@ import type { Prisma } from "@prisma/client";
  * - before: "YYYY-MM-DD" — delete all records before this date
  * - after: "YYYY-MM-DD"  — delete all records after this date
  * - onDate: "YYYY-MM-DD" — delete all records on this calendar day
+ * - cleanupTagPrefetchNoise: true
+ *   optionally with onDate to scope cleanup to one day (recommended)
  * - confirmAll: true      — delete ALL records (no filter)
  *
  * Returns { deleted: number, accessBlockDeleted: number }
@@ -22,14 +24,79 @@ export async function POST(request: NextRequest) {
   const auth = await requireSession();
   if ("unauthorized" in auth) return auth.unauthorized;
 
-  let body: { ip?: string; before?: string; after?: string; onDate?: string; confirmAll?: boolean };
+  let body: {
+    ip?: string;
+    before?: string;
+    after?: string;
+    onDate?: string;
+    cleanupTagPrefetchNoise?: boolean;
+    confirmAll?: boolean;
+  };
   try {
     body = await request.json();
   } catch {
     return NextResponse.json(
-      { error: "Invalid JSON body. Use ip, before, after, onDate (YYYY-MM-DD), or confirmAll: true" },
+      {
+        error:
+          "Invalid JSON body. Use ip, before, after, onDate (YYYY-MM-DD), cleanupTagPrefetchNoise: true, or confirmAll: true",
+      },
       { status: 400 }
     );
+  }
+
+  if (body.cleanupTagPrefetchNoise === true) {
+    const dateFilter: Prisma.DateTimeFilter | undefined = body.onDate
+      ? (() => {
+          const start = new Date(body.onDate + "T00:00:00");
+          const end = new Date(body.onDate + "T23:59:59.999");
+          if (isNaN(start.getTime())) return undefined;
+          return { gte: start, lte: end };
+        })()
+      : undefined;
+    if (body.onDate && !dateFilter) {
+      return NextResponse.json({ error: "Invalid onDate (use YYYY-MM-DD)" }, { status: 400 });
+    }
+
+    try {
+      // Heuristic for accidental prefetch storms:
+      // many /blog/tag/* rows from one IP with no leave-duration signal.
+      const groups = await prisma.pageView.groupBy({
+        by: ["ip"],
+        where: {
+          path: { startsWith: "/blog/tag/" },
+          durationSeconds: null,
+          ...(dateFilter ? { createdAt: dateFilter } : {}),
+        },
+        _count: { _all: true },
+      });
+      const suspiciousIps = groups.filter((g) => g._count._all >= 10).map((g) => g.ip);
+      if (suspiciousIps.length === 0) {
+        return NextResponse.json({
+          deleted: 0,
+          accessBlockDeleted: 0,
+          suspiciousIpCount: 0,
+          scopedDate: body.onDate || null,
+        });
+      }
+
+      const pv = await prisma.pageView.deleteMany({
+        where: {
+          ip: { in: suspiciousIps },
+          path: { startsWith: "/blog/tag/" },
+          durationSeconds: null,
+          ...(dateFilter ? { createdAt: dateFilter } : {}),
+        },
+      });
+      return NextResponse.json({
+        deleted: pv.count,
+        accessBlockDeleted: 0,
+        suspiciousIpCount: suspiciousIps.length,
+        scopedDate: body.onDate || null,
+      });
+    } catch (e) {
+      console.error("Analytics targeted cleanup error:", e);
+      return NextResponse.json({ error: "Failed to clear targeted noise" }, { status: 500 });
+    }
   }
 
   const where: Prisma.PageViewWhereInput = {};
@@ -67,7 +134,7 @@ export async function POST(request: NextRequest) {
     return NextResponse.json(
       {
         error:
-          "Provide one of: ip, before (YYYY-MM-DD), after (YYYY-MM-DD), onDate (YYYY-MM-DD), or confirmAll: true.",
+          "Provide one of: ip, before (YYYY-MM-DD), after (YYYY-MM-DD), onDate (YYYY-MM-DD), cleanupTagPrefetchNoise: true, or confirmAll: true.",
       },
       { status: 400 }
     );

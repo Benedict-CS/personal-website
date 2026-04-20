@@ -741,13 +741,11 @@ html {
   overflow: hidden;
 }
 
-.markdown-table-shell {
-  -webkit-overflow-scrolling: touch;
-}
-
 .markdown-table-shell table {
-  width: max-content;
-  min-width: 100%;
+  width: 100%;
+  min-width: 0;
+  table-layout: auto;
+  overflow: visible;
 }
 
 .prose thead {

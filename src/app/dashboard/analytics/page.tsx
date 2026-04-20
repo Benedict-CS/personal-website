@@ -218,11 +218,12 @@ export default function AnalyticsPage() {
   const [error, setError] = useState<string | null>(null);
   const [clearBefore, setClearBefore] = useState("");
   const [clearOnDate, setClearOnDate] = useState("");
+  const [clearNoiseDate, setClearNoiseDate] = useState("");
   const [clearByIP, setClearByIP] = useState("");
   const [clearAllConfirm, setClearAllConfirm] = useState(false);
   const [clearLoading, setClearLoading] = useState(false);
   const [clearMessage, setClearMessage] = useState<string | null>(null);
-  type ClearConfirmType = "before" | "onDate" | "byIP" | "all";
+  type ClearConfirmType = "before" | "onDate" | "byIP" | "tagPrefetchNoise" | "all";
   const [clearConfirm, setClearConfirm] = useState<{ type: ClearConfirmType; value?: string } | null>(null);
   const [excludeThisBrowser, setExcludeThisBrowser] = useState(false);
   const [healthSnapshot, setHealthSnapshot] = useState<{
@@ -471,6 +472,54 @@ export default function AnalyticsPage() {
     setClearConfirm({ type: "all" });
   };
 
+  const handleClearTagPrefetchNoise = () => {
+    setClearConfirm({ type: "tagPrefetchNoise", value: clearNoiseDate.trim() || undefined });
+  };
+
+  const doClearTagPrefetchNoise = async (date?: string) => {
+    setClearLoading(true);
+    setClearMessage(null);
+    try {
+      const res = await fetchWithRetry(
+        "/api/analytics/clear",
+        {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify(
+            date
+              ? { cleanupTagPrefetchNoise: true, onDate: date }
+              : { cleanupTagPrefetchNoise: true }
+          ),
+        },
+        analyticsMutationFetch,
+      );
+      const data = await res.json().catch(() => ({}));
+      if (!res.ok) {
+        setClearMessage(data.error || `Error ${res.status}`);
+        toast(data.error || `Error ${res.status}`, "error");
+        return;
+      }
+      const ipCount = typeof data.suspiciousIpCount === "number" ? data.suspiciousIpCount : 0;
+      setClearMessage(
+        `Deleted ${data.deleted ?? 0} suspected tag-prefetch row(s) from ${ipCount} IP(s)${
+          date ? ` on ${date}` : ""
+        }.`
+      );
+      setClearNoiseDate("");
+      setRefreshKey((k) => k + 1);
+      toast(
+        `Deleted ${data.deleted ?? 0} suspected tag-prefetch row(s) from ${ipCount} IP(s).`,
+        "success"
+      );
+    } catch (e) {
+      const msg = formatDashboardFetchFailure(e);
+      setClearMessage(msg);
+      toast(msg, "error");
+    } finally {
+      setClearLoading(false);
+    }
+  };
+
   const doClearAll = async () => {
     setClearLoading(true);
     setClearMessage(null);
@@ -526,6 +575,8 @@ export default function AnalyticsPage() {
         ? `Delete all records on ${clearConfirm.value}?`
         : clearConfirm?.type === "byIP"
           ? `Delete all records for IP ${clearConfirm.value}?`
+          : clearConfirm?.type === "tagPrefetchNoise"
+            ? `Delete suspected tag-prefetch noise${clearConfirm.value ? ` on ${clearConfirm.value}` : ""}?`
           : clearConfirm?.type === "all"
             ? "Delete all analytics records?"
             : "";
@@ -597,6 +648,7 @@ export default function AnalyticsPage() {
           if (c.type === "before" && c.value) void doClearBefore(c.value);
           else if (c.type === "byIP" && c.value) void doClearByIP(c.value);
           else if (c.type === "onDate" && c.value) void doClearOnDate(c.value);
+          else if (c.type === "tagPrefetchNoise") void doClearTagPrefetchNoise(c.value);
           else if (c.type === "all") void doClearAll();
         }}
       />
@@ -1534,6 +1586,26 @@ export default function AnalyticsPage() {
                       disabled={clearLoading || !clearOnDate.trim()}
                     >
                       {clearLoading ? "..." : "Delete day"}
+                    </Button>
+                  </div>
+                </div>
+                <div>
+                  <label className="block text-sm font-medium text-foreground mb-1">Tag prefetch noise</label>
+                  <div className="flex gap-2">
+                    <input
+                      type="date"
+                      value={clearNoiseDate}
+                      onChange={(e) => setClearNoiseDate(e.target.value)}
+                      className="rounded-lg border border-input px-3 py-2 text-sm shadow-[var(--elevation-1)] transition-[box-shadow,border-color] duration-200 focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2"
+                    />
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      onClick={handleClearTagPrefetchNoise}
+                      disabled={clearLoading}
+                      title="Delete suspected prefetch-only /blog/tag/* noise (leave date empty to apply all-time)"
+                    >
+                      {clearLoading ? "..." : "Clean tag noise"}
                     </Button>
                   </div>
                 </div>

@@ -180,7 +180,7 @@ export async function proxy(request: NextRequest, event: NextFetchEvent) {
   if (
     !analyticsOptOutCookie &&
     secret &&
-    !shouldSkipMiddlewareAnalytics(pathname, request.headers.get("user-agent"))
+    !shouldSkipMiddlewareAnalytics(pathname, request.headers.get("user-agent"), request.headers)
   ) {
     const clientIp = getTrustedClientIp(request);
     // Do not log when the edge cannot determine a public client IP (avoids polluting DB with "unknown").

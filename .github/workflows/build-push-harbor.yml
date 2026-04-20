@@ -2,10 +2,10 @@
 # Requires repo Secrets: HARBOR_HOST, HARBOR_USERNAME, HARBOR_PASSWORD, HARBOR_PROJECT
 name: Build and Push to Harbor
 
-on:
-  push:
-    branches: [main, master]
-  workflow_dispatch:
+#on:
+#  push:
+#    branches: [main, master]
+#  workflow_dispatch:
 
 permissions:
   contents: read

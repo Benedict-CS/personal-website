@@ -5,7 +5,8 @@ import { prisma } from "@/lib/prisma";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
-import { MarkdownRenderer } from "@/components/markdown-renderer";
+import { MarkdownBodyServer } from "@/components/markdown/markdown-body-server";
+import { markdownArticleClassNameProseSlate } from "@/lib/markdown-pipeline";
 import { TableOfContents } from "@/components/toc";
 import { extractTocHeadingsFromMarkdown } from "@/lib/markdown-toc";
 import { ReadingProgress } from "@/components/reading-progress";
@@ -130,9 +131,12 @@ export default async function NoteViewPage({ params }: NotePageProps) {
                 </div>
               </CardHeader>
               <CardContent>
-                <article className="prose prose-slate max-w-none" data-post-content>
-                  <MarkdownRenderer content={note.content} postId={note.id} editable={true} />
-                </article>
+                <div data-post-content className="min-w-0">
+                  <MarkdownBodyServer
+                    content={note.content}
+                    className={markdownArticleClassNameProseSlate}
+                  />
+                </div>
               </CardContent>
             </Card>
 

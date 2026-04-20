@@ -13,6 +13,36 @@ import {
 } from "@/lib/login-rate-limit";
 import { verifyTurnstileToken } from "@/lib/verify-turnstile";
 import { isPrivateUrl } from "@/lib/is-private-url";
+import { encode as jwtEncode, decode as jwtDecode } from "next-auth/jwt";
+
+const SESSION_FALLBACK_SEC = 60 * 60 * 12; // 12 hours when env is missing or invalid
+
+/** Read at runtime (especially inside jwt encode) so SESSION_MAX_AGE_SECONDS is never stale vs module load. */
+export function readSessionMaxAgeSeconds(): number {
+  const raw = process.env.SESSION_MAX_AGE_SECONDS?.trim();
+  if (!raw) return SESSION_FALLBACK_SEC;
+  const n = parseInt(raw, 10);
+  if (!Number.isFinite(n)) return SESSION_FALLBACK_SEC;
+  // Sane bounds: 5 minutes … 30 days (misconfiguration should not brick login)
+  if (n < 300) return 300;
+  if (n > 60 * 60 * 24 * 30) return 60 * 60 * 24 * 30;
+  return n;
+}
+
+/**
+ * NextAuth encrypts session JWT with `maxAge` at encode time (see next-auth/jwt encode).
+ * Credentials callback calls encode({ ...jwt, token }) without re-passing maxAge; the merged `jwt.maxAge`
+ * must be correct. Re-read env here so deploys / .env changes apply without relying on a frozen import.
+ */
+function encodeSessionJwt(
+  params: Parameters<typeof jwtEncode>[0]
+): ReturnType<typeof jwtEncode> {
+  const maxAge = readSessionMaxAgeSeconds();
+  return jwtEncode({
+    ...params,
+    maxAge,
+  });
+}
 
 type ReqLike = { headers?: Headers | Record<string, string | string[] | undefined> };
 
@@ -70,19 +100,32 @@ export const authOptions: NextAuthOptions = {
   },
   session: {
     strategy: "jwt",
-    maxAge: 60 * 60, // 1 hour
+    maxAge: readSessionMaxAgeSeconds(),
+  },
+  jwt: {
+    maxAge: readSessionMaxAgeSeconds(),
+    encode: encodeSessionJwt,
+    decode: jwtDecode,
   },
   // NextAuth sets Secure, HttpOnly, SameSite=Lax when NEXTAUTH_URL is https
   callbacks: {
     async jwt({ token, user }) {
+      const sec = readSessionMaxAgeSeconds();
       if (user) {
-        token.exp = Math.floor(Date.now() / 1000) + 60 * 60;
+        token.exp = Math.floor(Date.now() / 1000) + sec;
       }
       return token;
     },
     async session({ session, token }) {
-      if (session.user && typeof token.exp === "number") {
-        (session as { expiresAt?: number }).expiresAt = token.exp;
+      if (!session.user) return session;
+      const fromToken = typeof token.exp === "number" ? token.exp : undefined;
+      const fromExpires =
+        typeof session.expires === "string" && session.expires
+          ? Math.floor(new Date(session.expires).getTime() / 1000)
+          : undefined;
+      const expSec = fromToken ?? fromExpires;
+      if (typeof expSec === "number" && Number.isFinite(expSec)) {
+        (session as { expiresAt?: number }).expiresAt = expSec;
       }
       return session;
     },

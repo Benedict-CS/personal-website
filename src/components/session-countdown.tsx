@@ -2,28 +2,23 @@
 
 import { useState, useEffect } from "react";
 
-const MAX_SESSION_SECONDS = 60 * 60; // 1 hour - cap display to match auth maxAge
-
 function formatRemaining(secondsLeft: number): string {
   if (secondsLeft <= 0) return "0h 0m";
-  const capped = Math.min(secondsLeft, MAX_SESSION_SECONDS);
-  const h = Math.floor(capped / 3600);
-  const m = Math.floor((capped % 3600) / 60);
+  const h = Math.floor(secondsLeft / 3600);
+  const m = Math.floor((secondsLeft % 3600) / 60);
   return `${h}h ${m}m`;
 }
 
 export function SessionCountdown({ expiresAt }: { expiresAt: number }) {
   const [remaining, setRemaining] = useState(() => {
     const now = Math.floor(Date.now() / 1000);
-    const raw = Math.max(0, expiresAt - now);
-    return Math.min(raw, MAX_SESSION_SECONDS);
+    return Math.max(0, expiresAt - now);
   });
 
   useEffect(() => {
     const tick = () => {
       const now = Math.floor(Date.now() / 1000);
-      const raw = Math.max(0, expiresAt - now);
-      setRemaining(Math.min(raw, MAX_SESSION_SECONDS));
+      setRemaining(Math.max(0, expiresAt - now));
     };
     tick();
     const interval = setInterval(tick, 60 * 1000); // every minute

@@ -121,8 +121,14 @@ export function DashboardPageHeader({
   children?: React.ReactNode;
 }) {
   return (
-    <div className={cn("flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between", className)}>
-      <div className="min-w-0 space-y-1">
+    <div
+      className={cn(
+        // lg+ avoids a squeezed title column when the shell sidebar + many header actions share one row at sm/md.
+        "flex flex-col gap-4 lg:flex-row lg:items-start lg:justify-between lg:gap-6",
+        className,
+      )}
+    >
+      <div className="min-w-0 w-full space-y-1 lg:flex-1 lg:max-w-2xl">
         {eyebrow ? (
           <p className="text-xs font-medium uppercase tracking-wider text-muted-foreground">{eyebrow}</p>
         ) : null}
@@ -131,7 +137,11 @@ export function DashboardPageHeader({
           <p className="max-w-2xl text-sm leading-relaxed text-muted-foreground">{description}</p>
         ) : null}
       </div>
-      {children ? <div className="flex shrink-0 flex-wrap items-center justify-end gap-2">{children}</div> : null}
+      {children ? (
+        <div className="flex w-full min-w-0 flex-wrap items-center gap-2 lg:w-auto lg:shrink-0 lg:justify-end">
+          {children}
+        </div>
+      ) : null}
     </div>
   );
 }
