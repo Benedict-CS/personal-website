@@ -8,9 +8,14 @@ import { isbot } from "isbot";
 
 const JUNK_PATH_PREFIXES = [
   "/.env",
+  "/app/.env",
+  "/laravel/.env",
   "/.git",
   "/.aws",
   "/.s3cfg",
+  "/.cursor/",
+  "/.openai/",
+  "/.anthropic/",
   "/wp-config",
   "/phpinfo",
   "/admin/.env",
@@ -22,11 +27,20 @@ const JUNK_PATH_PREFIXES = [
 
 const JUNK_PATH_EQUALS = [
   "/.s3cfg",
+  "/config.json",
+  "/credentials.json",
+  "/secrets.json",
+  "/serviceaccountkey.json",
   "/debug",
+  "/debug.php",
+  "/php.php",
+  "/_profiler",
   "/info.php",
   "/test.php",
   "/phpinfo.php",
   "/wp-config.php",
+  "/apple-touch-icon.png",
+  "/apple-touch-icon-precomposed.png",
   "/config.js",
   "/aws.json",
   "/aws-config.js",
@@ -44,6 +58,7 @@ const JUNK_PATH_CONTAINS = [
   "/.env.bak",
   "/.env.save",
   "/.env.backup",
+  "/opengraph-image",
 ] as const;
 
 /** Known non-browser / survey UAs (lowercase substrings). */

@@ -1,3 +1,5 @@
+import { getBlogPostSlugFromPath } from "@/lib/blog-analytics";
+
 export type EngagementPathRow = {
   path: string;
   views: number;
@@ -20,13 +22,6 @@ export type ConversionAttributionEvent = {
   action: "analytics.cv_download" | "analytics.lead_generated";
   details: string | null;
 };
-
-function normalizeSlug(path: string): string | null {
-  if (!path.startsWith("/blog/")) return null;
-  const raw = path.replace("/blog/", "").split("/")[0]?.trim() ?? "";
-  if (!raw || raw.startsWith("?")) return null;
-  return raw;
-}
 
 function round(value: number, digits = 2): number {
   const factor = Math.pow(10, digits);
@@ -85,25 +80,53 @@ export function buildTopEngagedContent(input: {
   limit?: number;
 }): TopEngagedContentRow[] {
   const limit = input.limit ?? 8;
-  const rows: TopEngagedContentRow[] = [];
+  const bySlug = new Map<
+    string,
+    {
+      title: string;
+      views: number;
+      durationViewWeightedTotal: number;
+      cvDownloads: number;
+      leads: number;
+    }
+  >();
 
   for (const row of input.paths) {
-    const slug = normalizeSlug(row.path);
+    const slug = getBlogPostSlugFromPath(row.path);
     if (!slug) continue;
     const post = input.postsBySlug.get(slug);
     if (!post) continue;
+    const views = Math.max(0, row.views);
+    const avgDuration = Math.max(0, row.avgDurationSeconds);
+    const current = bySlug.get(slug) ?? {
+      title: post.title,
+      views: 0,
+      durationViewWeightedTotal: 0,
+      cvDownloads: 0,
+      leads: 0,
+    };
+    current.views += views;
+    current.durationViewWeightedTotal += avgDuration * views;
+    // Conversion counts are slug-level attribution; keep the highest seen value per slug.
+    current.cvDownloads = Math.max(current.cvDownloads, Math.max(0, row.cvDownloads));
+    current.leads = Math.max(current.leads, Math.max(0, row.leads));
+    bySlug.set(slug, current);
+  }
 
-    const reach = Math.max(0, row.views) * 1.0;
-    const attention = Math.max(0, row.avgDurationSeconds) / 45;
-    const cvBoost = Math.max(0, row.cvDownloads) * 6;
-    const leadBoost = Math.max(0, row.leads) * 12;
+  const rows: TopEngagedContentRow[] = [];
+  for (const [slug, row] of bySlug.entries()) {
+    const avgDurationSeconds =
+      row.views > 0 ? round(row.durationViewWeightedTotal / row.views, 1) : 0;
+    const reach = row.views * 1.0;
+    const attention = avgDurationSeconds / 45;
+    const cvBoost = row.cvDownloads * 6;
+    const leadBoost = row.leads * 12;
     const score = round(reach + attention + cvBoost + leadBoost);
-
     rows.push({
       slug,
-      title: post.title,
+      title: row.title,
       views: row.views,
-      avgDurationSeconds: row.avgDurationSeconds,
+      avgDurationSeconds,
       cvDownloads: row.cvDownloads,
       leads: row.leads,
       engagementScore: score,

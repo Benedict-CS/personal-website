@@ -15,6 +15,32 @@ describe("analytics-engagement", () => {
     expect(rows[0]?.slug).toBe("b");
     expect(rows[0]?.engagementScore).toBeGreaterThan(rows[1]?.engagementScore ?? 0);
   });
+
+  it("merges by slug and ignores non-article blog paths", () => {
+    const rows = buildTopEngagedContent({
+      paths: [
+        { path: "/blog/thesis-a-cicd-framework", views: 5, avgDurationSeconds: 196, cvDownloads: 0, leads: 0 },
+        {
+          path: "/blog/thesis-a-cicd-framework/opengraph-image",
+          views: 1,
+          avgDurationSeconds: 0,
+          cvDownloads: 0,
+          leads: 0,
+        },
+        { path: "/blog/tag/devops", views: 3, avgDurationSeconds: 0, cvDownloads: 0, leads: 0 },
+      ],
+      postsBySlug: new Map([["thesis-a-cicd-framework", { title: "Thesis" }]]),
+    });
+
+    expect(rows).toHaveLength(1);
+    expect(rows[0]).toEqual(
+      expect.objectContaining({
+        slug: "thesis-a-cicd-framework",
+        title: "Thesis",
+        views: 5,
+      })
+    );
+  });
 });
 
 describe("buildConversionAttributionBySlug", () => {

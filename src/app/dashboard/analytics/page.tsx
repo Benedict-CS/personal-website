@@ -202,6 +202,7 @@ function exportStatsToCsv(stats: Stats, from: string, to: string) {
 }
 
 export default function AnalyticsPage() {
+  type AnalyticsViewMode = "essential" | "full";
   const { toast } = useToast();
   const [stats, setStats] = useState<Stats | null>(null);
   const [loading, setLoading] = useState(true);
@@ -223,6 +224,7 @@ export default function AnalyticsPage() {
   const [clearAllConfirm, setClearAllConfirm] = useState(false);
   const [clearLoading, setClearLoading] = useState(false);
   const [clearMessage, setClearMessage] = useState<string | null>(null);
+  const [viewMode, setViewMode] = useState<AnalyticsViewMode>("essential");
   type ClearConfirmType = "before" | "onDate" | "byIP" | "tagPrefetchNoise" | "all";
   const [clearConfirm, setClearConfirm] = useState<{ type: ClearConfirmType; value?: string } | null>(null);
   const [excludeThisBrowser, setExcludeThisBrowser] = useState(false);
@@ -657,6 +659,23 @@ export default function AnalyticsPage() {
         title="Analytics"
         description="Traffic, paths, application health, privacy filters, and CSV exports."
       />
+      <Card className="border-border bg-muted/40">
+        <CardHeader className="pb-2">
+          <CardTitle className="text-base">How to read this page</CardTitle>
+        </CardHeader>
+        <CardContent className="space-y-2 text-sm text-foreground">
+          <p>
+            Start with <span className="font-medium">Total views</span>,{" "}
+            <span className="font-medium">Unique visitors</span>, and the{" "}
+            <span className="font-medium">trend chart</span>. These are your primary signals.
+          </p>
+          <p className="text-muted-foreground">
+            Use <span className="font-medium text-foreground">Essential</span> for daily monitoring.
+            Switch to <span className="font-medium text-foreground">Full</span> only when you need
+            deeper logs (Recent views, blocked requests, path breakdowns, manual cleanup).
+          </p>
+        </CardContent>
+      </Card>
       {analyticsInsight ? (
         <Card className="border-border bg-card">
           <CardHeader className="pb-2">
@@ -910,6 +929,23 @@ export default function AnalyticsPage() {
       </Card>
 
       <div className="space-y-3">
+        <div className="flex flex-wrap items-center gap-2">
+          <span className="text-xs font-medium uppercase tracking-wide text-muted-foreground">View mode</span>
+          <Button
+            variant={viewMode === "essential" ? "default" : "outline"}
+            size="sm"
+            onClick={() => setViewMode("essential")}
+          >
+            Essential
+          </Button>
+          <Button
+            variant={viewMode === "full" ? "default" : "outline"}
+            size="sm"
+            onClick={() => setViewMode("full")}
+          >
+            Full
+          </Button>
+        </div>
         <div className="flex flex-wrap gap-2">
           <Button
             variant="outline"
@@ -1140,6 +1176,12 @@ export default function AnalyticsPage() {
               </CardContent>
             </Card>
           </div>
+          {viewMode === "essential" ? (
+            <p className="text-sm text-muted-foreground">
+              Essential mode keeps key metrics and <span className="font-medium text-foreground">By IP</span>. Switch to{" "}
+              <span className="font-medium text-foreground">Full</span> for path breakdowns, recent logs, blocked log, and manual cleanup tools.
+            </p>
+          ) : null}
           {stats.trendByDay && stats.trendByDay.length > 0 ? (
             <Card>
               <CardHeader>
@@ -1289,7 +1331,7 @@ export default function AnalyticsPage() {
               </CardContent>
             </Card>
           )}
-          {stats.byReferrer && stats.byReferrer.length > 0 && (
+          {viewMode === "full" && stats.byReferrer && stats.byReferrer.length > 0 && (
             <Card>
               <CardHeader>
                 <CardTitle>By referrer</CardTitle>
@@ -1316,7 +1358,7 @@ export default function AnalyticsPage() {
               </CardContent>
             </Card>
           )}
-          {stats.byReferrerGroup && stats.byReferrerGroup.length > 0 && (
+          {viewMode === "full" && stats.byReferrerGroup && stats.byReferrerGroup.length > 0 && (
             <Card>
               <CardHeader>
                 <CardTitle>Referrer groups</CardTitle>
@@ -1343,8 +1385,9 @@ export default function AnalyticsPage() {
               </CardContent>
             </Card>
           )}
-          <div className="grid gap-6 md:grid-cols-2">
-            <Card>
+          <div className={`grid gap-6 ${viewMode === "full" ? "md:grid-cols-2" : "md:grid-cols-1"}`}>
+            {viewMode === "full" ? (
+              <Card>
               <CardHeader>
                 <CardTitle>By path</CardTitle>
               </CardHeader>
@@ -1372,7 +1415,8 @@ export default function AnalyticsPage() {
                   </table>
                 </div>
               </CardContent>
-            </Card>
+              </Card>
+            ) : null}
             <Card>
               <CardHeader>
                 <CardTitle>By IP</CardTitle>
@@ -1426,7 +1470,8 @@ export default function AnalyticsPage() {
               </CardContent>
             </Card>
           </div>
-          <Card>
+          {viewMode === "full" ? (
+            <Card>
             <CardHeader>
               <CardTitle>Recent views</CardTitle>
             </CardHeader>
@@ -1477,8 +1522,10 @@ export default function AnalyticsPage() {
                 </table>
               </div>
             </CardContent>
-          </Card>
-          <Card>
+            </Card>
+          ) : null}
+          {viewMode === "full" ? (
+            <Card>
             <CardHeader>
               <CardTitle>Blocked IP log</CardTitle>
             </CardHeader>
@@ -1538,9 +1585,11 @@ export default function AnalyticsPage() {
                 </div>
               )}
             </CardContent>
-          </Card>
+            </Card>
+          ) : null}
 
-          <Card className="border-amber-200 bg-amber-50/50">
+          {viewMode === "full" ? (
+            <Card className="border-amber-200 bg-amber-50/50">
             <CardHeader>
               <CardTitle>Clear history</CardTitle>
             </CardHeader>
@@ -1653,7 +1702,8 @@ export default function AnalyticsPage() {
                 <p className="text-sm text-muted-foreground">{clearMessage}</p>
               )}
             </CardContent>
-          </Card>
+            </Card>
+          ) : null}
         </>
       )}
       {!loading && !stats && (
