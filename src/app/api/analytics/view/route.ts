@@ -9,6 +9,7 @@ import { sanitizeReferrerForAnalytics } from "@/lib/analytics-referrer";
 import {
   isJunkAnalyticsPath,
   isLikelyMonitoringUserAgent,
+  isLikelyOutdatedFakeUserAgent,
   isLikelyScannerUserAgent,
 } from "@/lib/analytics-noise";
 
@@ -74,6 +75,9 @@ export async function POST(request: NextRequest) {
   }
   if (isLikelyScannerUserAgent(userAgent)) {
     return NextResponse.json({ ok: true, skipped: "scanner_ua" });
+  }
+  if (isLikelyOutdatedFakeUserAgent(userAgent)) {
+    return NextResponse.json({ ok: true, skipped: "outdated_ua" });
   }
 
   let ip: string;

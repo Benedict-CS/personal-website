@@ -224,7 +224,7 @@ export default function AnalyticsPage() {
   const [clearAllConfirm, setClearAllConfirm] = useState(false);
   const [clearLoading, setClearLoading] = useState(false);
   const [clearMessage, setClearMessage] = useState<string | null>(null);
-  const [viewMode, setViewMode] = useState<AnalyticsViewMode>("essential");
+  const [viewMode, setViewMode] = useState<AnalyticsViewMode>("full");
   type ClearConfirmType = "before" | "onDate" | "byIP" | "tagPrefetchNoise" | "all";
   const [clearConfirm, setClearConfirm] = useState<{ type: ClearConfirmType; value?: string } | null>(null);
   const [excludeThisBrowser, setExcludeThisBrowser] = useState(false);

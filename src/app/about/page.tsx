@@ -318,7 +318,13 @@ function normalizeBlockMarkdown(content: string): string {
     .split(/\r?\n/)
     .map((line) => line.trim())
     .filter(Boolean);
-  if (lines.length <= 1) return raw;
+  if (lines.length === 0) return raw;
+  /**
+   * Wrap every visible line as a list item — including the single-line case.
+   * Previously a one-liner rendered as a plain paragraph, breaking the bulleted
+   * look in Experience / Volunteer / Custom sections when an entry had only one
+   * achievement.
+   */
   return lines.map((line) => `- ${line}`).join("\n");
 }
 

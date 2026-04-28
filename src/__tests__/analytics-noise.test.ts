@@ -31,16 +31,33 @@ describe("prismaWhereExcludeNoise", () => {
     const ors = notClause?.OR;
     expect(Array.isArray(ors)).toBe(true);
     const uaScannerClauses = (ors as unknown[]).filter(
-      (item): item is { AND: unknown[] } =>
-        !!item &&
-        typeof item === "object" &&
-        "AND" in (item as object) &&
-        Array.isArray((item as { AND: unknown[] }).AND)
+      (item): item is { AND: unknown[] } => {
+        if (!item || typeof item !== "object" || !("AND" in (item as object))) return false;
+        const arr = (item as { AND: unknown[] }).AND;
+        if (!Array.isArray(arr)) return false;
+        // UA scanner clause: { AND: [{ userAgent: { not: null } }, { userAgent: {...} }] }
+        return arr.some(
+          (sub) => !!sub && typeof sub === "object" && "userAgent" in (sub as object)
+        );
+      }
     );
     expect(uaScannerClauses.length).toBeGreaterThan(0);
     const first = uaScannerClauses[0].AND;
     expect(first).toEqual(
       expect.arrayContaining([{ userAgent: { not: null } }, expect.objectContaining({ userAgent: expect.anything() })])
+    );
+  });
+
+  it("excludes generic probe paths matching isJunkAnalyticsPath (.php, server-status, encoded php)", () => {
+    const w = prismaWhereExcludeNoise();
+    const ors = (w.NOT as { OR?: unknown[] }).OR as unknown[];
+    expect(ors).toEqual(
+      expect.arrayContaining([
+        { path: { endsWith: ".php", mode: "insensitive" } },
+        { path: { contains: "server-status", mode: "insensitive" } },
+        { path: { contains: "/wp-", mode: "insensitive" } },
+        { path: { contains: "%70%68%70", mode: "insensitive" } },
+      ])
     );
   });
 });

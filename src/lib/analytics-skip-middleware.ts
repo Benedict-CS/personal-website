@@ -3,7 +3,11 @@
  * Reduces dashboard noise and avoids extra internal fetch + DB work.
  */
 
-import { isJunkAnalyticsPath, isLikelyScannerUserAgent } from "@/lib/analytics-noise";
+import {
+  isJunkAnalyticsPath,
+  isLikelyOutdatedFakeUserAgent,
+  isLikelyScannerUserAgent,
+} from "@/lib/analytics-noise";
 
 const UA_MARKERS = [
   "ahrefsbot",
@@ -77,6 +81,7 @@ export function shouldSkipMiddlewareAnalytics(
   if (isJunkAnalyticsPath(pathname)) return true;
   if (isLikelyPrefetchRequest(headers)) return true;
   if (isLikelyScannerUserAgent(userAgent)) return true;
+  if (isLikelyOutdatedFakeUserAgent(userAgent)) return true;
   const ua = (userAgent || "").toLowerCase();
   if (!ua) return false;
   return UA_MARKERS.some((m) => ua.includes(m));

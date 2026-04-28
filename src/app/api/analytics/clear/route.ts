@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { requireSession } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
+import { prismaWhereMatchAnalyticsNoise } from "@/lib/analytics-noise";
 import type { Prisma } from "@prisma/client";
 
 /**
@@ -14,6 +15,7 @@ import type { Prisma } from "@prisma/client";
  * - onDate: "YYYY-MM-DD" — delete all records on this calendar day
  * - cleanupTagPrefetchNoise: true
  *   optionally with onDate to scope cleanup to one day (recommended)
+ * - cleanupJunkAnalytics: true — delete rows matching junk paths / scanner UAs (see analytics-noise)
  * - confirmAll: true      — delete ALL records (no filter)
  *
  * Returns { deleted: number, accessBlockDeleted: number }
@@ -30,6 +32,7 @@ export async function POST(request: NextRequest) {
     after?: string;
     onDate?: string;
     cleanupTagPrefetchNoise?: boolean;
+    cleanupJunkAnalytics?: boolean;
     confirmAll?: boolean;
   };
   try {
@@ -38,7 +41,7 @@ export async function POST(request: NextRequest) {
     return NextResponse.json(
       {
         error:
-          "Invalid JSON body. Use ip, before, after, onDate (YYYY-MM-DD), cleanupTagPrefetchNoise: true, or confirmAll: true",
+          "Invalid JSON body. Use ip, before, after, onDate (YYYY-MM-DD), cleanupTagPrefetchNoise, cleanupJunkAnalytics, or confirmAll: true",
       },
       { status: 400 }
     );
@@ -99,6 +102,22 @@ export async function POST(request: NextRequest) {
     }
   }
 
+  if (body.cleanupJunkAnalytics === true) {
+    try {
+      const pv = await prisma.pageView.deleteMany({
+        where: prismaWhereMatchAnalyticsNoise(),
+      });
+      return NextResponse.json({
+        deleted: pv.count,
+        accessBlockDeleted: 0,
+        mode: "junkAnalytics",
+      });
+    } catch (e) {
+      console.error("Analytics junk cleanup error:", e);
+      return NextResponse.json({ error: "Failed to clear junk analytics rows" }, { status: 500 });
+    }
+  }
+
   const where: Prisma.PageViewWhereInput = {};
   const blockWhere: Prisma.AccessBlockLogWhereInput = {};
 
@@ -134,7 +153,7 @@ export async function POST(request: NextRequest) {
     return NextResponse.json(
       {
         error:
-          "Provide one of: ip, before (YYYY-MM-DD), after (YYYY-MM-DD), onDate (YYYY-MM-DD), cleanupTagPrefetchNoise: true, or confirmAll: true.",
+          "Provide one of: ip, before (YYYY-MM-DD), after (YYYY-MM-DD), onDate (YYYY-MM-DD), cleanupTagPrefetchNoise: true, cleanupJunkAnalytics: true, or confirmAll: true.",
       },
       { status: 400 }
     );
