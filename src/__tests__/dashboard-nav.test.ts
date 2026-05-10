@@ -7,6 +7,7 @@ describe("dashboard navigation", () => {
     expect(hrefs).toContain("/dashboard/analytics");
     expect(hrefs).toContain("/dashboard/system");
     expect(hrefs).toContain("/dashboard/posts");
+    expect(hrefs).toContain("/dashboard/notes");
     expect(hrefs).toContain("/dashboard/media");
     expect(hrefs).toContain("/dashboard/content/site");
     expect(hrefs).toContain("/dashboard/content/pages");

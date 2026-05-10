@@ -30,6 +30,7 @@ type NavItem = {
 /** Sidebar: essentials only. Deeper tools stay reachable via URL or command palette (⌘K). */
 const contentItems = [
   { href: "/dashboard/posts", label: "Posts" },
+  { href: "/dashboard/notes", label: "Draft notes" },
   { href: "/dashboard/media", label: "Media" },
   { href: "/dashboard/content/pages", label: "Pages" },
   { href: "/dashboard/tags", label: "Tags" },
