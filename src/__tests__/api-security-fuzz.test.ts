@@ -1,5 +1,4 @@
 import { NextResponse } from "next/server";
-import { POST as importPOST } from "@/app/api/import/route";
 import { POST as customPagesPOST } from "@/app/api/custom-pages/route";
 import { PATCH as customPagePATCH } from "@/app/api/custom-pages/id/[id]/route";
 import { POST as reorderPOST } from "@/app/api/custom-pages/reorder/route";
@@ -46,47 +45,6 @@ describe("API security fuzz cases", () => {
     (prisma.customPage.update as jest.Mock).mockResolvedValue({ id: "cp1" });
     (prisma.post.create as jest.Mock).mockResolvedValue({ id: "p1" });
     (prisma.$transaction as jest.Mock).mockResolvedValue(undefined);
-  });
-
-  it("import handles non-array payloads gracefully", async () => {
-    const req = new Request("http://localhost/api/import", {
-      method: "POST",
-      body: JSON.stringify({ posts: "bad", customPages: { bad: true } }),
-    });
-    const res = await importPOST(req as never);
-    const data = await res.json();
-    expect(res.status).toBe(200);
-    expect(data.posts).toBe(0);
-    expect(data.pages).toBe(0);
-  });
-
-  it("import rejects symbol-only slug after sanitization", async () => {
-    const req = new Request("http://localhost/api/import", {
-      method: "POST",
-      body: JSON.stringify({ posts: [{ title: "x", slug: "@@@@" }] }),
-    });
-    const res = await importPOST(req as never);
-    const data = await res.json();
-    expect(data.errors.some((x: string) => x.includes("Invalid slug"))).toBe(true);
-  });
-
-  it("import continues when one post create fails", async () => {
-    (prisma.post.create as jest.Mock)
-      .mockRejectedValueOnce(new Error("dup"))
-      .mockResolvedValueOnce({ id: "ok" });
-    const req = new Request("http://localhost/api/import", {
-      method: "POST",
-      body: JSON.stringify({
-        posts: [
-          { title: "A", slug: "a" },
-          { title: "B", slug: "b" },
-        ],
-      }),
-    });
-    const res = await importPOST(req as never);
-    const data = await res.json();
-    expect(data.posts).toBe(1);
-    expect(data.errors.length).toBeGreaterThan(0);
   });
 
   it("custom-pages POST normalizes XSS-like slug input", async () => {

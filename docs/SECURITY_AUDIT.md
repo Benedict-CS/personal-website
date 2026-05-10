@@ -64,7 +64,7 @@ This report summarizes the security review and hardening pass performed on the c
 
 - Admin-sensitive routes are protected by `requireSession()` (content CRUD, media delete/cleanup, import/export, backup trigger, analytics clear/stats, site config/content, tags merge/cleanup, about upload/config/cleanup, custom pages mutation, CV upload, post version operations, etc.).
 - Public routes intentionally open:
-  - Health: `/api/health`, `/api/v1/health`
+  - Health: `/api/health`
   - Search/read routes needed by public UI
   - Content read endpoints used by public pages
 

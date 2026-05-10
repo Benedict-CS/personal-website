@@ -10,7 +10,7 @@ This document maps what the codebase already provides and how to operate it in p
 |-----------|------------------|
 | **Structured request logs** | `src/lib/logger.ts` — JSON lines with `requestId` from middleware |
 | **Request correlation** | `x-request-id` on responses (`src/proxy.ts`, `src/lib/request-id.ts`) |
-| **Health** | `GET /api/health` (DB readiness), `GET /api/live` (process liveness), `GET /api/v1/health` |
+| **Health** | `GET /api/health` (DB readiness), `GET /api/live` (process liveness) |
 | **Dashboard** | Analytics page + system status components |
 | **Error visibility** | Server logs, `/api/health`, `/api/live`; wire your own APM if required |
 

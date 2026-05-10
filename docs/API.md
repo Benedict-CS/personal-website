@@ -18,7 +18,6 @@ This document lists REST API routes and their intended use. All routes are under
 | GET | `/.well-known/security.txt` | Security contact hints (RFC 9116); set `SECURITY_TXT_CONTACT` / `SECURITY_TXT_POLICY`. |
 | GET, HEAD | `/api/live` | Liveness (no DB). `HEAD` returns status only. |
 | GET, HEAD | `/api/health` | Readiness (DB ping). JSON includes `uptimeSeconds`, `node` (Node.js version), and may include `appVersion` (`APP_VERSION` / `GIT_COMMIT`). `Cache-Control: no-store`. |
-| GET, HEAD | `/api/v1/health` | Same as `/api/health`; `GET` JSON includes `version: "v1"` plus optional `appVersion` and `node`. |
 | GET | `/api/giscus-config` | Giscus comment widget config. |
 | POST | `/api/analytics/view` | Page view (requires `X-Analytics-Secret`). |
 | POST | `/api/analytics/leave` | Leave event (duration). |
@@ -87,21 +86,19 @@ All routes below require a valid NextAuth session (cookie). Return `401 Unauthor
 | POST | `/api/cv/upload` | Upload CV PDF. |
 | GET | `/api/cv/download` | Download CV. |
 
-### Audit and analytics
+### Analytics
 
 | Method | Path | Description |
 |--------|------|-------------|
-| GET | `/api/audit` | Audit log (filtered). |
 | GET | `/api/analytics/stats` | Analytics stats. |
 | POST | `/api/analytics/clear` | Clear analytics. |
 
-### Backup and export/import
+### Backup and export
 
 | Method | Path | Description |
 |--------|------|-------------|
 | POST | `/api/backup/trigger` | Trigger backup (returns instructions). |
-| POST | `/api/export` | Export data. |
-| POST | `/api/import` | Import data. |
+| GET | `/api/data-liberation/export` | Download export bundle (ZIP; query `target=posts|system|bundle`). |
 
 ---
 

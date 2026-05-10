@@ -63,7 +63,7 @@ flowchart LR
 - **Home / Contact content:** Stored in `SitePageContent` (page = `home` | `contact`); PATCH via `/api/site-content`.
 - **About:** Stored in `AboutConfig` (single row); PATCH via `/api/about/config`. Section order/visibility in `sectionOrder` / `sectionVisibility` columns.
 - **Custom pages:** CRUD and reorder via `/api/custom-pages`, plus preview-token and scheduled publish support.
-- **Audit:** Operational actions are written to `AuditLog` and surfaced in `/dashboard/audit`.
+- **Audit log:** Operational actions are written to `AuditLog` for server-side history (no dashboard viewer in this slim build).
 
 ```mermaid
 sequenceDiagram

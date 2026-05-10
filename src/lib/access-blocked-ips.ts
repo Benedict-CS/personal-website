@@ -122,7 +122,7 @@ export function shouldEnforceAccessBlockIp(request: { nextUrl: { pathname: strin
 
   if (p === "/api/posts" || p === "/api/tags") return false;
   if (p === "/api/site-config" || p === "/api/site-content") return false;
-  if (p === "/api/health" || p === "/api/live" || p === "/api/v1/health") return false;
+  if (p === "/api/health" || p === "/api/live") return false;
   if (p.startsWith("/api/custom-pages/slug/")) return false;
   if (p.startsWith("/api/integrations/")) return false;
   if (p.startsWith("/api/media/serve/")) return false;

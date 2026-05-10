@@ -325,12 +325,9 @@ export default function SiteSettingsPage() {
         <Card className="border-amber-200 bg-amber-50">
           <CardHeader>
             <CardTitle className="text-lg">First-time setup</CardTitle>
-            <p className="text-sm font-normal text-muted-foreground">Use the step-by-step wizard or fill this page and mark complete.</p>
+            <p className="text-sm font-normal text-muted-foreground">Fill in settings on this page, then mark setup complete when you are ready.</p>
           </CardHeader>
           <CardContent className="flex flex-wrap gap-2">
-            <Link href="/dashboard/setup">
-              <Button variant="outline">Open setup wizard (Step 1 → 5)</Button>
-            </Link>
             <Button
               onClick={async () => {
                 setSaving(true);

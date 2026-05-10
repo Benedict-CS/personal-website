@@ -18,7 +18,6 @@ This document summarizes production-oriented foundations: containers, health pro
 |----------|------|
 | `GET` / `HEAD /api/live` | Liveness — no database; cheap probe. `HEAD` returns status only. |
 | `GET` / `HEAD /api/health` | Readiness — PostgreSQL `SELECT 1`; includes `uptimeSeconds`, **`node`** (Node.js version), optional **`appVersion`** (`APP_VERSION` / `GIT_COMMIT`). `HEAD` mirrors status without a body. |
-| `GET` / `HEAD /api/v1/health` | Same as `/api/health` with `version: "v1"` on `GET` for API clients. |
 
 All responses use **`Cache-Control: no-store`** (and related anti-cache headers) so probes are never served from an intermediary cache.
 

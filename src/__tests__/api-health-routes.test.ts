@@ -8,7 +8,6 @@ jest.mock("@/lib/prisma", () => ({
 }));
 
 import { GET as healthGet, HEAD as healthHead } from "@/app/api/health/route";
-import { GET as v1Get, HEAD as v1Head } from "@/app/api/v1/health/route";
 import { prisma } from "@/lib/prisma";
 
 describe("/api/health", () => {
@@ -39,26 +38,5 @@ describe("/api/health", () => {
     const headRes = await healthHead();
     expect(getRes.status).toBe(503);
     expect(headRes.status).toBe(503);
-  });
-});
-
-describe("/api/v1/health", () => {
-  beforeEach(() => {
-    jest.clearAllMocks();
-  });
-
-  it("GET includes version field", async () => {
-    (prisma.$queryRaw as jest.Mock).mockResolvedValue(undefined);
-    const res = await v1Get();
-    expect(res.status).toBe(200);
-    const body = await res.json();
-    expect(body).toMatchObject({ ok: true, db: "ok", version: "v1" });
-  });
-
-  it("HEAD matches GET status", async () => {
-    (prisma.$queryRaw as jest.Mock).mockResolvedValue(undefined);
-    const getRes = await v1Get();
-    const headRes = await v1Head();
-    expect(getRes.status).toBe(headRes.status);
   });
 });

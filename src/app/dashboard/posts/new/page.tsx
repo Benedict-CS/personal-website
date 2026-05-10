@@ -29,7 +29,6 @@ import { DASHBOARD_FORM_LABEL_CLASS } from "@/components/dashboard/dashboard-for
 import { normalizeMarkdownWhitespace } from "@/lib/cms-normalize-markdown";
 import { PostDraftMarkdownStats } from "@/components/dashboard/post-draft-markdown-stats";
 import { ContentIntelligenceTabs } from "@/components/dashboard/content-intelligence-tabs";
-import { AutoTagSuggestions } from "@/components/dashboard/auto-tag-suggestions";
 import { ContentSummaryPanel } from "@/components/dashboard/content-summary-panel";
 import { PostTemplateSelector } from "@/components/dashboard/post-template-selector";
 import { DashboardGlobalActionBar } from "@/components/dashboard/dashboard-global-action-bar";
@@ -404,18 +403,6 @@ export default function NewPostPage() {
                 <p className="text-xs text-muted-foreground">
                   Separate multiple tags with commas
                 </p>
-                <AutoTagSuggestions
-                  title={title}
-                  content={content}
-                  currentTags={tags}
-                  onAddTag={(tagName) => {
-                    setTags((prev) => {
-                      const existing = prev.split(",").map((t) => t.trim()).filter(Boolean);
-                      if (existing.some((t) => t.toLowerCase() === tagName.toLowerCase())) return prev;
-                      return existing.length > 0 ? `${prev.trimEnd()}, ${tagName}` : tagName;
-                    });
-                  }}
-                />
               </div>
 
               <div className="space-y-2">

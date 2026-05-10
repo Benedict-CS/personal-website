@@ -56,9 +56,9 @@ Status labels:
 | Feature | Status | Notes |
 |---|---|---|
 | Audit logging backend | **Done** | Tracks editor, custom pages, media optimization, and related actions |
-| Audit log dashboard UI | **Done** | Filters + compact summaries + expandable payload |
+| Audit log dashboard UI | **Removed** | Backend `AuditLog` writes remain; no `/dashboard/audit` or `/api/audit` in slim build |
 | Analytics dashboard | **Done** | Page view and operational visibility |
-| Export/import content | **Done** | Data portability endpoints available |
+| Export bundle (ZIP) | **Done** | `GET /api/data-liberation/export`; JSON import/export removed |
 | Multi-user RBAC | **Planned** | Current mode is single-admin oriented |
 
 ---

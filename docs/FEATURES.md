@@ -32,7 +32,7 @@ This document summarizes capabilities for operators, contributors, and future mi
 - **Visualization:** **Path distribution bars** (top paths by views), KPI cards (total views, **unique IPs** in the top list, CV downloads, avg. time on page, 403 counts), plus tabular breakdowns.
 - **Health:** `/api/live` (liveness), `/api/health` (readiness + DB, **`node`** runtime, optional **`appVersion`** from `APP_VERSION` / `GIT_COMMIT`), `HEAD` supported, `Cache-Control: no-store` on probes. Dashboard cards poll health and show deployment label and Node.js version when present.
 - **Smoke script:** `scripts/verify-health.sh` — curls `/api/live` and `/api/health`, then validates readiness JSON (`ok: true`, `node` present) with Python 3.
-- **Dashboard:** Under **Manage**, **Posts** is listed next to media and site settings. **Site overview** includes an **Operations & portability** card (monitor URLs, repo doc paths, links to Analytics and Setup).
+- **Dashboard:** Sidebar lists **Analytics** (default home), **Content**, and **Site**. Ops docs: `docs/OPERATIONS_QUICK_REFERENCE.md`; health: `/api/health`, `/api/live`.
 
 ---
 

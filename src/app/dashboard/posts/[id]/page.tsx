@@ -58,7 +58,6 @@ import { DashboardGlobalActionBar } from "@/components/dashboard/dashboard-globa
 import { PostDraftMarkdownStats } from "@/components/dashboard/post-draft-markdown-stats";
 import { ContentIntelligenceTabs } from "@/components/dashboard/content-intelligence-tabs";
 import { RelatedPostsPanel } from "@/components/dashboard/related-posts-panel";
-import { AutoTagSuggestions } from "@/components/dashboard/auto-tag-suggestions";
 import { ContentSummaryPanel } from "@/components/dashboard/content-summary-panel";
 import { SocialShareCardControls } from "@/components/dashboard/social-share-card-controls";
 import { PostBodyPreview } from "@/components/dashboard/post-body-preview";
@@ -68,19 +67,11 @@ import { exportPostAsMarkdown, exportFilename, downloadMarkdownFile } from "@/li
 import { useToast } from "@/contexts/toast-context";
 import { getContentMetrics } from "@/lib/content-metrics";
 import { buildPostDiffSemanticHints } from "@/lib/post-version-diff";
-import { buildTranslatedDraftScaffold, type SupportedTranslationLocale } from "@/lib/content-translator";
-
 // Dynamic import MDEditor to avoid SSR issues
 const MDEditor = dynamic(
   () => import("@uiw/react-md-editor"),
   { ssr: false }
 );
-
-const TRANSLATION_LOCALES: Array<{ value: SupportedTranslationLocale; label: string }> = [
-  { value: "zh-TW", label: "Traditional Chinese (zh-TW)" },
-  { value: "ja", label: "Japanese (ja)" },
-  { value: "es", label: "Spanish (es)" },
-];
 
 export default function EditPostPage({
   params,
@@ -142,13 +133,6 @@ export default function EditPostPage({
   const [previewToken, setPreviewToken] = useState<string | null>(null);
   const [isGeneratingPreview, setIsGeneratingPreview] = useState(false);
   const [isRevokingPreview, setIsRevokingPreview] = useState(false);
-  const [linkSuggestions, setLinkSuggestions] = useState<
-    Array<{ id: string; slug: string; title: string; score: number; reasons: string[] }>
-  >([]);
-  const [scannedCandidateCount, setScannedCandidateCount] = useState(0);
-  const [isLoadingLinkSuggestions, setIsLoadingLinkSuggestions] = useState(false);
-  const [translationLocale, setTranslationLocale] = useState<SupportedTranslationLocale>("zh-TW");
-  const [isCreatingTranslatedDraft, setIsCreatingTranslatedDraft] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
   const editorRef = useRef<{ textarea?: HTMLTextAreaElement } | null>(null);
   const focusHeartbeatTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
@@ -200,17 +184,6 @@ export default function EditPostPage({
     const semanticHints = buildPostDiffSemanticHints(lineDiff);
     return { meta, lineDiff, summary: formatDiffSummary(lineDiff), semanticHints };
   }, [content, published, selectedVersionForDiff, slug, title]);
-  const translationPreview = useMemo(
-    () =>
-      buildTranslatedDraftScaffold({
-        title,
-        description,
-        content,
-        locale: translationLocale,
-      }),
-    [content, description, title, translationLocale]
-  );
-
   const splitChromeOpacity =
     (splitEditor && editorChromeDim) || (focusMode && focusHeartbeatDim) ? (reduceMotion ? 0.72 : 0.42) : 1;
 
@@ -993,65 +966,6 @@ export default function EditPostPage({
     }
   };
 
-  const loadLinkSuggestions = async () => {
-    setIsLoadingLinkSuggestions(true);
-    try {
-      const response = await fetch(`/api/posts/${id}/link-suggestions`, {
-        credentials: "include",
-        cache: "no-store",
-      });
-      if (!response.ok) throw new Error("Failed to generate suggestions");
-      const data = (await response.json()) as {
-        suggestions?: Array<{ id: string; slug: string; title: string; score: number; reasons: string[] }>;
-        scannedCandidates?: number;
-      };
-      setLinkSuggestions(Array.isArray(data.suggestions) ? data.suggestions : []);
-      setScannedCandidateCount(typeof data.scannedCandidates === "number" ? data.scannedCandidates : 0);
-      if (!data.suggestions || data.suggestions.length === 0) {
-        toast("No strong internal-link opportunities found yet.", "warning");
-      } else {
-        toast("Internal-link suggestions updated.", "success");
-      }
-    } catch {
-      toast("Failed to generate internal-link suggestions", "error");
-    } finally {
-      setIsLoadingLinkSuggestions(false);
-    }
-  };
-
-  const createTranslatedDraft = async () => {
-    setIsCreatingTranslatedDraft(true);
-    try {
-      const response = await fetch(`/api/posts/${id}/translate-draft`, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ locale: translationLocale }),
-      });
-      const data = await response.json().catch(() => ({}));
-      if (!response.ok) {
-        throw new Error(typeof data?.error === "string" ? data.error : "Failed to create translated draft");
-      }
-      toast(`Translated draft created (${translationLocale}).`, "success");
-      if (typeof data?.id === "string") {
-        router.push(`/dashboard/posts/${data.id}`);
-      }
-    } catch (error) {
-      toast(error instanceof Error ? error.message : "Failed to create translated draft", "error");
-    } finally {
-      setIsCreatingTranslatedDraft(false);
-    }
-  };
-
-  const insertInternalLinkSuggestion = (suggestion: {
-    slug: string;
-    title: string;
-  }) => {
-    const markdown = `[${suggestion.title}](/blog/${suggestion.slug})`;
-    insertImageBlock(markdown);
-    setLinkSuggestions((current) => current.filter((item) => item.slug !== suggestion.slug));
-    toast("Inserted internal link into markdown.", "success");
-  };
-
   if (isLoading) {
     return (
       <div
@@ -1371,20 +1285,6 @@ export default function EditPostPage({
                     <p className="text-xs text-muted-foreground">
                       Separate multiple tags with commas
                     </p>
-                    <AutoTagSuggestions
-                      postId={id}
-                      title={title}
-                      content={content}
-                      currentTags={tags}
-                      onAddTag={(tagName) => {
-                        markDirty();
-                        setTags((prev) => {
-                          const existing = prev.split(",").map((t) => t.trim()).filter(Boolean);
-                          if (existing.some((t) => t.toLowerCase() === tagName.toLowerCase())) return prev;
-                          return existing.length > 0 ? `${prev.trimEnd()}, ${tagName}` : tagName;
-                        });
-                      }}
-                    />
                   </div>
 
                   <div className="space-y-2">
@@ -1577,103 +1477,6 @@ export default function EditPostPage({
                     onInsertLink={(md) => { markDirty(); insertImageBlock(md); toast("Related post link inserted.", "success"); }}
                     className="mt-2"
                   />
-                  <Card className="mt-2">
-                    <CardHeader className="pb-2">
-                      <CardTitle className="text-sm">Bilingual draft translator</CardTitle>
-                    </CardHeader>
-                    <CardContent className="space-y-3">
-                      <p className="text-xs text-muted-foreground">
-                        Generate a translated draft scaffold and jump directly into editing.
-                      </p>
-                      <select
-                        value={translationLocale}
-                        onChange={(event) => setTranslationLocale(event.target.value as SupportedTranslationLocale)}
-                        className="h-9 w-full rounded-lg border border-input bg-background px-3 text-sm text-foreground shadow-[var(--elevation-1)]"
-                      >
-                        {TRANSLATION_LOCALES.map((locale) => (
-                          <option key={locale.value} value={locale.value}>
-                            {locale.label}
-                          </option>
-                        ))}
-                      </select>
-                      <div className="rounded-md border border-border bg-muted/20 p-2 text-xs">
-                        <p className="font-medium text-foreground">{translationPreview.translatedTitle}</p>
-                        <p className="mt-1 text-muted-foreground">
-                          {translationPreview.translatedDescription || "No translated description preview."}
-                        </p>
-                      </div>
-                      <Button
-                        type="button"
-                        variant="outline"
-                        className="w-full"
-                        disabled={isCreatingTranslatedDraft || !title.trim() || !slug.trim() || !content.trim()}
-                        onClick={() => void createTranslatedDraft()}
-                      >
-                        {isCreatingTranslatedDraft ? "Creating translated draft..." : "Create translated draft"}
-                      </Button>
-                    </CardContent>
-                  </Card>
-                  <Card className="mt-2">
-                    <CardHeader className="pb-2">
-                      <CardTitle className="text-sm">Smart internal linker</CardTitle>
-                    </CardHeader>
-                    <CardContent className="space-y-3">
-                      <div className="flex flex-wrap items-center gap-2">
-                        <Button
-                          type="button"
-                          variant="outline"
-                          size="sm"
-                          onClick={() => void loadLinkSuggestions()}
-                          disabled={isLoadingLinkSuggestions}
-                          className="gap-2"
-                        >
-                          {isLoadingLinkSuggestions ? <Loader2 className="h-4 w-4 animate-spin" /> : <Link2 className="h-4 w-4" />}
-                          {isLoadingLinkSuggestions ? "Scanning..." : "Suggest internal links"}
-                        </Button>
-                        {scannedCandidateCount > 0 ? (
-                          <span className="text-xs text-muted-foreground">Scanned {scannedCandidateCount} candidate posts</span>
-                        ) : null}
-                      </div>
-                      {linkSuggestions.length > 0 ? (
-                        <ul className="space-y-2">
-                          {linkSuggestions.map((suggestion) => (
-                            <li
-                              key={suggestion.id}
-                              className="rounded-lg border border-border bg-card/60 px-3 py-2"
-                            >
-                              <div className="flex flex-wrap items-start justify-between gap-3">
-                                <div>
-                                  <p className="text-sm font-medium text-foreground">{suggestion.title}</p>
-                                  <p className="text-xs text-muted-foreground">
-                                    /blog/{suggestion.slug} · Score {suggestion.score}
-                                  </p>
-                                  {suggestion.reasons.length > 0 ? (
-                                    <p className="mt-1 text-xs text-muted-foreground">
-                                      {suggestion.reasons.join(" · ")}
-                                    </p>
-                                  ) : null}
-                                </div>
-                                <Button
-                                  type="button"
-                                  size="sm"
-                                  variant="outline"
-                                  onClick={() => insertInternalLinkSuggestion(suggestion)}
-                                  className="gap-1.5"
-                                >
-                                  <Link2 className="h-3.5 w-3.5" />
-                                  Insert link
-                                </Button>
-                              </div>
-                            </li>
-                          ))}
-                        </ul>
-                      ) : (
-                        <p className="text-xs text-muted-foreground">
-                          Generate suggestions to add context-aware backlinks between related posts.
-                        </p>
-                      )}
-                    </CardContent>
-                  </Card>
                   <SocialShareCardControls
                     title={title}
                     subtitle={description}

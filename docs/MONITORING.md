@@ -11,7 +11,6 @@
 The app exposes:
 
 - **`GET /api/health`** — Returns `{ ok: true, db: "ok" }` when the app and database are healthy, or `503` with `{ ok: false, db: "error" }` if the DB is unreachable.
-- **`GET /api/v1/health`** — Same as above with `version: "v1"` for versioned clients.
 
 ### Uptime / external monitoring
 

@@ -9,8 +9,6 @@ import {
   FolderKanban,
   Settings,
   BarChart3,
-  Wrench,
-  LayoutDashboard,
 } from "lucide-react";
 
 type NavChildItem = {
@@ -21,8 +19,8 @@ type NavChildItem = {
 type NavItem = {
   id: string;
   href: string;
-  label: "Dashboard" | "Content" | "Site" | "Analytics" | "System";
-  icon: typeof FolderKanban | typeof Settings | typeof BarChart3 | typeof Wrench | typeof LayoutDashboard;
+  label: "Analytics" | "Content" | "Site";
+  icon: typeof FolderKanban | typeof Settings | typeof BarChart3;
   exact: boolean;
   children?: readonly NavChildItem[];
 };
@@ -45,7 +43,7 @@ const siteSettingsItems = [
 ] as const;
 
 const navItems: readonly NavItem[] = [
-  { id: "dashboard", href: "/dashboard", label: "Dashboard", icon: LayoutDashboard, exact: true },
+  { id: "analytics", href: "/dashboard/analytics", label: "Analytics", icon: BarChart3, exact: true },
   { id: "content", href: "/dashboard/posts", label: "Content", icon: FolderKanban, exact: false, children: contentItems },
   {
     id: "site-settings",
@@ -55,8 +53,6 @@ const navItems: readonly NavItem[] = [
     exact: false,
     children: siteSettingsItems,
   },
-  { id: "analytics", href: "/dashboard/analytics", label: "Analytics", icon: BarChart3, exact: false },
-  { id: "system", href: "/dashboard/system", label: "System", icon: Wrench, exact: false },
 ] as const;
 
 /** Flat list of sidebar routes (palette / tests); keeps top-level and nested items in order. */

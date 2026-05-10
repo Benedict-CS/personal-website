@@ -107,7 +107,7 @@ docker compose logs -f app
 docker compose logs -f postgres
 docker compose logs -f rustfs
 curl -sS http://localhost:3000/api/health
-curl -sS http://localhost:3000/api/v1/health
+curl -sS http://localhost:3000/api/health
 ```
 
 ---

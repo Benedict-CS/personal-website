@@ -4,7 +4,7 @@ import { useEffect, useCallback, useMemo, useState } from "react";
 import Link from "next/link";
 import { motion, useReducedMotion } from "framer-motion";
 import { Button } from "@/components/ui/button";
-import { BarChart3, Copy, LayoutDashboard, RefreshCw, Shield } from "lucide-react";
+import { BarChart3, Copy, LayoutDashboard, RefreshCw } from "lucide-react";
 import { useToast } from "@/contexts/toast-context";
 
 export default function DashboardError({
@@ -83,8 +83,7 @@ export default function DashboardError({
         </p>
         <h1 className="mb-2 text-xl font-bold text-foreground">Error</h1>
         <p className="mb-6 text-center text-sm text-muted-foreground">
-          An unexpected error occurred in the dashboard. Try again, open System health for connectivity and maintenance tools,
-          or return to a safe area.
+          An unexpected error occurred in the dashboard. Try again or return to Analytics.
         </p>
         {errorDigest ? (
           <div className="mb-6 rounded-lg border border-border bg-muted/20 px-3 py-2.5">
@@ -131,12 +130,6 @@ export default function DashboardError({
             <Link href="/dashboard/analytics">
               <BarChart3 className="h-4 w-4" />
               Analytics
-            </Link>
-          </Button>
-          <Button variant="outline" asChild className="gap-2">
-            <Link href="/dashboard/system">
-              <Shield className="h-4 w-4" />
-              System health
             </Link>
           </Button>
         </div>

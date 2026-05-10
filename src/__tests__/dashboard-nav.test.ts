@@ -3,9 +3,7 @@ import { DASHBOARD_NAV_ITEMS } from "@/app/dashboard/dashboard-nav";
 describe("dashboard navigation", () => {
   it("exposes expected sidebar destinations", () => {
     const hrefs = DASHBOARD_NAV_ITEMS.map((item) => item.href);
-    expect(hrefs).toContain("/dashboard");
     expect(hrefs).toContain("/dashboard/analytics");
-    expect(hrefs).toContain("/dashboard/system");
     expect(hrefs).toContain("/dashboard/posts");
     expect(hrefs).toContain("/dashboard/notes");
     expect(hrefs).toContain("/dashboard/media");

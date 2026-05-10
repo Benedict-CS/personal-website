@@ -1,17 +1,11 @@
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useState } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { ConfirmDialog } from "@/components/ui/confirm-dialog";
 import { useToast } from "@/contexts/toast-context";
 import { ChevronDown, Download } from "lucide-react";
-import {
-  ANALYTICS_OPT_OUT_STORAGE_KEY,
-  setAnalyticsOptOutInBrowser,
-  syncAnalyticsOptOutCookie,
-} from "@/lib/analytics-client-opt-out";
-import { AnalyticsPathBars } from "@/components/analytics-path-bars";
 import { AnalyticsStatsSkeleton } from "@/components/dashboard/analytics-stats-skeleton";
 import {
   DashboardEmptyState,
@@ -20,11 +14,7 @@ import {
   dashboardSubtleActionButtonClassName,
 } from "@/components/dashboard/dashboard-ui";
 import { DASHBOARD_FORM_LABEL_CLASS } from "@/components/dashboard/dashboard-form-classes";
-import { buildAnalyticsInsight } from "@/lib/analytics-insight";
-import { buildAnalyticsAnomalyCallouts } from "@/lib/analytics-anomaly";
-import { buildAnalyticsTrendInterpretationCards } from "@/lib/analytics-trend-interpretation";
 import { TooltipHint } from "@/components/ui/tooltip-hint";
-import { Skeleton } from "@/components/ui/skeleton";
 import { DASHBOARD_INTERNAL_FETCH, fetchWithRetry, formatDashboardFetchFailure } from "@/lib/self-healing-fetch";
 
 const analyticsMutationFetch = { ...DASHBOARD_INTERNAL_FETCH, retries: 0 };
@@ -95,38 +85,6 @@ function daysAgo(n: number) {
   const d = new Date();
   d.setDate(d.getDate() - n);
   return d.toISOString().slice(0, 10);
-}
-
-function parseDateOnly(input: string): Date | null {
-  if (!/^\d{4}-\d{2}-\d{2}$/.test(input)) return null;
-  const date = new Date(`${input}T00:00:00`);
-  return Number.isNaN(date.getTime()) ? null : date;
-}
-
-function shiftDate(input: Date, dayOffset: number): Date {
-  const next = new Date(input);
-  next.setDate(next.getDate() + dayOffset);
-  return next;
-}
-
-function buildPreviousRange(from: string, to: string): { from: string; to: string } | null {
-  const fromDate = parseDateOnly(from);
-  const toDate = parseDateOnly(to);
-  if (!fromDate || !toDate || toDate.getTime() < fromDate.getTime()) return null;
-  const msPerDay = 24 * 60 * 60 * 1000;
-  const spanDays = Math.floor((toDate.getTime() - fromDate.getTime()) / msPerDay) + 1;
-  const prevTo = shiftDate(fromDate, -1);
-  const prevFrom = shiftDate(prevTo, -(spanDays - 1));
-  return {
-    from: prevFrom.toISOString().slice(0, 10),
-    to: prevTo.toISOString().slice(0, 10),
-  };
-}
-
-function formatSignedDelta(current: number, previous: number): string {
-  const delta = current - previous;
-  const sign = delta > 0 ? "+" : "";
-  return `${sign}${delta}`;
 }
 
 function escapeCsvCell(s: string | number | null | undefined): string {
@@ -210,9 +168,6 @@ export default function AnalyticsPage() {
   /** When true, stats API includes unknown / 127.0.0.1 / private LAN IPs (default off). */
   const [includeDevIps, setIncludeDevIps] = useState(false);
   const [refreshKey, setRefreshKey] = useState(0);
-  const [previousPeriodStats, setPreviousPeriodStats] = useState<Stats | null>(null);
-  const [previousPeriodRange, setPreviousPeriodRange] = useState<{ from: string; to: string } | null>(null);
-  const [loadingPreviousPeriod, setLoadingPreviousPeriod] = useState(false);
 
   const [error, setError] = useState<string | null>(null);
   const [clearBefore, setClearBefore] = useState("");
@@ -224,26 +179,6 @@ export default function AnalyticsPage() {
   const [clearMessage, setClearMessage] = useState<string | null>(null);
   type ClearConfirmType = "before" | "onDate" | "byIP" | "tagPrefetchNoise" | "all";
   const [clearConfirm, setClearConfirm] = useState<{ type: ClearConfirmType; value?: string } | null>(null);
-  const [excludeThisBrowser, setExcludeThisBrowser] = useState(false);
-  const [healthSnapshot, setHealthSnapshot] = useState<{
-    ok: boolean;
-    db: string;
-    uptimeSeconds?: number;
-    appVersion?: string;
-    node?: string;
-    loaded: boolean;
-  }>({ ok: false, db: "—", loaded: false });
-  const [healthFetchError, setHealthFetchError] = useState<string | null>(null);
-
-  useEffect(() => {
-    try {
-      const on = typeof window !== "undefined" && localStorage.getItem(ANALYTICS_OPT_OUT_STORAGE_KEY) === "1";
-      setExcludeThisBrowser(!!on);
-      if (on) syncAnalyticsOptOutCookie(true);
-    } catch {
-      setExcludeThisBrowser(false);
-    }
-  }, []);
 
   useEffect(() => {
     const params = new URLSearchParams();
@@ -264,66 +199,13 @@ export default function AnalyticsPage() {
       })
       .then((payload: Stats | null) => {
         setStats(payload);
-        if (!payload || filterIP.trim()) {
-          setPreviousPeriodStats(null);
-          setPreviousPeriodRange(null);
-          return;
-        }
-        const previousRange = buildPreviousRange(from, to);
-        if (!previousRange) {
-          setPreviousPeriodStats(null);
-          setPreviousPeriodRange(null);
-          return;
-        }
-        const previousParams = new URLSearchParams({
-          from: previousRange.from,
-          to: previousRange.to,
-        });
-        if (includeDevIps) previousParams.set("includeDevIps", "1");
-        setLoadingPreviousPeriod(true);
-        setPreviousPeriodRange(previousRange);
-        void fetchWithRetry(
-          `/api/analytics/stats?${previousParams.toString()}`,
-          { credentials: "include" },
-          DASHBOARD_INTERNAL_FETCH,
-        )
-          .then(async (response) => {
-            if (!response.ok) return null;
-            return (await response.json().catch(() => null)) as Stats | null;
-          })
-          .then((previousPayload) => setPreviousPeriodStats(previousPayload))
-          .catch(() => setPreviousPeriodStats(null))
-          .finally(() => setLoadingPreviousPeriod(false));
       })
       .catch((e) => {
         setError(formatDashboardFetchFailure(e));
         setStats(null);
-        setPreviousPeriodStats(null);
-        setPreviousPeriodRange(null);
       })
       .finally(() => setLoading(false));
   }, [from, to, filterIP, includeDevIps, refreshKey]);
-
-  useEffect(() => {
-    setHealthFetchError(null);
-    fetchWithRetry("/api/health", { cache: "no-store" }, DASHBOARD_INTERNAL_FETCH)
-      .then((r) => r.json())
-      .then((d: { ok?: boolean; db?: string; uptimeSeconds?: number; appVersion?: string; node?: string }) => {
-        setHealthFetchError(null);
-        setHealthSnapshot({
-          ok: !!d.ok,
-          db: typeof d.db === "string" ? d.db : "—",
-          uptimeSeconds: typeof d.uptimeSeconds === "number" ? d.uptimeSeconds : undefined,
-          appVersion: typeof d.appVersion === "string" ? d.appVersion : undefined,
-          node: typeof d.node === "string" ? d.node : undefined,
-          loaded: true,
-        });
-      })
-      .catch((e) => {
-        setHealthFetchError(formatDashboardFetchFailure(e));
-        setHealthSnapshot({ ok: false, db: "unreachable", loaded: true });
-      });
-  }, [refreshKey]);
 
   const handleClearBefore = async () => {
     if (!clearBefore.trim()) return;
@@ -580,49 +462,6 @@ export default function AnalyticsPage() {
             ? "Delete all analytics records?"
             : "";
   const clearConfirmDesc = clearConfirm ? "This cannot be undone." : "";
-  const analyticsInsight = useMemo(() => {
-    if (!stats) return null;
-    return buildAnalyticsInsight({
-      total: stats.total,
-      cvDownloads: stats.cvDownloads,
-      leadGenerated: stats.leadGenerated,
-      byReferrerGroup: stats.byReferrerGroup,
-    });
-  }, [stats]);
-  const analyticsAnomalies = useMemo(() => {
-    if (!stats?.trendByDay || stats.trendByDay.length === 0) return [];
-    return buildAnalyticsAnomalyCallouts(stats.trendByDay);
-  }, [stats?.trendByDay]);
-  const trendInterpretationCards = useMemo(() => {
-    if (!stats?.trendByDay || stats.trendByDay.length === 0) return [];
-    return buildAnalyticsTrendInterpretationCards(stats.trendByDay);
-  }, [stats?.trendByDay]);
-  const periodDeltaSummary = useMemo(() => {
-    if (!stats || !previousPeriodStats) return null;
-    const currentVisitors = stats.uniqueVisitors ?? 0;
-    const previousVisitors = previousPeriodStats.uniqueVisitors ?? 0;
-    const currentCv = stats.cvDownloads ?? 0;
-    const previousCv = previousPeriodStats.cvDownloads ?? 0;
-    const previousTopBySlug = new Map(
-      (previousPeriodStats.topEngagedContent ?? []).map((row) => [row.slug, row.engagementScore])
-    );
-    const topMovers = (stats.topEngagedContent ?? [])
-      .slice(0, 5)
-      .map((row) => ({
-        slug: row.slug,
-        title: row.title,
-        current: row.engagementScore,
-        previous: previousTopBySlug.get(row.slug) ?? 0,
-      }))
-      .map((row) => ({ ...row, delta: row.current - row.previous }))
-      .sort((a, b) => Math.abs(b.delta) - Math.abs(a.delta))
-      .slice(0, 3);
-    return {
-      visitors: { current: currentVisitors, previous: previousVisitors },
-      cv: { current: currentCv, previous: previousCv },
-      topMovers,
-    };
-  }, [stats, previousPeriodStats]);
 
   return (
     <div className="space-y-6">
@@ -647,7 +486,7 @@ export default function AnalyticsPage() {
       />
       <DashboardPageHeader
         title="Analytics"
-        description="CV downloads, who visited, where they came from, and which pages they viewed."
+        description="Visit totals, where traffic came from, and recent activity."
       />
 
       <div className="space-y-3">
@@ -853,97 +692,66 @@ export default function AnalyticsPage() {
             </Card>
           </div>
 
-          <div className="grid gap-6 md:grid-cols-2">
-            <Card>
-              <CardHeader>
-                <CardTitle>Where traffic came from</CardTitle>
-                <p className="text-sm text-muted-foreground">
-                  Referrer when the browser sends it (direct visits often show as empty or “direct”).
-                </p>
-              </CardHeader>
-              <CardContent className="space-y-6">
-                {stats.byReferrerGroup && stats.byReferrerGroup.length > 0 ? (
-                  <div>
-                    <p className="mb-2 text-sm font-medium text-foreground">Channel</p>
-                    <div className="max-h-64 overflow-auto rounded-lg border border-border">
-                      <table className="w-full text-sm">
-                        <thead>
-                          <tr className="border-b border-border text-left">
-                            <th className="py-2 pr-4 text-muted-foreground font-medium text-xs uppercase tracking-wide">Source</th>
-                            <th className="py-2 text-muted-foreground font-medium text-xs uppercase tracking-wide">Views</th>
-                          </tr>
-                        </thead>
-                        <tbody>
-                          {stats.byReferrerGroup.map((r) => (
-                            <tr key={r.group} className="border-b border-border/70">
-                              <td className="py-2 pr-4 text-foreground">{r.group}</td>
-                              <td className="py-2 tabular-nums">{r.count}</td>
-                            </tr>
-                          ))}
-                        </tbody>
-                      </table>
-                    </div>
-                  </div>
-                ) : null}
-                {stats.byReferrer && stats.byReferrer.length > 0 ? (
-                  <div>
-                    <p className="mb-2 text-sm font-medium text-foreground">Full referrer URL</p>
-                    <div className="max-h-64 overflow-auto rounded-lg border border-border">
-                      <table className="w-full text-sm">
-                        <thead>
-                          <tr className="border-b border-border text-left">
-                            <th className="py-2 pr-4 text-muted-foreground font-medium text-xs uppercase tracking-wide">URL</th>
-                            <th className="py-2 text-muted-foreground font-medium text-xs uppercase tracking-wide">Views</th>
-                          </tr>
-                        </thead>
-                        <tbody>
-                          {stats.byReferrer.map((r) => (
-                            <tr key={r.referrer} className="border-b border-border/70">
-                              <td className="py-2 pr-4 break-all text-foreground">{r.referrer}</td>
-                              <td className="py-2 tabular-nums">{r.count}</td>
-                            </tr>
-                          ))}
-                        </tbody>
-                      </table>
-                    </div>
-                  </div>
-                ) : null}
-                {(!stats.byReferrer || stats.byReferrer.length === 0) &&
-                (!stats.byReferrerGroup || stats.byReferrerGroup.length === 0) ? (
-                  <p className="text-sm text-muted-foreground">No referrer rows in this date range.</p>
-                ) : null}
-              </CardContent>
-            </Card>
-
-            <Card>
-              <CardHeader>
-                <CardTitle>Pages viewed</CardTitle>
-                <p className="text-sm text-muted-foreground">Which paths were opened, by view count.</p>
-              </CardHeader>
-              <CardContent>
-                <p className="mb-2 text-xs text-muted-foreground md:hidden">Scroll horizontally for long paths.</p>
-                <AnalyticsPathBars rows={stats.byPath} />
-                <div className="max-h-80 overflow-auto overscroll-x-contain mt-4">
-                  <table className="w-full text-sm min-w-[280px]">
-                    <thead>
-                      <tr className="border-b border-border text-left">
-                        <th className="py-2 pr-4 text-muted-foreground font-medium text-xs uppercase tracking-wide">Path</th>
-                        <th className="py-2 text-muted-foreground font-medium text-xs uppercase tracking-wide">Views</th>
-                      </tr>
-                    </thead>
-                    <tbody>
-                      {stats.byPath.map((p) => (
-                        <tr key={p.path} className="border-b border-border/70">
-                          <td className="py-2 pr-4 font-mono text-foreground">{p.path}</td>
-                          <td className="py-2">{p.count}</td>
+          <Card>
+            <CardHeader>
+              <CardTitle>Where traffic came from</CardTitle>
+              <p className="text-sm text-muted-foreground">
+                Referrer when the browser sends it (direct visits often show as empty or “direct”).
+              </p>
+            </CardHeader>
+            <CardContent className="space-y-6">
+              {stats.byReferrerGroup && stats.byReferrerGroup.length > 0 ? (
+                <div>
+                  <p className="mb-2 text-sm font-medium text-foreground">Channel</p>
+                  <div className="max-h-64 overflow-auto rounded-lg border border-border">
+                    <table className="w-full text-sm">
+                      <thead>
+                        <tr className="border-b border-border text-left">
+                          <th className="py-2 pr-4 text-muted-foreground font-medium text-xs uppercase tracking-wide">Source</th>
+                          <th className="py-2 text-muted-foreground font-medium text-xs uppercase tracking-wide">Views</th>
                         </tr>
-                      ))}
-                    </tbody>
-                  </table>
+                      </thead>
+                      <tbody>
+                        {stats.byReferrerGroup.map((r) => (
+                          <tr key={r.group} className="border-b border-border/70">
+                            <td className="py-2 pr-4 text-foreground">{r.group}</td>
+                            <td className="py-2 tabular-nums">{r.count}</td>
+                          </tr>
+                        ))}
+                      </tbody>
+                    </table>
+                  </div>
                 </div>
-              </CardContent>
-            </Card>
-          </div>
+              ) : null}
+              {stats.byReferrer && stats.byReferrer.length > 0 ? (
+                <div>
+                  <p className="mb-2 text-sm font-medium text-foreground">Full referrer URL</p>
+                  <div className="max-h-64 overflow-auto rounded-lg border border-border">
+                    <table className="w-full text-sm">
+                      <thead>
+                        <tr className="border-b border-border text-left">
+                          <th className="py-2 pr-4 text-muted-foreground font-medium text-xs uppercase tracking-wide">URL</th>
+                          <th className="py-2 text-muted-foreground font-medium text-xs uppercase tracking-wide">Views</th>
+                        </tr>
+                      </thead>
+                      <tbody>
+                        {stats.byReferrer.map((r) => (
+                          <tr key={r.referrer} className="border-b border-border/70">
+                            <td className="py-2 pr-4 break-all text-foreground">{r.referrer}</td>
+                            <td className="py-2 tabular-nums">{r.count}</td>
+                          </tr>
+                        ))}
+                      </tbody>
+                    </table>
+                  </div>
+                </div>
+              ) : null}
+              {(!stats.byReferrer || stats.byReferrer.length === 0) &&
+              (!stats.byReferrerGroup || stats.byReferrerGroup.length === 0) ? (
+                <p className="text-sm text-muted-foreground">No referrer rows in this date range.</p>
+              ) : null}
+            </CardContent>
+          </Card>
 
           <Card>
             <CardHeader>
@@ -1263,191 +1071,6 @@ export default function AnalyticsPage() {
                 </CardContent>
               </details>
             </Card>
-              </CardContent>
-            </details>
-          </Card>
-
-          <Card className="border-border bg-muted/40">
-            <details className="group">
-              <summary className="flex cursor-pointer list-none items-center justify-between gap-3 px-4 py-3 text-left text-sm font-medium hover:bg-muted/50 [&::-webkit-details-marker]:hidden">
-                <span>Help &amp; maintenance</span>
-                <ChevronDown className="h-4 w-4 shrink-0 text-muted-foreground transition-transform group-open:rotate-180" aria-hidden />
-              </summary>
-              <CardContent className="space-y-6 border-t border-border/80 pt-4 text-sm">
-                {trendInterpretationCards.length > 0 ? (
-                  <details className="rounded-lg border border-border bg-card">
-                    <summary className="cursor-pointer px-3 py-2 text-sm font-medium [&::-webkit-details-marker]:hidden">
-                      Trend notes (automated)
-                    </summary>
-                    <div className="border-t border-border px-3 py-3">
-                      <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
-                        {trendInterpretationCards.map((card) => (
-                          <div
-                            key={card.title}
-                            className={`rounded-lg border p-3 text-sm ${
-                              card.tone === "positive"
-                                ? "border-emerald-200 bg-emerald-50/80 text-emerald-950"
-                                : card.tone === "caution"
-                                  ? "border-amber-200 bg-amber-50/80 text-amber-950"
-                                  : "border-border bg-muted/25 text-foreground"
-                            }`}
-                          >
-                            <p className="font-medium text-foreground">{card.title}</p>
-                            <p className="mt-1 text-xs leading-relaxed opacity-90">{card.detail}</p>
-                          </div>
-                        ))}
-                      </div>
-                    </div>
-                  </details>
-                ) : null}
-                {analyticsInsight || analyticsAnomalies.length > 0 ? (
-                  <details className="rounded-lg border border-border bg-card">
-                    <summary className="cursor-pointer px-3 py-2 text-sm font-medium [&::-webkit-details-marker]:hidden">
-                      Automated notes
-                    </summary>
-                    <div className="space-y-3 border-t border-border px-3 py-3">
-                      {analyticsInsight ? <p className="text-foreground">{analyticsInsight}</p> : null}
-                      {analyticsAnomalies.map((callout) => (
-                        <div
-                          key={callout.title}
-                          className={`rounded-lg border px-3 py-2 text-sm ${
-                            callout.level === "warning"
-                              ? "border-amber-300 bg-amber-50 text-amber-900"
-                              : callout.level === "positive"
-                                ? "border-emerald-300 bg-emerald-50 text-emerald-900"
-                                : "border-border bg-muted/30 text-foreground"
-                          }`}
-                        >
-                          <p className="font-medium">{callout.title}</p>
-                          <p className="text-xs opacity-90">{callout.detail}</p>
-                        </div>
-                      ))}
-                    </div>
-                  </details>
-                ) : null}
-                {previousPeriodRange ? (
-                  <details className="rounded-lg border border-border bg-card">
-                    <summary className="cursor-pointer px-3 py-2 text-sm font-medium [&::-webkit-details-marker]:hidden">
-                      Period comparison
-                    </summary>
-                    <div className="space-y-3 border-t border-border px-3 py-3">
-                      <p className="text-xs text-muted-foreground">
-                        {from} → {to} vs {previousPeriodRange.from} → {previousPeriodRange.to}
-                      </p>
-                      {loadingPreviousPeriod ? (
-                        <div className="space-y-3" aria-busy="true">
-                          <div className="grid gap-3 sm:grid-cols-2">
-                            {[0, 1].map((key) => (
-                              <Skeleton key={key} className="h-[4.5rem] w-full" />
-                            ))}
-                          </div>
-                        </div>
-                      ) : periodDeltaSummary ? (
-                        <>
-                          <div className="grid gap-3 sm:grid-cols-2">
-                            <div className="rounded-lg border border-border bg-muted/30 p-3">
-                              <p className="text-xs uppercase tracking-wide text-muted-foreground">Visitors Δ</p>
-                              <p className="mt-1 text-xl font-semibold text-foreground">
-                                {formatSignedDelta(periodDeltaSummary.visitors.current, periodDeltaSummary.visitors.previous)}
-                              </p>
-                            </div>
-                            <div className="rounded-lg border border-border bg-muted/30 p-3">
-                              <p className="text-xs uppercase tracking-wide text-muted-foreground">CV Δ</p>
-                              <p className="mt-1 text-xl font-semibold text-foreground">
-                                {formatSignedDelta(periodDeltaSummary.cv.current, periodDeltaSummary.cv.previous)}
-                              </p>
-                            </div>
-                          </div>
-                          {periodDeltaSummary.topMovers.length > 0 ? (
-                            <ul className="text-sm text-foreground space-y-1">
-                              {periodDeltaSummary.topMovers.map((mover) => (
-                                <li key={mover.slug}>
-                                  {mover.title}: {mover.delta > 0 ? "+" : ""}
-                                  {mover.delta.toFixed(2)}
-                                </li>
-                              ))}
-                            </ul>
-                          ) : null}
-                        </>
-                      ) : (
-                        <p className="text-muted-foreground">Not enough data.</p>
-                      )}
-                    </div>
-                  </details>
-                ) : null}
-                <details className="rounded-lg border border-border bg-card">
-                  <summary className="cursor-pointer px-3 py-2 text-sm font-medium [&::-webkit-details-marker]:hidden">
-                    Privacy &amp; opt-out
-                  </summary>
-                  <div className="space-y-3 border-t border-border px-3 py-3 text-muted-foreground">
-                    <p>
-                      Probes and scanner UAs are filtered from totals. Default stats omit unknown / loopback / private IPs unless you use{" "}
-                      <span className="font-medium text-foreground">Filters → Include local &amp; unknown</span>.
-                    </p>
-                    <label className="flex cursor-pointer items-start gap-3 rounded-lg border border-border bg-muted/30 p-3">
-                      <input
-                        type="checkbox"
-                        className="mt-1 rounded border-input"
-                        checked={excludeThisBrowser}
-                        onChange={(e) => {
-                          const on = e.target.checked;
-                          setExcludeThisBrowser(on);
-                          setAnalyticsOptOutInBrowser(on);
-                          toast(
-                            on ? "This browser will not be counted." : "This browser will be counted again.",
-                            "success",
-                          );
-                        }}
-                      />
-                      <span className="font-medium text-foreground">Do not count this browser</span>
-                    </label>
-                  </div>
-                </details>
-                <details className="rounded-lg border border-border bg-card">
-                  <summary className="cursor-pointer px-3 py-2 text-sm font-medium [&::-webkit-details-marker]:hidden">
-                    Application health
-                  </summary>
-                  <div className="border-t border-border px-3 py-3">
-                    <Button
-                      type="button"
-                      variant="outline"
-                      size="sm"
-                      className="mb-3 h-8 text-xs"
-                      onClick={() => setRefreshKey((k) => k + 1)}
-                    >
-                      Refresh health
-                    </Button>
-                    {!healthSnapshot.loaded ? (
-                      <div className="space-y-2" aria-busy="true">
-                        <Skeleton className="h-4 w-52" />
-                        <Skeleton className="h-4 w-64" />
-                      </div>
-                    ) : (
-                      <div className="flex flex-wrap gap-x-6 gap-y-2 text-sm">
-                        {healthFetchError ? (
-                          <p className="w-full rounded-md border border-amber-200 bg-amber-50 px-2 py-1.5 text-xs text-amber-900">
-                            {healthFetchError}
-                          </p>
-                        ) : null}
-                        <p>
-                          <span className="text-muted-foreground">DB:</span>{" "}
-                          <span className={healthSnapshot.db === "ok" ? "font-medium text-emerald-700" : "font-medium text-amber-800"}>
-                            {healthSnapshot.db}
-                          </span>
-                        </p>
-                        {healthSnapshot.uptimeSeconds != null && (
-                          <p className="text-muted-foreground">
-                            Uptime: {Math.floor(healthSnapshot.uptimeSeconds / 3600)}h{" "}
-                            {Math.floor((healthSnapshot.uptimeSeconds % 3600) / 60)}m
-                          </p>
-                        )}
-                        {healthSnapshot.appVersion ? (
-                          <p className="font-mono text-xs break-all">{healthSnapshot.appVersion}</p>
-                        ) : null}
-                      </div>
-                    )}
-                  </div>
-                </details>
               </CardContent>
             </details>
           </Card>

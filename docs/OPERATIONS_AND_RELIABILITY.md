@@ -29,7 +29,7 @@ This document describes how to run the site for **high availability (HA)**, **re
 
 ## Health checks and load balancers
 
-- **`GET /api/health`** returns JSON: `{ ok, db, uptimeSeconds?, node? }` (and `version` on `/api/v1/health`). `node` is the Node.js runtime (e.g. `v20.10.0`). HTTP **200** when PostgreSQL is reachable; **503** when the DB check fails. Use for **readiness** (is the app able to serve traffic?) and for Docker Compose healthchecks.
+- **`GET /api/health`** returns JSON: `{ ok, db, uptimeSeconds?, node? }`. `node` is the Node.js runtime (e.g. `v20.10.0`). HTTP **200** when PostgreSQL is reachable; **503** when the DB check fails. Use for **readiness** (is the app able to serve traffic?) and for Docker Compose healthchecks.
 - **`GET /api/live`** returns `{ ok: true, live: true }` with HTTP **200** and does **not** query the database. Use for **liveness** probes that only need to know the Node process is running (cheaper than `/api/health` on every tick).
 - **Docker Compose** uses `/api/health` so the container is marked unhealthy if Postgres is down.
 - **Kubernetes-style split:** **liveness** → `/api/live`; **readiness** → `/api/health`.
@@ -59,7 +59,7 @@ This document describes how to run the site for **high availability (HA)**, **re
 - **Uptime:** HTTP monitors on `/` and `/api/health` (external) and optionally Docker health status (host).
 - **Logs:** Container stdout/stderr; optionally forward to your log stack.
 - **Errors:** Rely on application logs and reverse-proxy access/error logs; add external monitoring if needed.
-- **Dashboard:** **Analytics** shows traffic and an **Application health** card that calls `/api/health`. **Site overview** (`/dashboard/overview`) includes **System status** with periodic checks.
+- **Dashboard:** `/dashboard` opens **Analytics**. Health probes remain at `/api/live` and `/api/health` (see runbooks).
 
 ---
 
