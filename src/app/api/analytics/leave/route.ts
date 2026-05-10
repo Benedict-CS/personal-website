@@ -3,6 +3,7 @@ import { prisma } from "@/lib/prisma";
 import { normalizeIP } from "@/lib/analytics-excluded-ips";
 import { getRequestOrigin } from "@/lib/get-request-origin";
 import { checkRateLimitAsync } from "@/lib/rate-limit";
+import { isAccessBlocked } from "@/lib/access-blocked-ips";
 
 const siteOrigin = process.env.NEXT_PUBLIC_SITE_URL || process.env.NEXTAUTH_URL || "";
 
@@ -38,6 +39,9 @@ export async function POST(request: NextRequest) {
   const ip = normalizeIP(ipRaw);
   if (!ip || ip === "unknown") {
     return NextResponse.json({ ok: true });
+  }
+  if (isAccessBlocked(ip)) {
+    return NextResponse.json({ ok: true, skipped: "access_blocked" });
   }
   const { ok: rateAllowed, remaining } = await checkRateLimitAsync(ip, "analytics_leave");
   if (!rateAllowed) {

@@ -45,6 +45,22 @@ async function loadRoute(secret?: string) {
 }
 
 describe("POST /api/analytics/view", () => {
+  const origAccessBlockPrefixes = process.env.ACCESS_BLOCK_IP_PREFIXES;
+  const origAccessAllowIps = process.env.ACCESS_ALLOW_IPS;
+  const origAccessBlockPublic = process.env.ACCESS_BLOCK_PUBLIC;
+  const origAccessBlockAdminOnly = process.env.ACCESS_BLOCK_ADMIN_ONLY;
+
+  afterEach(() => {
+    if (origAccessBlockPrefixes === undefined) delete process.env.ACCESS_BLOCK_IP_PREFIXES;
+    else process.env.ACCESS_BLOCK_IP_PREFIXES = origAccessBlockPrefixes;
+    if (origAccessAllowIps === undefined) delete process.env.ACCESS_ALLOW_IPS;
+    else process.env.ACCESS_ALLOW_IPS = origAccessAllowIps;
+    if (origAccessBlockPublic === undefined) delete process.env.ACCESS_BLOCK_PUBLIC;
+    else process.env.ACCESS_BLOCK_PUBLIC = origAccessBlockPublic;
+    if (origAccessBlockAdminOnly === undefined) delete process.env.ACCESS_BLOCK_ADMIN_ONLY;
+    else process.env.ACCESS_BLOCK_ADMIN_ONLY = origAccessBlockAdminOnly;
+  });
+
   beforeEach(() => {
     jest.clearAllMocks();
     mockIsPrivateIP.mockReturnValue(false);
@@ -125,6 +141,45 @@ describe("POST /api/analytics/view", () => {
     const res = await POST(req);
     const data = await res.json();
     expect(data).toEqual({ ok: true, skipped: "no_client_ip" });
+    expect(mockCreate).not.toHaveBeenCalled();
+  });
+
+  it("returns access_blocked skip for browser beacon when IP matches block prefixes", async () => {
+    process.env.ACCESS_BLOCK_IP_PREFIXES = "140.113.194.";
+    delete process.env.ACCESS_ALLOW_IPS;
+    delete process.env.ACCESS_BLOCK_PUBLIC;
+    delete process.env.ACCESS_BLOCK_ADMIN_ONLY;
+    const POST = await loadRoute();
+    const req = new NextRequest("http://localhost/api/analytics/view", {
+      method: "POST",
+      headers: {
+        origin: "https://site.test",
+        "content-type": "application/json",
+        "x-forwarded-for": "140.113.194.10",
+      },
+      body: JSON.stringify({ path: "/blog" }),
+    });
+    const res = await POST(req);
+    const data = await res.json();
+    expect(data).toEqual({ ok: true, skipped: "access_blocked" });
+    expect(mockCreate).not.toHaveBeenCalled();
+  });
+
+  it("returns access_blocked skip for middleware-secret flow when body ip is blocked", async () => {
+    process.env.ACCESS_BLOCK_IP_PREFIXES = "140.113.194.";
+    delete process.env.ACCESS_ALLOW_IPS;
+    const POST = await loadRoute("secret-1");
+    const req = new NextRequest("http://localhost/api/analytics/view", {
+      method: "POST",
+      headers: {
+        "x-analytics-secret": "secret-1",
+        "content-type": "application/json",
+      },
+      body: JSON.stringify({ path: "/blog", ip: "140.113.194.10" }),
+    });
+    const res = await POST(req);
+    const data = await res.json();
+    expect(data).toEqual({ ok: true, skipped: "access_blocked" });
     expect(mockCreate).not.toHaveBeenCalled();
   });
 

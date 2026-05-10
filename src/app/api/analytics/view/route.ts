@@ -12,6 +12,7 @@ import {
   isLikelyOutdatedFakeUserAgent,
   isLikelyScannerUserAgent,
 } from "@/lib/analytics-noise";
+import { isAccessBlocked } from "@/lib/access-blocked-ips";
 
 export const dynamic = "force-dynamic";
 
@@ -107,6 +108,9 @@ export async function POST(request: NextRequest) {
   const canonicalIP = normalizeIP(ip);
   if (!canonicalIP || canonicalIP === "unknown") {
     return NextResponse.json({ ok: true, skipped: "no_client_ip" });
+  }
+  if (isAccessBlocked(canonicalIP)) {
+    return NextResponse.json({ ok: true, skipped: "access_blocked" });
   }
   if (await isRecentDuplicate(canonicalIP, viewPath)) {
     return NextResponse.json({ ok: true, skipped: "dedup" });

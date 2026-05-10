@@ -25,6 +25,16 @@ async function loadRoute() {
 }
 
 describe("POST /api/analytics/leave", () => {
+  const origAccessBlockPrefixes = process.env.ACCESS_BLOCK_IP_PREFIXES;
+  const origAccessAllowIps = process.env.ACCESS_ALLOW_IPS;
+
+  afterEach(() => {
+    if (origAccessBlockPrefixes === undefined) delete process.env.ACCESS_BLOCK_IP_PREFIXES;
+    else process.env.ACCESS_BLOCK_IP_PREFIXES = origAccessBlockPrefixes;
+    if (origAccessAllowIps === undefined) delete process.env.ACCESS_ALLOW_IPS;
+    else process.env.ACCESS_ALLOW_IPS = origAccessAllowIps;
+  });
+
   beforeEach(() => {
     jest.clearAllMocks();
     mockGetRequestOrigin.mockReturnValue("https://site.test");
@@ -77,6 +87,25 @@ describe("POST /api/analytics/leave", () => {
     const res = await POST(req);
     expect(res.status).toBe(200);
     expect(mockUpdate).not.toHaveBeenCalled();
+  });
+
+  it("returns access_blocked skip without DB when IP matches block prefixes", async () => {
+    process.env.ACCESS_BLOCK_IP_PREFIXES = "140.113.194.";
+    delete process.env.ACCESS_ALLOW_IPS;
+    const POST = await loadRoute();
+    const req = new NextRequest("http://localhost/api/analytics/leave", {
+      method: "POST",
+      headers: {
+        origin: "https://site.test",
+        "content-type": "application/json",
+        "x-forwarded-for": "140.113.194.10",
+      },
+      body: JSON.stringify({ path: "/blog", durationSeconds: 5 }),
+    });
+    const res = await POST(req);
+    const data = await res.json();
+    expect(data).toEqual({ ok: true, skipped: "access_blocked" });
+    expect(mockFindFirst).not.toHaveBeenCalled();
   });
 
   it("updates latest page view when record exists", async () => {
