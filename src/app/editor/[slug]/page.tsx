@@ -30,7 +30,9 @@ export default async function ImmersiveEditorPage({ params, searchParams }: Prop
   return (
     <>
       {editorSlug === "home" ? <HomePage /> : null}
-      {editorSlug === "about" ? <AboutPage searchParams={Promise.resolve({})} /> : null}
+      {editorSlug === "about" ? (
+        <AboutPage searchParams={Promise.resolve({ editor: "1" })} />
+      ) : null}
       {editorSlug === "blog" ? (
         <div className="container mx-auto max-w-6xl px-4 py-8 pb-28">
           <DashboardPostsPage searchParams={searchParams} />

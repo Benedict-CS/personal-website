@@ -68,6 +68,9 @@ describe("isLikelyOutdatedFakeUserAgent", () => {
     expect(isLikelyOutdatedFakeUserAgent("Mozilla/5.0 (Macintosh; Intel Mac OS X 10.9; rv:35.0) Gecko/20100101 Firefox/35.0")).toBe(true);
     expect(isLikelyOutdatedFakeUserAgent("Mozilla/5.0 (Windows NT 10.0) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/41.0")).toBe(true);
     expect(isLikelyOutdatedFakeUserAgent("Mozilla/5.0 (iPhone; U; CPU iPhone OS 5_1_1 like Mac OS X; da-dk) AppleWebKit/534")).toBe(true);
+    /** iPad UA shape: `CPU OS X_Y like Mac OS X` (no "iPhone"). Was missed by previous regex. */
+    expect(isLikelyOutdatedFakeUserAgent("Mozilla/5.0 (iPad; CPU OS 11_0 like Mac OS X) AppleWebKit/604.1.38 (KHTML, like Gecko) Version/11.0 Mobile/15A5362a Safari/604.1")).toBe(true);
+    expect(isLikelyOutdatedFakeUserAgent("Mozilla/5.0 (iPad; CPU OS 12_4 like Mac OS X) AppleWebKit/605.1.15 Version/12.0")).toBe(true);
     expect(isLikelyOutdatedFakeUserAgent("SonyEricssonK810i/R1KG Browser/NetFront/3.3")).toBe(true);
     expect(isLikelyOutdatedFakeUserAgent("Mozilla/5.0 (BeOS; U; BeOS BePC; en-US; rv:1.9a1) Gecko/20060702")).toBe(true);
     /** AppleWebKit/537.36 with no Chrome/Edg token → forged. */
@@ -79,5 +82,6 @@ describe("isLikelyOutdatedFakeUserAgent", () => {
     expect(isLikelyOutdatedFakeUserAgent("Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/17.4 Safari/605.1.15")).toBe(false);
     expect(isLikelyOutdatedFakeUserAgent("Mozilla/5.0 (Windows NT 10.0; rv:121.0) Gecko/20100101 Firefox/121.0")).toBe(false);
     expect(isLikelyOutdatedFakeUserAgent("Mozilla/5.0 (iPhone; CPU iPhone OS 17_4_1 like Mac OS X) AppleWebKit/605.1.15 Version/17.4")).toBe(false);
+    expect(isLikelyOutdatedFakeUserAgent("Mozilla/5.0 (iPad; CPU OS 17_4 like Mac OS X) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/17.4 Mobile/15E148 Safari/604.1")).toBe(false);
   });
 });

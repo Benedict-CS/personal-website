@@ -126,6 +126,7 @@ services:
       # Site-wide IP block (proxy) and analytics — must be listed here or the container never sees host .env keys
       - ACCESS_BLOCK_IP_PREFIXES=${ACCESS_BLOCK_IP_PREFIXES:-}
       - ACCESS_BLOCK_PUBLIC=${ACCESS_BLOCK_PUBLIC:-}
+      - ACCESS_BLOCK_ADMIN_ONLY=${ACCESS_BLOCK_ADMIN_ONLY:-}
       - ACCESS_ALLOW_IPS=${ACCESS_ALLOW_IPS:-}
       - ACCESS_BLOCK_LOG_SECRET=${ACCESS_BLOCK_LOG_SECRET:-}
       - ANALYTICS_SECRET=${ANALYTICS_SECRET:-}

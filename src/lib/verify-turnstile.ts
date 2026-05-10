@@ -1,4 +1,15 @@
 /**
+ * True when the operator has configured Turnstile (both site key and secret).
+ * When false, the sign-in flow must NOT require CAPTCHA — otherwise a soft-locked
+ * IP can never log in (no widget can render, no token can satisfy the server).
+ */
+export function isTurnstileConfigured(): boolean {
+  const secret = process.env.TURNSTILE_SECRET_KEY?.trim();
+  const siteKey = process.env.NEXT_PUBLIC_TURNSTILE_SITE_KEY?.trim();
+  return Boolean(secret && siteKey);
+}
+
+/**
  * Verify Cloudflare Turnstile token server-side.
  * POST https://challenges.cloudflare.com/turnstile/v0/siteverify
  */

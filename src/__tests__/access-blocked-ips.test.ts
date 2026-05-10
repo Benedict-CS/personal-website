@@ -56,10 +56,22 @@ function req(pathname: string, method = "GET") {
 
 describe("shouldEnforceAccessBlockIp", () => {
   const origPublic = process.env.ACCESS_BLOCK_PUBLIC;
+  const origPrefixes = process.env.ACCESS_BLOCK_IP_PREFIXES;
+  const origAdminOnly = process.env.ACCESS_BLOCK_ADMIN_ONLY;
+
+  beforeEach(() => {
+    delete process.env.ACCESS_BLOCK_IP_PREFIXES;
+    delete process.env.ACCESS_BLOCK_PUBLIC;
+    delete process.env.ACCESS_BLOCK_ADMIN_ONLY;
+  });
 
   afterEach(() => {
     if (origPublic === undefined) delete process.env.ACCESS_BLOCK_PUBLIC;
     else process.env.ACCESS_BLOCK_PUBLIC = origPublic;
+    if (origPrefixes === undefined) delete process.env.ACCESS_BLOCK_IP_PREFIXES;
+    else process.env.ACCESS_BLOCK_IP_PREFIXES = origPrefixes;
+    if (origAdminOnly === undefined) delete process.env.ACCESS_BLOCK_ADMIN_ONLY;
+    else process.env.ACCESS_BLOCK_ADMIN_ONLY = origAdminOnly;
   });
 
   it("enforces every path when ACCESS_BLOCK_PUBLIC=1", () => {
@@ -67,6 +79,32 @@ describe("shouldEnforceAccessBlockIp", () => {
     expect(shouldEnforceAccessBlockIp(req("/"))).toBe(true);
     expect(shouldEnforceAccessBlockIp(req("/blog"))).toBe(true);
     expect(shouldEnforceAccessBlockIp(req("/api/posts", "GET"))).toBe(true);
+  });
+
+  it("enforces every path when block prefixes are set (default full site)", () => {
+    process.env.ACCESS_BLOCK_IP_PREFIXES = "140.113.194.";
+    delete process.env.ACCESS_BLOCK_PUBLIC;
+    delete process.env.ACCESS_BLOCK_ADMIN_ONLY;
+    expect(shouldEnforceAccessBlockIp(req("/"))).toBe(true);
+    expect(shouldEnforceAccessBlockIp(req("/blog"))).toBe(true);
+    expect(shouldEnforceAccessBlockIp(req("/api/posts", "GET"))).toBe(true);
+  });
+
+  it("does not enforce public pages when ACCESS_BLOCK_ADMIN_ONLY=1 with prefixes", () => {
+    process.env.ACCESS_BLOCK_IP_PREFIXES = "140.113.194.";
+    process.env.ACCESS_BLOCK_ADMIN_ONLY = "1";
+    delete process.env.ACCESS_BLOCK_PUBLIC;
+    expect(shouldEnforceAccessBlockIp(req("/"))).toBe(false);
+    expect(shouldEnforceAccessBlockIp(req("/blog"))).toBe(false);
+    expect(shouldEnforceAccessBlockIp(req("/api/posts", "GET"))).toBe(false);
+  });
+
+  it("does not enforce public pages when ACCESS_BLOCK_PUBLIC=0 with prefixes", () => {
+    process.env.ACCESS_BLOCK_IP_PREFIXES = "140.113.194.";
+    process.env.ACCESS_BLOCK_PUBLIC = "0";
+    delete process.env.ACCESS_BLOCK_ADMIN_ONLY;
+    expect(shouldEnforceAccessBlockIp(req("/"))).toBe(false);
+    expect(shouldEnforceAccessBlockIp(req("/blog"))).toBe(false);
   });
 
   it("enforces dashboard, editor, auth, and non-public API", () => {

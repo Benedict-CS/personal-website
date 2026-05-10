@@ -255,8 +255,14 @@ export function isLikelyOutdatedFakeUserAgent(userAgent: string | null | undefin
   if (/\bTrident\//i.test(ua)) return true;
   /** Symbian, BeOS, WPDesktop: ancient mobile/desktop OS. */
   if (/\b(SymbianOS|BeOS|WPDesktop|SonyEricsson|MIDP-)/i.test(ua)) return true;
-  /** Old iPhone OS major versions (anything below 13). */
-  const iosMatch = ua.match(/iPhone OS (\d+)[_\d]*/i);
+  /**
+   * Old iOS / iPadOS major versions (anything below 13).
+   * iPhone Safari emits `CPU iPhone OS 17_4_1 like Mac OS X`; iPad Safari emits
+   * `CPU OS 17_4_1 like Mac OS X` (no "iPhone"). Older Safari versions use the
+   * legacy `iPhone OS 11_0 like Mac OS X`. Match all three so iPad-shaped
+   * scanner UAs are not let through.
+   */
+  const iosMatch = ua.match(/(?:CPU iPhone OS|iPhone OS|CPU OS) (\d+)[_\d]*\s+like\s+Mac OS X/i);
   if (iosMatch && Number(iosMatch[1]) < 13) return true;
   const macOsMatch = ua.match(/Mac OS X 10[._](\d+)/i);
   /** macOS 10.10–10.14 are 2014–2018; 2026 visitors are on 13+ (or 10.15 at oldest). */

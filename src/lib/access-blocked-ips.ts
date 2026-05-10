@@ -1,12 +1,18 @@
 /**
  * Optional IP blocking at the edge (see src/proxy.ts + shouldEnforceAccessBlockIp).
  *
- * **Default (ACCESS_BLOCK_PUBLIC unset / false):** blocked IPs get **403** on `/dashboard`,
- * `/editor`, `/auth`, and most `/api/*` routes — **not** on public HTML (`/`, `/blog`, …) or
- * the small set of GET APIs listed in `shouldEnforceAccessBlockIp`, so the public site still loads.
+ * **When `ACCESS_BLOCK_IP_PREFIXES` is non-empty:** blocked IPs get **403 on every path** by default
+ * (except the internal `POST /api/analytics/access-block-log` bypass in `proxy.ts`), so they cannot
+ * load `/`, `/blog`, or hit analytics beacons. Allow exact IPs with `ACCESS_ALLOW_IPS`.
  *
- * **Strict (ACCESS_BLOCK_PUBLIC=1|true|yes):** blocked IPs get **403 on every path** (except the
- * internal `POST /api/analytics/access-block-log` bypass in `proxy.ts`). No public blog, no analytics views.
+ * **Legacy selective mode:** set `ACCESS_BLOCK_ADMIN_ONLY=1|true|yes` so blocked IPs are only denied on
+ * `/dashboard`, `/editor`, `/auth`, and most `/api/*` — public HTML and the small set of public GET APIs
+ * in `shouldEnforceAccessBlockIp` still work (old default behavior).
+ *
+ * **Explicit flags:** `ACCESS_BLOCK_PUBLIC=1|true|yes` forces full-site enforcement even with
+ * `ACCESS_BLOCK_ADMIN_ONLY`. `ACCESS_BLOCK_PUBLIC=0|false|no` forces selective enforcement even when
+ * prefixes are set.
+ *
  * - ACCESS_BLOCK_IP_PREFIXES: comma-separated IPv4 prefixes; use a trailing dot so
  *   e.g. "140.113.194." matches 140.113.194.0–255 only (not 140.113.1949.x).
  * - ACCESS_ALLOW_IPS: exact IPs that may always access the site even if they match a block prefix.
@@ -70,17 +76,32 @@ export function isAccessBlocked(ip: string): boolean {
   return prefixes.some((prefix) => norm.startsWith(prefix));
 }
 
-function isStrictPublicAccessBlock(): boolean {
-  const v = (process.env.ACCESS_BLOCK_PUBLIC || "").trim().toLowerCase();
-  return v === "1" || v === "true" || v === "yes";
+function parseExplicitBool(v: string | undefined): boolean | null {
+  const s = (v || "").trim().toLowerCase();
+  if (s === "1" || s === "true" || s === "yes") return true;
+  if (s === "0" || s === "false" || s === "no") return false;
+  return null;
+}
+
+/** True → 403 blocked IPs on all routes; false → only dashboard/editor/auth and locked-down APIs. */
+function isFullSiteAccessBlockEnforced(): boolean {
+  const publicFlag = parseExplicitBool(process.env.ACCESS_BLOCK_PUBLIC);
+  if (publicFlag === true) return true;
+  if (publicFlag === false) return false;
+
+  const adminOnly = parseExplicitBool(process.env.ACCESS_BLOCK_ADMIN_ONLY);
+  if (adminOnly === true) return false;
+
+  return parsePrefixes().length > 0;
 }
 
 /**
  * When `isAccessBlocked` matches, decide whether to return 403 for this request.
- * See file header: default is selective; set `ACCESS_BLOCK_PUBLIC=1` for full-site block.
+ * See file header: non-empty prefixes imply full-site block unless `ACCESS_BLOCK_ADMIN_ONLY` or
+ * `ACCESS_BLOCK_PUBLIC=0`.
  */
 export function shouldEnforceAccessBlockIp(request: { nextUrl: { pathname: string }; method: string }): boolean {
-  if (isStrictPublicAccessBlock()) {
+  if (isFullSiteAccessBlockEnforced()) {
     return true;
   }
 

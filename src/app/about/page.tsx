@@ -331,12 +331,15 @@ function normalizeBlockMarkdown(content: string): string {
 export default async function AboutPage({
   searchParams,
 }: {
-  searchParams: Promise<{ print?: string | string[] }>;
+  searchParams: Promise<{ print?: string | string[]; editor?: string | string[] }>;
 }) {
   const sp = await searchParams;
   const printRaw = sp?.print;
   const printParam = Array.isArray(printRaw) ? printRaw[0] : printRaw;
   const isPrintMode = printParam === "1" || printParam === "true";
+  const editorRaw = sp?.editor;
+  const editorParam = Array.isArray(editorRaw) ? editorRaw[0] : editorRaw;
+  const forceStructuredFromEditor = editorParam === "1" || editorParam === "true";
 
   const config = await getAboutConfig();
   const { profileImage, heroName, heroTagline, heroPortfolioLabel, heroPortfolioUrl, introText, aboutMainContent, educationBlocks, experienceBlocks, volunteerBlocks, projectBlocks, schoolLogos, projectImages, companyLogos, technicalSkills, achievements, customSections, sectionOrder, sectionVisibility, sectionTitles } = config;
@@ -369,7 +372,13 @@ export default async function AboutPage({
     const idx = normalizedSectionOrder.indexOf(id);
     return idx === -1 ? normalizedSectionOrder.length : idx;
   };
-  const useStructuredBlocks = educationBlocks.length > 0 || experienceBlocks.length > 0 || volunteerBlocks.length > 0 || projectBlocks.length > 0 || customSections.length > 0;
+  const useStructuredBlocks =
+    forceStructuredFromEditor ||
+    educationBlocks.length > 0 ||
+    experienceBlocks.length > 0 ||
+    volunteerBlocks.length > 0 ||
+    projectBlocks.length > 0 ||
+    customSections.length > 0;
 
   if (process.env.NODE_ENV === "development") {
     console.log("About page config:", {

@@ -16,6 +16,7 @@ describe("proxy dashboard/editor split", () => {
   const origAllow = process.env.ACCESS_ALLOW_IPS;
   const origEnableHsts = process.env.ENABLE_HSTS;
   const origBlockPublic = process.env.ACCESS_BLOCK_PUBLIC;
+  const origBlockAdminOnly = process.env.ACCESS_BLOCK_ADMIN_ONLY;
 
   beforeEach(() => {
     jest.clearAllMocks();
@@ -23,6 +24,7 @@ describe("proxy dashboard/editor split", () => {
     delete process.env.ACCESS_BLOCK_IP_PREFIXES;
     delete process.env.ACCESS_ALLOW_IPS;
     delete process.env.ACCESS_BLOCK_PUBLIC;
+    delete process.env.ACCESS_BLOCK_ADMIN_ONLY;
     delete process.env.ENABLE_HSTS;
   });
 
@@ -31,6 +33,8 @@ describe("proxy dashboard/editor split", () => {
     process.env.ACCESS_ALLOW_IPS = origAllow;
     if (origBlockPublic === undefined) delete process.env.ACCESS_BLOCK_PUBLIC;
     else process.env.ACCESS_BLOCK_PUBLIC = origBlockPublic;
+    if (origBlockAdminOnly === undefined) delete process.env.ACCESS_BLOCK_ADMIN_ONLY;
+    else process.env.ACCESS_BLOCK_ADMIN_ONLY = origBlockAdminOnly;
     if (origEnableHsts === undefined) delete process.env.ENABLE_HSTS;
     else process.env.ENABLE_HSTS = origEnableHsts;
   });
@@ -128,9 +132,10 @@ describe("proxy dashboard/editor split", () => {
     expect(res!.status).toBe(403);
   });
 
-  it("returns 403 for blocked IP on /blog when ACCESS_BLOCK_PUBLIC=1", async () => {
+  it("returns 403 for blocked IP on /blog when prefixes are configured (default full site)", async () => {
     process.env.ACCESS_BLOCK_IP_PREFIXES = "140.113.194.";
-    process.env.ACCESS_BLOCK_PUBLIC = "1";
+    delete process.env.ACCESS_BLOCK_PUBLIC;
+    delete process.env.ACCESS_BLOCK_ADMIN_ONLY;
     delete process.env.ACCESS_ALLOW_IPS;
     const headers = new Headers();
     headers.set("x-forwarded-for", "140.113.194.10");
@@ -145,8 +150,9 @@ describe("proxy dashboard/editor split", () => {
     expect(res!.status).toBe(403);
   });
 
-  it("allows blocked IP to reach public blog and its GET APIs (not admin)", async () => {
+  it("allows blocked IP to reach public blog when ACCESS_BLOCK_ADMIN_ONLY=1 (legacy selective)", async () => {
     process.env.ACCESS_BLOCK_IP_PREFIXES = "140.113.194.";
+    process.env.ACCESS_BLOCK_ADMIN_ONLY = "1";
     delete process.env.ACCESS_ALLOW_IPS;
     const headers = new Headers();
     headers.set("x-forwarded-for", "140.113.194.10");

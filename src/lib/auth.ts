@@ -11,7 +11,7 @@ import {
   getAttemptCountAsync,
   CAPTCHA_REQUIRED_AFTER,
 } from "@/lib/login-rate-limit";
-import { verifyTurnstileToken } from "@/lib/verify-turnstile";
+import { isTurnstileConfigured, verifyTurnstileToken } from "@/lib/verify-turnstile";
 import { isPrivateUrl } from "@/lib/is-private-url";
 import { encode as jwtEncode, decode as jwtDecode } from "next-auth/jwt";
 
@@ -74,7 +74,15 @@ export const authOptions: NextAuthOptions = {
         const ip = getClientIP(req?.headers);
         await assertNotLockedAsync(ip);
 
-        const needCaptcha = (await getAttemptCountAsync(ip)) >= CAPTCHA_REQUIRED_AFTER;
+        /**
+         * Only enforce CAPTCHA when Turnstile is actually configured. Otherwise an IP that
+         * hit the failure threshold becomes permanently un-loggable: the server demands a
+         * token, but the client has no widget to produce one, so even the correct password
+         * is rejected as "Wrong password or invalid CAPTCHA".
+         */
+        const turnstileOn = isTurnstileConfigured();
+        const needCaptcha =
+          turnstileOn && (await getAttemptCountAsync(ip)) >= CAPTCHA_REQUIRED_AFTER;
         if (needCaptcha) {
           const ok = await verifyTurnstileToken(credentials.captchaToken, ip);
           if (!ok) return null; // CAPTCHA missing or invalid

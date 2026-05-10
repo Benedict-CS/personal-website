@@ -1,6 +1,7 @@
 import { NextRequest } from "next/server";
 import { GET } from "@/app/api/auth/captcha-required/route";
 import { getAttemptCountAsync, getClientIP, CAPTCHA_REQUIRED_AFTER } from "@/lib/login-rate-limit";
+import { isTurnstileConfigured } from "@/lib/verify-turnstile";
 
 jest.mock("@/lib/login-rate-limit", () => ({
   getAttemptCountAsync: jest.fn(),
@@ -8,10 +9,24 @@ jest.mock("@/lib/login-rate-limit", () => ({
   CAPTCHA_REQUIRED_AFTER: 2,
 }));
 
+jest.mock("@/lib/verify-turnstile", () => ({
+  isTurnstileConfigured: jest.fn(),
+}));
+
 describe("GET /api/auth/captcha-required", () => {
   beforeEach(() => {
     jest.clearAllMocks();
     (getClientIP as jest.Mock).mockReturnValue("1.2.3.4");
+    (isTurnstileConfigured as jest.Mock).mockReturnValue(true);
+  });
+
+  it("returns false when Turnstile is not configured, regardless of attempt count", async () => {
+    (isTurnstileConfigured as jest.Mock).mockReturnValue(false);
+    (getAttemptCountAsync as jest.Mock).mockResolvedValue(CAPTCHA_REQUIRED_AFTER + 5);
+    const req = new NextRequest("http://localhost/api/auth/captcha-required");
+    const res = await GET(req);
+    const data = await res.json();
+    expect(data).toEqual({ captchaRequired: false });
   });
 
   it("returns false below threshold", async () => {

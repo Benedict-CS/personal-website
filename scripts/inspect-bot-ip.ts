@@ -19,7 +19,8 @@ async function main() {
   });
   console.log(`IP ${ip}: ${rows.length} row(s)`);
   for (const r of rows) {
-    console.log(`  ${r.createdAt.toISOString()}  ${r.path}  UA=${(r.userAgent ?? "").slice(0, 80)}`);
+    console.log(`  ${r.createdAt.toISOString()}  ${r.path}`);
+    console.log(`    UA=${r.userAgent ?? "(none)"}`);
   }
 }
 
