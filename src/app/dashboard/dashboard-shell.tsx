@@ -49,7 +49,7 @@ export function DashboardShell({ children }: { children: React.ReactNode }) {
     <CmsSyncProvider>
     <>
     <a
-      href="#main-content"
+      href="#dashboard-main-content"
       className="sr-only focus:not-sr-only focus:absolute focus:left-4 focus:top-4 focus:z-[100] focus:rounded-lg focus:bg-primary focus:px-3 focus:py-2 focus:text-sm focus:text-primary-foreground focus:outline-none focus:shadow-[var(--elevation-2)]"
     >
       Skip to main content
@@ -58,7 +58,7 @@ export function DashboardShell({ children }: { children: React.ReactNode }) {
     <DashboardConnectivityWatcher />
     <DashboardCommandPalette />
     {/* Mobile menu button: visible only on small screens */}
-    <div className="fixed left-4 top-20 z-30 md:hidden">
+    <div className="fixed left-4 z-30 top-[calc(0.875rem+3.5rem)] sm:top-[calc(1rem+4rem)] md:hidden">
       <Button
         type="button"
         variant="outline"
@@ -82,7 +82,7 @@ export function DashboardShell({ children }: { children: React.ReactNode }) {
     {/* Mobile drawer */}
     <aside
       id="dashboard-mobile-nav"
-      className={`fixed left-0 top-16 z-20 h-[calc(100vh-4rem)] w-64 border-r border-border bg-card shadow-[var(--elevation-3)] transition-transform duration-200 ease-out md:hidden ${
+      className={`fixed left-0 top-14 z-20 h-[calc(100vh-3.5rem)] w-64 border-r border-border bg-card shadow-[var(--elevation-3)] transition-transform duration-200 ease-out sm:top-16 sm:h-[calc(100vh-4rem)] md:hidden ${
         mobileOpen ? "translate-x-0" : "-translate-x-full"
       }`}
     >
@@ -92,10 +92,12 @@ export function DashboardShell({ children }: { children: React.ReactNode }) {
     </aside>
     <div className="flex flex-1 min-h-0">
       <aside
-        className={`hidden md:flex fixed left-0 top-16 h-[calc(100vh-4rem)] border-r border-border bg-card z-10 transition-[width] duration-200 ease-out ${sidebarWidth} flex-col overflow-visible shadow-[var(--elevation-1)]`}
+        className={`hidden md:flex fixed left-0 top-16 z-40 h-[calc(100vh-4rem)] flex-col overflow-visible border-r border-border bg-card shadow-[var(--elevation-1)] transition-[width] duration-200 ease-out ${sidebarWidth}`}
       >
-        <div className={`flex flex-col flex-1 min-h-0 ${collapsed ? "p-2 overflow-visible" : "p-6 overflow-y-auto"}`}>
-          <div className={`flex items-center shrink-0 ${collapsed ? "justify-center" : "justify-end"} mb-4`}>
+        <div
+          className={`flex min-h-0 flex-1 flex-col ${collapsed ? "min-w-0 overflow-visible p-2" : "min-h-0 overflow-y-auto p-6"}`}
+        >
+          <div className={`flex items-center shrink-0 ${collapsed ? "justify-center" : "justify-end"} mb-3`}>
             <Button
               type="button"
               variant="ghost"
@@ -115,9 +117,9 @@ export function DashboardShell({ children }: { children: React.ReactNode }) {
         </div>
       </aside>
       <main
-        id="main-content"
+        id="dashboard-main-content"
         tabIndex={-1}
-        className={`flex-1 min-h-0 bg-background pl-14 md:pl-0 ${collapsed ? "md:ml-16" : "md:ml-64"} transition-[margin] duration-200 ease-out`}
+        className={`relative z-0 flex min-h-0 min-w-0 flex-1 bg-background pl-16 sm:pl-[4.5rem] md:pl-0 ${collapsed ? "md:ml-16" : "md:ml-64"} transition-[margin] duration-200 ease-out`}
         style={{ ["--dashboard-sidebar-width" as string]: collapsed ? "4rem" : "16rem" }}
       >
         <div className="flex flex-1 flex-col min-h-0">

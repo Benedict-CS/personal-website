@@ -123,7 +123,7 @@ export function DashboardNav({ collapsed = false }: DashboardNavProps) {
   }, [collapsedOpenGroup]);
 
   return (
-    <nav className="flex flex-col gap-1">
+    <nav className={`flex flex-col gap-1 ${collapsed ? "w-full items-stretch" : ""}`}>
       {navItems.map((item) => {
         const { id, href, label, icon: Icon, exact, children } = item;
         const isActive = exact ? pathname === href : matchesPath(pathname, href);
@@ -174,7 +174,7 @@ export function DashboardNav({ collapsed = false }: DashboardNavProps) {
         if (children && collapsed) {
           const isGroupActive = children.some((sub) => matchesPath(pathname, sub.href));
           return (
-            <div key={id} ref={collapsedOpenGroup === id ? collapsedGroupRef : undefined} className="relative">
+            <div key={id} ref={collapsedOpenGroup === id ? collapsedGroupRef : undefined} className="relative w-full">
               <button
                 type="button"
                 title={label}
@@ -182,7 +182,7 @@ export function DashboardNav({ collapsed = false }: DashboardNavProps) {
                 aria-haspopup="menu"
                 aria-expanded={collapsedOpenGroup === id}
                 onClick={() => setCollapsedOpenGroup((current) => (current === id ? null : id))}
-                className={`flex w-full justify-center rounded-lg p-2 transition-[background-color,color] duration-200 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-card ${
+                className={`flex w-full max-w-full justify-center rounded-lg p-2 transition-[background-color,color] duration-200 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-card ${
                   isGroupActive || collapsedOpenGroup === id
                     ? "bg-accent text-accent-foreground ring-1 ring-border"
                     : "text-foreground hover:bg-accent/70"
@@ -191,7 +191,9 @@ export function DashboardNav({ collapsed = false }: DashboardNavProps) {
                 <Icon className="h-[1.125rem] w-[1.125rem] shrink-0 stroke-[1.75]" aria-hidden />
               </button>
               {collapsedOpenGroup === id ? (
-                <div className="absolute left-full top-0 z-30 ml-2 min-w-[13rem] rounded-xl border border-border bg-card p-1.5 shadow-[var(--elevation-3)]">
+                <div
+                  className="absolute left-full top-0 z-[100] ml-1.5 min-w-[12.5rem] max-w-[min(20rem,calc(100vw-5rem))] rounded-xl border border-border bg-card p-1.5 shadow-[var(--elevation-3)] max-h-[min(70vh,22rem)] overflow-y-auto overscroll-contain"
+                >
                   <p className="px-2 py-1 text-[11px] font-semibold uppercase tracking-wide text-muted-foreground">{label}</p>
                   {children.map((sub) => {
                     const subActive = matchesPath(pathname, sub.href);
