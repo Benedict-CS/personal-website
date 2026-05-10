@@ -21,43 +21,27 @@ type NavChildItem = {
 type NavItem = {
   id: string;
   href: string;
-  label: "Dashboard" | "Content" | "Site Settings" | "Analytics" | "System";
+  label: "Dashboard" | "Content" | "Site" | "Analytics" | "System";
   icon: typeof FolderKanban | typeof Settings | typeof BarChart3 | typeof Wrench | typeof LayoutDashboard;
   exact: boolean;
   children?: readonly NavChildItem[];
 };
 
+/** Sidebar: essentials only. Deeper tools stay reachable via URL or command palette (⌘K). */
 const contentItems = [
-  { href: "/dashboard/hubs/taxonomy-assets", label: "Content taxonomy & assets" },
   { href: "/dashboard/posts", label: "Posts" },
-  { href: "/dashboard/notes", label: "Draft notes" },
   { href: "/dashboard/media", label: "Media" },
-  { href: "/dashboard/content/pages", label: "Custom pages" },
+  { href: "/dashboard/content/pages", label: "Pages" },
   { href: "/dashboard/tags", label: "Tags" },
 ] as const;
 
 const siteSettingsItems = [
-  { href: "/dashboard/hubs/global-settings", label: "Global settings hub" },
-  { href: "/dashboard/content/site", label: "Site settings" },
-  { href: "/dashboard/content/home", label: "Home content" },
-  { href: "/dashboard/content/about", label: "About content" },
-  { href: "/dashboard/content/contact", label: "Contact content" },
-  { href: "/dashboard/setup", label: "Setup wizard" },
+  { href: "/dashboard/content/site", label: "Settings" },
+  { href: "/dashboard/content/home", label: "Home" },
+  { href: "/dashboard/content/about", label: "About" },
+  { href: "/dashboard/content/contact", label: "Contact" },
   { href: "/dashboard/cv", label: "CV" },
 ] as const;
-
-const analyticsItems = [
-  { href: "/dashboard/analytics", label: "Traffic analytics" },
-  { href: "/dashboard/overview", label: "Site overview" },
-  { href: "/dashboard/audit", label: "Audit log" },
-] as const;
-
-const systemItems = [
-  { href: "/dashboard/system", label: "System health" },
-  { href: "/dashboard/sites", label: "Sites" },
-  { href: "/dashboard/posts/operations", label: "Find & replace" },
-  { href: "/dashboard/tools/ast-lab", label: "Markdown AST lab" },
-];
 
 const navItems: readonly NavItem[] = [
   { id: "dashboard", href: "/dashboard", label: "Dashboard", icon: LayoutDashboard, exact: true },
@@ -65,28 +49,31 @@ const navItems: readonly NavItem[] = [
   {
     id: "site-settings",
     href: "/dashboard/content/site",
-    label: "Site Settings",
+    label: "Site",
     icon: Settings,
     exact: false,
     children: siteSettingsItems,
   },
-  {
-    id: "analytics",
-    href: "/dashboard/analytics",
-    label: "Analytics",
-    icon: BarChart3,
-    exact: false,
-    children: analyticsItems,
-  },
-  { id: "system", href: "/dashboard/system", label: "System", icon: Wrench, exact: false, children: systemItems },
+  { id: "analytics", href: "/dashboard/analytics", label: "Analytics", icon: BarChart3, exact: false },
+  { id: "system", href: "/dashboard/system", label: "System", icon: Wrench, exact: false },
 ] as const;
 
-const allGroupedItems = [...contentItems, ...siteSettingsItems, ...analyticsItems, ...systemItems] as const;
+/** Flat list of sidebar routes (palette / tests); keeps top-level and nested items in order. */
+function flattenDashboardNavRoutes(): { href: string; label: string }[] {
+  const routes: { href: string; label: string }[] = [];
+  for (const item of navItems) {
+    routes.push({ href: item.href, label: item.label });
+    const ch = item.children;
+    if (ch) {
+      for (const sub of ch) {
+        routes.push({ href: sub.href, label: sub.label });
+      }
+    }
+  }
+  return routes;
+}
 
-export const DASHBOARD_NAV_ITEMS = [
-  { href: "/dashboard", label: "Dashboard" },
-  ...allGroupedItems,
-] as const;
+export const DASHBOARD_NAV_ITEMS = flattenDashboardNavRoutes() as readonly { href: string; label: string }[];
 
 interface DashboardNavProps {
   collapsed?: boolean;

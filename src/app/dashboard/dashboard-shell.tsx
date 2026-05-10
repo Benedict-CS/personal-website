@@ -8,7 +8,6 @@ import { LeaveGuardProvider } from "@/contexts/leave-guard-context";
 import { DashboardNav } from "./dashboard-nav";
 import { DashboardBreadcrumbs } from "./dashboard-breadcrumbs";
 import { DashboardCommandPalette } from "./dashboard-command-palette";
-import { DashboardKeyboardHelp } from "./dashboard-keyboard-help";
 import { DashboardGlobalHeader } from "./dashboard-global-header";
 import { DashboardConnectivityWatcher } from "@/components/dashboard/dashboard-connectivity-watcher";
 import { SessionExpiryBanner } from "@/components/session-expiry-banner";
@@ -16,8 +15,6 @@ import { SessionGuard } from "@/components/session-guard";
 import { CmsSyncProvider } from "@/contexts/cms-sync-context";
 import { PanelLeftClose, PanelLeftOpen, Menu } from "lucide-react";
 import { Button } from "@/components/ui/button";
-import { TooltipHint } from "@/components/ui/tooltip-hint";
-
 const STORAGE_KEY = "dashboard-sidebar-collapsed";
 
 export function DashboardShell({ children }: { children: React.ReactNode }) {
@@ -60,22 +57,19 @@ export function DashboardShell({ children }: { children: React.ReactNode }) {
     <SessionGuard />
     <DashboardConnectivityWatcher />
     <DashboardCommandPalette />
-    <DashboardKeyboardHelp />
     {/* Mobile menu button: visible only on small screens */}
     <div className="fixed left-4 top-20 z-30 md:hidden">
-      <TooltipHint label={mobileOpen ? "Close navigation" : "Open navigation"} side="bottom">
-        <Button
-          type="button"
-          variant="outline"
-          size="icon"
-          onClick={() => setMobileOpen((o) => !o)}
-          aria-label={mobileOpen ? "Close menu" : "Open menu"}
-          aria-expanded={mobileOpen}
-          aria-controls="dashboard-mobile-nav"
-        >
-          <Menu className="h-5 w-5" />
-        </Button>
-      </TooltipHint>
+      <Button
+        type="button"
+        variant="outline"
+        size="icon"
+        onClick={() => setMobileOpen((o) => !o)}
+        aria-label={mobileOpen ? "Close menu" : "Open menu"}
+        aria-expanded={mobileOpen}
+        aria-controls="dashboard-mobile-nav"
+      >
+        <Menu className="h-5 w-5" />
+      </Button>
     </div>
     {/* Mobile drawer overlay */}
     {mobileOpen && (
@@ -101,34 +95,21 @@ export function DashboardShell({ children }: { children: React.ReactNode }) {
         className={`hidden md:flex fixed left-0 top-16 h-[calc(100vh-4rem)] border-r border-border bg-card z-10 transition-[width] duration-200 ease-out ${sidebarWidth} flex-col overflow-visible shadow-[var(--elevation-1)]`}
       >
         <div className={`flex flex-col flex-1 min-h-0 ${collapsed ? "p-2 overflow-visible" : "p-6 overflow-y-auto"}`}>
-          <div className={`flex items-center shrink-0 ${collapsed ? "justify-center" : "justify-between"} mb-4`}>
-            {!collapsed && <span className="text-xs font-medium text-muted-foreground uppercase tracking-wider">Menu</span>}
-            <kbd
-              className={
-                collapsed
-                  ? "hidden"
-                  : "mr-2 rounded border border-border bg-muted/60 px-1.5 py-0.5 font-mono text-[10px] text-muted-foreground"
-              }
-              title="Command palette (Ctrl+K or ⌘K)"
+          <div className={`flex items-center shrink-0 ${collapsed ? "justify-center" : "justify-end"} mb-4`}>
+            <Button
+              type="button"
+              variant="ghost"
+              size="icon"
+              onClick={toggle}
+              className="shrink-0 h-8 w-8 rounded-lg text-muted-foreground hover:text-foreground"
+              aria-label={collapsed ? "Expand sidebar" : "Collapse sidebar"}
             >
-              ⌘K
-            </kbd>
-            <TooltipHint label={collapsed ? "Expand sidebar" : "Collapse sidebar"}>
-              <Button
-                type="button"
-                variant="ghost"
-                size="icon"
-                onClick={toggle}
-                className="shrink-0 h-8 w-8 rounded-lg text-muted-foreground hover:text-foreground"
-                title={collapsed ? "Expand sidebar" : "Collapse sidebar"}
-              >
-                {collapsed ? (
-                  <PanelLeftOpen className="h-4 w-4" />
-                ) : (
-                  <PanelLeftClose className="h-4 w-4" />
-                )}
-              </Button>
-            </TooltipHint>
+              {collapsed ? (
+                <PanelLeftOpen className="h-4 w-4" />
+              ) : (
+                <PanelLeftClose className="h-4 w-4" />
+              )}
+            </Button>
           </div>
           <DashboardNav collapsed={collapsed} />
         </div>
