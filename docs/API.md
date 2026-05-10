@@ -105,32 +105,9 @@ All routes below require a valid NextAuth session (cookie). Return `401 Unauthor
 
 ---
 
-## SaaS / multi-tenant (when enabled)
+## Visual builder (dashboard editor)
 
-Routes under `/api/saas/sites/[siteId]/*` and `/api/builder/*` are used by the SaaS and builder layers (sites, pages, commerce, CRM, media, infra, AI, showroom). They require appropriate auth and tenant context.
-
-### Billing and locale (Phase 5)
-
-| Method | Path | Description |
-|--------|------|-------------|
-| GET | `/api/saas/sites/[siteId]/billing` | Plan, `billingProvider`, usage vs limits (session + tenant). |
-| PATCH | `/api/saas/sites/[siteId]/locale` | Body `{ "defaultLocale": "en" \| "es" \| "de" \| "ja" }` — storefront `lang` default. |
-| POST | `/api/saas/billing/checkout` | Body `{ siteId, targetPlan: "PRO" \| "BUSINESS" \| "ENTERPRISE", provider?: "stripe" \| "lemon_squeezy" }` — Stripe Checkout URL or Lemon redirect URL. |
-| POST | `/api/saas/billing/webhooks/stripe` | Stripe signed webhook (no session; uses `STRIPE_WEBHOOK_SECRET`). |
-| POST | `/api/saas/billing/webhooks/lemon-squeezy` | Lemon Squeezy `X-Signature` webhook (`LEMON_SQUEEZY_WEBHOOK_SECRET`). |
-
-See [PHASE5_SAAS_I18N_AND_BILLING.md](PHASE5_SAAS_I18N_AND_BILLING.md).
-
----
-
-## Cron and agents
-
-| Method | Path | Auth | Description |
-|--------|------|------|-------------|
-| POST | `/api/agents/marketing/cron` | `X-Agent-Cron-Secret` | Marketing agent cron. |
-| POST | `/api/agents/support/cron` | `X-Agent-Cron-Secret` | Support agent cron. |
-
-Set `AGENT_CRON_SECRET` and send it in the header for cron routes.
+Routes under `/api/builder/*` support the block/template library used by the immersive editor (`SiteBlockBuilder`).
 
 ---
 
@@ -142,11 +119,10 @@ Set `AGENT_CRON_SECRET` and send it in the header for cron routes.
 
 ### Middleware (`src/proxy.ts`)
 
-Responses may include **`x-request-id`** for log correlation. SaaS builder and tenant paths (`/dashboard/sites*`, `/s/*`) may set the **`saas_locale`** cookie (first visit) for UI language negotiation.
+Responses may include **`x-request-id`** for log correlation.
 
 | Situation | Status | Notable headers |
 |-----------|--------|-----------------|
 | IP blocked (`ACCESS_BLOCK_IP_PREFIXES` / `ACCESS_ALLOW_IPS`; full-site by default when prefixes set; **`ACCESS_BLOCK_ADMIN_ONLY=1`** or **`ACCESS_BLOCK_PUBLIC=0`** for selective 403) | **403** (see [ENVIRONMENT.md](ENVIRONMENT.md)) | `Cache-Control: no-store, private` |
-| SaaS tenant rate limit (custom host → `/api/infra/edge` returns 429) | **429** | `Cache-Control: no-store, private`, **`Retry-After: 60`** |
 
 **HSTS:** `Strict-Transport-Security` is added by middleware only when **`ENABLE_HSTS=true`** and the request is served over HTTPS (see [ENVIRONMENT.md](ENVIRONMENT.md)). This matches `next.config.ts` static headers.

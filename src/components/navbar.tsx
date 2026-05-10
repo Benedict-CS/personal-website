@@ -11,6 +11,7 @@ import { GlobalSearch } from "@/components/global-search";
 import { ExternalLink, Menu, X } from "lucide-react";
 import { SessionCountdown } from "@/components/session-countdown";
 import type { SiteConfigForRender } from "@/lib/site-config";
+import { dashboardNavbarSectionLabel } from "@/lib/dashboard-segment-labels";
 
 function isActivePath(pathname: string, href: string): boolean {
   if (href === "/") return pathname === "/";
@@ -97,7 +98,7 @@ export function Navbar({ siteConfig }: { siteConfig?: SiteConfigForRender | null
             <Image src={logoUrl} alt="" width={28} height={28} data-editor-site-logo className="rounded object-contain shrink-0" />
           ) : null}
           <span data-editor-site-label>{siteName}</span>
-          {isDashboard ? " · Dashboard" : isEditor ? " · Editor" : ""}
+          {isDashboard ? ` · ${dashboardNavbarSectionLabel(pathname ?? "")}` : isEditor ? " · Editor" : ""}
         </Link>
         {/* Desktop: inline links */}
         <div className="hidden sm:flex items-center gap-1 sm:gap-2 flex-wrap justify-end">

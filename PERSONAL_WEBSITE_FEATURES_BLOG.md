@@ -26,7 +26,7 @@ language: "en"
 
 ### Visual Stack Snapshot
 
-<img src="https://skillicons.dev/icons?i=nextjs,react,ts,tailwind,prisma,postgres,docker,githubactions,jest,playwright&theme=light&perline=10" alt="Tech stack icons" width="760" />
+<img src="https://skillicons.dev/icons?i=nextjs,react,ts,tailwind,prisma,postgres,docker,githubactions,jest&theme=light&perline=10" alt="Tech stack icons" width="760" />
 
 ### Figure 1A - Visitor (Public) Flow
 
@@ -75,7 +75,7 @@ In short: not just "a website," but a **maintainable content system with product
 | **Testing** | Jest + Playwright | Unit/integration tests and E2E smoke tests |
 | **Infra** | Docker / Docker Compose | Reproducible local and deployment runtime |
 | **Security** | CSP, security headers, `security.txt`, robots/sitemap | Browser hardening and crawler control |
-| **Observability** | Sentry + health endpoints | Runtime issue visibility and uptime checks |
+| **Observability** | Logs + health endpoints | Runtime issue visibility and uptime checks |
 
 ```mermaid
 mindmap
@@ -198,18 +198,12 @@ This separation keeps rendering concerns and management concerns cleanly isolate
 - `lint`, `typecheck`, `test`, `build` scripts
 - `verify` command as pre-release quality gate
 
-### 6.2 E2E Coverage
-- Playwright smoke tests in `e2e/` currently cover:
-  - Home / Blog / Contact
-  - Auth sign-in entry
-  - Dashboard entry redirect behavior
-
-### 6.3 Runtime Hardening
+### 6.2 Runtime Hardening
 - CSP and hardened security headers in Next config
 - Optional HSTS toggle for HTTPS production deployments
 
-### 6.4 Monitoring and Health
-- Sentry integration for runtime issue capture
+### 6.3 Monitoring and Health
+- Health and live probes for uptime checks
 - Health endpoints for uptime checks and automation probes
 
 ![CI and Verification Flow](/api/media/serve/REPLACE_WITH_CICD_IMAGE)
@@ -334,7 +328,7 @@ language: "en"
 
 ### Visual Stack Snapshot
 
-<img src="https://skillicons.dev/icons?i=nextjs,react,ts,tailwind,prisma,postgres,docker,githubactions,jest,playwright&theme=light&perline=10" alt="Tech stack icons" width="760" />
+<img src="https://skillicons.dev/icons?i=nextjs,react,ts,tailwind,prisma,postgres,docker,githubactions,jest&theme=light&perline=10" alt="Tech stack icons" width="760" />
 
 ### Figure 1A — Visitor (Public) Flow
 
@@ -406,7 +400,7 @@ I optimized for option #2. The design goals were:
 - **Fast public UX** (reader-first, SEO-first)
 - **Strong authoring workflow** (dashboard + visual editor)
 - **Operational control** (health endpoints, logs, backups, security hardening)
-- **Extensibility** (integrations, site-scoped SaaS modules, and optional AI routes)
+- **Extensibility** (integrations, visual builder API, and optional AI routes)
 
 In short: not just “a website,” but a **maintainable content system with product-grade internals**.
 
@@ -430,7 +424,7 @@ In short: not just “a website,” but a **maintainable content system with pro
 | **Content** | Markdown + MDX pipeline | Rich article rendering and embedded dynamic blocks |
 | **Media** | Upload + optimization pipeline (`sharp`) | Image handling for authoring and public delivery |
 | **Storage** | PostgreSQL + RustFS (S3-compatible) | Relational content data in Postgres; object/media assets in RustFS |
-| **Observability** | Sentry + health endpoints | Runtime error capture and production diagnostics |
+| **Observability** | Logs + health endpoints | Runtime error capture and production diagnostics |
 | **Testing** | Jest + Playwright | Unit/integration + smoke E2E coverage |
 | **Infra** | Docker / Docker Compose | Local reproducibility and deployment portability |
 | **Security** | CSP, strict headers, security.txt, robots/sitemap | Browser hardening and SEO/crawler controls |
@@ -520,7 +514,7 @@ Major API domains include:
 - **Auth & Security**: session paths, CAPTCHA-required checks
 - **Site Config / Site Content**: centralized config and page content
 - **Integrations**: package ecosystem connectors (GitHub/npm/PyPI/etc.)
-- **SaaS Namespace**: site-scoped APIs for commerce/CRM/AI/workflows
+- **Builder API**: `/api/builder/*` for block/template library in the immersive editor
 
 This separation enables clear boundaries between content rendering and management logic.
 
@@ -551,13 +545,7 @@ flowchart LR
 - `lint`, `typecheck`, `test`, `build` scripts
 - Composite `verify` command for pre-release confidence
 
-### 6.2 E2E Coverage
-- Playwright smoke tests in `e2e/` currently cover:
-  - Home / Blog / Contact
-  - Auth sign-in entry
-  - Dashboard entry redirect behavior
-
-### 6.3 Runtime Hardening
+### 6.2 Runtime Hardening
 - Secure HTTP headers in Next config:
   - CSP
   - X-Frame-Options
@@ -565,8 +553,8 @@ flowchart LR
   - Permissions-Policy
 - Optional HSTS toggle for HTTPS production
 
-### 6.4 Error Monitoring
-- Sentry integration for runtime issue capture
+### 6.3 Error Monitoring
+- Health and live probes for uptime checks
 - Health endpoints (`/api/live`, `/api/health`) for uptime checks
 
 ![CI and Verification Flow](/api/media/serve/REPLACE_WITH_CICD_IMAGE)

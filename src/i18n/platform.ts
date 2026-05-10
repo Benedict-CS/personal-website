@@ -1,17 +1,14 @@
 /**
- * Platform i18n: dashboard SaaS builder and tenant storefronts.
- * All user-facing copy for these dictionaries stays in English by default; additional
- * locales are for routing, html[lang], and future translated strings.
+ * Optional locale negotiation for dashboard/editor (Accept-Language → BCP 47 tag).
+ * Dictionaries remain English-first; this is for routing and html[lang] when used.
  */
 
 export const PLATFORM_DEFAULT_LOCALE = "en";
 
-/** BCP 47 tags supported for cookie negotiation and TenantSite.defaultLocale. */
+/** BCP 47 tags supported for cookie or header negotiation. */
 export const PLATFORM_LOCALES = ["en", "es", "de", "ja"] as const;
 
 export type PlatformLocale = (typeof PLATFORM_LOCALES)[number];
-
-export const SAAS_LOCALE_COOKIE = "saas_locale";
 
 export function isPlatformLocale(value: string | undefined | null): value is PlatformLocale {
   return !!value && (PLATFORM_LOCALES as readonly string[]).includes(value);

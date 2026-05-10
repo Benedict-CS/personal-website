@@ -33,8 +33,8 @@ ARG NEXT_USE_TURBOPACK=0
 ENV NEXT_USE_TURBOPACK=${NEXT_USE_TURBOPACK}
 
 # Webpack production builds can exceed Node's default old-space limit (~2 GiB on 64-bit).
-# Tune via: docker build --build-arg NODE_MAX_OLD_SPACE_SIZE=8192 .
-ARG NODE_MAX_OLD_SPACE_SIZE=4096
+# Default 8192 aligns with scripts/build-safe.sh. Override: docker build --build-arg NODE_MAX_OLD_SPACE_SIZE=12288 .
+ARG NODE_MAX_OLD_SPACE_SIZE=8192
 ENV NODE_OPTIONS="--max-old-space-size=${NODE_MAX_OLD_SPACE_SIZE}"
 
 # Build Next.js application

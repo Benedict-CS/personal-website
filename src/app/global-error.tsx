@@ -2,7 +2,6 @@
 
 import { useEffect, useMemo, useState } from "react";
 import Link from "next/link";
-import * as Sentry from "@sentry/nextjs";
 
 /**
  * Root-level error boundary. Renders when an error is not caught by error.tsx.
@@ -19,7 +18,6 @@ export default function GlobalError({
   const [resetting, setResetting] = useState(false);
   useEffect(() => {
     console.error("Global error boundary:", error);
-    Sentry.captureException(error);
   }, [error]);
 
   const digest = useMemo(() => {

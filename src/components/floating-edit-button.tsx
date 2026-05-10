@@ -13,8 +13,7 @@ function resolveEditorHref(pathname: string): string | null {
     pathname.startsWith("/dashboard") ||
     pathname.startsWith("/editor") ||
     pathname.startsWith("/auth") ||
-    pathname.startsWith("/api") ||
-    pathname.startsWith("/s/")
+    pathname.startsWith("/api")
   ) {
     return null;
   }

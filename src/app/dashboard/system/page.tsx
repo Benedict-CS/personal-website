@@ -18,6 +18,7 @@ import {
   Workflow,
   Download,
   Eye,
+  ChevronDown,
 } from "lucide-react";
 import { useToast } from "@/contexts/toast-context";
 import { TooltipHint } from "@/components/ui/tooltip-hint";
@@ -117,6 +118,7 @@ export default function DashboardSystemPage() {
   const [backupMessage, setBackupMessage] = useState<string | null>(null);
   const [workflowHealth, setWorkflowHealth] = useState<WorkflowHealthResponse | null>(null);
   const [loadingWorkflowHealth, setLoadingWorkflowHealth] = useState(false);
+  const [advancedMaintenanceOpen, setAdvancedMaintenanceOpen] = useState(false);
 
   const runHealthCheck = async () => {
     setCheckingHealth(true);
@@ -277,8 +279,9 @@ export default function DashboardSystemPage() {
   }, []);
 
   useEffect(() => {
+    if (!advancedMaintenanceOpen) return;
     void loadLinkCheckHistory();
-  }, [loadLinkCheckHistory]);
+  }, [advancedMaintenanceOpen, loadLinkCheckHistory]);
 
   const runSeoIntegrityScan = async () => {
     setCheckingSeoIntegrity(true);
@@ -345,8 +348,9 @@ export default function DashboardSystemPage() {
   }, [toast]);
 
   useEffect(() => {
+    if (!advancedMaintenanceOpen) return;
     void loadWorkflowHealth();
-  }, [loadWorkflowHealth]);
+  }, [advancedMaintenanceOpen, loadWorkflowHealth]);
 
   const lastLinkScan = linkCheckHistory[0];
   const staleBrokenFromHistory = !linkCheck && lastLinkScan && lastLinkScan.brokenCount > 0;
@@ -365,8 +369,8 @@ export default function DashboardSystemPage() {
       />
       <DashboardPageHeader
         eyebrow="System"
-        title="System Health & Maintenance"
-        description="Monitor runtime health, inspect orphaned media, and run database maintenance tasks."
+        title="System"
+        description="Quick database check below. Heavier tools (media cleanup, link scan, backups, SEO) stay tucked away unless you open them."
       />
 
       <Card>
@@ -392,6 +396,21 @@ export default function DashboardSystemPage() {
         </CardContent>
       </Card>
 
+      <Card className="border-border bg-muted/40">
+        <details
+          className="group"
+          onToggle={(e) => setAdvancedMaintenanceOpen((e.target as HTMLDetailsElement).open)}
+        >
+          <summary className="flex cursor-pointer list-none items-center justify-between gap-3 px-4 py-3 text-left text-sm font-medium hover:bg-muted/50 [&::-webkit-details-marker]:hidden">
+            <span className="flex flex-col gap-0.5 sm:flex-row sm:items-center sm:gap-2">
+              <span>Advanced maintenance</span>
+              <span className="text-xs font-normal text-muted-foreground">
+                Media, DB optimize, broken links, contact webhooks, backup trigger, SEO checks
+              </span>
+            </span>
+            <ChevronDown className="h-4 w-4 shrink-0 text-muted-foreground transition-transform group-open:rotate-180" aria-hidden />
+          </summary>
+          <CardContent className="space-y-6 border-t border-border/80 pt-4">
       <Card>
         <CardHeader>
           <CardTitle className="flex items-center gap-2 text-base">
@@ -652,6 +671,9 @@ export default function DashboardSystemPage() {
             </div>
           ) : null}
         </CardContent>
+      </Card>
+          </CardContent>
+        </details>
       </Card>
     </div>
   );

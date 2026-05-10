@@ -43,7 +43,6 @@ This document describes how to run the site for **high availability (HA)**, **re
 - **Redis (`REDIS_URL`):** Optional. When set, shared rate limits (contact form, login) and similar features use Redis instead of in-memory stores, so multiple instances behave consistently. See [ENVIRONMENT.md](ENVIRONMENT.md).
 - **PostgreSQL:** For many concurrent connections, use `connection_limit` on `DATABASE_URL` or place **PgBouncer** in front of Postgres (see [ENVIRONMENT.md](ENVIRONMENT.md)).
 - **Analytics:** Middleware can forward analytics to the app using `ANALYTICS_SECRET` and `INTERNAL_APP_ORIGIN` so internal fetches work behind Docker networking.
-- **SaaS edge (optional):** `EDGE_CONTROL_SECRET` — shared between `src/proxy.ts` and `GET/POST /api/infra/edge` for custom-domain tenant routing and rate limiting. Omit on a single-site personal deployment.
 
 ---
 
@@ -59,7 +58,7 @@ This document describes how to run the site for **high availability (HA)**, **re
 
 - **Uptime:** HTTP monitors on `/` and `/api/health` (external) and optionally Docker health status (host).
 - **Logs:** Container stdout/stderr; optionally forward to your log stack.
-- **Errors:** Optional Sentry (`SENTRY_DSN`, `NEXT_PUBLIC_SENTRY_DSN`) in `next.config.ts`.
+- **Errors:** Rely on application logs and reverse-proxy access/error logs; add external monitoring if needed.
 - **Dashboard:** **Analytics** shows traffic and an **Application health** card that calls `/api/health`. **Site overview** (`/dashboard/overview`) includes **System status** with periodic checks.
 
 ---

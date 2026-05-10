@@ -13,9 +13,9 @@ export async function GET() {
 
   try {
     const [submissionsLast7d, deliveredLast7d, failedLast7d, recentFailures, siteConfig] = await Promise.all([
-      prisma.formSubmission.count({
+      prisma.auditLog.count({
         where: {
-          formName: "contact",
+          action: "contact.form.submitted",
           createdAt: { gte: windowStart, lte: now },
         },
       }),

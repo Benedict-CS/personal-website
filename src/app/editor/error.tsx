@@ -2,20 +2,14 @@
 
 import { useEffect, useState } from "react";
 import Link from "next/link";
-import * as Sentry from "@sentry/nextjs";
 import { Button } from "@/components/ui/button";
 import { ClipboardCopy, LayoutDashboard, PenSquare, RefreshCw } from "lucide-react";
 
 /**
  * Editor route error boundary.
  *
- * Improvements over the previous version:
- *  1) `Sentry.captureException` so production crashes show up server-side with a stack trace.
- *  2) Shows the actual `error.message` (not just a generic copy) so the operator can self-diagnose
- *     and copy/paste it when reporting; previously we only printed `error.digest`, which is just
- *     a hash without context.
- *  3) "Copy details" button to send a structured snippet of {name, message, digest, url} for
- *     pasting into bug reports — fixes the "I keep seeing this but nobody knows what it is" loop.
+ * Shows `error.message` (not just digest) and a "Copy details" snippet {name, message, digest, url}
+ * for bug reports; logs to the browser console.
  */
 export default function EditorError({
   error,
@@ -28,13 +22,6 @@ export default function EditorError({
 
   useEffect(() => {
     console.error("Editor error boundary:", error);
-    try {
-      Sentry.captureException(error, {
-        tags: { surface: "editor", boundary: "route-error" },
-      });
-    } catch {
-      /* Sentry must never crash the boundary itself. */
-    }
   }, [error]);
 
   const handleCopyDetails = async () => {

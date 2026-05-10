@@ -164,34 +164,10 @@ Restart the app (or rebuild) after changing these. Comments will appear at the b
 | `ACCESS_BLOCK_PUBLIC` | `1` / `true` / `yes`: full-site 403 for blocked IPs. `0` / `false` / `no`: selective 403 (dashboard/editor/auth/locked APIs only), even if prefixes are set. If unset: full-site when prefixes are set unless `ACCESS_BLOCK_ADMIN_ONLY=1`. | Not set |
 | `ACCESS_BLOCK_ADMIN_ONLY` | `1` / `true` / `yes`: when prefixes are set, use **legacy selective** blocking only (public site still loads for blocked IPs). Ignored if `ACCESS_BLOCK_PUBLIC=1`. | Not set |
 | `ACCESS_ALLOW_IPS` | Comma-separated exact IPs always allowed, even if they match `ACCESS_BLOCK_IP_PREFIXES`. Supports `::ffff:` form. Ingest: `POST /api/analytics/view` and `POST /api/analytics/leave` also skip blocked IPs so client beacons cannot persist them. | Not set |
-| `EDGE_CONTROL_SECRET` | Optional. Shared secret for middleware → `/api/infra/edge` (SaaS custom-domain routing). Omit on a single-site personal deployment. | Not set |
-| `SENTRY_DSN` | Sentry DSN for error reporting. When set, Sentry is enabled (client/server/edge configs). | Not set |
-| `NEXT_PUBLIC_SENTRY_DSN` | Optional; can be used by client config if different from `SENTRY_DSN`. | — |
-| `SENTRY_ORG` | Sentry organization (for source maps upload in build). | Optional |
-| `SENTRY_PROJECT` | Sentry project name. | Optional |
 
 Client IP is taken in order from **`CF-Connecting-IP`** (Cloudflare), **`True-Client-IP`**, **`Fly-Client-IP`**, **`X-Real-IP`**, then the first **`X-Forwarded-For`** hop. Your reverse proxy should set one of these to the real visitor address.
 
 **Docker Compose:** Variables in the host `.env` file are **not** visible inside the `app` container unless they appear under `services.app.environment` in `docker-compose.yml`. `ACCESS_BLOCK_*`, `ANALYTICS_SECRET`, and `ANALYTICS_EXCLUDED_IPS` are wired there; add any other keys the same way, then `docker compose up -d --force-recreate app`.
-
----
-
-## SaaS billing (optional, Phase 5)
-
-Set these when enabling Stripe Checkout or Lemon Squeezy for tenant sites. See [PHASE5_SAAS_I18N_AND_BILLING.md](PHASE5_SAAS_I18N_AND_BILLING.md).
-
-| Variable | Description |
-|----------|-------------|
-| `STRIPE_SECRET_KEY` | Server-side Stripe API key for Checkout. |
-| `STRIPE_WEBHOOK_SECRET` | Signing secret for `POST /api/saas/billing/webhooks/stripe`. |
-| `STRIPE_PRICE_ID_PRO` | Price ID for the PRO tier (matches `SitePlan.PRO`). |
-| `STRIPE_PRICE_ID_BUSINESS` | Price ID for BUSINESS. |
-| `STRIPE_PRICE_ID_ENTERPRISE` | Price ID for ENTERPRISE. |
-| `LEMON_SQUEEZY_WEBHOOK_SECRET` | HMAC secret for Lemon webhooks. |
-| `LEMON_SQUEEZY_VARIANT_ID_PRO` | Variant ID for hosted checkout links (optional). |
-| `LEMON_SQUEEZY_VARIANT_ID_BUSINESS` | Optional mid-tier variant. |
-| `LEMON_SQUEEZY_VARIANT_ID_ENTERPRISE` | Optional enterprise variant. |
-| `LEMON_SQUEEZY_CHECKOUT_BASE_URL` | Store base URL (e.g. `https://yourstore.lemonsqueezy.com`). |
 
 ---
 

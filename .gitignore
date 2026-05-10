@@ -12,6 +12,9 @@
 
 # testing
 /coverage
+/playwright-report/
+/test-results/
+/blob-report/
 
 # next.js
 /.next/
@@ -61,6 +64,17 @@ rustfs-logs/
 
 # cron / script logs (do not commit)
 logs/
+
+# Agent/autonomy session logs (not product docs; history belongs in git commits)
+EVOLUTION_PROGRESS.md
+EVOLUTION_LOG.md
+INFINITE_EVOLUTION_LOG.md
+UI_EVOLUTION_LOG.md
+NIGHT_SHIFT_LOG.md
+OPUS_SYNC_LOG.md
+OPUS_COHESION_LOG.md
+OPUS_DX_UPGRADE_LOG.md
+OPUS_NIGHT_SHIFT_LOG.md
 
 # backup: temp dir (backup-data.sh creates then removes) and archives
 backup-*/

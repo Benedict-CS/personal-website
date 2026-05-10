@@ -38,11 +38,6 @@ function startOfWeekMonday(date: Date): Date {
   return d;
 }
 
-function endOfMonth(date: Date): Date {
-  const d = new Date(date.getFullYear(), date.getMonth() + 1, 0);
-  return d;
-}
-
 export function buildTrendChartDisplay(points: DailyTrendPoint[]): {
   mode: TrendDisplayMode;
   rows: TrendDisplayPoint[];
@@ -78,9 +73,6 @@ export function buildTrendChartDisplay(points: DailyTrendPoint[]): {
     const start = mode === "monthly"
       ? toISODate(new Date(date.getFullYear(), date.getMonth(), 1))
       : toISODate(startOfWeekMonday(date));
-    const end = mode === "monthly"
-      ? toISODate(endOfMonth(date))
-      : toISODate(new Date(startOfWeekMonday(date).getTime() + 6 * 24 * 60 * 60 * 1000));
     const current = grouped.get(start) ?? {
       start,
       end: point.day,

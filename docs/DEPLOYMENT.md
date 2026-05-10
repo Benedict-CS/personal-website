@@ -44,6 +44,8 @@ docker compose up -d --build
 docker compose exec app npx prisma migrate deploy
 ```
 
+The canonical stack file is **`docker-compose.yml`**. **`docker-compose.backup.yml`** is an optional alternate layout (e.g. backup VM / loading a pre-built image); see the comments at the top of that file. There is no second “minimal” compose in the repo—forks should copy and edit `docker-compose.yml`.
+
 Post-deploy checks:
 
 ```bash

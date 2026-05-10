@@ -16,6 +16,7 @@ export type AuditAction =
   | "editor.publish"
   | "analytics.cv_download"
   | "analytics.lead_generated"
+  | "contact.form.submitted"
   | "workflow.webhook.delivered"
   | "workflow.webhook.failed"
   | "system.link_check.scan"

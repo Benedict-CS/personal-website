@@ -26,7 +26,7 @@ This document tracks CMS and dashboard improvements: editing flow, draft preview
 - Site-level templates are configured in **Dashboard → Content → Site settings** (`templateId`, nav, footer).
 - **Custom pages** (`Dashboard → Content → Custom pages`): inline help explains public URL `/page/[slug]`, builder, preview links, and templates; checkboxes use light styling only.
 - Public layouts use responsive utilities (`container`, breakpoints, `min()` widths on editor pages).
-- Block builder themes (`clean` / `soft` / `bold`) apply to SaaS builder flows; the personal blog uses the main layout and prose styles in `globals.css`.
+- Block builder themes (`clean` / `soft` / `bold`) apply to the visual page builder; the personal blog uses the main layout and prose styles in `globals.css`.
 
 ---
 

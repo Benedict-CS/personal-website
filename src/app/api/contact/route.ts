@@ -34,12 +34,12 @@ function toSafeDetails(details: Record<string, unknown>): string {
 }
 
 /**
- * Resolve the recipient for contact form emails: tenant contactEmail from DB, then footer/author email, then env fallback.
+ * Resolve the recipient for contact form emails: dashboard contactEmail, then footer/author email, then env fallback.
  */
 async function getContactRecipient(): Promise<string | null> {
   const row = await prisma.siteConfig.findUnique({
     where: { id: 1 },
-    select: { contactEmail: true, links: true, tenantSiteId: true },
+    select: { contactEmail: true, links: true },
   });
   if (!row) return process.env.CONTACT_EMAIL ?? null;
   const contactEmail = (row as { contactEmail?: string | null }).contactEmail ?? null;
@@ -80,28 +80,9 @@ export async function POST(request: NextRequest) {
 
     const configRow = await prisma.siteConfig.findUnique({
       where: { id: 1 },
-      select: { tenantSiteId: true, contactEmail: true, links: true, contactWebhookUrl: true },
+      select: { contactEmail: true, links: true, contactWebhookUrl: true },
     });
-    const tenantSiteId = configRow?.tenantSiteId ?? null;
     const eventId = crypto.randomUUID();
-    let submissionId: string | undefined;
-
-    if (tenantSiteId) {
-      const createdSubmission = await prisma.formSubmission.create({
-        data: {
-          siteId: tenantSiteId,
-          pageSlug: "contact",
-          formName: "contact",
-          payload: {
-            name: name.trim(),
-            email: email.trim(),
-            subject: subject?.trim() ?? "",
-            message: message.trim(),
-          },
-        },
-      });
-      submissionId = createdSubmission.id;
-    }
 
     const recipient = await getContactRecipient();
     if (!recipient) {
@@ -125,7 +106,6 @@ export async function POST(request: NextRequest) {
       source: "contact" as const,
       siteUrl: process.env.NEXT_PUBLIC_SITE_URL?.trim() || siteUrl,
       workflow: {
-        submissionId,
         trigger: "contact_form" as const,
       },
       data: {
@@ -176,6 +156,13 @@ export async function POST(request: NextRequest) {
           { status: 500 }
         );
       }
+      void auditLog({
+        action: "contact.form.submitted",
+        resourceType: "contact",
+        resourceId: eventId,
+        ip,
+        details: toSafeDetails({ channel: "resend", subject: subjectLine }),
+      });
       void postContactWebhook(configRow?.contactWebhookUrl, webhookPayload).then(logWebhookResult(ip, eventId));
       void trackAnalyticsEvent({
         request,
@@ -198,6 +185,13 @@ export async function POST(request: NextRequest) {
         bcc: BCC,
         subject: subjectLine,
         text: textBody,
+      });
+      void auditLog({
+        action: "contact.form.submitted",
+        resourceType: "contact",
+        resourceId: eventId,
+        ip,
+        details: toSafeDetails({ channel: "smtp", subject: subjectLine }),
       });
       void postContactWebhook(configRow?.contactWebhookUrl, webhookPayload).then(logWebhookResult(ip, eventId));
       void trackAnalyticsEvent({

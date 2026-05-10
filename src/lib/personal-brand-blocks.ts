@@ -1,6 +1,6 @@
 /**
  * Shared parsing and markdown emission for Personal Brand block types
- * (site-block-builder and SaaS block-renderer).
+ * (site-block-builder and public page rendering).
  */
 
 export type TimelineEntry = {

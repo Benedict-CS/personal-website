@@ -7,7 +7,7 @@ export type BreadcrumbItem = { label: string; href?: string };
 /** Social links keyed by platform (twitter, instagram, linkedin, github, youtube, etc.). */
 export type SocialLinksMap = Record<string, string>;
 
-/** Site config shape used for layout/meta (from DB or fallback). White-label: no hardcoded tenant strings. */
+/** Site config shape used for layout/meta (from DB or fallback). */
 export type SiteConfigForRender = {
   siteName: string;
   logoUrl: string | null;

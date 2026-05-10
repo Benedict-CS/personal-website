@@ -18,8 +18,6 @@ const eslintConfig = defineConfig([
     "rustfs-logs/**",
     "backups/**",
     "node_modules/**",
-    "playwright-report/**",
-    "test-results/**",
   ]),
 ]);
 

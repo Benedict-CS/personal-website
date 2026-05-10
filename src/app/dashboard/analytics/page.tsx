@@ -21,7 +21,6 @@ import {
 } from "@/components/dashboard/dashboard-ui";
 import { DASHBOARD_FORM_LABEL_CLASS } from "@/components/dashboard/dashboard-form-classes";
 import { buildAnalyticsInsight } from "@/lib/analytics-insight";
-import { AnalyticsTrendChart } from "@/components/dashboard/analytics-trend-chart";
 import { buildAnalyticsAnomalyCallouts } from "@/lib/analytics-anomaly";
 import { buildAnalyticsTrendInterpretationCards } from "@/lib/analytics-trend-interpretation";
 import { TooltipHint } from "@/components/ui/tooltip-hint";
@@ -202,7 +201,6 @@ function exportStatsToCsv(stats: Stats, from: string, to: string) {
 }
 
 export default function AnalyticsPage() {
-  type AnalyticsViewMode = "essential" | "full";
   const { toast } = useToast();
   const [stats, setStats] = useState<Stats | null>(null);
   const [loading, setLoading] = useState(true);
@@ -224,7 +222,6 @@ export default function AnalyticsPage() {
   const [clearAllConfirm, setClearAllConfirm] = useState(false);
   const [clearLoading, setClearLoading] = useState(false);
   const [clearMessage, setClearMessage] = useState<string | null>(null);
-  const [viewMode, setViewMode] = useState<AnalyticsViewMode>("essential");
   type ClearConfirmType = "before" | "onDate" | "byIP" | "tagPrefetchNoise" | "all";
   const [clearConfirm, setClearConfirm] = useState<{ type: ClearConfirmType; value?: string } | null>(null);
   const [excludeThisBrowser, setExcludeThisBrowser] = useState(false);
@@ -606,10 +603,6 @@ export default function AnalyticsPage() {
     const previousVisitors = previousPeriodStats.uniqueVisitors ?? 0;
     const currentCv = stats.cvDownloads ?? 0;
     const previousCv = previousPeriodStats.cvDownloads ?? 0;
-    const currentLeads = stats.leadGenerated ?? 0;
-    const previousLeads = previousPeriodStats.leadGenerated ?? 0;
-    const currentLeadRate = currentCv > 0 ? (currentLeads / currentCv) * 100 : 0;
-    const previousLeadRate = previousCv > 0 ? (previousLeads / previousCv) * 100 : 0;
     const previousTopBySlug = new Map(
       (previousPeriodStats.topEngagedContent ?? []).map((row) => [row.slug, row.engagementScore])
     );
@@ -627,8 +620,6 @@ export default function AnalyticsPage() {
     return {
       visitors: { current: currentVisitors, previous: previousVisitors },
       cv: { current: currentCv, previous: previousCv },
-      leads: { current: currentLeads, previous: previousLeads },
-      leadRate: { current: currentLeadRate, previous: previousLeadRate },
       topMovers,
     };
   }, [stats, previousPeriodStats]);
@@ -654,26 +645,12 @@ export default function AnalyticsPage() {
           else if (c.type === "all") void doClearAll();
         }}
       />
-      <DashboardPageHeader eyebrow="Insights" title="Analytics" description="Totals, visitors, and daily traffic." />
+      <DashboardPageHeader
+        title="Analytics"
+        description="CV downloads, who visited, where they came from, and which pages they viewed."
+      />
 
       <div className="space-y-3">
-        <div className="flex flex-wrap items-center gap-2">
-          <span className="text-xs font-medium uppercase tracking-wide text-muted-foreground">View</span>
-          <Button
-            variant={viewMode === "essential" ? "default" : "outline"}
-            size="sm"
-            onClick={() => setViewMode("essential")}
-          >
-            Essential
-          </Button>
-          <Button
-            variant={viewMode === "full" ? "default" : "outline"}
-            size="sm"
-            onClick={() => setViewMode("full")}
-          >
-            Full
-          </Button>
-        </div>
         <div className="flex flex-wrap gap-2">
           <Button
             variant="outline"
@@ -757,7 +734,7 @@ export default function AnalyticsPage() {
         <Card className="border-border bg-muted/40">
           <details className="group">
             <summary className="flex cursor-pointer list-none items-center justify-between gap-3 px-4 py-3 text-left text-sm font-medium hover:bg-muted/50 [&::-webkit-details-marker]:hidden">
-              <span>IP filters</span>
+              <span>Filters (single IP, include local traffic)</span>
               <ChevronDown className="h-4 w-4 shrink-0 text-muted-foreground transition-transform group-open:rotate-180" aria-hidden />
             </summary>
             <CardContent className="space-y-3 border-t border-border/80 pt-4">
@@ -815,7 +792,7 @@ export default function AnalyticsPage() {
           )}
           {stats.excludingDevIps && !stats.filterIP && (
             <p className="text-sm text-muted-foreground">
-              Local / unknown IPs omitted — open <span className="font-medium">IP filters</span> to include.
+              Local / unknown IPs omitted — open <span className="font-medium">Filters</span> to include.
             </p>
           )}
           {stats.total === 0 && !stats.filterIP && (
@@ -825,13 +802,13 @@ export default function AnalyticsPage() {
               description={
                 <>
                   Needs <code className="rounded bg-card px-1 text-xs">ANALYTICS_SECRET</code> and real traffic. Widen dates or open{" "}
-                  <span className="font-medium">IP filters</span> to include local/unknown IPs.
+                  <span className="font-medium">Filters</span> to include local/unknown IPs.
                 </>
               }
               className="px-4 py-6"
             />
           )}
-          <div className="grid gap-4 sm:grid-cols-2">
+          <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
             <Card>
               <CardHeader>
                 <CardTitle>Total views</CardTitle>
@@ -848,301 +825,209 @@ export default function AnalyticsPage() {
                 <p className={dashboardMetricValueClassName()}>{stats.uniqueVisitors ?? 0}</p>
               </CardContent>
             </Card>
-          </div>
-          {stats.trendByDay && stats.trendByDay.length > 0 ? (
             <Card>
               <CardHeader>
-                <CardTitle>Traffic</CardTitle>
+                <CardTitle>CV downloads</CardTitle>
               </CardHeader>
               <CardContent>
-                <AnalyticsTrendChart points={stats.trendByDay} />
+                <p className={dashboardMetricValueClassName()}>{stats.cvDownloads ?? 0}</p>
+                {(stats.cvDownloads ?? 0) === 0 && stats.excludedIPs && stats.excludedIPs.length > 0 ? (
+                  <p className="mt-2 text-xs text-muted-foreground">Your own IPs may be excluded above.</p>
+                ) : null}
               </CardContent>
             </Card>
-          ) : null}
-          <Card className="border-border bg-muted/40">
-            <details className="group">
-              <summary className="flex cursor-pointer list-none items-center justify-between gap-3 px-4 py-3 text-left text-sm font-medium hover:bg-muted/50 [&::-webkit-details-marker]:hidden">
-                <span>More metrics</span>
-                <ChevronDown className="h-4 w-4 shrink-0 text-muted-foreground transition-transform group-open:rotate-180" aria-hidden />
-              </summary>
-              <CardContent className="space-y-6 border-t border-border/80 pt-4">
-                <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
-                  <Card>
-                    <CardHeader>
-                      <CardTitle className="text-sm">Distinct IPs (table)</CardTitle>
-                    </CardHeader>
-                    <CardContent>
-                      <p className={dashboardMetricValueClassName()}>{stats.byIP.length}</p>
-                      <p className="text-xs text-muted-foreground mt-1">Max 50 in By IP below.</p>
-                    </CardContent>
-                  </Card>
-                  <Card>
-                    <CardHeader>
-                      <CardTitle className="text-sm">CV downloads</CardTitle>
-                    </CardHeader>
-                    <CardContent>
-                      <p className={dashboardMetricValueClassName()}>{stats.cvDownloads ?? 0}</p>
-                      {(stats.cvDownloads ?? 0) === 0 && stats.excludedIPs && stats.excludedIPs.length > 0 ? (
-                        <p className="mt-2 text-xs text-muted-foreground">May be excluded by IP list above.</p>
-                      ) : null}
-                    </CardContent>
-                  </Card>
-                  <Card>
-                    <CardHeader>
-                      <CardTitle className="text-sm">Avg. time on page</CardTitle>
-                    </CardHeader>
-                    <CardContent>
-                      <p className="text-2xl font-bold text-foreground">
-                        {stats.avgDurationSeconds != null
-                          ? `${Math.floor(stats.avgDurationSeconds / 60)}m ${Math.round(stats.avgDurationSeconds % 60)}s`
-                          : "—"}
-                      </p>
-                      {stats.durationSampleCount != null && stats.durationSampleCount > 0 && (
-                        <p className="text-xs text-muted-foreground">n={stats.durationSampleCount}</p>
-                      )}
-                    </CardContent>
-                  </Card>
-                  <Card>
-                    <CardHeader>
-                      <CardTitle className="text-sm">Leads</CardTitle>
-                    </CardHeader>
-                    <CardContent>
-                      <p className={dashboardMetricValueClassName()}>{stats.leadGenerated ?? 0}</p>
-                    </CardContent>
-                  </Card>
-                  <Card>
-                    <CardHeader>
-                      <CardTitle className="text-sm">Blocked (403)</CardTitle>
-                    </CardHeader>
-                    <CardContent>
-                      <p className={dashboardMetricValueClassName()}>{stats.accessBlockTotal ?? 0}</p>
-                      <p className="text-xs text-muted-foreground mt-1">Proxy IP blocks; internal log rows hidden.</p>
-                    </CardContent>
-                  </Card>
-                </div>
-                {stats.conversionFunnel ? (
-                  <div>
-                    <p className="mb-2 text-sm font-medium text-foreground">Funnel</p>
-                    <div className="grid gap-3 sm:grid-cols-3">
-                      <div className="rounded-lg border border-border bg-muted/30 p-3">
-                        <p className="text-xs uppercase tracking-wide text-muted-foreground">Visitors</p>
-                        <p className="mt-1 text-2xl font-semibold text-foreground">{stats.conversionFunnel.visitors}</p>
-                      </div>
-                      <div className="rounded-lg border border-border bg-muted/30 p-3">
-                        <p className="text-xs uppercase tracking-wide text-muted-foreground">CV downloads</p>
-                        <p className="mt-1 text-2xl font-semibold text-foreground">{stats.conversionFunnel.cvDownloads}</p>
-                        <p className="text-xs text-muted-foreground">
-                          {stats.conversionFunnel.visitors > 0
-                            ? `${Math.round((stats.conversionFunnel.cvDownloads / stats.conversionFunnel.visitors) * 100)}%`
-                            : "—"}
-                        </p>
-                      </div>
-                      <div className="rounded-lg border border-border bg-muted/30 p-3">
-                        <p className="text-xs uppercase tracking-wide text-muted-foreground">Leads</p>
-                        <p className="mt-1 text-2xl font-semibold text-foreground">{stats.conversionFunnel.leads}</p>
-                        <p className="text-xs text-muted-foreground">
-                          {stats.conversionFunnel.cvDownloads > 0
-                            ? `${Math.round((stats.conversionFunnel.leads / stats.conversionFunnel.cvDownloads) * 100)}% of CV`
-                            : "—"}
-                        </p>
-                      </div>
-                    </div>
-                  </div>
+            <Card>
+              <CardHeader>
+                <CardTitle>Avg. time on page</CardTitle>
+              </CardHeader>
+              <CardContent>
+                <p className="text-2xl font-bold text-foreground">
+                  {stats.avgDurationSeconds != null
+                    ? `${Math.floor(stats.avgDurationSeconds / 60)}m ${Math.round(stats.avgDurationSeconds % 60)}s`
+                    : "—"}
+                </p>
+                {stats.durationSampleCount != null && stats.durationSampleCount > 0 ? (
+                  <p className="text-xs text-muted-foreground">Based on {stats.durationSampleCount} visits with duration</p>
                 ) : null}
-                {stats.byCountry && stats.byCountry.length > 0 && (
+              </CardContent>
+            </Card>
+          </div>
+
+          <div className="grid gap-6 md:grid-cols-2">
+            <Card>
+              <CardHeader>
+                <CardTitle>Where traffic came from</CardTitle>
+                <p className="text-sm text-muted-foreground">
+                  Referrer when the browser sends it (direct visits often show as empty or “direct”).
+                </p>
+              </CardHeader>
+              <CardContent className="space-y-6">
+                {stats.byReferrerGroup && stats.byReferrerGroup.length > 0 ? (
                   <div>
-                    <p className="mb-2 text-sm font-medium text-foreground">By country</p>
-                    <div className="flex flex-wrap gap-3">
-                      {stats.byCountry.map((c) => (
-                        <span key={c.country} className="inline-flex items-center gap-1.5 rounded-full bg-muted px-3 py-1 text-sm">
-                          <span className="font-medium text-foreground">{c.country}</span>
-                          <span className="text-muted-foreground">{c.count}</span>
-                        </span>
-                      ))}
-                    </div>
-                  </div>
-                )}
-                {stats.topBlogPosts && stats.topBlogPosts.length > 0 && (
-                  <div>
-                    <p className="mb-2 text-sm font-medium text-foreground">Blog posts by views</p>
-                    <div className="max-h-80 overflow-auto rounded-lg border border-border">
+                    <p className="mb-2 text-sm font-medium text-foreground">Channel</p>
+                    <div className="max-h-64 overflow-auto rounded-lg border border-border">
                       <table className="w-full text-sm">
                         <thead>
                           <tr className="border-b border-border text-left">
-                            <th className="py-2 pr-4 text-muted-foreground font-medium text-xs uppercase tracking-wide">Post</th>
+                            <th className="py-2 pr-4 text-muted-foreground font-medium text-xs uppercase tracking-wide">Source</th>
                             <th className="py-2 text-muted-foreground font-medium text-xs uppercase tracking-wide">Views</th>
                           </tr>
                         </thead>
                         <tbody>
-                          {stats.topBlogPosts.map((p) => (
-                            <tr key={p.slug} className="border-b border-border/70">
-                              <td className="py-2 pr-4 text-foreground">{p.title}</td>
-                              <td className="py-2 tabular-nums">{p.viewCount.toLocaleString()}</td>
+                          {stats.byReferrerGroup.map((r) => (
+                            <tr key={r.group} className="border-b border-border/70">
+                              <td className="py-2 pr-4 text-foreground">{r.group}</td>
+                              <td className="py-2 tabular-nums">{r.count}</td>
                             </tr>
                           ))}
                         </tbody>
                       </table>
                     </div>
                   </div>
-                )}
-                {stats.topEngagedContent && stats.topEngagedContent.length > 0 && (
+                ) : null}
+                {stats.byReferrer && stats.byReferrer.length > 0 ? (
                   <div>
-                    <p className="mb-2 text-sm font-medium text-foreground">Engagement score</p>
-                    <div className="max-h-80 overflow-auto overscroll-x-contain rounded-lg border border-border">
-                      <table className="w-full text-sm min-w-[520px]">
+                    <p className="mb-2 text-sm font-medium text-foreground">Full referrer URL</p>
+                    <div className="max-h-64 overflow-auto rounded-lg border border-border">
+                      <table className="w-full text-sm">
                         <thead>
                           <tr className="border-b border-border text-left">
-                            <th className="py-2 pr-4 text-muted-foreground font-medium text-xs uppercase tracking-wide">Post</th>
-                            <th className="py-2 pr-4 text-muted-foreground font-medium text-xs uppercase tracking-wide">Views</th>
-                            <th className="py-2 pr-4 text-muted-foreground font-medium text-xs uppercase tracking-wide">Avg. time</th>
-                            <th className="py-2 text-muted-foreground font-medium text-xs uppercase tracking-wide">Score</th>
-                          </tr>
-                        </thead>
-                        <tbody>
-                          {stats.topEngagedContent.map((p) => (
-                            <tr key={p.slug} className="border-b border-border/70">
-                              <td className="py-2 pr-4 text-foreground">{p.title}</td>
-                              <td className="py-2 pr-4 tabular-nums">{p.views.toLocaleString()}</td>
-                              <td className="py-2 pr-4 tabular-nums text-muted-foreground">
-                                {Math.floor(p.avgDurationSeconds / 60)}m {Math.round(p.avgDurationSeconds % 60)}s
-                              </td>
-                              <td className="py-2 tabular-nums font-medium">{p.engagementScore.toFixed(2)}</td>
-                            </tr>
-                          ))}
-                        </tbody>
-                      </table>
-                    </div>
-                  </div>
-                )}
-              </CardContent>
-            </details>
-          </Card>
-          {trendInterpretationCards.length > 0 ? (
-            <Card className="border-border bg-muted/40">
-              <details className="group">
-                <summary className="flex cursor-pointer list-none items-center justify-between gap-3 px-4 py-3 text-left text-sm font-medium hover:bg-muted/50 [&::-webkit-details-marker]:hidden">
-                  <span>Trend notes</span>
-                  <ChevronDown className="h-4 w-4 shrink-0 text-muted-foreground transition-transform group-open:rotate-180" aria-hidden />
-                </summary>
-                <CardContent className="border-t border-border/80 pt-4">
-                  <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
-                    {trendInterpretationCards.map((card) => (
-                      <div
-                        key={card.title}
-                        className={`rounded-lg border p-3 text-sm ${
-                          card.tone === "positive"
-                            ? "border-emerald-200 bg-emerald-50/80 text-emerald-950"
-                            : card.tone === "caution"
-                              ? "border-amber-200 bg-amber-50/80 text-amber-950"
-                              : "border-border bg-muted/25 text-foreground"
-                        }`}
-                      >
-                        <p className="font-medium text-foreground">{card.title}</p>
-                        <p className="mt-1 text-xs leading-relaxed opacity-90">{card.detail}</p>
-                      </div>
-                    ))}
-                  </div>
-                </CardContent>
-              </details>
-            </Card>
-          ) : null}
-          {viewMode === "full" &&
-          ((stats.byReferrer && stats.byReferrer.length > 0) || (stats.byReferrerGroup && stats.byReferrerGroup.length > 0)) ? (
-            <Card className="border-border bg-muted/40">
-              <details className="group">
-                <summary className="flex cursor-pointer list-none items-center justify-between gap-3 px-4 py-3 text-left text-sm font-medium hover:bg-muted/50 [&::-webkit-details-marker]:hidden">
-                  <span>Referrers</span>
-                  <ChevronDown className="h-4 w-4 shrink-0 text-muted-foreground transition-transform group-open:rotate-180" aria-hidden />
-                </summary>
-                <CardContent className="space-y-6 border-t border-border/80 pt-4">
-                  {stats.byReferrer && stats.byReferrer.length > 0 ? (
-                    <div>
-                      <p className="mb-2 text-sm font-medium text-foreground">By URL</p>
-                      <div className="max-h-64 overflow-auto rounded-lg border border-border">
-                        <table className="w-full text-sm">
-                          <thead>
-                            <tr className="border-b border-border text-left">
-                              <th className="py-2 pr-4 text-muted-foreground font-medium text-xs uppercase tracking-wide">Referrer</th>
-                              <th className="py-2 text-muted-foreground font-medium text-xs uppercase tracking-wide">Views</th>
-                            </tr>
-                          </thead>
-                          <tbody>
-                            {stats.byReferrer.map((r) => (
-                              <tr key={r.referrer} className="border-b border-border/70">
-                                <td className="py-2 pr-4 break-all text-foreground">{r.referrer}</td>
-                                <td className="py-2 tabular-nums">{r.count}</td>
-                              </tr>
-                            ))}
-                          </tbody>
-                        </table>
-                      </div>
-                    </div>
-                  ) : null}
-                  {stats.byReferrerGroup && stats.byReferrerGroup.length > 0 ? (
-                    <div>
-                      <p className="mb-2 text-sm font-medium text-foreground">Groups</p>
-                      <div className="max-h-64 overflow-auto rounded-lg border border-border">
-                        <table className="w-full text-sm">
-                          <thead>
-                            <tr className="border-b border-border text-left">
-                              <th className="py-2 pr-4 text-muted-foreground font-medium text-xs uppercase tracking-wide">Group</th>
-                              <th className="py-2 text-muted-foreground font-medium text-xs uppercase tracking-wide">Views</th>
-                            </tr>
-                          </thead>
-                          <tbody>
-                            {stats.byReferrerGroup.map((r) => (
-                              <tr key={r.group} className="border-b border-border/70">
-                                <td className="py-2 pr-4 text-foreground">{r.group}</td>
-                                <td className="py-2 tabular-nums">{r.count}</td>
-                              </tr>
-                            ))}
-                          </tbody>
-                        </table>
-                      </div>
-                    </div>
-                  ) : null}
-                </CardContent>
-              </details>
-            </Card>
-          ) : null}
-          <div className={`grid gap-6 ${viewMode === "full" ? "md:grid-cols-2" : "md:grid-cols-1"}`}>
-            {viewMode === "full" ? (
-              <Card className="border-border bg-muted/40">
-                <details className="group">
-                  <summary className="flex cursor-pointer list-none items-center justify-between gap-3 px-4 py-3 text-left text-sm font-medium hover:bg-muted/50 [&::-webkit-details-marker]:hidden">
-                    <span>By path</span>
-                    <ChevronDown className="h-4 w-4 shrink-0 text-muted-foreground transition-transform group-open:rotate-180" aria-hidden />
-                  </summary>
-                  <CardContent className="border-t border-border/80 pt-4">
-                    <p className="mb-2 text-xs text-muted-foreground md:hidden">Scroll horizontally for long paths.</p>
-                    <AnalyticsPathBars rows={stats.byPath} />
-                    <div className="max-h-80 overflow-auto overscroll-x-contain">
-                      <table className="w-full text-sm min-w-[280px]">
-                        <thead>
-                          <tr className="border-b border-border text-left">
-                            <th className="py-2 pr-4 text-muted-foreground font-medium text-xs uppercase tracking-wide">Path</th>
+                            <th className="py-2 pr-4 text-muted-foreground font-medium text-xs uppercase tracking-wide">URL</th>
                             <th className="py-2 text-muted-foreground font-medium text-xs uppercase tracking-wide">Views</th>
                           </tr>
                         </thead>
                         <tbody>
-                          {stats.byPath.map((p) => (
-                            <tr key={p.path} className="border-b border-border/70">
-                              <td className="py-2 pr-4 font-mono text-foreground">{p.path}</td>
-                              <td className="py-2">{p.count}</td>
+                          {stats.byReferrer.map((r) => (
+                            <tr key={r.referrer} className="border-b border-border/70">
+                              <td className="py-2 pr-4 break-all text-foreground">{r.referrer}</td>
+                              <td className="py-2 tabular-nums">{r.count}</td>
                             </tr>
                           ))}
                         </tbody>
                       </table>
                     </div>
-                  </CardContent>
-                </details>
-              </Card>
-            ) : null}
+                  </div>
+                ) : null}
+                {(!stats.byReferrer || stats.byReferrer.length === 0) &&
+                (!stats.byReferrerGroup || stats.byReferrerGroup.length === 0) ? (
+                  <p className="text-sm text-muted-foreground">No referrer rows in this date range.</p>
+                ) : null}
+              </CardContent>
+            </Card>
+
             <Card>
               <CardHeader>
-                <CardTitle>By IP</CardTitle>
+                <CardTitle>Pages viewed</CardTitle>
+                <p className="text-sm text-muted-foreground">Which paths were opened, by view count.</p>
               </CardHeader>
               <CardContent>
+                <p className="mb-2 text-xs text-muted-foreground md:hidden">Scroll horizontally for long paths.</p>
+                <AnalyticsPathBars rows={stats.byPath} />
+                <div className="max-h-80 overflow-auto overscroll-x-contain mt-4">
+                  <table className="w-full text-sm min-w-[280px]">
+                    <thead>
+                      <tr className="border-b border-border text-left">
+                        <th className="py-2 pr-4 text-muted-foreground font-medium text-xs uppercase tracking-wide">Path</th>
+                        <th className="py-2 text-muted-foreground font-medium text-xs uppercase tracking-wide">Views</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {stats.byPath.map((p) => (
+                        <tr key={p.path} className="border-b border-border/70">
+                          <td className="py-2 pr-4 font-mono text-foreground">{p.path}</td>
+                          <td className="py-2">{p.count}</td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
+              </CardContent>
+            </Card>
+          </div>
+
+          <Card>
+            <CardHeader>
+              <CardTitle>Recent views</CardTitle>
+              <p className="text-sm text-muted-foreground">
+                Newest page loads in this date range — time, path, location, referrer, and IP (click IP to filter).
+              </p>
+            </CardHeader>
+            <CardContent>
+              {stats.recent.length === 0 ? (
+                <p className="text-sm text-muted-foreground">No recent page loads in this range.</p>
+              ) : (
+                <div className="max-h-96 overflow-auto">
+                  <table className="w-full text-sm rwd-table">
+                    <thead>
+                      <tr className="border-b text-left">
+                        <th className="py-2 pr-4">Time</th>
+                        <th className="py-2 pr-4">Path</th>
+                        <th className="py-2 pr-4">Country / City</th>
+                        <th className="py-2 pr-4">Duration</th>
+                        <th className="py-2 pr-4">Referrer</th>
+                        <th className="py-2 pr-4 max-w-[200px]">User-Agent</th>
+                        <th className="py-2">IP</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {stats.recent.map((r, i) => (
+                        <tr key={i} className="border-b border-border/70">
+                          <td data-label="Time" className="py-2 pr-4 text-muted-foreground">
+                            {formatDate(r.createdAt)}
+                          </td>
+                          <td data-label="Path" className="py-2 pr-4 font-mono">
+                            {r.path}
+                          </td>
+                          <td data-label="Location" className="py-2 pr-4 text-muted-foreground">
+                            {[r.country, r.city].filter(Boolean).join(" / ") || "—"}
+                          </td>
+                          <td data-label="Duration" className="py-2 pr-4 text-muted-foreground">
+                            {r.durationSeconds != null
+                              ? `${Math.floor(r.durationSeconds / 60)}m ${r.durationSeconds % 60}s`
+                              : "—"}
+                          </td>
+                          <td data-label="Referrer" className="py-2 pr-4 text-muted-foreground break-all max-w-[180px]">
+                            {r.referrer || "—"}
+                          </td>
+                          <td
+                            data-label="User-Agent"
+                            className="py-2 pr-4 text-muted-foreground text-xs break-all max-w-[200px]"
+                            title={r.userAgent || ""}
+                          >
+                            {r.userAgent ? `${r.userAgent.slice(0, 80)}${r.userAgent.length > 80 ? "…" : ""}` : "—"}
+                          </td>
+                          <td data-label="IP" className="py-2">
+                            <button
+                              type="button"
+                              onClick={() => setFilterIP(r.ip)}
+                              className="rounded-sm px-0.5 -mx-0.5 text-left font-mono text-foreground transition-colors hover:text-primary hover:underline active:opacity-75 motion-reduce:transition-none"
+                              title="Show only this IP"
+                            >
+                              {r.ip}
+                            </button>
+                          </td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
+              )}
+            </CardContent>
+          </Card>
+
+          <Card className="border-border bg-muted/40">
+            <details className="group">
+              <summary className="flex cursor-pointer list-none items-center justify-between gap-3 px-4 py-3 text-left text-sm font-medium hover:bg-muted/50 [&::-webkit-details-marker]:hidden">
+                <span>
+                  Visitors by IP ({stats.byIP.length}
+                  {stats.uniqueVisitors != null ? ` · ${stats.uniqueVisitors} unique` : ""})
+                </span>
+                <ChevronDown className="h-4 w-4 shrink-0 text-muted-foreground transition-transform group-open:rotate-180" aria-hidden />
+              </summary>
+              <CardContent className="border-t border-border/80 pt-4">
+                <p className="mb-3 text-xs text-muted-foreground">
+                  Click an IP to filter the whole dashboard to that visitor. Use Delete to remove their history.
+                </p>
                 <div className="max-h-80 overflow-auto">
                   <table className="w-full text-sm rwd-table">
                     <thead>
@@ -1169,7 +1054,9 @@ export default function AnalyticsPage() {
                           <td data-label="Last visit" className="py-2 pr-4 text-muted-foreground">
                             {p.lastVisit ? formatDate(p.lastVisit) : "—"}
                           </td>
-                          <td data-label="Views" className="py-2 pr-4">{p.count}</td>
+                          <td data-label="Views" className="py-2 pr-4">
+                            {p.count}
+                          </td>
                           <td data-label="" className="py-2">
                             <Button
                               type="button"
@@ -1189,66 +1076,16 @@ export default function AnalyticsPage() {
                   </table>
                 </div>
               </CardContent>
-            </Card>
-          </div>
-          {viewMode === "full" ? (
-            <Card className="border-border bg-muted/40">
-              <details className="group">
-                <summary className="flex cursor-pointer list-none items-center justify-between gap-3 px-4 py-3 text-left text-sm font-medium hover:bg-muted/50 [&::-webkit-details-marker]:hidden">
-                  <span>Recent views</span>
-                  <ChevronDown className="h-4 w-4 shrink-0 text-muted-foreground transition-transform group-open:rotate-180" aria-hidden />
-                </summary>
-                <CardContent className="border-t border-border/80 pt-4">
-              <div className="max-h-96 overflow-auto">
-                <table className="w-full text-sm rwd-table">
-                  <thead>
-                    <tr className="border-b text-left">
-                      <th className="py-2 pr-4">Time</th>
-                      <th className="py-2 pr-4">Path</th>
-                      <th className="py-2 pr-4">Country / City</th>
-                      <th className="py-2 pr-4">Duration</th>
-                      <th className="py-2 pr-4">Referrer</th>
-                      <th className="py-2 pr-4 max-w-[200px]">User-Agent</th>
-                      <th className="py-2">IP</th>
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {stats.recent.map((r, i) => (
-                      <tr key={i} className="border-b border-border/70">
-                        <td data-label="Time" className="py-2 pr-4 text-muted-foreground">{formatDate(r.createdAt)}</td>
-                        <td data-label="Path" className="py-2 pr-4 font-mono">{r.path}</td>
-                        <td data-label="Location" className="py-2 pr-4 text-muted-foreground">
-                          {[r.country, r.city].filter(Boolean).join(" / ") || "—"}
-                        </td>
-                        <td data-label="Duration" className="py-2 pr-4 text-muted-foreground">
-                          {r.durationSeconds != null ? `${Math.floor(r.durationSeconds / 60)}m ${r.durationSeconds % 60}s` : "—"}
-                        </td>
-                        <td data-label="Referrer" className="py-2 pr-4 text-muted-foreground break-all max-w-[180px]">
-                          {r.referrer || "—"}
-                        </td>
-                        <td data-label="User-Agent" className="py-2 pr-4 text-muted-foreground text-xs break-all max-w-[200px]" title={r.userAgent || ""}>
-                          {r.userAgent ? `${r.userAgent.slice(0, 80)}${r.userAgent.length > 80 ? "…" : ""}` : "—"}
-                        </td>
-                        <td data-label="IP" className="py-2">
-                          <button
-                            type="button"
-                            onClick={() => setFilterIP(r.ip)}
-                            className="rounded-sm px-0.5 -mx-0.5 text-left font-mono text-foreground transition-colors hover:text-primary hover:underline active:opacity-75 motion-reduce:transition-none"
-                            title="Show only this IP"
-                          >
-                            {r.ip}
-                          </button>
-                        </td>
-                      </tr>
-                    ))}
-                  </tbody>
-                </table>
-              </div>
-                </CardContent>
-              </details>
-            </Card>
-          ) : null}
-          {viewMode === "full" ? (
+            </details>
+          </Card>
+
+          <Card className="border-border bg-muted/40">
+            <details className="group">
+              <summary className="flex cursor-pointer list-none items-center justify-between gap-3 px-4 py-3 text-left text-sm font-medium hover:bg-muted/50 [&::-webkit-details-marker]:hidden">
+                <span>Blocked requests &amp; data cleanup</span>
+                <ChevronDown className="h-4 w-4 shrink-0 text-muted-foreground transition-transform group-open:rotate-180" aria-hidden />
+              </summary>
+              <CardContent className="space-y-4 border-t border-border/80 pt-4">
             <Card className="border-border bg-muted/40">
               <details className="group">
                 <summary className="flex cursor-pointer list-none items-center justify-between gap-3 px-4 py-3 text-left text-sm font-medium hover:bg-muted/50 [&::-webkit-details-marker]:hidden">
@@ -1310,9 +1147,6 @@ export default function AnalyticsPage() {
                 </CardContent>
               </details>
             </Card>
-          ) : null}
-
-          {viewMode === "full" ? (
             <Card className="border-amber-200 bg-amber-50/50">
               <details className="group">
                 <summary className="flex cursor-pointer list-none items-center justify-between gap-3 px-4 py-3 text-left text-sm font-medium hover:bg-amber-100/80 [&::-webkit-details-marker]:hidden">
@@ -1429,7 +1263,9 @@ export default function AnalyticsPage() {
                 </CardContent>
               </details>
             </Card>
-          ) : null}
+              </CardContent>
+            </details>
+          </Card>
 
           <Card className="border-border bg-muted/40">
             <details className="group">
@@ -1438,15 +1274,32 @@ export default function AnalyticsPage() {
                 <ChevronDown className="h-4 w-4 shrink-0 text-muted-foreground transition-transform group-open:rotate-180" aria-hidden />
               </summary>
               <CardContent className="space-y-6 border-t border-border/80 pt-4 text-sm">
-                <details className="rounded-lg border border-border bg-card">
-                  <summary className="cursor-pointer px-3 py-2 text-sm font-medium [&::-webkit-details-marker]:hidden">
-                    View modes
-                  </summary>
-                  <div className="border-t border-border px-3 py-2 text-muted-foreground">
-                    <span className="font-medium text-foreground">Essential</span> — defaults here: totals, visitors, traffic, By IP.{" "}
-                    <span className="font-medium text-foreground">Full</span> — opens logs, paths, referrers, cleanup.
-                  </div>
-                </details>
+                {trendInterpretationCards.length > 0 ? (
+                  <details className="rounded-lg border border-border bg-card">
+                    <summary className="cursor-pointer px-3 py-2 text-sm font-medium [&::-webkit-details-marker]:hidden">
+                      Trend notes (automated)
+                    </summary>
+                    <div className="border-t border-border px-3 py-3">
+                      <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
+                        {trendInterpretationCards.map((card) => (
+                          <div
+                            key={card.title}
+                            className={`rounded-lg border p-3 text-sm ${
+                              card.tone === "positive"
+                                ? "border-emerald-200 bg-emerald-50/80 text-emerald-950"
+                                : card.tone === "caution"
+                                  ? "border-amber-200 bg-amber-50/80 text-amber-950"
+                                  : "border-border bg-muted/25 text-foreground"
+                            }`}
+                          >
+                            <p className="font-medium text-foreground">{card.title}</p>
+                            <p className="mt-1 text-xs leading-relaxed opacity-90">{card.detail}</p>
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+                  </details>
+                ) : null}
                 {analyticsInsight || analyticsAnomalies.length > 0 ? (
                   <details className="rounded-lg border border-border bg-card">
                     <summary className="cursor-pointer px-3 py-2 text-sm font-medium [&::-webkit-details-marker]:hidden">
@@ -1483,15 +1336,15 @@ export default function AnalyticsPage() {
                       </p>
                       {loadingPreviousPeriod ? (
                         <div className="space-y-3" aria-busy="true">
-                          <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
-                            {[0, 1, 2, 3].map((key) => (
+                          <div className="grid gap-3 sm:grid-cols-2">
+                            {[0, 1].map((key) => (
                               <Skeleton key={key} className="h-[4.5rem] w-full" />
                             ))}
                           </div>
                         </div>
                       ) : periodDeltaSummary ? (
                         <>
-                          <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
+                          <div className="grid gap-3 sm:grid-cols-2">
                             <div className="rounded-lg border border-border bg-muted/30 p-3">
                               <p className="text-xs uppercase tracking-wide text-muted-foreground">Visitors Δ</p>
                               <p className="mt-1 text-xl font-semibold text-foreground">
@@ -1502,18 +1355,6 @@ export default function AnalyticsPage() {
                               <p className="text-xs uppercase tracking-wide text-muted-foreground">CV Δ</p>
                               <p className="mt-1 text-xl font-semibold text-foreground">
                                 {formatSignedDelta(periodDeltaSummary.cv.current, periodDeltaSummary.cv.previous)}
-                              </p>
-                            </div>
-                            <div className="rounded-lg border border-border bg-muted/30 p-3">
-                              <p className="text-xs uppercase tracking-wide text-muted-foreground">Leads Δ</p>
-                              <p className="mt-1 text-xl font-semibold text-foreground">
-                                {formatSignedDelta(periodDeltaSummary.leads.current, periodDeltaSummary.leads.previous)}
-                              </p>
-                            </div>
-                            <div className="rounded-lg border border-border bg-muted/30 p-3">
-                              <p className="text-xs uppercase tracking-wide text-muted-foreground">Lead/CV pp</p>
-                              <p className="mt-1 text-xl font-semibold text-foreground">
-                                {(periodDeltaSummary.leadRate.current - periodDeltaSummary.leadRate.previous).toFixed(1)}pp
                               </p>
                             </div>
                           </div>
@@ -1541,7 +1382,7 @@ export default function AnalyticsPage() {
                   <div className="space-y-3 border-t border-border px-3 py-3 text-muted-foreground">
                     <p>
                       Probes and scanner UAs are filtered from totals. Default stats omit unknown / loopback / private IPs unless you use{" "}
-                      <span className="font-medium text-foreground">IP filters → Include local &amp; unknown</span>.
+                      <span className="font-medium text-foreground">Filters → Include local &amp; unknown</span>.
                     </p>
                     <label className="flex cursor-pointer items-start gap-3 rounded-lg border border-border bg-muted/30 p-3">
                       <input

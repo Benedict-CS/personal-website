@@ -12,7 +12,7 @@ This document maps what the codebase already provides and how to operate it in p
 | **Request correlation** | `x-request-id` on responses (`src/proxy.ts`, `src/lib/request-id.ts`) |
 | **Health** | `GET /api/health` (DB readiness), `GET /api/live` (process liveness), `GET /api/v1/health` |
 | **Dashboard** | Analytics page + system status components |
-| **Optional error tracking** | Sentry via `next.config.ts` and `SENTRY_*` env vars ([ENVIRONMENT.md](ENVIRONMENT.md)) |
+| **Error visibility** | Server logs, `/api/health`, `/api/live`; wire your own APM if required |
 
 Smoke-check endpoints locally or on a server:
 
@@ -52,17 +52,7 @@ Local gate before pushing or releasing:
 npm run verify
 ```
 
-This runs **lint**, **TypeScript (`tsc --noEmit`)**, **Jest**, and **production build** (same checks as CI, minus Playwright).
-
----
-
-## End-to-end tests (optional)
-
-```bash
-npm run test:e2e
-```
-
-Requires a running app (or Playwright `webServer` when `CI` is set — see `playwright.config.ts`). E2E is not required for `npm run verify`.
+This runs **lint**, **TypeScript (`tsc --noEmit`)**, **Jest**, and **production build** (same checks as CI).
 
 ---
 

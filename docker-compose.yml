@@ -136,8 +136,6 @@ services:
       - NEXT_PUBLIC_GISCUS_REPO_ID=${NEXT_PUBLIC_GISCUS_REPO_ID}
       - NEXT_PUBLIC_GISCUS_CATEGORY=${NEXT_PUBLIC_GISCUS_CATEGORY}
       - NEXT_PUBLIC_GISCUS_CATEGORY_ID=${NEXT_PUBLIC_GISCUS_CATEGORY_ID}
-      # Agent cron jobs (optional; without it, /api/agents/*/cron returns 503)
-      - AGENT_CRON_SECRET=${AGENT_CRON_SECRET:-}
       # Shared rate limits across replicas (optional; see docs/OPERATIONS_AND_RELIABILITY.md)
       - REDIS_URL=${REDIS_URL:-}
       # Optional: duplicate HSTS from next.config when not using a reverse proxy that sets it

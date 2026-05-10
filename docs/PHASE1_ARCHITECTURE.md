@@ -40,9 +40,9 @@ The proxy middleware assigns **`x-request-id`** on responses:
 - Reuses **`x-request-id`**, **`x-correlation-id`**, or **`x-trace-id`** from upstream when valid.
 - Otherwise generates a random 32-byte hex id.
 - Structured request logs include **`requestId`** for correlation with container logs.
-- Applies to **public routes**, **A/B `/s/` routes**, **edge rewrites**, **403/429**, and **authenticated `/dashboard` and `/editor`** (after `withAuth`).
+- Applies to **public routes**, **403**, and **authenticated `/dashboard` and `/editor`** (after `withAuth`).
 
-Blocked (403) and tenant rate-limit (429) responses include the same header.
+Blocked (403) responses include the same header.
 
 ---
 
@@ -51,7 +51,7 @@ Blocked (403) and tenant rate-limit (429) responses include the same header.
 - **`src/app/error.tsx`:** Segment error boundary with retry and navigation.
 - **`src/app/global-error.tsx`:** Root boundary with its own `<html>`; shows **Next.js `digest`** when present for support reference.
 - **`src/app/dashboard/error.tsx`:** Dashboard-specific recovery.
-- **`src/instrumentation.ts`:** Next.js **`register()`** hook (Node.js runtime only). Reserved for optional server startup wiring (metrics/APM); Sentry remains in `next.config` / Sentry config files.
+- **Instrumentation:** You can add Next.js [`instrumentation.ts`](https://nextjs.org/docs/app/api-reference/file-conventions/instrumentation) later for metrics/APM or other server bootstrap hooks; the default repo does not ship one.
 
 ---
 

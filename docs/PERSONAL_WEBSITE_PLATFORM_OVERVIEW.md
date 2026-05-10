@@ -73,7 +73,7 @@ Admin traffic is gated by NextAuth session validation. Dashboard and Editor rout
 | **Content** | Markdown + MDX pipeline | Rich article rendering with embedded dynamic blocks |
 | **Media** | Upload + `sharp` optimization | Image resizing and format conversion on ingest |
 | **Storage** | PostgreSQL + RustFS (S3-compatible) | Relational content in Postgres; binary assets in RustFS |
-| **Observability** | Sentry + health endpoints | Runtime error capture and uptime diagnostics |
+| **Observability** | Logs + health endpoints | Server logs and uptime diagnostics (`/api/health`, `/api/live`) |
 | **Testing** | Jest + Playwright | Unit/integration tests + E2E smoke coverage |
 | **Infra** | Docker / Docker Compose | Reproducible local environment and production deployment |
 | **Security** | CSP, strict headers, `security.txt` | Browser hardening and XSS/clickjacking protection |
@@ -213,7 +213,7 @@ Permissions-Policy        — restricts browser feature access
 Strict-Transport-Security — HSTS toggle for HTTPS production
 ```
 
-Sentry captures runtime exceptions in both server and client contexts, with source maps for readable stack traces in production.
+Runtime errors surface in server logs and browser devtools; use your host’s logging stack or an external APM if you need centralized error tracking.
 
 ---
 

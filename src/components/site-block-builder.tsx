@@ -2742,7 +2742,7 @@ export function SiteBlockBuilder({
 
           <Card>
             <CardHeader className="pb-2">
-              <CardTitle className="text-sm">Brand (white-label prep)</CardTitle>
+              <CardTitle className="text-sm">Brand</CardTitle>
             </CardHeader>
             <CardContent
               className="grid gap-2 sm:grid-cols-2"

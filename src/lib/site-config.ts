@@ -17,7 +17,7 @@ const DEFAULT_NAV: NavItem[] = [
   { label: "Contact", href: "/contact" },
 ];
 
-/** Fallback when no DB row: generic white-label defaults only. */
+/** Fallback when no DB row: sensible defaults only. */
 const fallback: SiteConfigForRender = {
   siteName: "My Site",
   logoUrl: null,

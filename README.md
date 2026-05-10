@@ -47,14 +47,14 @@ Production-ready personal website and CMS with a commercial-style dashboard and 
 |---------|---------|
 | Animations | [Framer Motion](https://www.framer.com/motion/) |
 | Icons | [Lucide React](https://lucide.dev/) |
-| Markdown | [react-markdown](https://github.com/remarkjs/react-markdown), [remark-gfm](https://github.com/remarkjs/remark-gfm), [rehype-highlight](https://github.com/rehypejs/rehype-highlight), [rehype-katex](https://github.com/remarkjs/remark-math) |
+| Markdown | [react-markdown](https://github.com/remarkjs/react-markdown), [remark-gfm](https://github.com/remarkjs/remark-gfm), [rehype-pretty-code](https://github.com/rehype-pretty/rehype-pretty-code), [rehype-katex](https://github.com/remarkjs/remark-math) |
 | UI primitives | [Radix UI](https://www.radix-ui.com/) (Slot, Tabs) |
 | Drag and drop | [@dnd-kit](https://dndkit.com/) |
 | State | [Zustand](https://github.com/pmndrs/zustand) |
 | Email | [Resend](https://resend.com/) or [Nodemailer](https://nodemailer.com/) |
 | Object storage | [AWS SDK S3](https://aws.amazon.com/sdk-for-javascript/) (S3-compatible API) |
 | Images | [Sharp](https://sharp.pixelplumbing.com/) (optimization, OG) |
-| Testing | [Jest](https://jestjs.io/), [Playwright](https://playwright.dev/) |
+| Testing | [Jest](https://jestjs.io/) |
 | Lint / format | [ESLint](https://eslint.org/), [eslint-config-next](https://nextjs.org/docs/app/building-your-application/configuring/eslint) |
 
 ---
@@ -103,7 +103,6 @@ Then open:
 | [PHASE3_OBSERVABILITY_AND_SECURITY.md](docs/PHASE3_OBSERVABILITY_AND_SECURITY.md) | Logging, security controls, CI/CD, `npm run verify` |
 | [PHASE4_UI_AND_SEO.md](docs/PHASE4_UI_AND_SEO.md) | SEO (sitemap, robots, meta), light UI, RWD notes |
 | [PHASE1_PERSONAL_BRAND_BLOCKS.md](docs/PHASE1_PERSONAL_BRAND_BLOCKS.md) | Personal brand blocks (hero, timeline, projects, skills, contact form) |
-| [PHASE5_SAAS_I18N_AND_BILLING.md](docs/PHASE5_SAAS_I18N_AND_BILLING.md) | SaaS i18n, plan limits, Stripe / Lemon billing |
 
 ---
 

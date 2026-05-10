@@ -1,5 +1,5 @@
 generator client {
-  provider = "prisma-client-js"
+  provider      = "prisma-client-js"
   binaryTargets = ["debian-openssl-3.0.x", "linux-musl-openssl-3.0.x"]
 }
 
@@ -8,743 +8,24 @@ datasource db {
   url      = env("DATABASE_URL")
 }
 
-enum SitePlan {
-  FREE
-  PRO
-  BUSINESS
-  ENTERPRISE
-}
-
-enum SubscriptionStatus {
-  TRIALING
-  ACTIVE
-  PAST_DUE
-  CANCELED
-}
-
-enum BillingProvider {
-  NONE
-  STRIPE
-  LEMON_SQUEEZY
-}
-
-enum SiteStatus {
-  DRAFT
-  ACTIVE
-  SUSPENDED
-}
-
-enum PageStatus {
-  DRAFT
-  PUBLISHED
-  ARCHIVED
-}
-
-enum ProductStatus {
-  DRAFT
-  ACTIVE
-  ARCHIVED
-}
-
-enum OrderStatus {
-  PENDING
-  PAID
-  PROCESSING
-  SHIPPED
-  COMPLETED
-  CANCELED
-}
-
-enum FulfillmentStage {
-  NEW
-  PICKING
-  PACKING
-  SHIPPED
-  DELIVERED
-}
-
-enum CampaignStatus {
-  DRAFT
-  SCHEDULED
-  SENDING
-  SENT
-  FAILED
-}
-
-enum ExperimentStatus {
-  DRAFT
-  RUNNING
-  COMPLETED
-  ARCHIVED
-}
-
-model User {
-  id            String         @id @default(uuid())
-  email         String         @unique
-  displayName   String
-  passwordHash  String
-  role          String         @default("owner")
-  createdAt     DateTime       @default(now())
-  updatedAt     DateTime       @updatedAt
-  accounts      Account[]
-  subscriptions Subscription[]
-  pageVersions  PageVersion[]  @relation("PageVersionAuthor")
-  createdSites  TenantSite[]
-}
-
-model Account {
-  id          String      @id @default(uuid())
-  userId      String
-  user        User        @relation(fields: [userId], references: [id], onDelete: Cascade)
-  siteId      String
-  site        TenantSite  @relation(fields: [siteId], references: [id], onDelete: Cascade)
-  role        String      @default("owner") // owner | admin | editor | viewer
-  createdAt   DateTime    @default(now())
-
-  @@unique([userId, siteId])
-  @@index([siteId, role])
-}
-
-model Subscription {
-  id                       String             @id @default(uuid())
-  userId                   String
-  user                     User               @relation(fields: [userId], references: [id], onDelete: Cascade)
-  siteId                   String?
-  site                     TenantSite?        @relation(fields: [siteId], references: [id], onDelete: SetNull)
-  billingProvider          BillingProvider    @default(NONE)
-  stripeCustomerId         String?            @unique
-  stripeSubscriptionId     String?            @unique
-  stripePriceId            String?
-  lemonCustomerId          String?            @unique
-  lemonSubscriptionId      String?            @unique
-  lemonVariantId           String?
-  plan                     SitePlan           @default(FREE)
-  status                   SubscriptionStatus @default(TRIALING)
-  currentPeriodStart       DateTime?
-  currentPeriodEnd         DateTime?
-  cancelAtPeriodEnd        Boolean            @default(false)
-  createdAt                DateTime           @default(now())
-  updatedAt                DateTime           @updatedAt
-
-  @@index([userId, status])
-  @@index([siteId, status])
-}
-
-model TenantSite {
-  id                String            @id @default(uuid())
-  slug              String            @unique
-  name              String
-  status            SiteStatus        @default(DRAFT)
-  /// BCP 47 language tag for storefront chrome (builder + public tenant pages).
-  defaultLocale     String            @default("en")
-  customDomain      String?           @unique
-  subdomain         String?           @unique
-  logoUrl           String?
-  themeTokens       Json              @default("{}")
-  settings          Json              @default("{}")
-  createdById       String?
-  createdBy         User?             @relation(fields: [createdById], references: [id], onDelete: SetNull)
-  createdAt         DateTime          @default(now())
-  updatedAt         DateTime          @updatedAt
-  accounts          Account[]
-  templates         SiteTemplate[]
-  pages             Page[]
-  pageVersions      PageVersion[]
-  blocks            Block[]
-  mediaFolders      MediaFolder[]
-  mediaAssets       MediaAsset[]
-  subscriptions     Subscription[]
-  categories        Category[]
-  products          Product[]
-  productVariants   ProductVariant[]
-  customers         Customer[]
-  carts             Cart[]
-  cartItems         CartItem[]
-  orders            Order[]
-  orderItems        OrderItem[]
-  discountCodes     DiscountCode[]
-  shippingZones     ShippingZone[]
-  crmContacts       CRMContact[]
-  formSubmissions   FormSubmission[]
-  mailingLists      MailingList[]
-  mailingListContacts MailingListContact[]
-  emailCampaigns    EmailCampaign[]
-  vectorDocuments   VectorDocument[]
-  abExperiments     ABExperiment[]
-  pageVariants      PageVariant[]
-  variantEvents     VariantEvent[]
-  deploymentJobs    DeploymentJob[]
-  domainCertificates DomainCertificate[]
-
-  // Legacy content mapped to tenant scope for migration compatibility.
-  posts             Post[]
-  tags              Tag[]
-  postVersions      PostVersion[]
-  aboutConfigs      AboutConfig[]
-  siteConfigs       SiteConfig[]
-  customPages       CustomPage[]
-  sitePageContents  SitePageContent[]
-  auditLogs         AuditLog[]
-  pageViews         PageView[]
-  builderPages      BuilderPage[]
-  builderTemplates  BuilderTemplate[]
-  builderComponents BuilderComponent[]
-}
-
-model DeploymentJob {
-  id            String      @id @default(uuid())
-  siteId        String
-  site          TenantSite  @relation(fields: [siteId], references: [id], onDelete: Cascade)
-  provider      String      @default("docker") // docker | kubernetes
-  imageTag      String
-  status        String      @default("queued") // queued | building | deploying | completed | failed
-  logs          Json        @default("[]")
-  metadata      Json        @default("{}")
-  startedAt     DateTime?
-  finishedAt    DateTime?
-  createdAt     DateTime    @default(now())
-  updatedAt     DateTime    @updatedAt
-
-  @@index([siteId, status, createdAt])
-}
-
-model DomainCertificate {
-  id            String      @id @default(uuid())
-  siteId        String
-  site          TenantSite  @relation(fields: [siteId], references: [id], onDelete: Cascade)
-  domain        String
-  provider      String      @default("letsencrypt")
-  certificatePem String?
-  privateKeyPem  String?
-  status        String      @default("pending") // pending | issued | failed | expired
-  expiresAt     DateTime?
-  lastError     String?
-  createdAt     DateTime    @default(now())
-  updatedAt     DateTime    @updatedAt
-
-  @@unique([siteId, domain])
-  @@index([siteId, status, updatedAt])
-}
-
-model Category {
-  id          String      @id @default(uuid())
-  siteId      String
-  site        TenantSite  @relation(fields: [siteId], references: [id], onDelete: Cascade)
-  name        String
-  slug        String
-  description String?
-  createdAt   DateTime    @default(now())
-  updatedAt   DateTime    @updatedAt
-  products    Product[]
-
-  @@unique([siteId, slug])
-  @@index([siteId, name])
-}
-
-model Product {
-  id               String        @id @default(uuid())
-  siteId           String
-  site             TenantSite    @relation(fields: [siteId], references: [id], onDelete: Cascade)
-  categoryId       String?
-  category         Category?     @relation(fields: [categoryId], references: [id], onDelete: SetNull)
-  title            String
-  slug             String
-  description      String?
-  status           ProductStatus @default(DRAFT)
-  basePriceCents   Int           @default(0)
-  compareAtCents   Int?
-  trackInventory   Boolean       @default(true)
-  totalStock       Int           @default(0)
-  media            Json          @default("[]")
-  attributes       Json          @default("{}")
-  seoMetadata      Json          @default("{}")
-  createdAt        DateTime      @default(now())
-  updatedAt        DateTime      @updatedAt
-  variants         ProductVariant[]
-  orderItems       OrderItem[]
-  cartItems        CartItem[]
-
-  @@unique([siteId, slug])
-  @@index([siteId, status, updatedAt])
-  @@index([siteId, categoryId])
-}
-
-model ProductVariant {
-  id               String      @id @default(uuid())
-  siteId           String
-  site             TenantSite  @relation(fields: [siteId], references: [id], onDelete: Cascade)
-  productId        String
-  product          Product     @relation(fields: [productId], references: [id], onDelete: Cascade)
-  sku              String
-  title            String
-  priceCents       Int
-  stock            Int         @default(0)
-  options          Json        @default("{}")
-  createdAt        DateTime    @default(now())
-  updatedAt        DateTime    @updatedAt
-  orderItems       OrderItem[]
-  cartItems        CartItem[]
-
-  @@unique([siteId, sku])
-  @@index([siteId, productId, updatedAt])
-}
-
-model Customer {
-  id               String      @id @default(uuid())
-  siteId           String
-  site             TenantSite  @relation(fields: [siteId], references: [id], onDelete: Cascade)
-  email            String
-  firstName        String?
-  lastName         String?
-  phone            String?
-  tags             Json        @default("[]")
-  metadata         Json        @default("{}")
-  createdAt        DateTime    @default(now())
-  updatedAt        DateTime    @updatedAt
-  carts            Cart[]
-  orders           Order[]
-
-  @@unique([siteId, email])
-  @@index([siteId, createdAt])
-}
-
-model Cart {
-  id               String      @id @default(uuid())
-  siteId           String
-  site             TenantSite  @relation(fields: [siteId], references: [id], onDelete: Cascade)
-  customerId       String?
-  customer         Customer?   @relation(fields: [customerId], references: [id], onDelete: SetNull)
-  sessionKey       String
-  currency         String      @default("USD")
-  discountCodeId   String?
-  discountCode     DiscountCode? @relation(fields: [discountCodeId], references: [id], onDelete: SetNull)
-  shippingZoneId   String?
-  shippingZone     ShippingZone? @relation(fields: [shippingZoneId], references: [id], onDelete: SetNull)
-  subtotalCents    Int         @default(0)
-  discountCents    Int         @default(0)
-  shippingCents    Int         @default(0)
-  taxCents         Int         @default(0)
-  totalCents       Int         @default(0)
-  checkedOutAt     DateTime?
-  createdAt        DateTime    @default(now())
-  updatedAt        DateTime    @updatedAt
-  items            CartItem[]
-
-  @@unique([siteId, sessionKey])
-  @@index([siteId, updatedAt])
-}
-
-model CartItem {
-  id               String      @id @default(uuid())
-  siteId           String
-  site             TenantSite  @relation(fields: [siteId], references: [id], onDelete: Cascade)
-  cartId           String
-  cart             Cart        @relation(fields: [cartId], references: [id], onDelete: Cascade)
-  productId        String
-  product          Product     @relation(fields: [productId], references: [id], onDelete: Cascade)
-  variantId        String?
-  variant          ProductVariant? @relation(fields: [variantId], references: [id], onDelete: SetNull)
-  quantity         Int         @default(1)
-  unitPriceCents   Int
-  lineTotalCents   Int
-  createdAt        DateTime    @default(now())
-  updatedAt        DateTime    @updatedAt
-
-  @@index([siteId, cartId])
-  @@index([siteId, productId, variantId])
-}
-
-model DiscountCode {
-  id               String      @id @default(uuid())
-  siteId           String
-  site             TenantSite  @relation(fields: [siteId], references: [id], onDelete: Cascade)
-  code             String
-  description      String?
-  discountType     String      @default("percentage") // percentage | fixed
-  discountValue    Int         // percentage 1-100 or fixed cents
-  minSubtotalCents Int         @default(0)
-  maxUses          Int?
-  usedCount        Int         @default(0)
-  active           Boolean     @default(true)
-  startsAt         DateTime?
-  endsAt           DateTime?
-  createdAt        DateTime    @default(now())
-  updatedAt        DateTime    @updatedAt
-  carts            Cart[]
-  orders           Order[]
-
-  @@unique([siteId, code])
-  @@index([siteId, active, endsAt])
-}
-
-model ShippingZone {
-  id               String      @id @default(uuid())
-  siteId           String
-  site             TenantSite  @relation(fields: [siteId], references: [id], onDelete: Cascade)
-  name             String
-  countries        Json        @default("[]")
-  baseRateCents    Int         @default(0)
-  freeOverCents    Int?
-  estimatedDaysMin Int?
-  estimatedDaysMax Int?
-  createdAt        DateTime    @default(now())
-  updatedAt        DateTime    @updatedAt
-  carts            Cart[]
-  orders           Order[]
-
-  @@index([siteId, name])
-}
-
-model Order {
-  id               String      @id @default(uuid())
-  siteId           String
-  site             TenantSite  @relation(fields: [siteId], references: [id], onDelete: Cascade)
-  customerId       String?
-  customer         Customer?   @relation(fields: [customerId], references: [id], onDelete: SetNull)
-  orderNumber      String
-  status           OrderStatus @default(PENDING)
-  fulfillmentStage FulfillmentStage @default(NEW)
-  currency         String      @default("USD")
-  subtotalCents    Int         @default(0)
-  discountCents    Int         @default(0)
-  shippingCents    Int         @default(0)
-  taxCents         Int         @default(0)
-  totalCents       Int         @default(0)
-  discountCodeId   String?
-  discountCode     DiscountCode? @relation(fields: [discountCodeId], references: [id], onDelete: SetNull)
-  shippingZoneId   String?
-  shippingZone     ShippingZone? @relation(fields: [shippingZoneId], references: [id], onDelete: SetNull)
-  shippingAddress  Json        @default("{}")
-  billingAddress   Json        @default("{}")
-  payment          Json        @default("{}") // mock stripe payload
-  notes            String?
-  createdAt        DateTime    @default(now())
-  updatedAt        DateTime    @updatedAt
-  items            OrderItem[]
-  variantEvents    VariantEvent[]
-
-  @@unique([siteId, orderNumber])
-  @@index([siteId, status, updatedAt])
-  @@index([siteId, fulfillmentStage, updatedAt])
-}
-
-model OrderItem {
-  id               String      @id @default(uuid())
-  siteId           String
-  site             TenantSite  @relation(fields: [siteId], references: [id], onDelete: Cascade)
-  orderId          String
-  order            Order       @relation(fields: [orderId], references: [id], onDelete: Cascade)
-  productId        String
-  product          Product     @relation(fields: [productId], references: [id], onDelete: Restrict)
-  variantId        String?
-  variant          ProductVariant? @relation(fields: [variantId], references: [id], onDelete: SetNull)
-  title            String
-  sku              String?
-  quantity         Int
-  unitPriceCents   Int
-  lineTotalCents   Int
-  createdAt        DateTime    @default(now())
-  updatedAt        DateTime    @updatedAt
-
-  @@index([siteId, orderId])
-}
-
-model CRMContact {
-  id            String      @id @default(uuid())
-  siteId        String
-  site          TenantSite  @relation(fields: [siteId], references: [id], onDelete: Cascade)
-  email         String
-  firstName     String?
-  lastName      String?
-  phone         String?
-  source        String      @default("form") // form | order | import
-  tags          Json        @default("[]")
-  metadata      Json        @default("{}")
-  createdAt     DateTime    @default(now())
-  updatedAt     DateTime    @updatedAt
-  submissions   FormSubmission[]
-  mailingLists  MailingListContact[]
-
-  @@unique([siteId, email])
-  @@index([siteId, source, createdAt])
-}
-
-model FormSubmission {
-  id            String      @id @default(uuid())
-  siteId        String
-  site          TenantSite  @relation(fields: [siteId], references: [id], onDelete: Cascade)
-  contactId     String?
-  contact       CRMContact? @relation(fields: [contactId], references: [id], onDelete: SetNull)
-  pageSlug      String?
-  formName      String?
-  payload       Json        @default("{}")
-  createdAt     DateTime    @default(now())
-
-  @@index([siteId, createdAt])
-  @@index([siteId, pageSlug])
-}
-
-model MailingList {
-  id            String      @id @default(uuid())
-  siteId        String
-  site          TenantSite  @relation(fields: [siteId], references: [id], onDelete: Cascade)
-  name          String
-  description   String?
-  createdAt     DateTime    @default(now())
-  updatedAt     DateTime    @updatedAt
-  contacts      MailingListContact[]
-  campaigns     EmailCampaign[]
-
-  @@index([siteId, updatedAt])
-}
-
-model MailingListContact {
-  id            String      @id @default(uuid())
-  siteId        String
-  site          TenantSite  @relation(fields: [siteId], references: [id], onDelete: Cascade)
-  mailingListId String
-  mailingList   MailingList @relation(fields: [mailingListId], references: [id], onDelete: Cascade)
-  contactId     String
-  contact       CRMContact  @relation(fields: [contactId], references: [id], onDelete: Cascade)
-  createdAt     DateTime    @default(now())
-
-  @@unique([mailingListId, contactId])
-  @@index([siteId, contactId])
-}
-
-model EmailCampaign {
-  id              String         @id @default(uuid())
-  siteId          String
-  site            TenantSite     @relation(fields: [siteId], references: [id], onDelete: Cascade)
-  mailingListId   String?
-  mailingList     MailingList?   @relation(fields: [mailingListId], references: [id], onDelete: SetNull)
-  name            String
-  subject         String
-  contentHtml     String
-  blocks          Json           @default("[]")
-  status          CampaignStatus @default(DRAFT)
-  scheduledAt     DateTime?
-  sentAt          DateTime?
-  metrics         Json           @default("{}")
-  createdAt       DateTime       @default(now())
-  updatedAt       DateTime       @updatedAt
-
-  @@index([siteId, status, updatedAt])
-}
-
-model VectorDocument {
-  id            String      @id @default(uuid())
-  siteId        String
-  site          TenantSite  @relation(fields: [siteId], references: [id], onDelete: Cascade)
-  namespace     String      @default("knowledge")
-  sourceType    String      // product | faq | page | support
-  sourceId      String?
-  content       String
-  metadata      Json        @default("{}")
-  embedding     Json?
-  createdAt     DateTime    @default(now())
-  updatedAt     DateTime    @updatedAt
-
-  @@index([siteId, namespace, createdAt])
-  @@index([siteId, sourceType, sourceId])
-}
-
-model ABExperiment {
-  id            String           @id @default(uuid())
-  siteId        String
-  site          TenantSite       @relation(fields: [siteId], references: [id], onDelete: Cascade)
-  pageId        String
-  page          Page             @relation(fields: [pageId], references: [id], onDelete: Cascade)
-  name          String
-  status        ExperimentStatus @default(DRAFT)
-  trafficSplitA Int              @default(50)
-  trafficSplitB Int              @default(50)
-  winnerVariant String?
-  stats         Json             @default("{}")
-  startedAt     DateTime?
-  endedAt       DateTime?
-  createdAt     DateTime         @default(now())
-  updatedAt     DateTime         @updatedAt
-  variants      PageVariant[]
-
-  @@index([siteId, status, updatedAt])
-  @@index([siteId, pageId])
-}
-
-model PageVariant {
-  id            String       @id @default(uuid())
-  siteId        String
-  site          TenantSite   @relation(fields: [siteId], references: [id], onDelete: Cascade)
-  experimentId  String
-  experiment    ABExperiment @relation(fields: [experimentId], references: [id], onDelete: Cascade)
-  pageId        String
-  page          Page         @relation(fields: [pageId], references: [id], onDelete: Cascade)
-  key           String       // A | B | AI
-  title         String
-  blocks        Json         @default("[]")
-  active        Boolean      @default(true)
-  createdAt     DateTime     @default(now())
-  updatedAt     DateTime     @updatedAt
-  events        VariantEvent[]
-
-  @@unique([experimentId, key])
-  @@index([siteId, pageId, active])
-}
-
-model VariantEvent {
-  id            String      @id @default(uuid())
-  siteId        String
-  site          TenantSite  @relation(fields: [siteId], references: [id], onDelete: Cascade)
-  variantId     String?
-  variant       PageVariant? @relation(fields: [variantId], references: [id], onDelete: SetNull)
-  orderId       String?
-  order         Order?      @relation(fields: [orderId], references: [id], onDelete: SetNull)
-  eventType     String      // view | click | add_to_cart | checkout | purchase
-  valueCents    Int?
-  metadata      Json        @default("{}")
-  createdAt     DateTime    @default(now())
-
-  @@index([siteId, eventType, createdAt])
-  @@index([siteId, variantId, createdAt])
-}
-
-model SiteTemplate {
-  id          String     @id @default(uuid())
-  siteId      String
-  site        TenantSite @relation(fields: [siteId], references: [id], onDelete: Cascade)
-  key         String
-  name        String
-  description String?
-  category    String?
-  previewUrl  String?
-  pages       Json       @default("[]")
-  createdAt   DateTime   @default(now())
-  updatedAt   DateTime   @updatedAt
-
-  @@unique([siteId, key])
-  @@index([siteId, updatedAt])
-}
-
-model Page {
-  id            String        @id @default(uuid())
-  siteId        String
-  site          TenantSite    @relation(fields: [siteId], references: [id], onDelete: Cascade)
-  slug          String
-  title         String
-  status        PageStatus     @default(DRAFT)
-  seoMetadata   Json           @default("{}")
-  draftBlocks   Json           @default("[]")
-  publishedTree Json           @default("[]")
-  publishedAt   DateTime?
-  createdAt     DateTime       @default(now())
-  updatedAt     DateTime       @updatedAt
-  versions      PageVersion[]
-  blocks        Block[]
-  experiments   ABExperiment[]
-  variants      PageVariant[]
-
-  @@unique([siteId, slug])
-  @@index([siteId, status, updatedAt])
-}
-
-model PageVersion {
-  id            String      @id @default(uuid())
-  siteId        String
-  site          TenantSite  @relation(fields: [siteId], references: [id], onDelete: Cascade)
-  pageId        String
-  page          Page        @relation(fields: [pageId], references: [id], onDelete: Cascade)
-  versionNumber Int
-  status        PageStatus  @default(DRAFT)
-  snapshot      Json        @default("{}")
-  createdById   String?
-  createdBy     User?       @relation("PageVersionAuthor", fields: [createdById], references: [id], onDelete: SetNull)
-  createdAt     DateTime    @default(now())
-
-  @@unique([pageId, versionNumber])
-  @@index([siteId, createdAt])
-}
-
-model Block {
-  id          String      @id @default(uuid())
-  siteId      String
-  site        TenantSite  @relation(fields: [siteId], references: [id], onDelete: Cascade)
-  pageId      String
-  page        Page        @relation(fields: [pageId], references: [id], onDelete: Cascade)
-  parentId    String?
-  parent      Block?      @relation("BlockTree", fields: [parentId], references: [id], onDelete: Cascade)
-  children    Block[]     @relation("BlockTree")
-  type        String
-  content     Json        @default("{}")
-  styles      Json        @default("{}")
-  interactions Json       @default("{}")
-  order       Int         @default(0)
-  createdAt   DateTime    @default(now())
-  updatedAt   DateTime    @updatedAt
-
-  @@index([siteId, pageId, order])
-  @@index([pageId, parentId, order])
-}
-
-model MediaFolder {
-  id          String       @id @default(uuid())
-  siteId      String
-  site        TenantSite   @relation(fields: [siteId], references: [id], onDelete: Cascade)
-  parentId    String?
-  parent      MediaFolder? @relation("FolderTree", fields: [parentId], references: [id], onDelete: Cascade)
-  children    MediaFolder[] @relation("FolderTree")
-  name        String
-  path        String
-  createdAt   DateTime     @default(now())
-  updatedAt   DateTime     @updatedAt
-  assets      MediaAsset[]
-
-  @@unique([siteId, path])
-  @@index([siteId, parentId])
-}
-
-model MediaAsset {
-  id           String       @id @default(uuid())
-  siteId       String
-  site         TenantSite   @relation(fields: [siteId], references: [id], onDelete: Cascade)
-  folderId     String?
-  folder       MediaFolder? @relation(fields: [folderId], references: [id], onDelete: SetNull)
-  filename     String
-  mimeType     String
-  sizeBytes    Int
-  width        Int?
-  height       Int?
-  storageKey   String
-  publicUrl    String
-  metadata     Json         @default("{}")
-  markedOrphanedAt DateTime? // When set, asset is in trash (not referenced in blocks/pages); safe to delete via Storage Manager
-  createdAt    DateTime     @default(now())
-  updatedAt    DateTime     @updatedAt
-
-  @@index([siteId, folderId, createdAt])
-  @@index([siteId, markedOrphanedAt])
-  @@unique([siteId, storageKey])
-}
-
 model Post {
-  id           String        @id @default(uuid())
-  tenantSiteId String?
-  tenantSite   TenantSite?   @relation(fields: [tenantSiteId], references: [id], onDelete: SetNull)
-  title        String
-  slug         String        @unique
-  content      String
-  description  String?       // Short abstract/summary for card display (not shown in article body)
-  published    Boolean       @default(false)
-  pinned       Boolean       @default(false)
-  category     String?       // Category path, e.g. "LeetCode/Array", "System Design"
-  order        Int           @default(0) // Order within category for manual sorting
-  previewToken String?       @unique // Secret token for read-only draft preview link
-  previewTokenExpiresAt DateTime? // When preview link expires (optional)
-  publishedAt  DateTime?     // Scheduled publish time; when <= now, post is treated as published
-  viewCount    Int           @default(0) // Public blog views (deduped with PageView; dashboard only)
-  createdAt    DateTime      @default(now())
-  updatedAt    DateTime      @updatedAt
-  tags         Tag[]
-  versions     PostVersion[]
+  id                    String        @id @default(uuid())
+  title                 String
+  slug                  String        @unique
+  content               String
+  description           String?
+  published             Boolean       @default(false)
+  pinned                Boolean       @default(false)
+  category              String?
+  order                 Int           @default(0)
+  previewToken          String?       @unique
+  previewTokenExpiresAt DateTime?
+  publishedAt           DateTime?
+  viewCount             Int           @default(0)
+  createdAt             DateTime      @default(now())
+  updatedAt             DateTime      @updatedAt
+  tags                  Tag[]
+  versions              PostVersion[]
 
   @@index([category, order])
   @@index([category, createdAt])
@@ -752,8 +33,6 @@ model Post {
 
 model Tag {
   id        String   @id @default(uuid())
-  tenantSiteId String?
-  tenantSite   TenantSite? @relation(fields: [tenantSiteId], references: [id], onDelete: SetNull)
   name      String
   slug      String   @unique
   posts     Post[]
@@ -762,106 +41,148 @@ model Tag {
 }
 
 model PostVersion {
-  id        String   @id @default(uuid())
-  tenantSiteId String?
-  tenantSite   TenantSite? @relation(fields: [tenantSiteId], references: [id], onDelete: SetNull)
-  postId    String
-  post      Post     @relation(fields: [postId], references: [id], onDelete: Cascade)
-  title     String
-  slug      String
-  content   String
-  published Boolean
-  tags      String   // JSON string of tag names
-  createdAt DateTime @default(now())
-  versionNumber Int   // Version number for this post
+  id            String   @id @default(uuid())
+  postId        String
+  post          Post     @relation(fields: [postId], references: [id], onDelete: Cascade)
+  title         String
+  slug          String
+  content       String
+  published     Boolean
+  tags          String
+  createdAt     DateTime @default(now())
+  versionNumber Int
 
   @@index([postId])
   @@index([postId, createdAt])
 }
 
 model AboutConfig {
-  id            String   @id @default(uuid())
-  tenantSiteId  String?
-  tenantSite    TenantSite? @relation(fields: [tenantSiteId], references: [id], onDelete: SetNull)
-  profileImage  String?  // Profile photo URL
-  heroName      String?  // Display name in hero (e.g. Alex Johnson)
-  heroTagline   String?  // Subtitle under name (e.g. Master's Student in Computer Science | Full Stack Developer)
-  heroPhone     String?  // Phone number
-  heroEmail     String?  // Email
-  heroPortfolioLabel String?  // Link label (e.g. alex-johnson, LinkedIn)
-  heroPortfolioUrl   String?  // Link URL (e.g. https://linkedin.com/in/alex-johnson)
-  introText        String?  // Short bio paragraph shown below hero card; leave empty to hide
-  aboutMainContent  String?  // Legacy: one markdown; use educationBlocks/experienceBlocks/projectBlocks instead
-  educationBlocks   String   @default("[]") // [{title, logoUrl?, organization, dateRange, content}]
-  experienceBlocks  String   @default("[]")
-  volunteerBlocks   String   @default("[]")
-  projectBlocks     String   @default("[]")
-  schoolLogos       String   @default("[]") // JSON array: [{school: "NYCU", logo: "url"}, ...]
-  projectImages String   @default("[]") // JSON array: [{project: "project-name", image: "url"}, ...]
-  companyLogos  String   @default("[]") // JSON array: [{company: "Company Name", logo: "url"}, ...]
-  contactHeading String?  // Let's Connect section title
-  contactText    String?  // Short intro text above contact buttons
-  contactLinks   String   @default("[]") // JSON: [{label, url}, ...] e.g. Email, LinkedIn, GitHub
-  technicalSkills String @default("[]") // JSON: [{category, items: string[]}, ...]
-  achievements   String   @default("[]") // JSON: [{title, organization, year}, ...]
-  customSections String   @default("[]") // JSON: [{id, title, blocks: [{title, logoUrl?, organization, dateRange, content}]}]
-  sectionOrder   String   @default("[\"education\",\"experience\",\"volunteer\",\"projects\",\"skills\",\"achievements\"]") // Order of About page sections
-  sectionVisibility String @default("{}") // JSON: { "education": true, "skills": false, ... }
-  createdAt    DateTime @default(now())
-  updatedAt    DateTime @updatedAt
-
-  @@unique([id])
+  id                 String   @id @default(uuid())
+  profileImage       String?
+  heroName           String?
+  heroTagline        String?
+  heroPhone          String?
+  heroEmail          String?
+  heroPortfolioLabel String?
+  heroPortfolioUrl   String?
+  introText          String?
+  aboutMainContent   String?
+  educationBlocks    String   @default("[]")
+  experienceBlocks   String   @default("[]")
+  volunteerBlocks    String   @default("[]")
+  projectBlocks      String   @default("[]")
+  schoolLogos        String   @default("[]")
+  projectImages      String   @default("[]")
+  companyLogos       String   @default("[]")
+  contactHeading     String?
+  contactText        String?
+  contactLinks       String   @default("[]")
+  technicalSkills    String   @default("[]")
+  achievements       String   @default("[]")
+  customSections     String   @default("[]")
+  sectionOrder       String   @default("[\"education\",\"experience\",\"volunteer\",\"projects\",\"skills\",\"achievements\"]")
+  sectionVisibility  String   @default("{}")
+  createdAt          DateTime @default(now())
+  updatedAt          DateTime @updatedAt
 }
 
-// Global site branding & meta (navbar name, favicon, meta title, footer links, nav, footer text, OG). Singleton: single row id=1.
-// White-label: all tenant-facing strings and assets come from DB; no hardcoded constants.
+// Singleton row id=1: site branding, meta, nav, contact routing.
 model SiteConfig {
-  id              Int      @id @default(1)
-  tenantSiteId      String?
-  tenantSite        TenantSite? @relation(fields: [tenantSiteId], references: [id], onDelete: SetNull)
-  siteName        String   @default("My Site")
-  logoUrl         String?
-  faviconUrl      String?
-  metaTitle       String   @default("")
-  metaDescription String?
-  metaKeywords    String?  // Comma-separated; used in root layout metadata when set
-  authorName      String?
-  links           Json     @default("{}") // { email?, github?, linkedin?, rss? }
-  socialLinks     Json     @default("{}") // { twitter?, instagram?, linkedin?, github?, youtube?, etc. } for footer icons
-  navItems        Json     @default("[]") // [{ label: string, href: string }]
-  footerText      String?  // e.g. "All rights reserved." or second line
-  copyrightText   String?  // e.g. "© 2025 Company Name. All rights reserved." (overrides footer line when set)
-  ogImageUrl      String?
-  googleAnalyticsId String?
-  stripePublishableKey String?  // Client-side; use env or tenant key
-  stripeSecretKey String?  // Server-only; must be stored securely (e.g. encrypted or env per tenant)
-  setupCompleted  Boolean  @default(false) // true after first-time setup wizard
-  templateId              String   @default("default") // "default" | "minimal" | "card" for layout variants
-  themeMode               String   @default("light") // Light-only mode
-  autoAddCustomPagesToNav  Boolean  @default(true) // when true, custom pages are appended to navbar
-  contactEmail            String?  // Destination for contact form submissions (platform-managed; Resend sends here)
-  // Optional HTTPS POST URL for contact notifications (Discord, Telegram, LINE bridges).
-  contactWebhookUrl       String?
-  // Optional rsync destination for backup archives; see scripts/backup-data.sh.
-  backupRsyncTarget       String?
-  // Optional POST URL after backup completes (self-hosted hooks).
-  backupPostHookUrl       String?
-  updatedAt               DateTime @updatedAt
+  id                   Int      @id @default(1)
+  siteName             String   @default("My Site")
+  logoUrl              String?
+  faviconUrl           String?
+  metaTitle            String   @default("")
+  metaDescription      String?
+  metaKeywords         String?
+  authorName           String?
+  links                Json     @default("{}")
+  socialLinks          Json     @default("{}")
+  navItems             Json     @default("[]")
+  footerText           String?
+  copyrightText        String?
+  ogImageUrl           String?
+  googleAnalyticsId    String?
+  setupCompleted       Boolean  @default(false)
+  templateId           String   @default("default")
+  themeMode            String   @default("light")
+  autoAddCustomPagesToNav Boolean @default(true)
+  contactEmail         String?
+  contactWebhookUrl    String?
+  backupRsyncTarget    String?
+  backupPostHookUrl    String?
+  updatedAt            DateTime @updatedAt
 }
 
-// Commercial page builder: dynamic pages for visual WYSIWYG editing.
+model CustomPage {
+  id        String   @id @default(uuid())
+  slug      String   @unique
+  title     String
+  content   String
+  order     Int      @default(0)
+  published Boolean  @default(true)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+}
+
+model SitePageContent {
+  id        String   @id @default(uuid())
+  page      String   @unique
+  content   Json
+  updatedAt DateTime @updatedAt
+}
+
+model AuditLog {
+  id           String   @id @default(uuid())
+  action       String
+  resourceType String
+  resourceId   String?
+  details      String?
+  ip           String?
+  createdAt    DateTime @default(now())
+
+  @@index([createdAt])
+  @@index([action])
+}
+
+model PageView {
+  id              String   @id @default(uuid())
+  path            String
+  ip              String
+  country         String?
+  city            String?
+  durationSeconds Int?
+  referrer        String?  @db.VarChar(512)
+  userAgent       String?  @db.VarChar(512)
+  createdAt       DateTime @default(now())
+
+  @@index([path])
+  @@index([createdAt])
+  @@index([ip])
+  @@index([country])
+}
+
+model AccessBlockLog {
+  id        String   @id @default(uuid())
+  ip        String
+  path      String
+  userAgent String?  @db.VarChar(512)
+  createdAt DateTime @default(now())
+
+  @@index([createdAt])
+  @@index([ip])
+}
+
 model BuilderPage {
-  id          String              @id @default(uuid())
-  tenantSiteId String?
-  tenantSite   TenantSite?        @relation(fields: [tenantSiteId], references: [id], onDelete: SetNull)
-  ownerKey    String              // Account scope key (email/tenant id)
-  siteScope   String              @default("default") // Multi-site white-label scope
+  id          String               @id @default(uuid())
+  ownerKey    String
+  siteScope   String               @default("default")
   slug        String
   title       String
-  status      String              @default("draft") // "draft" | "published" | "archived"
-  seoMetadata Json                @default("{}")
-  createdAt   DateTime            @default(now())
-  updatedAt   DateTime            @updatedAt
+  status      String               @default("draft")
+  seoMetadata Json                 @default("{}")
+  createdAt   DateTime             @default(now())
+  updatedAt   DateTime             @updatedAt
   blocks      BuilderBlock[]
   versions    BuilderPageVersion[]
 
@@ -873,11 +194,11 @@ model BuilderBlock {
   id         String                @id @default(uuid())
   pageId     String
   page       BuilderPage           @relation(fields: [pageId], references: [id], onDelete: Cascade)
-  type       String                // Hero, Text, Image, Video, Gallery, Columns, etc.
+  type       String
   content    Json                  @default("{}")
   styling    Json                  @default("{}")
   order      Int                   @default(0)
-  visibility String                @default("all") // all | desktop | mobile
+  visibility String                @default("all")
   createdAt  DateTime              @default(now())
   updatedAt  DateTime              @updatedAt
   versions   BuilderBlockVersion[]
@@ -914,8 +235,6 @@ model BuilderPageVersion {
 
 model BuilderTemplate {
   id        String   @id @default(uuid())
-  tenantSiteId String?
-  tenantSite   TenantSite? @relation(fields: [tenantSiteId], references: [id], onDelete: SetNull)
   ownerKey  String
   siteScope String   @default("default")
   name      String
@@ -932,8 +251,6 @@ model BuilderTemplate {
 
 model BuilderComponent {
   id        String   @id @default(uuid())
-  tenantSiteId String?
-  tenantSite   TenantSite? @relation(fields: [tenantSiteId], references: [id], onDelete: SetNull)
   ownerKey  String
   siteScope String   @default("default")
   name      String
@@ -944,76 +261,4 @@ model BuilderComponent {
 
   @@index([ownerKey, siteScope, updatedAt])
   @@index([siteScope, isShared, updatedAt])
-}
-
-// Custom pages (e.g. Portfolio, Services) created from dashboard; rendered at /page/[slug]
-model CustomPage {
-  id        String   @id @default(uuid())
-  tenantSiteId String?
-  tenantSite   TenantSite? @relation(fields: [tenantSiteId], references: [id], onDelete: SetNull)
-  slug      String   @unique // URL path, e.g. "portfolio", "services"
-  title     String   // Page title (and nav label if linked)
-  content   String   // Markdown body
-  order     Int      @default(0) // For dashboard ordering
-  published Boolean  @default(true) // false = draft, not shown on site or in nav
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
-}
-
-// Editable content for Home and Contact (and optional About intro is in AboutConfig)
-model SitePageContent {
-  id        String   @id @default(uuid())
-  tenantSiteId String?
-  tenantSite   TenantSite? @relation(fields: [tenantSiteId], references: [id], onDelete: SetNull)
-  page      String   @unique // "home" | "contact"
-  content   Json     // page-specific fields
-  updatedAt DateTime @updatedAt
-}
-
-// Simple audit: who did what when (action, resourceType, resourceId, details, ip)
-model AuditLog {
-  id           String   @id @default(uuid())
-  tenantSiteId String?
-  tenantSite   TenantSite? @relation(fields: [tenantSiteId], references: [id], onDelete: SetNull)
-  action       String   // e.g. "post.create", "post.update", "post.delete", "site_config.update"
-  resourceType String   // e.g. "post", "custom_page", "site_config"
-  resourceId   String?  // e.g. post id, page id
-  details      String?  // optional JSON or short text
-  ip           String?
-  createdAt    DateTime @default(now())
-
-  @@index([createdAt])
-  @@index([action])
-}
-
-// Analytics: page views for dashboard stats (exclude own IP via ANALYTICS_EXCLUDED_IPS)
-model PageView {
-  id             String   @id @default(uuid())
-  tenantSiteId String?
-  tenantSite   TenantSite? @relation(fields: [tenantSiteId], references: [id], onDelete: SetNull)
-  path           String
-  ip             String
-  country        String?  // ISO country code from GeoIP
-  city           String?  // City from GeoIP (when available)
-  durationSeconds Int?    // time on page (set when user leaves)
-  referrer       String?  @db.VarChar(512) // HTTP Referer when available
-  userAgent      String?  @db.VarChar(512) // truncated User-Agent
-  createdAt      DateTime @default(now())
-
-  @@index([path])
-  @@index([createdAt])
-  @@index([ip])
-  @@index([country])
-}
-
-// Log 403 responses from ACCESS_BLOCK_IP_PREFIXES (proxy); dashboard only
-model AccessBlockLog {
-  id        String   @id @default(uuid())
-  ip        String
-  path      String
-  userAgent String?  @db.VarChar(512)
-  createdAt DateTime @default(now())
-
-  @@index([createdAt])
-  @@index([ip])
 }

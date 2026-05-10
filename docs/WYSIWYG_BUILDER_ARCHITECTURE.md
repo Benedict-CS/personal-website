@@ -1,4 +1,4 @@
-# Commercial WYSIWYG Builder Architecture
+# WYSIWYG Builder Architecture
 
 This document defines the production architecture for the light-only, block-based WYSIWYG builder.
 
@@ -6,7 +6,7 @@ This document defines the production architecture for the light-only, block-base
 
 - Deliver a non-technical editing experience similar to Wix, Google Sites, and WordPress page builders.
 - Keep rendering deterministic between dashboard preview and public output.
-- Support reusable components, shared templates, and multi-site scope isolation.
+- Support reusable components, shared templates, and scoped data (one owner + optional `siteScope` namespace for builder pages).
 - Maintain strong reliability with server-side persistence, version history, and controlled publishing states.
 
 ## Core Domain Model
@@ -20,14 +20,14 @@ The builder introduces the following Prisma models:
 - `BuilderTemplate`: Reusable page-level presets (theme, brand, blocks), optionally shared.
 - `BuilderComponent`: Reusable block-level snippets, optionally shared.
 
-## Ownership and Multi-Site Isolation
+## Ownership and scope
 
-The API extracts identity from session and applies isolation through:
+The API derives identity from the session and scopes rows with:
 
-- `ownerKey`: Current authenticated account key (session email fallback).
-- `siteScope`: Tenant/site identifier (`default` if not provided), normalized to URL-safe format.
+- `ownerKey`: Stable key for the signed-in editor (session email fallback).
+- `siteScope`: Logical namespace for builder content (`default` if omitted), normalized to a URL-safe string.
 
-Every query in builder routes is restricted by these fields to prevent cross-site leakage.
+Builder queries always filter by `ownerKey` and `siteScope` so drafts and templates do not leak across namespaces.
 
 ## API Surface
 

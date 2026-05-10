@@ -60,6 +60,18 @@ npm run verify
 
 ---
 
+## Faster production builds
+
+Typical time is dominated by **webpack compilation** and **`tsc` during `next build`**, not static page generation.
+
+| Lever | Notes |
+|-------|--------|
+| **`NEXT_USE_TURBOPACK=1`** | `scripts/build-safe.sh` uses `next build --webpack` by default (safer chunk names behind strict reverse proxies). If your edge/proxy allows Turbopack asset URLs, set **`NEXT_USE_TURBOPACK=1`** (and in Docker **`NEXT_USE_TURBOPACK=1`** build-arg) for a faster compile. |
+| **Node heap** | `build-safe.sh` defaults to **8GB** old-space when not already set; Docker `Dockerfile` uses **`NODE_MAX_OLD_SPACE_SIZE=8192`**. Avoid OOM retries that waste time. |
+| **`.next/cache`** | Locally, keep the cache directory between builds. In CI, caching `.next/cache` (when acceptable) can reduce incremental compile time. |
+
+---
+
 ## Dependabot
 
 [`.github/dependabot.yml`](../.github/dependabot.yml) opens weekly PRs for **npm** and **GitHub Actions** updates. Merge after `npm run verify` passes locally or on CI.

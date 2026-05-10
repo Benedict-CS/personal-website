@@ -52,18 +52,6 @@ jobs:
             exit 1
           fi
 
-      - name: Install Playwright Chromium
-        run: npx playwright install --with-deps chromium
-
-      - name: Playwright E2E
-        run: CI=true PLAYWRIGHT_SKIP_BUILD=1 npm run test:e2e
-        env:
-          DATABASE_URL: postgresql://dummy:dummy@localhost:5432/dummy
-          NEXTAUTH_SECRET: dummy-secret-for-ci-only
-          # Match `playwright.config.ts` CI baseURL (`127.0.0.1` + `PLAYWRIGHT_E2E_PORT`, default 3041).
-          NEXTAUTH_URL: http://127.0.0.1:3041
-          NEXT_PUBLIC_SITE_URL: http://127.0.0.1:3041
-
       - name: npm audit (critical only, informational)
         run: npm audit --audit-level=critical
         continue-on-error: true

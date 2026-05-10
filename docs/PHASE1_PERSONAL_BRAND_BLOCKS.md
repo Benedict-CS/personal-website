@@ -1,6 +1,6 @@
 # Phase 1 — Personal brand block system
 
-This project focuses on **personal websites** (blog, resume, about, contact). Phase 1 adds a **modular Personal Brand** library inside the **Site Block Builder** (`src/components/site-block-builder.tsx`) and matching renderers for SaaS tenant pages (`src/components/saas/block-renderer.tsx`).
+This project focuses on **personal websites** (blog, resume, about, contact). Phase 1 adds a **modular Personal Brand** library inside the **Site Block Builder** (`src/components/site-block-builder.tsx`). Public pages render these blocks through the same block pipeline used by the immersive editor preview.
 
 ## Blocks
 
@@ -26,6 +26,6 @@ Shared parsing lives in `src/lib/personal-brand-blocks.ts`. Skill icons reuse `s
 - **Creative portfolio** — professional hero, team, testimonials, projects, CTA.
 - **Resume & FAQ** — professional hero, stats, timeline, FAQ, CTA.
 
-## SaaS JSON types
+## Builder block type strings
 
-Tenant `VisualBlock.type` strings may be **PascalCase** or **camelCase**, for example `ProfessionalHero` / `professionalHero`, so imports from the builder or API stay compatible.
+Saved `VisualBlock.type` values may be **PascalCase** or **camelCase**, for example `ProfessionalHero` / `professionalHero`, so imports from the builder or API stay compatible.

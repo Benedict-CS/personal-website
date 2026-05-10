@@ -1,5 +1,4 @@
 import type { NextConfig } from "next";
-import { withSentryConfig } from "@sentry/nextjs";
 import createBundleAnalyzer from "@next/bundle-analyzer";
 
 const withBundleAnalyzer = createBundleAnalyzer({
@@ -9,12 +8,10 @@ const withBundleAnalyzer = createBundleAnalyzer({
 const nextConfig: NextConfig = {
   poweredByHeader: false,
   output: "standalone",
-  serverExternalPackages: [
-    "dockerode",
-    "@kubernetes/client-node",
-    "ssh2",
-    "docker-modem",
-  ],
+  experimental: {
+    optimizePackageImports: ["lucide-react", "@radix-ui/react-slot"],
+  },
+  serverExternalPackages: [],
   async headers() {
     const csp = [
       "default-src 'self'",
@@ -65,10 +62,4 @@ const nextConfig: NextConfig = {
   },
 };
 
-export default withBundleAnalyzer(
-  withSentryConfig(nextConfig, {
-    silent: !process.env.SENTRY_DSN,
-    org: process.env.SENTRY_ORG,
-    project: process.env.SENTRY_PROJECT,
-  }),
-);
+export default withBundleAnalyzer(nextConfig);

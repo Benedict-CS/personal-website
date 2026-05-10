@@ -22,8 +22,8 @@ describe("buildDailyAnalyticsTrend", () => {
     expect(trend[2]).toMatchObject({ day: "2026-04-03", views: 1, cvDownloads: 0, leads: 1 });
   });
 
-  it("builds same buckets via performance kernel path", async () => {
-    const trend = await buildDailyAnalyticsTrendWithKernel({
+  it("builds same buckets via day-index aggregation path", () => {
+    const trend = buildDailyAnalyticsTrendWithKernel({
       start: "2026-04-01",
       end: "2026-04-03",
       pageViews: [

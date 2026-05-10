@@ -170,7 +170,7 @@ This gives non-technical users control over *what* appears and *in what order* w
 
 - **Backups:** PostgreSQL via `pg_dump` (or equivalent); RustFS by backing up the data volume. Backups should be stored off the server and tested periodically.
 - **Updates:** App: pull code, rebuild image, run migrations, restart. DB and RustFS: follow upgrade guides for major versions; test in a staging-like environment if possible.
-- **Monitoring:** Health endpoint (`/api/health`) for app and DB. Optional Sentry integration for errors. Logs via `docker compose logs`. No custom metrics stack in the default setup.
+- **Monitoring:** Health endpoint (`/api/health`) for app and DB. Logs via `docker compose logs`. No custom metrics stack in the default setup.
 - **Cleanup:** Media cleanup (remove objects not referenced in posts/pages) and optional DB maintenance (e.g. VACUUM) as needed.
 
 ---
@@ -196,7 +196,7 @@ This project is a **full-stack personal website with a no-code-friendly dashboar
 - **Abstraction at boundaries:** S3-compatible storage and a thin wrapper allowed a drop-in replacement of MinIO with RustFS with no application code change.
 - **Operational clarity:** Docker Compose, migrations in container, documented env vars, backup and maintenance procedures, and optional CI/CD so that the system is deployable and maintainable by one person.
 
-The dashboard design (wizard, help text, drag-and-drop, templates, section visibility/order, insert image/button, preview) is aimed at making the site manageable by non-developers while keeping the codebase and data model coherent for future extensions (e.g. more section types, block-based editing, or multi-tenant if ever needed).
+The dashboard design (wizard, help text, drag-and-drop, templates, section visibility/order, insert image/button, preview) is aimed at making the site manageable by non-developers while keeping the codebase and data model coherent for future extensions (e.g. more section types or richer block-based editing).
 
 ---
 
@@ -204,7 +204,7 @@ The dashboard design (wizard, help text, drag-and-drop, templates, section visib
 
 - **CD:** Complete CD setup (or self-hosted runner) when the target server and SSH access are finalized.
 - **Block-based editing:** Optional block-based editor for custom pages (heading, text, image, button) alongside or instead of raw Markdown.
-- **Monitoring:** Optional Prometheus/Grafana or expanded Sentry usage for performance and reliability.
+- **Monitoring:** Optional Prometheus/Grafana or another APM for performance and reliability.
 - **Backup automation:** Scheduled backups (DB + RustFS) and optional restore runbook.
 - **Multi-language or i18n:** If the site needs multiple locales, add i18n at the routing and content layer.
 

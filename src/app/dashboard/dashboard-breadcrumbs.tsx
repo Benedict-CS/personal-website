@@ -3,60 +3,15 @@
 import { usePathname } from "next/navigation";
 import { useBreadcrumb } from "@/contexts/breadcrumb-context";
 import { LeaveGuardLink } from "@/components/leave-guard-link";
+import { DASHBOARD_SEGMENT_LABELS } from "@/lib/dashboard-segment-labels";
 import { ChevronRight } from "lucide-react";
-
-const SEGMENT_LABELS: Record<string, string> = {
-  dashboard: "Dashboard",
-  analytics: "Analytics",
-  overview: "Site overview",
-  posts: "Posts",
-  operations: "Find & replace",
-  new: "New",
-  edit: "Edit",
-  notes: "Notes",
-  content: "Content",
-  home: "Home page",
-  contact: "Contact",
-  media: "Media",
-  tags: "Tags",
-  about: "About & CV",
-  cv: "CV",
-  site: "Site settings",
-  pages: "Custom pages",
-  setup: "Setup",
-  audit: "Audit",
-  sites: "Sites",
-  billing: "Billing",
-  editor: "Editor",
-  experiments: "Experiments",
-  commerce: "Commerce",
-  crm: "CRM",
-  infra: "Infrastructure",
-  ai: "AI",
-  showroom: "Showroom",
-  tools: "Tools",
-  "ast-lab": "Markdown AST",
-  system: "System health",
-  hubs: "Hubs",
-  "global-settings": "Global settings hub",
-  "taxonomy-assets": "Content taxonomy & assets",
-};
-
-/** Slugs and database IDs: avoid raw opaque strings in the breadcrumb trail. */
-function looksLikeOpaqueId(seg: string): boolean {
-  return seg.length >= 12 && /^[a-z0-9._-]+$/i.test(seg);
-}
 
 function labelForSegment(seg: string, index: number, segments: string[], overrideLabel: string | null): string {
   const total = segments.length;
-  const prev = index > 0 ? segments[index - 1] : "";
   if (index === total - 1 && overrideLabel) {
     return `Edit "${overrideLabel}"`;
   }
-  if (prev === "sites" && index === 2 && looksLikeOpaqueId(seg)) {
-    return "Site";
-  }
-  if (SEGMENT_LABELS[seg]) return SEGMENT_LABELS[seg];
+  if (DASHBOARD_SEGMENT_LABELS[seg]) return DASHBOARD_SEGMENT_LABELS[seg];
   if (index === total - 1 && seg.length > 12) {
     return "Edit";
   }
@@ -70,6 +25,8 @@ export function DashboardBreadcrumbs() {
 
   const segments = pathname.split("/").filter(Boolean);
   if (segments.length <= 1) return null;
+  // /dashboard/<section> — sidebar + page H1 already show the section; skip redundant "Dashboard › Analytics".
+  if (segments.length === 2 && segments[0] === "dashboard") return null;
 
   const crumbs: { href: string; label: string }[] = [];
   let href = "";

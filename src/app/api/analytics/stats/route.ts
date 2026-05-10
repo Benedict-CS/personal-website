@@ -275,7 +275,7 @@ export async function GET(request: NextRequest) {
       }))
     );
     const recentFiltered = filterByExcludedIP(recent);
-    const trendByDay = await buildDailyAnalyticsTrendWithKernel({
+    const trendByDay = buildDailyAnalyticsTrendWithKernel({
       start: trendStart.toISOString().slice(0, 10),
       end: trendEnd.toISOString().slice(0, 10),
       pageViews: trendPageViews,
