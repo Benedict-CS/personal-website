@@ -8,6 +8,7 @@ import {
   isLikelyOutdatedFakeUserAgent,
   isLikelyScannerUserAgent,
 } from "@/lib/analytics-noise";
+import { isDirectTagProbePath } from "@/lib/analytics-qualified-visit";
 
 const UA_MARKERS = [
   "ahrefsbot",
@@ -79,6 +80,7 @@ export function shouldSkipMiddlewareAnalytics(
   if (pathname === "/apple-touch-icon.png" || pathname === "/apple-touch-icon-precomposed.png") return true;
   if (pathname.startsWith("/sitemap") || pathname.startsWith("/feed")) return true;
   if (isJunkAnalyticsPath(pathname)) return true;
+  if (isDirectTagProbePath(pathname, headers?.get("referer"))) return true;
   if (isLikelyPrefetchRequest(headers)) return true;
   if (isLikelyScannerUserAgent(userAgent)) return true;
   if (isLikelyOutdatedFakeUserAgent(userAgent)) return true;

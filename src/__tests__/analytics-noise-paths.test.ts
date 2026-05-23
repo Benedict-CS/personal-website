@@ -50,6 +50,51 @@ describe("isJunkAnalyticsPath", () => {
     expect(isJunkAnalyticsPath("/app-config.json")).toBe(true);
     expect(isJunkAnalyticsPath("/graphql")).toBe(true);
     expect(isJunkAnalyticsPath("/api/graphql")).toBe(true);
+    expect(isJunkAnalyticsPath("/actuator/heapdump")).toBe(true);
+    expect(isJunkAnalyticsPath("/actuator/env")).toBe(true);
+    expect(isJunkAnalyticsPath("/profiler/phpinfo")).toBe(true);
+    expect(isJunkAnalyticsPath("/configprops")).toBe(true);
+    expect(isJunkAnalyticsPath("/blog/preview")).toBe(true);
+  });
+
+  it("flags security-scan and CI/config probe paths", () => {
+    expect(isJunkAnalyticsPath("/blog/tag/homelab%5C")).toBe(true);
+    expect(isJunkAnalyticsPath("/contact%5C")).toBe(true);
+    expect(isJunkAnalyticsPath("/@fs/etc/passwd")).toBe(true);
+    expect(isJunkAnalyticsPath("/bitbucket-pipelines.yml")).toBe(true);
+    expect(isJunkAnalyticsPath("/.circleci/config.yml")).toBe(true);
+    expect(isJunkAnalyticsPath("/Jenkinsfile")).toBe(true);
+    expect(isJunkAnalyticsPath("/debug/pprof")).toBe(true);
+    expect(isJunkAnalyticsPath("/swagger-ui.html")).toBe(true);
+    expect(isJunkAnalyticsPath("/_cat/indices")).toBe(true);
+    expect(isJunkAnalyticsPath("/__vite__/env")).toBe(true);
+    expect(isJunkAnalyticsPath("/aws/credentials")).toBe(true);
+    expect(isJunkAnalyticsPath("/mailto:benedict@example.com")).toBe(true);
+    expect(isJunkAnalyticsPath("/admin")).toBe(true);
+    expect(isJunkAnalyticsPath("/proxy")).toBe(true);
+    expect(isJunkAnalyticsPath("/zz-nonexistent-test-8492.html")).toBe(true);
+  });
+
+  it("flags common credential-spray paths (ssh, dotfiles, framework configs)", () => {
+    expect(isJunkAnalyticsPath("/.ssh/id_rsa")).toBe(true);
+    expect(isJunkAnalyticsPath("/.ssh/id_ed25519")).toBe(true);
+    expect(isJunkAnalyticsPath("/.pypirc")).toBe(true);
+    expect(isJunkAnalyticsPath("/.npmrc")).toBe(true);
+    expect(isJunkAnalyticsPath("/application.yml")).toBe(true);
+    expect(isJunkAnalyticsPath("/config/secrets.yml")).toBe(true);
+    expect(isJunkAnalyticsPath("/config/application.properties")).toBe(true);
+    expect(isJunkAnalyticsPath("/storage/logs/laravel.log")).toBe(true);
+    expect(isJunkAnalyticsPath("/secrets.yml")).toBe(true);
+    expect(isJunkAnalyticsPath("/settings.py")).toBe(true);
+    expect(isJunkAnalyticsPath("/manifest.webmanifest")).toBe(true);
+    expect(isJunkAnalyticsPath("/site.webmanifest")).toBe(true);
+    expect(isJunkAnalyticsPath("/api")).toBe(true);
+    expect(isJunkAnalyticsPath("/api/")).toBe(true);
+  });
+
+  it("does not flag CV download paths as static-asset junk", () => {
+    expect(isJunkAnalyticsPath("/cv.pdf")).toBe(false);
+    expect(isJunkAnalyticsPath("/api/cv/download")).toBe(false);
   });
 
   it("does not flag normal blog paths or whitelisted JSON", () => {
@@ -57,6 +102,8 @@ describe("isJunkAnalyticsPath", () => {
     expect(isJunkAnalyticsPath("/about")).toBe(false);
     expect(isJunkAnalyticsPath("/manifest.json")).toBe(false);
     expect(isJunkAnalyticsPath("/feed.json")).toBe(false);
+    expect(isJunkAnalyticsPath("/auth/signin")).toBe(false);
+    expect(isJunkAnalyticsPath("/api/posts")).toBe(false);
   });
 });
 

@@ -78,51 +78,51 @@ async function mergeCustomPagesIntoNav(navItems: NavItem[]): Promise<NavItem[]> 
   }
 }
 
+/**
+ * Load site config from DB. Errors propagate so unstable_cache does not store "My Site" fallback
+ * for 60s after a transient DB failure (that caused refresh-to-fix branding glitches).
+ */
 async function loadSiteConfigForRenderUncached(): Promise<SiteConfigForRender> {
-  try {
-    const row = await prisma.siteConfig.findUnique({
-      where: { id: 1 },
-      select: { ...SITE_CONFIG_SELECT, setupCompleted: true, templateId: true, themeMode: true, autoAddCustomPagesToNav: true },
-    });
-    if (!row) {
-      const navItems = await mergeCustomPagesIntoNav(DEFAULT_NAV);
-      return { ...fallback, navItems };
-    }
-    const links = (row.links as Record<string, string>) ?? {};
-    const socialLinks = (row.socialLinks as SocialLinksMap) ?? {};
-    let navItems = Array.isArray(row.navItems) && (row.navItems as NavItem[]).length > 0
-      ? (row.navItems as NavItem[])
-      : DEFAULT_NAV;
-    const setupCompleted = row.setupCompleted ?? false;
-    const templateId = row.templateId ?? "default";
-    const themeMode = "light" as const;
-    const autoAddCustomPagesToNav = row.autoAddCustomPagesToNav ?? true;
-    if (autoAddCustomPagesToNav) {
-      navItems = await mergeCustomPagesIntoNav(navItems);
-    }
-    return {
-      siteName: row.siteName,
-      logoUrl: row.logoUrl,
-      faviconUrl: row.faviconUrl,
-      metaTitle: row.metaTitle || fallback.metaTitle,
-      metaDescription: row.metaDescription,
-      metaKeywords: row.metaKeywords?.trim() ? row.metaKeywords.trim() : null,
-      authorName: row.authorName,
-      links: { ...links },
-      socialLinks: { ...socialLinks },
-      navItems,
-      footerText: row.footerText ?? null,
-      copyrightText: row.copyrightText ?? null,
-      ogImageUrl: row.ogImageUrl ?? null,
-      googleAnalyticsId: row.googleAnalyticsId ?? null,
-      setupCompleted,
-      templateId,
-      themeMode,
-      url: siteUrl,
-    };
-  } catch {
-    return fallback;
+  const row = await prisma.siteConfig.findUnique({
+    where: { id: 1 },
+    select: { ...SITE_CONFIG_SELECT, setupCompleted: true, templateId: true, themeMode: true, autoAddCustomPagesToNav: true },
+  });
+  if (!row) {
+    const navItems = await mergeCustomPagesIntoNav(DEFAULT_NAV);
+    return { ...fallback, navItems };
   }
+  const links = (row.links as Record<string, string>) ?? {};
+  const socialLinks = (row.socialLinks as SocialLinksMap) ?? {};
+  let navItems = Array.isArray(row.navItems) && (row.navItems as NavItem[]).length > 0
+    ? (row.navItems as NavItem[])
+    : DEFAULT_NAV;
+  const setupCompleted = row.setupCompleted ?? false;
+  const templateId = row.templateId ?? "default";
+  const themeMode = "light" as const;
+  const autoAddCustomPagesToNav = row.autoAddCustomPagesToNav ?? true;
+  if (autoAddCustomPagesToNav) {
+    navItems = await mergeCustomPagesIntoNav(navItems);
+  }
+  return {
+    siteName: row.siteName,
+    logoUrl: row.logoUrl,
+    faviconUrl: row.faviconUrl,
+    metaTitle: row.metaTitle || fallback.metaTitle,
+    metaDescription: row.metaDescription,
+    metaKeywords: row.metaKeywords?.trim() ? row.metaKeywords.trim() : null,
+    authorName: row.authorName,
+    links: { ...links },
+    socialLinks: { ...socialLinks },
+    navItems,
+    footerText: row.footerText ?? null,
+    copyrightText: row.copyrightText ?? null,
+    ogImageUrl: row.ogImageUrl ?? null,
+    googleAnalyticsId: row.googleAnalyticsId ?? null,
+    setupCompleted,
+    templateId,
+    themeMode,
+    url: siteUrl,
+  };
 }
 
 const getCachedSiteConfigForRender = unstable_cache(
@@ -132,7 +132,17 @@ const getCachedSiteConfigForRender = unstable_cache(
 );
 
 export async function getSiteConfigForRender(): Promise<SiteConfigForRender> {
-  return getCachedSiteConfigForRender();
+  try {
+    return await getCachedSiteConfigForRender();
+  } catch (err) {
+    console.error("[site-config] Cached load failed, retrying without cache:", err);
+    try {
+      return await loadSiteConfigForRenderUncached();
+    } catch (retryErr) {
+      console.error("[site-config] Uncached load failed, using defaults:", retryErr);
+      return fallback;
+    }
+  }
 }
 
 /** Call from API routes after mutations that affect layout metadata or merged nav. */

@@ -1,8 +1,7 @@
 import type { Metadata } from "next";
 import { Geist, Geist_Mono, Inter } from "next/font/google";
 import "./globals.css";
-import { Navbar } from "@/components/navbar";
-import { Footer } from "@/components/footer";
+import { SiteFooter, SiteMain, SiteNavbar } from "@/components/site-chrome";
 import { Providers } from "@/components/providers";
 import { ThemeApplier } from "@/components/theme-applier";
 import { AnalyticsBeacon } from "@/components/analytics-beacon";
@@ -123,10 +122,10 @@ export default async function RootLayout({
           <a href="#main-content" className="skip-link">
             Skip to main content
           </a>
-          <Navbar siteConfig={siteConfigForRender} />
-          <main id="main-content" className="flex flex-1 flex-col min-h-0 main-fade-in">{children}</main>
+          <SiteNavbar siteConfig={siteConfigForRender} />
+          <SiteMain>{children}</SiteMain>
           <FloatingEditButton />
-          <Footer siteConfig={siteConfigForRender} />
+          <SiteFooter siteConfig={siteConfigForRender} />
         </Providers>
       </body>
     </html>

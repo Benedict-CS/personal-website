@@ -1,21 +1,15 @@
 /**
- * Deletes PageView rows that match analytics noise rules (scanner paths, junk UAs).
- * Two passes:
- *   1) Path / UA-substring rules expressible in Prisma (deleteMany).
- *   2) Outdated/forged UA detection in JS (regex with version checks).
- * Optional: --ip-prefix <dotted> (repeatable), e.g. --ip-prefix 140.113.194. deletes that IPv4
- * subnet and ::ffff: forms. Trailing dot recommended.
- * Usage: from repo root:
+ * Deletes non-human PageView rows: probe/scanner sessions, automated crawls,
+ * unknown IP, junk paths, and forged UAs.
+ *
+ * Usage (repo root):
  *   npx tsx scripts/cleanup-junk-pageviews.ts
  *   npx tsx scripts/cleanup-junk-pageviews.ts --ip-prefix 140.113.194.
  */
 import "dotenv/config";
 import type { Prisma } from "@prisma/client";
 import { PrismaClient } from "@prisma/client";
-import {
-  isLikelyOutdatedFakeUserAgent,
-  prismaWhereMatchAnalyticsNoise,
-} from "../src/lib/analytics-noise";
+import { purgeNonHumanAnalytics } from "../src/lib/analytics-noise";
 
 const prisma = new PrismaClient({ log: ["error"] });
 
@@ -47,29 +41,15 @@ function parseIpPrefixesFromArgv(): string[] {
 }
 
 async function main() {
-  const where = prismaWhereMatchAnalyticsNoise();
-  const before = await prisma.pageView.count({ where });
-  const pathPass = await prisma.pageView.deleteMany({ where });
-  console.log(`Pass 1 (path/UA-substring): deleted ${pathPass.count} row(s) (matched ${before}).`);
-
-  const candidates = await prisma.pageView.findMany({
-    where: { userAgent: { not: null } },
-    select: { id: true, userAgent: true },
-  });
-  const fakeUaIds = candidates.filter((r) => isLikelyOutdatedFakeUserAgent(r.userAgent)).map((r) => r.id);
-  if (fakeUaIds.length > 0) {
-    const uaPass = await prisma.pageView.deleteMany({ where: { id: { in: fakeUaIds } } });
-    console.log(`Pass 2 (outdated/forged UA): deleted ${uaPass.count} row(s).`);
-  } else {
-    console.log("Pass 2 (outdated/forged UA): nothing to delete.");
-  }
+  const summary = await purgeNonHumanAnalytics(prisma);
+  console.log("Non-human purge:", summary);
 
   const ipPrefixes = parseIpPrefixesFromArgv();
   for (const raw of ipPrefixes) {
     const sw = subnetWhereClause(raw);
     const matched = await prisma.pageView.count({ where: sw });
     const del = await prisma.pageView.deleteMany({ where: sw });
-    console.log(`Pass subnet (${normalizeIpv4SubnetPrefix(raw)}): deleted ${del.count} row(s) (matched ${matched}).`);
+    console.log(`Subnet (${normalizeIpv4SubnetPrefix(raw)}): deleted ${del.count} row(s) (matched ${matched}).`);
   }
 }
 

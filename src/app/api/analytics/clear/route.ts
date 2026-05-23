@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { requireSession } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
-import { prismaWhereMatchAnalyticsNoise } from "@/lib/analytics-noise";
+import { purgeNonHumanAnalytics } from "@/lib/analytics-noise";
 import type { Prisma } from "@prisma/client";
 
 /**
@@ -104,13 +104,17 @@ export async function POST(request: NextRequest) {
 
   if (body.cleanupJunkAnalytics === true) {
     try {
-      const pv = await prisma.pageView.deleteMany({
-        where: prismaWhereMatchAnalyticsNoise(),
-      });
+      const summary = await purgeNonHumanAnalytics(prisma);
+      const deleted =
+        summary.nonHumanSessions +
+        summary.unknownIp +
+        summary.junkPaths +
+        summary.forgedUa;
       return NextResponse.json({
-        deleted: pv.count,
+        deleted,
         accessBlockDeleted: 0,
         mode: "junkAnalytics",
+        ...summary,
       });
     } catch (e) {
       console.error("Analytics junk cleanup error:", e);

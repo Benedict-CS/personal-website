@@ -3,6 +3,7 @@ import {
   isLikelyScannerUserAgent,
   prismaWhereExcludeLocalAndUnknownIp,
   prismaWhereExcludeNoise,
+  prismaWhereRealVisitorPageViews,
 } from "@/lib/analytics-noise";
 
 describe("prismaWhereExcludeLocalAndUnknownIp", () => {
@@ -62,7 +63,22 @@ describe("prismaWhereExcludeNoise", () => {
   });
 });
 
+describe("prismaWhereRealVisitorPageViews", () => {
+  it("excludes junk paths and non-human user agents", () => {
+    const w = prismaWhereRealVisitorPageViews();
+    expect(w.NOT).toBeDefined();
+    const ors = (w.NOT as { OR?: unknown[] }).OR;
+    expect(Array.isArray(ors)).toBe(true);
+    expect((ors as unknown[]).length).toBeGreaterThan(1);
+  });
+});
+
 describe("user-agent filters", () => {
+  it("flags Facebook link-preview crawlers", () => {
+    expect(isLikelyScannerUserAgent("meta-externalagent/1.1 (+https://developers.facebook.com/docs/sharing/webmasters/crawler)")).toBe(
+      true
+    );
+  });
   it("detects major crawlers and headless automation", () => {
     expect(isLikelyScannerUserAgent("Mozilla/5.0 (compatible; Googlebot/2.1; +http://www.google.com/bot.html)")).toBe(true);
     expect(isLikelyScannerUserAgent("Mozilla/5.0 HeadlessChrome/124.0.0.0")).toBe(true);

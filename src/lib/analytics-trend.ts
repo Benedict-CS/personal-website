@@ -1,4 +1,4 @@
-type TrendViewRow = { createdAt: Date };
+type TrendViewRow = { createdAt: Date; path?: string };
 type TrendEventRow = { createdAt: Date; action: string };
 
 export type DailyAnalyticsTrendRow = {
@@ -82,8 +82,11 @@ export function buildDailyAnalyticsTrendWithKernel(input: BuildDailyAnalyticsTre
     endDayMs
   );
   const cvCounts = aggregateDailyCounts(
-    input.events
-      .filter((row) => row.action === "analytics.cv_download")
+    input.pageViews
+      .filter((row) => {
+        const p = (row.path || "").toLowerCase();
+        return p === "/cv.pdf" || p === "/api/cv/download";
+      })
       .map((row) => row.createdAt.getTime()),
     startDayMs,
     endDayMs

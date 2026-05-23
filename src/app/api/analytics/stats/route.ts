@@ -2,12 +2,33 @@ import { NextRequest, NextResponse } from "next/server";
 import { requireSession } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 import type { Prisma } from "@prisma/client";
-import { getExcludedIPsForNotIn, getExcludedIPsSet, getExcludedPrefixes, filterByExcludedIP } from "@/lib/analytics-excluded-ips";
-import { prismaWhereExcludeLocalAndUnknownIp, prismaWhereExcludeNoise } from "@/lib/analytics-noise";
+import {
+  getExcludedIPsForNotIn,
+  getExcludedIPsSet,
+  getExcludedPrefixes,
+  filterByExcludedIP,
+  isExcludedIP,
+} from "@/lib/analytics-excluded-ips";
+import {
+  findNonHumanVisitorIps,
+  prismaWhereExcludeLocalAndUnknownIp,
+  prismaWhereExcludeScannerSessionIps,
+  prismaWhereRealVisitorPageViews,
+} from "@/lib/analytics-noise";
+import { splitReferrerRows } from "@/lib/analytics-referrer";
 import { buildDailyAnalyticsTrendWithKernel } from "@/lib/analytics-trend";
 import { buildConversionAttributionBySlug, buildTopEngagedContent } from "@/lib/analytics-engagement";
+import { mergeVisitorByIp } from "@/lib/analytics-cv-downloads";
+import { prismaWhereQualifiedPageView } from "@/lib/analytics-qualified-visit";
 
-type ReferrerGroup = "Direct / Unknown" | "Search Engines" | "Social Media" | "GitHub" | "Developer Communities" | "Other";
+type ReferrerGroup =
+  | "Direct / Unknown"
+  | "Search Engines"
+  | "Social Media"
+  | "GitHub"
+  | "Developer Communities"
+  | "Your site"
+  | "Other";
 
 function categorizeReferrer(referrer: string | null): ReferrerGroup {
   if (!referrer) return "Direct / Unknown";
@@ -29,6 +50,27 @@ function categorizeReferrer(referrer: string | null): ReferrerGroup {
     return "Developer Communities";
   }
   return "Other";
+}
+
+function buildRealVisitorWhere(input: {
+  baseWhere: Prisma.PageViewWhereInput;
+  includeDevIps: boolean;
+  filterIP: string | null;
+  scannerSessionIps: string[];
+}): Prisma.PageViewWhereInput {
+  const parts: Prisma.PageViewWhereInput[] = [
+    input.baseWhere,
+    prismaWhereRealVisitorPageViews(),
+    prismaWhereQualifiedPageView(),
+  ];
+  if (!input.filterIP && !input.includeDevIps) {
+    parts.push(prismaWhereExcludeLocalAndUnknownIp());
+  }
+  if (!input.filterIP) {
+    const excludeSessions = prismaWhereExcludeScannerSessionIps(input.scannerSessionIps);
+    if (excludeSessions) parts.push(excludeSessions);
+  }
+  return parts.length === 1 ? parts[0]! : { AND: parts };
 }
 
 export async function GET(request: NextRequest) {
@@ -72,51 +114,56 @@ export async function GET(request: NextRequest) {
   if (toDate) dateFilter.lte = toDate;
   if (Object.keys(dateFilter).length) baseWhere.createdAt = dateFilter;
 
-  /** Real-traffic filters: probe paths, scanner UAs, and by default non-public client IPs */
-  const whereParts: Prisma.PageViewWhereInput[] = [baseWhere, prismaWhereExcludeNoise()];
-  if (!filterIP && !includeDevIps) {
-    whereParts.push(prismaWhereExcludeLocalAndUnknownIp());
-  }
-  const where: Prisma.PageViewWhereInput = { AND: whereParts };
+  const scannerSessionIps = filterIP ? [] : await findNonHumanVisitorIps(prisma, baseWhere);
+  const where = buildRealVisitorWhere({ baseWhere, includeDevIps, filterIP, scannerSessionIps });
 
-  /** Blocked-access log: exclude the internal logging endpoint (otherwise dashboard refresh inflates counts). */
-  const blockWhereParts: Prisma.AccessBlockLogWhereInput[] = [
-    { path: { not: "/api/analytics/access-block-log" } },
-  ];
-  if (filterIP) {
-    blockWhereParts.push({ ip: filterIP });
-  }
-  if (Object.keys(dateFilter).length) {
-    blockWhereParts.push({ createdAt: dateFilter });
-  }
-  const blockWhere: Prisma.AccessBlockLogWhereInput =
-    blockWhereParts.length === 1 ? blockWhereParts[0]! : { AND: blockWhereParts };
+  const cvWhere: Prisma.PageViewWhereInput = {
+    AND: [
+      where,
+      { OR: [{ path: "/cv.pdf" }, { path: "/api/cv/download" }] },
+    ],
+  };
+
+  const referrerWhere: Prisma.PageViewWhereInput = {
+    AND: [where, { referrer: { not: null } }],
+  };
+  const directReferrerWhere: Prisma.PageViewWhereInput = {
+    AND: [where, { OR: [{ referrer: null }, { referrer: "" }] }],
+  };
 
   const now = new Date();
   const publishedPostsWhere: Prisma.PostWhereInput = {
     OR: [{ published: true }, { publishedAt: { lte: now } }],
   };
 
-  const cvParts: Prisma.PageViewWhereInput[] = [
-    baseWhere,
-    prismaWhereExcludeNoise(),
-    { OR: [{ path: "/cv.pdf" }, { path: "/api/cv/download" }] },
-  ];
-  if (!filterIP && !includeDevIps) {
-    cvParts.push(prismaWhereExcludeLocalAndUnknownIp());
+  const auditIpParts: Prisma.AuditLogWhereInput[] = [];
+  if (filterIP) {
+    auditIpParts.push({ ip: filterIP });
+  } else {
+    if (excludedForNotIn.length > 0) auditIpParts.push({ ip: { notIn: excludedForNotIn } });
+    excludedPrefixes.forEach((p) => auditIpParts.push({ ip: { not: { startsWith: p } } }));
   }
-  const cvWhere: Prisma.PageViewWhereInput = { AND: cvParts };
-  const eventWhere: Prisma.AuditLogWhereInput = {
-    ...(Object.keys(dateFilter).length ? { createdAt: dateFilter } : {}),
-    ...(filterIP ? { ip: filterIP } : {}),
-    action: { in: ["analytics.cv_download", "analytics.lead_generated"] },
-  };
+  const auditIpWhere: Prisma.AuditLogWhereInput =
+    auditIpParts.length === 0
+      ? {}
+      : auditIpParts.length === 1
+        ? auditIpParts[0]!
+        : { AND: auditIpParts };
+
+  const leadEventWhereParts: Prisma.AuditLogWhereInput[] = [
+    { action: "analytics.lead_generated" },
+  ];
+  if (Object.keys(dateFilter).length) leadEventWhereParts.push({ createdAt: dateFilter });
+  if (Object.keys(auditIpWhere).length) leadEventWhereParts.push(auditIpWhere);
+  const leadEventWhere: Prisma.AuditLogWhereInput =
+    leadEventWhereParts.length === 1 ? leadEventWhereParts[0]! : { AND: leadEventWhereParts };
+
   const trendStart = fromDate ?? new Date(now.getTime() - 29 * 24 * 60 * 60 * 1000);
   const trendEnd = toDate ?? now;
   const trendDateFilter = { gte: trendStart, lte: trendEnd };
-  const trendWhere: Prisma.PageViewWhereInput = { ...where, createdAt: trendDateFilter };
-  const trendEventWhere: Prisma.AuditLogWhereInput = {
-    ...eventWhere,
+  const trendWhere: Prisma.PageViewWhereInput = { AND: [where, { createdAt: trendDateFilter }] };
+  const trendLeadWhere: Prisma.AuditLogWhereInput = {
+    ...leadEventWhere,
     createdAt: trendDateFilter,
   };
 
@@ -132,13 +179,14 @@ export async function GET(request: NextRequest) {
       withDuration,
       recent,
       topBlogPosts,
-      accessBlockTotal,
-      accessBlockedRecent,
-      conversionEvents,
       conversionAttributionEvents,
       trendPageViews,
-      trendEvents,
+      trendLeadEvents,
       blogPathViews,
+      recentCvDownloadsRaw,
+      cvByIpWithDates,
+      leadGenerated,
+      directVisits,
     ] = await Promise.all([
       prisma.pageView.count({ where }),
       prisma.pageView.groupBy({
@@ -171,10 +219,10 @@ export async function GET(request: NextRequest) {
       }),
       prisma.pageView.groupBy({
         by: ["referrer"],
-        where: { ...where, referrer: { not: null } },
+        where: referrerWhere,
         _count: { referrer: true },
         orderBy: { _count: { referrer: "desc" } },
-        take: 25,
+        take: 80,
       }),
       prisma.pageView.aggregate({
         where: { ...where, durationSeconds: { not: null } },
@@ -198,39 +246,24 @@ export async function GET(request: NextRequest) {
       }),
       prisma.post.findMany({
         where: publishedPostsWhere,
-        orderBy: [{ viewCount: "desc" }, { updatedAt: "desc" }],
+        orderBy: [{ viewCount: "desc" }, { updatedAt: "desc" } ],
         take: 20,
         select: { title: true, slug: true, viewCount: true },
       }),
-      prisma.accessBlockLog.count({ where: blockWhere }),
-      prisma.accessBlockLog.findMany({
-        where: blockWhere,
-        orderBy: { createdAt: "desc" },
-        take: 100,
-        select: { ip: true, path: true, userAgent: true, createdAt: true },
-      }),
-      prisma.auditLog.groupBy({
-        by: ["action"],
-        where: eventWhere,
-        _count: { action: true },
-      }),
       prisma.auditLog.findMany({
-        where: eventWhere,
-        select: {
-          action: true,
-          details: true,
-        },
+        where: leadEventWhere,
+        select: { action: true, details: true },
         orderBy: { createdAt: "desc" },
         take: 5000,
       }),
       prisma.pageView.findMany({
         where: trendWhere,
-        select: { createdAt: true },
+        select: { createdAt: true, path: true },
         orderBy: { createdAt: "asc" },
         take: 10000,
       }),
       prisma.auditLog.findMany({
-        where: trendEventWhere,
+        where: trendLeadWhere,
         select: { createdAt: true, action: true },
         orderBy: { createdAt: "asc" },
         take: 10000,
@@ -246,16 +279,55 @@ export async function GET(request: NextRequest) {
         orderBy: { _count: { path: "desc" } },
         take: 200,
       }),
+      prisma.pageView.findMany({
+        where: cvWhere,
+        orderBy: { createdAt: "desc" },
+        take: 50,
+        select: {
+          path: true,
+          ip: true,
+          country: true,
+          city: true,
+          referrer: true,
+          userAgent: true,
+          createdAt: true,
+        },
+      }),
+      prisma.pageView.groupBy({
+        by: ["ip"],
+        where: cvWhere,
+        _count: { ip: true },
+        _max: { createdAt: true },
+      }),
+      prisma.auditLog.count({ where: leadEventWhere }),
+      prisma.pageView.count({ where: directReferrerWhere }),
     ]);
 
-    const uniqueVisitors = uniqueIpRows.length;
-    const leadGenerated = conversionEvents.find((entry) => entry.action === "analytics.lead_generated")?._count.action ?? 0;
-    const cvDownloadEvents = conversionEvents.find((entry) => entry.action === "analytics.cv_download")?._count.action ?? 0;
-    const effectiveCvDownloads = Math.max(cvDownloads, cvDownloadEvents);
-    const referrerGroups = byReferrer.reduce<Record<ReferrerGroup, number>>(
+    const cvByIpMerged: { ip: string; count: number; lastVisit?: string }[] = filterByExcludedIP(
+      cvByIpWithDates.map((row) => ({
+        ip: row.ip,
+        count: row._count.ip,
+        lastVisit: row._max.createdAt?.toISOString(),
+      }))
+    );
+    const recentCvRows = filterByExcludedIP(recentCvDownloadsRaw).map((r) => ({
+      path: r.path,
+      ip: r.ip,
+      country: r.country,
+      city: r.city,
+      referrer: r.referrer,
+      userAgent: r.userAgent,
+      createdAt: r.createdAt.toISOString(),
+    }));
+
+    const referrerSplit = splitReferrerRows(
+      byReferrer.map((row) => ({ referrer: row.referrer, count: row._count.referrer }))
+    );
+
+    const referrerGroups = referrerSplit.external.reduce<Record<ReferrerGroup, number>>(
       (acc, row) => {
         const bucket = categorizeReferrer(row.referrer);
-        acc[bucket] = (acc[bucket] ?? 0) + row._count.referrer;
+        acc[bucket] = (acc[bucket] ?? 0) + row.count;
         return acc;
       },
       {
@@ -264,9 +336,17 @@ export async function GET(request: NextRequest) {
         "Social Media": 0,
         GitHub: 0,
         "Developer Communities": 0,
+        "Your site": 0,
         Other: 0,
       }
     );
+    if (referrerSplit.internalTotal > 0) {
+      referrerGroups["Your site"] = referrerSplit.internalTotal;
+    }
+    if (directVisits > 0) {
+      referrerGroups["Direct / Unknown"] += directVisits;
+    }
+
     const byIPFiltered = filterByExcludedIP(
       byIP.map((p) => ({
         ip: p.ip,
@@ -274,13 +354,17 @@ export async function GET(request: NextRequest) {
         lastVisit: p._max.createdAt?.toISOString() ?? "",
       }))
     );
-    const recentFiltered = filterByExcludedIP(recent);
+
+    const byIPWithCv = mergeVisitorByIp(byIPFiltered, cvByIpMerged);
+    const uniqueVisitors = byIPWithCv.length;
+
     const trendByDay = buildDailyAnalyticsTrendWithKernel({
       start: trendStart.toISOString().slice(0, 10),
       end: trendEnd.toISOString().slice(0, 10),
       pageViews: trendPageViews,
-      events: trendEvents.map((event) => ({ createdAt: event.createdAt, action: event.action })),
+      events: trendLeadEvents,
     });
+
     const blogSlugs = Array.from(
       new Set(
         blogPathViews
@@ -296,8 +380,8 @@ export async function GET(request: NextRequest) {
     const conversionBySlug = buildConversionAttributionBySlug(
       conversionAttributionEvents
         .filter(
-          (event): event is { action: "analytics.cv_download" | "analytics.lead_generated"; details: string | null } =>
-            event.action === "analytics.cv_download" || event.action === "analytics.lead_generated"
+          (event): event is { action: "analytics.lead_generated"; details: string | null } =>
+            event.action === "analytics.lead_generated"
         )
         .map((event) => ({ action: event.action, details: event.details }))
     );
@@ -316,33 +400,37 @@ export async function GET(request: NextRequest) {
       postsBySlug: postMap,
     });
 
+    const recentFiltered = filterByExcludedIP(recent);
+
     return NextResponse.json({
       total,
       byPath: byPath.map((p) => ({ path: p.path, count: p._count.path })),
-      byIP: byIPFiltered.map((p) => ({
+      byIP: byIPWithCv.map((p) => ({
         ip: p.ip,
         count: p.count,
         lastVisit: p.lastVisit || undefined,
+        cvDownloads: p.cvDownloads > 0 ? p.cvDownloads : undefined,
       })),
       byCountry: byCountry
         .filter((c) => c.country)
         .map((c) => ({ country: c.country!, count: c._count.country })),
-      byReferrer: byReferrer
-        .filter((r) => r.referrer)
-        .map((r) => ({ referrer: r.referrer!, count: r._count.referrer })),
+      byReferrer: referrerSplit.external.slice(0, 15),
+      byInternalReferrer: referrerSplit.internal.slice(0, 15),
       byReferrerGroup: Object.entries(referrerGroups)
         .filter(([, count]) => count > 0)
-        .map(([group, count]) => ({ group, count })),
+        .map(([group, count]) => ({ group, count }))
+        .sort((a, b) => b.count - a.count),
+      directVisits,
       avgDurationSeconds: withDuration._count.durationSeconds
         ? Math.round((withDuration._avg.durationSeconds ?? 0) * 10) / 10
         : null,
       durationSampleCount: withDuration._count.durationSeconds,
-      cvDownloads: effectiveCvDownloads,
+      cvDownloads,
       leadGenerated,
       uniqueVisitors,
       conversionFunnel: {
         visitors: uniqueVisitors,
-        cvDownloads: effectiveCvDownloads,
+        cvDownloads,
         leads: leadGenerated,
       },
       trendByDay,
@@ -362,15 +450,9 @@ export async function GET(request: NextRequest) {
         userAgent: r.userAgent,
         createdAt: r.createdAt.toISOString(),
       })),
-      accessBlockTotal,
-      accessBlockedRecent: accessBlockedRecent.map((r) => ({
-        ip: r.ip,
-        path: r.path,
-        userAgent: r.userAgent,
-        createdAt: r.createdAt.toISOString(),
-      })),
-      filterIP: filterIP || undefined,
+      recentCvDownloads: recentCvRows,
       excludingDevIps: !filterIP && !includeDevIps,
+      realTrafficOnly: true,
       excludedIPs:
         excludedSet.size > 0 || excludedPrefixes.length > 0
           ? [...Array.from(excludedSet), ...excludedPrefixes]

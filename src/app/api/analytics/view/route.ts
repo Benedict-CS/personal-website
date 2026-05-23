@@ -7,14 +7,29 @@ import { getRequestOrigin } from "@/lib/get-request-origin";
 import { getBlogPostSlugFromPath, incrementPublishedPostViewCount } from "@/lib/blog-analytics";
 import { sanitizeReferrerForAnalytics } from "@/lib/analytics-referrer";
 import {
+  ipHasProbeHistory,
+  isIpAutomatedCrawl,
+  isIpInBurstScan,
   isJunkAnalyticsPath,
   isLikelyMonitoringUserAgent,
   isLikelyOutdatedFakeUserAgent,
   isLikelyScannerUserAgent,
 } from "@/lib/analytics-noise";
+import { isDirectTagProbePath } from "@/lib/analytics-qualified-visit";
 import { isAccessBlocked } from "@/lib/access-blocked-ips";
+import {
+  isIngestBurstBlocked,
+  shouldRollbackAutomatedSession,
+  withAnalyticsIngestLock,
+} from "@/lib/analytics-ingest-guard";
+import {
+  recordAnalyticsIngestEvent,
+  shouldSkipDistributedSwarmIngest,
+} from "@/lib/analytics-distributed-swarm";
 
 export const dynamic = "force-dynamic";
+
+const ROLLBACK_LOOKBACK_MS = 10 * 60 * 1000;
 
 /** Ensure geoip-lite finds its data when running from Next.js/bundled context */
 function ensureGeoIPDataDir() {
@@ -71,6 +86,9 @@ export async function POST(request: NextRequest) {
   if (isJunkAnalyticsPath(viewPath)) {
     return NextResponse.json({ ok: true, skipped: "junk_path" });
   }
+  if (isDirectTagProbePath(viewPath, referrer)) {
+    return NextResponse.json({ ok: true, skipped: "tag_probe" });
+  }
   if (isLikelyMonitoringUserAgent(userAgent)) {
     return NextResponse.json({ ok: true, skipped: "monitoring_ua" });
   }
@@ -112,44 +130,78 @@ export async function POST(request: NextRequest) {
   if (isAccessBlocked(canonicalIP)) {
     return NextResponse.json({ ok: true, skipped: "access_blocked" });
   }
-  if (await isRecentDuplicate(canonicalIP, viewPath)) {
-    return NextResponse.json({ ok: true, skipped: "dedup" });
-  }
-  let country: string | null = null;
-  let city: string | null = null;
-  try {
-    ensureGeoIPDataDir();
-    const geoip = (await import("geoip-lite")).default;
-    const geo = geoip.lookup(canonicalIP);
-    if (geo) {
-      country = (geo.country ?? "").trim() || null;
-      city = (geo.city ?? "").trim() || null;
+  return withAnalyticsIngestLock(canonicalIP, async () => {
+    recordAnalyticsIngestEvent(canonicalIP, viewPath);
+    if (shouldSkipDistributedSwarmIngest(viewPath)) {
+      return NextResponse.json({ ok: true, skipped: "distributed_swarm" });
     }
-  } catch {
-    // GeoIP data not available (e.g. at build time)
-  }
-  try {
-    await prisma.pageView.create({
-      data: {
-        path: viewPath,
-        ip: canonicalIP,
-        country,
-        city,
-        referrer,
-        userAgent,
-      },
-    });
-    const slug = getBlogPostSlugFromPath(viewPath);
-    if (slug) {
-      try {
-        await incrementPublishedPostViewCount(slug);
-      } catch (e) {
-        console.error("Blog view count increment error:", e);
+    if (isIngestBurstBlocked(canonicalIP)) {
+      return NextResponse.json({ ok: true, skipped: "burst_ingest" });
+    }
+    if (await isRecentDuplicate(canonicalIP, viewPath)) {
+      return NextResponse.json({ ok: true, skipped: "dedup" });
+    }
+    if (await ipHasProbeHistory(prisma, canonicalIP)) {
+      return NextResponse.json({ ok: true, skipped: "scanner_session" });
+    }
+    if (await isIpInBurstScan(prisma, canonicalIP)) {
+      return NextResponse.json({ ok: true, skipped: "burst_scan" });
+    }
+    if (await isIpAutomatedCrawl(prisma, canonicalIP)) {
+      return NextResponse.json({ ok: true, skipped: "automated_crawl" });
+    }
+
+    let country: string | null = null;
+    let city: string | null = null;
+    try {
+      ensureGeoIPDataDir();
+      const geoip = (await import("geoip-lite")).default;
+      const geo = geoip.lookup(canonicalIP);
+      if (geo) {
+        country = (geo.country ?? "").trim() || null;
+        city = (geo.city ?? "").trim() || null;
       }
+    } catch {
+      // GeoIP data not available (e.g. at build time)
     }
-    return NextResponse.json({ ok: true });
-  } catch (e) {
-    console.error("Analytics view error:", e);
-    return NextResponse.json({ error: "Failed" }, { status: 500 });
-  }
+
+    try {
+      await prisma.pageView.create({
+        data: {
+          path: viewPath,
+          ip: canonicalIP,
+          country,
+          city,
+          referrer,
+          userAgent,
+        },
+      });
+
+      const since = new Date(Date.now() - ROLLBACK_LOOKBACK_MS);
+      const recentRows = await prisma.pageView.findMany({
+        where: { ip: canonicalIP, createdAt: { gte: since } },
+        select: { path: true, createdAt: true, durationSeconds: true },
+        orderBy: { createdAt: "asc" },
+      });
+      if (shouldRollbackAutomatedSession(recentRows)) {
+        await prisma.pageView.deleteMany({
+          where: { ip: canonicalIP, createdAt: { gte: since } },
+        });
+        return NextResponse.json({ ok: true, skipped: "automated_crawl" });
+      }
+
+      const slug = getBlogPostSlugFromPath(viewPath);
+      if (slug) {
+        try {
+          await incrementPublishedPostViewCount(slug);
+        } catch (e) {
+          console.error("Blog view count increment error:", e);
+        }
+      }
+      return NextResponse.json({ ok: true });
+    } catch (e) {
+      console.error("Analytics view error:", e);
+      return NextResponse.json({ error: "Failed" }, { status: 500 });
+    }
+  });
 }

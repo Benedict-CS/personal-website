@@ -7,6 +7,11 @@ import { isPrivateIP } from "@/lib/is-private-url";
 import { isExcludedIP, normalizeIP } from "@/lib/analytics-excluded-ips";
 import { getCvDownloadFilename } from "@/lib/cv-download-filename";
 import { sanitizeReferrerForAnalytics } from "@/lib/analytics-referrer";
+import {
+  isLikelyMonitoringUserAgent,
+  isLikelyOutdatedFakeUserAgent,
+  isLikelyScannerUserAgent,
+} from "@/lib/analytics-noise";
 import { getTrustedClientIp } from "@/lib/client-ip";
 import { trackAnalyticsEvent } from "@/lib/analytics-events";
 
@@ -34,9 +39,14 @@ export async function GET(request: NextRequest) {
   const canLog =
     !!rawIp && !!ip && ip !== "unknown" && !isPrivateIP(rawIp) && !isExcludedIP(rawIp);
 
-  if (canLog) {
-    const rawUa = request.headers.get("user-agent");
-    const userAgent = truncateMeta(rawUa, 512);
+  const rawUa = request.headers.get("user-agent");
+  const userAgent = truncateMeta(rawUa, 512);
+  const isHumanCvRequest =
+    !isLikelyMonitoringUserAgent(userAgent) &&
+    !isLikelyScannerUserAgent(userAgent) &&
+    !isLikelyOutdatedFakeUserAgent(userAgent);
+
+  if (canLog && isHumanCvRequest) {
     const rawRef = request.headers.get("referer");
     const referrer = truncateMeta(sanitizeReferrerForAnalytics(rawRef), 512);
     void (async () => {
