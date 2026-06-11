@@ -29,6 +29,8 @@ model Post {
 
   @@index([category, order])
   @@index([category, createdAt])
+  @@index([published, publishedAt])
+  @@index([published, pinned, publishedAt])
 }
 
 model Tag {
@@ -123,6 +125,8 @@ model CustomPage {
   published Boolean  @default(true)
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
+
+  @@index([published, order])
 }
 
 model SitePageContent {

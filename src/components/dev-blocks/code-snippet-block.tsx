@@ -1,7 +1,6 @@
 "use client";
 
 import { useEffect, useRef, useState } from "react";
-import hljs from "highlight.js";
 import "highlight.js/styles/atom-one-light.css";
 import { Button } from "@/components/ui/button";
 import { Check, Copy } from "lucide-react";
@@ -24,15 +23,23 @@ export function CodeSnippetBlock({
   useEffect(() => {
     const el = ref.current;
     if (!el) return;
-    try {
-      const result = hljs.getLanguage(lang)
-        ? hljs.highlight(code, { language: lang, ignoreIllegals: true })
-        : hljs.highlightAuto(code);
-      el.innerHTML = result.value;
-      el.className = `hljs block whitespace-pre font-mono text-foreground language-${result.language ?? lang}`;
-    } catch {
-      el.textContent = code;
-    }
+    let cancelled = false;
+    el.textContent = code;
+    void import("highlight.js").then(({ default: hljs }) => {
+      if (cancelled || !ref.current) return;
+      try {
+        const result = hljs.getLanguage(lang)
+          ? hljs.highlight(code, { language: lang, ignoreIllegals: true })
+          : hljs.highlightAuto(code);
+        ref.current.innerHTML = result.value;
+        ref.current.className = `hljs block whitespace-pre font-mono text-foreground language-${result.language ?? lang}`;
+      } catch {
+        ref.current.textContent = code;
+      }
+    });
+    return () => {
+      cancelled = true;
+    };
   }, [code, lang]);
 
   const copy = async () => {

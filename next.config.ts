@@ -8,10 +8,36 @@ const withBundleAnalyzer = createBundleAnalyzer({
 const nextConfig: NextConfig = {
   poweredByHeader: false,
   output: "standalone",
+  productionBrowserSourceMaps: false,
   experimental: {
-    optimizePackageImports: ["lucide-react", "@radix-ui/react-slot"],
+    optimizePackageImports: [
+      "lucide-react",
+      "@radix-ui/react-slot",
+      "framer-motion",
+      "react-markdown",
+      "rehype-pretty-code",
+      "rehype-katex",
+      "rehype-raw",
+      "rehype-sanitize",
+      "rehype-slug",
+      "remark-gfm",
+      "remark-math",
+      "remark-smartypants",
+      "@dnd-kit/core",
+      "@dnd-kit/sortable",
+      "@dnd-kit/utilities",
+      "date-fns",
+    ],
   },
-  serverExternalPackages: [],
+  serverExternalPackages: [
+    "nodemailer",
+    "ioredis",
+    "geoip-lite",
+    "pdf-lib",
+    "jszip",
+    "sharp",
+    "@aws-sdk/client-s3",
+  ],
   async headers() {
     const csp = [
       "default-src 'self'",
@@ -45,6 +71,24 @@ const nextConfig: NextConfig = {
         source: "/:path*",
         headers: baseHeaders,
       },
+      {
+        source: "/_next/static/:path*",
+        headers: [
+          { key: "Cache-Control", value: "public, max-age=31536000, immutable" },
+        ],
+      },
+      {
+        source: "/_next/image",
+        headers: [
+          { key: "Cache-Control", value: "public, max-age=86400, stale-while-revalidate=604800" },
+        ],
+      },
+      {
+        source: "/favicon.ico",
+        headers: [
+          { key: "Cache-Control", value: "public, max-age=86400" },
+        ],
+      },
     ];
   },
   images: {
@@ -59,6 +103,8 @@ const nextConfig: NextConfig = {
       },
     ],
     unoptimized: false,
+    formats: ["image/avif", "image/webp"],
+    minimumCacheTTL: 86400,
   },
 };
 

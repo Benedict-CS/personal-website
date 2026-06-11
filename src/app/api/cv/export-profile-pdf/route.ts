@@ -1,5 +1,4 @@
 import { NextResponse } from "next/server";
-import { PDFDocument, StandardFonts, rgb } from "pdf-lib";
 import { requireSession } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 import { buildCvProfileLines } from "@/lib/cv-profile-export";
@@ -41,6 +40,7 @@ export async function GET() {
     achievements: parseJsonArray(about.achievements),
   });
 
+  const { PDFDocument, StandardFonts, rgb } = await import("pdf-lib");
   const pdf = await PDFDocument.create();
   let page = pdf.addPage([595.28, 841.89]);
   const marginX = 48;

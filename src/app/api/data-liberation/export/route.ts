@@ -1,7 +1,11 @@
 import { NextRequest, NextResponse } from "next/server";
-import JSZip from "jszip";
 import { requireSession } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
+
+async function loadJSZip() {
+  const mod = await import("jszip");
+  return mod.default;
+}
 
 export const dynamic = "force-dynamic";
 
@@ -60,6 +64,7 @@ async function exportPostsZip(): Promise<Response> {
     },
   });
 
+  const JSZip = await loadJSZip();
   const zip = new JSZip();
   const postsFolder = zip.folder("posts");
   if (!postsFolder) {
@@ -156,6 +161,7 @@ async function exportBundleZip(): Promise<Response> {
     buildSystemPayload(),
   ]);
 
+  const JSZip = await loadJSZip();
   const zip = new JSZip();
   const postsFolder = zip.folder("posts");
   if (!postsFolder) throw new Error("Could not create posts folder in bundle ZIP");
