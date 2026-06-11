@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
 import Link from "next/link";
 import { Pin } from "lucide-react";
+import type { Prisma } from "@prisma/client";
 import { prisma } from "@/lib/prisma";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -78,14 +79,27 @@ const defaultHomeContent: HomeContent = {
 
 export default async function Home() {
   const now = new Date();
-  const [latestPosts, homeRow, siteConfig] = await Promise.all([
-    prisma.post.findMany({
+  type PostWithTags = Prisma.PostGetPayload<{ include: { tags: true } }>;
+  const safeLatestPosts: Promise<PostWithTags[]> = prisma.post
+    .findMany({
       where: { OR: [{ published: true }, { publishedAt: { lte: now } }] },
       include: { tags: true },
       orderBy: [{ pinned: "desc" }, { createdAt: "desc" }],
       take: 3,
-    }),
-    prisma.sitePageContent.findUnique({ where: { page: "home" } }),
+    })
+    .catch((err) => {
+      console.warn("[home] latestPosts load failed, using empty list:", err instanceof Error ? err.message : err);
+      return [] as PostWithTags[];
+    });
+  const safeHomeRow = prisma.sitePageContent
+    .findUnique({ where: { page: "home" } })
+    .catch((err) => {
+      console.warn("[home] sitePageContent load failed, using defaults:", err instanceof Error ? err.message : err);
+      return null;
+    });
+  const [latestPosts, homeRow, siteConfig] = await Promise.all([
+    safeLatestPosts,
+    safeHomeRow,
     getSiteConfigForRender(),
   ]);
   const templateId = siteConfig.templateId ?? "default";
