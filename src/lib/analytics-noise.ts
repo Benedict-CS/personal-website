@@ -645,20 +645,6 @@ export async function ipHasProbeHistory(
   return !!row;
 }
 
-/** Delete every PageView row for IPs that ever hit a probe path (full scanner session). */
-export async function deleteScannerSessionPageViews(
-  prisma: Pick<PrismaClient, "pageView">,
-  scope?: Prisma.PageViewWhereInput
-): Promise<number> {
-  const ips = await findScannerSessionIps(prisma, scope);
-  if (ips.length === 0) return 0;
-  const where: Prisma.PageViewWhereInput = scope
-    ? { AND: [scope, { ip: { in: ips } }] }
-    : { ip: { in: ips } };
-  const result = await prisma.pageView.deleteMany({ where });
-  return result.count;
-}
-
 /** Distributed tag swarm: many IPs, one tag hit each (excluded in stats, not bulk-deleted). */
 export async function findDistributedSwarmIpsInDb(
   prisma: Pick<PrismaClient, "pageView">,

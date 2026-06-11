@@ -7,7 +7,6 @@ import {
   getExcludedIPsSet,
   getExcludedPrefixes,
   filterByExcludedIP,
-  isExcludedIP,
 } from "@/lib/analytics-excluded-ips";
 import {
   findNonHumanVisitorIps,
@@ -170,7 +169,6 @@ export async function GET(request: NextRequest) {
   try {
     const [
       total,
-      uniqueIpRows,
       cvDownloads,
       byPath,
       byIP,
@@ -189,11 +187,6 @@ export async function GET(request: NextRequest) {
       directVisits,
     ] = await Promise.all([
       prisma.pageView.count({ where }),
-      prisma.pageView.groupBy({
-        by: ["ip"],
-        where,
-        _count: { ip: true },
-      }),
       prisma.pageView.count({ where: cvWhere }),
       prisma.pageView.groupBy({
         by: ["path"],

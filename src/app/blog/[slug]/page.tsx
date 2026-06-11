@@ -44,15 +44,19 @@ export async function generateMetadata({
   params: Promise<{ slug: string }>;
 }): Promise<Metadata> {
   const { slug } = await params;
-  const post = await prisma.post.findFirst({
-    where: {
-      slug: slug,
-      ...publishedWhere(),
-    },
-    include: {
-      tags: true,
-    },
-  });
+  // Parallelize independent fetches: post and site config.
+  const [post, config] = await Promise.all([
+    prisma.post.findFirst({
+      where: {
+        slug: slug,
+        ...publishedWhere(),
+      },
+      include: {
+        tags: true,
+      },
+    }),
+    getSiteConfigForRender(),
+  ]);
 
   if (!post) {
     return {
@@ -60,7 +64,6 @@ export async function generateMetadata({
     };
   }
 
-  const config = await getSiteConfigForRender();
   const description = metaDescriptionFromMarkdown(post.content, 160);
   const canonicalUrl = `${config.url}/blog/${slug}`;
   const tagNames = post.tags.map((t) => t.name).filter(Boolean);
@@ -99,19 +102,21 @@ export default async function BlogPostPage({
   const highlight = typeof resolvedSearch?.highlight === "string" ? resolvedSearch.highlight : undefined;
   const occurrenceRaw = resolvedSearch?.occurrence;
   const occurrence = Array.isArray(occurrenceRaw) ? occurrenceRaw[0] : occurrenceRaw;
-  
-  // Check if user is logged in
-  const session = await getServerSession(authOptions);
 
-  const post = await prisma.post.findFirst({
-    where: {
-      slug: slug,
-      ...publishedWhere(),
-    },
-    include: {
-      tags: true,
-    },
-  });
+  // Parallelize independent fetches: auth session, post, and site config.
+  const [session, post, configForRender] = await Promise.all([
+    getServerSession(authOptions),
+    prisma.post.findFirst({
+      where: {
+        slug: slug,
+        ...publishedWhere(),
+      },
+      include: {
+        tags: true,
+      },
+    }),
+    getSiteConfigForRender(),
+  ]);
 
   if (!post) {
     notFound();
@@ -194,7 +199,11 @@ export default async function BlogPostPage({
     estimateTocReadingByHeading(post.content).map((item) => [item.id, item.readingMinutes])
   );
 
-  const configForRender = await getSiteConfigForRender();
+  // Memoize meta description extraction: parses markdown once and reuses across
+  // JSON-LD and ShareButtons (was being computed up to 2 extra times in render).
+  const metaDescription160 = metaDescriptionFromMarkdown(post.content, 160);
+  const shareDescription = metaDescriptionFromMarkdown(post.content, 100);
+
   const canonicalUrl = `${configForRender.url}/blog/${post.slug}`;
   const baseUrl = configForRender.url.replace(/\/$/, "");
   const ogImageAbsolute = `${baseUrl}/blog/${post.slug}/opengraph-image`;
@@ -204,7 +213,7 @@ export default async function BlogPostPage({
     "@type": "BlogPosting",
     "@id": `${canonicalUrl}#blogposting`,
     headline: post.title,
-    description: metaDescriptionFromMarkdown(post.content, 160) || post.title,
+    description: metaDescription160 || post.title,
     url: canonicalUrl,
     datePublished: post.createdAt.toISOString(),
     dateModified: post.updatedAt.toISOString(),
@@ -289,7 +298,7 @@ export default async function BlogPostPage({
                     <ShareButtons
                       title={post.title}
                       url={`/blog/${post.slug}`}
-                      description={metaDescriptionFromMarkdown(post.content, 100)}
+                      description={shareDescription}
                     />
                   </div>
 

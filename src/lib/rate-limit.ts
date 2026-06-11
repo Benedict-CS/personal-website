@@ -70,35 +70,6 @@ export function getRateLimitProfileForPrefix(prefix: string): RateLimitProfile {
   return override ?? PRESET_PROFILES[preset];
 }
 
-const store = new Map<string, { count: number; resetAt: number }>();
-
-function getKey(identifier: string, prefix: string): string {
-  return `${prefix}:${identifier}`;
-}
-
-export function checkRateLimit(identifier: string, prefix: string = "default"): { ok: boolean; remaining: number } {
-  const now = Date.now();
-  const profile = getRateLimitProfileForPrefix(prefix);
-  const windowSeconds = profile.windowSeconds;
-  const maxPerWindow = profile.maxPerWindow;
-  const windowMs = windowSeconds * 1000;
-  const key = getKey(identifier, prefix);
-  let entry = store.get(key);
-  if (!entry) {
-    entry = { count: 1, resetAt: now + windowMs };
-    store.set(key, entry);
-    return { ok: true, remaining: maxPerWindow - 1 };
-  }
-  if (now >= entry.resetAt) {
-    entry = { count: 1, resetAt: now + windowMs };
-    store.set(key, entry);
-    return { ok: true, remaining: maxPerWindow - 1 };
-  }
-  entry.count += 1;
-  const remaining = Math.max(0, maxPerWindow - entry.count);
-  return { ok: entry.count <= maxPerWindow, remaining };
-}
-
 export async function checkRateLimitAsync(
   identifier: string,
   prefix: string = "default"

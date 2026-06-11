@@ -41,7 +41,6 @@ import {
 } from "@dnd-kit/sortable";
 import { CSS } from "@dnd-kit/utilities";
 import { InsertMediaModal } from "@/components/insert-media-modal";
-import { useToast } from "@/contexts/toast-context";
 import {
   formFieldsToMarkdown,
   parseFormFieldsText,
@@ -1800,7 +1799,6 @@ export function SiteBlockBuilder({
   value: string;
   onChange: (nextMarkdown: string) => void;
 }) {
-  const { toast } = useToast();
   const parsed = useMemo(() => parseBuilderMeta(value), [value]);
   const [theme, setTheme] = useState<SiteTheme>(parsed.theme);
   const [brand, setBrand] = useState<BrandConfig>(parsed.brand);

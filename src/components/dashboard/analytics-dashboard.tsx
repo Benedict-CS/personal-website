@@ -171,7 +171,6 @@ function TrafficSources({ stats }: { stats: AnalyticsStats }) {
   }
 
   const channelTotal = groups.reduce((s, g) => s + g.count, 0) || 1;
-  const maxExt = Math.max(...external.map((r) => r.count), 1);
 
   return (
     <div className="space-y-8">

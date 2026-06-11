@@ -37,9 +37,15 @@ const nextConfig: NextConfig = {
     "@aws-sdk/client-s3",
   ],
   async headers() {
+    const isDev = process.env.NODE_ENV !== "production";
+    // 'unsafe-eval' is only required in dev for React Refresh / HMR.
+    // No eval() or new Function() in src/, so we drop it in production.
+    const scriptSrc = isDev
+      ? "script-src 'self' 'unsafe-inline' 'unsafe-eval' https://giscus.app https://challenges.cloudflare.com"
+      : "script-src 'self' 'unsafe-inline' https://giscus.app https://challenges.cloudflare.com";
     const csp = [
       "default-src 'self'",
-      "script-src 'self' 'unsafe-inline' 'unsafe-eval' https://giscus.app https://challenges.cloudflare.com",
+      scriptSrc,
       "style-src 'self' 'unsafe-inline' https://fonts.googleapis.com https://giscus.app https://challenges.cloudflare.com",
       "font-src 'self' https://fonts.gstatic.com",
       "img-src 'self' data: blob: https: http:",
@@ -50,12 +56,45 @@ const nextConfig: NextConfig = {
       "frame-ancestors 'none'",
       "upgrade-insecure-requests",
     ].join("; ");
+    // Restrictive Permissions-Policy: deny features we don't use.
+    // interest-cohort opts out of FLoC/Topics tracking.
+    const permissionsPolicy = [
+      "accelerometer=()",
+      "ambient-light-sensor=()",
+      "autoplay=()",
+      "battery=()",
+      "camera=()",
+      "display-capture=()",
+      "document-domain=()",
+      "encrypted-media=()",
+      "fullscreen=(self)",
+      "geolocation=()",
+      "gyroscope=()",
+      "interest-cohort=()",
+      "magnetometer=()",
+      "microphone=()",
+      "midi=()",
+      "payment=()",
+      "picture-in-picture=()",
+      "publickey-credentials-get=()",
+      "screen-wake-lock=()",
+      "serial=()",
+      "sync-xhr=()",
+      "usb=()",
+      "xr-spatial-tracking=()",
+    ].join(", ");
     const baseHeaders: { key: string; value: string }[] = [
       { key: "X-Frame-Options", value: "DENY" },
       { key: "X-Content-Type-Options", value: "nosniff" },
       { key: "Referrer-Policy", value: "strict-origin-when-cross-origin" },
-      { key: "Permissions-Policy", value: "camera=(), microphone=(), geolocation=()" },
+      { key: "Permissions-Policy", value: permissionsPolicy },
       { key: "Content-Security-Policy", value: csp },
+      // Isolate this origin from cross-origin window references.
+      { key: "Cross-Origin-Opener-Policy", value: "same-origin" },
+      // 'credentialless' allows third-party iframes (giscus, youtube) without CORP headers.
+      { key: "Cross-Origin-Embedder-Policy", value: "credentialless" },
+      // Allow the browser to proactively resolve DNS for outbound links.
+      { key: "X-DNS-Prefetch-Control", value: "on" },
     ];
     // Set ENABLE_HSTS=true only behind HTTPS in production (avoid HSTS on plain HTTP dev).
     if (process.env.ENABLE_HSTS === "true") {

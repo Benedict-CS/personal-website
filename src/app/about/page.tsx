@@ -6,7 +6,6 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Mail, Linkedin, Github, GraduationCap, Briefcase, HeartHandshake, Award, Trophy, Download, Code, Network } from "lucide-react";
 import { getSiteConfigForRender } from "@/lib/site-config";
-import { prisma } from "@/lib/prisma";
 import { AboutHighlightScroll } from "@/components/about-highlight-scroll";
 import { MarkdownBodyServer } from "@/components/markdown/markdown-body-server";
 import {
@@ -20,9 +19,23 @@ import { Suspense } from "react";
 import { getCvDownloadFilename } from "@/lib/cv-download-filename";
 import { AboutPrintToolbar } from "@/components/about-print-toolbar";
 import { PublicPageShell } from "@/components/public/public-layout";
+import {
+  getAboutConfig,
+  getCompanyLogo,
+  getEducationLogoFallback,
+  getProjectImage,
+  getSchoolLogo,
+  inferCountryCodeFromOrganization,
+  type AboutBlockEntry as AboutBlockEntryHelper,
+} from "@/lib/about-config";
 
 export const revalidate = 30;
+// Dynamic per-request because we read `searchParams` (print/editor query params)
+// for the print and editor toolbar modes.
 export const dynamic = "force-dynamic";
+
+// Re-export so other modules importing `AboutBlockEntry` from the page keep working.
+export type AboutBlockEntry = AboutBlockEntryHelper;
 
 export async function generateMetadata(): Promise<Metadata> {
   const config = await getSiteConfigForRender();
@@ -52,282 +65,6 @@ export async function generateMetadata(): Promise<Metadata> {
   };
 }
 
-interface SchoolLogo {
-  school: string;
-  logo: string;
-}
-
-interface ProjectImage {
-  project: string;
-  image: string;
-}
-
-interface CompanyLogo {
-  company: string;
-  logo: string;
-}
-
-interface AboutCustomSection {
-  id: string;
-  title: string;
-  blocks: AboutBlockEntry[];
-}
-
-export interface AboutBlockEntry {
-  title: string;
-  logoUrl?: string | null;
-  organization: string;
-  /** ISO 3166-1 alpha-2 country code (e.g. TW, US) for Education; shown as flag after school name */
-  countryCode?: string | null;
-  dateRange: string;
-  content: string;
-}
-
-const DEFAULT_SECTION_TITLES = {
-  education: "Education",
-  experience: "Experience",
-  volunteer: "Volunteer",
-  projects: "Projects",
-  skills: "Technical Skills",
-  achievements: "Achievements",
-};
-
-async function getAboutConfig() {
-  try {
-    const config = await prisma.aboutConfig.findFirst();
-    if (!config) {
-      return {
-        profileImage: null,
-        heroName: null,
-        heroTagline: null,
-        heroPhone: null,
-        heroEmail: null,
-        heroPortfolioLabel: null,
-        heroPortfolioUrl: null,
-        introText: null,
-        aboutMainContent: null,
-        educationBlocks: [] as AboutBlockEntry[],
-        experienceBlocks: [] as AboutBlockEntry[],
-        volunteerBlocks: [] as AboutBlockEntry[],
-        projectBlocks: [] as AboutBlockEntry[],
-        schoolLogos: [] as SchoolLogo[],
-        projectImages: [] as ProjectImage[],
-        companyLogos: [] as CompanyLogo[],
-        contactHeading: null,
-        contactText: null,
-        contactLinks: [] as { label: string; url: string }[],
-        technicalSkills: [] as { category: string; items: string[] }[],
-        achievements: [] as { title: string; organization: string; year: string }[],
-        customSections: [] as AboutCustomSection[],
-        sectionOrder: ["education", "experience", "volunteer", "projects", "skills", "achievements"],
-        sectionVisibility: {} as Record<string, boolean>,
-        sectionTitles: { ...DEFAULT_SECTION_TITLES },
-      };
-    }
-    const c = config as {
-      introText?: string | null;
-      aboutMainContent?: string | null;
-      educationBlocks?: string;
-      experienceBlocks?: string;
-      volunteerBlocks?: string;
-      projectBlocks?: string;
-      heroName?: string | null;
-      heroTagline?: string | null;
-      heroPhone?: string | null;
-      heroEmail?: string | null;
-      heroPortfolioLabel?: string | null;
-      heroPortfolioUrl?: string | null;
-      contactHeading?: string | null;
-      contactText?: string | null;
-      contactLinks?: string | null;
-      technicalSkills?: string | null;
-      achievements?: string | null;
-      customSections?: string | null;
-      sectionOrder?: string;
-      sectionVisibility?: string;
-    };
-    const parseJson = (s: string | null | undefined, fallback: unknown): unknown => {
-      if (s == null || s === "") return fallback;
-      try { return JSON.parse(s); } catch { return fallback; }
-    };
-    const rawSectionVisibility = parseJson(c.sectionVisibility, {}) as Record<string, unknown>;
-    const sectionVisibility = Object.fromEntries(
-      Object.entries(rawSectionVisibility).filter(([key, value]) => key !== "__sectionTitles" && typeof value === "boolean")
-    ) as Record<string, boolean>;
-    const sectionTitles = {
-      ...DEFAULT_SECTION_TITLES,
-      ...((rawSectionVisibility["__sectionTitles"] as Record<string, string> | undefined) ?? {}),
-    };
-    return {
-      profileImage: config.profileImage,
-      heroName: c.heroName ?? null,
-      heroTagline: c.heroTagline ?? null,
-      heroPhone: c.heroPhone ?? null,
-      heroEmail: c.heroEmail ?? null,
-      heroPortfolioLabel: c.heroPortfolioLabel ?? null,
-      heroPortfolioUrl: c.heroPortfolioUrl ?? null,
-      introText: c.introText ?? null,
-      aboutMainContent: c.aboutMainContent ?? null,
-      educationBlocks: parseJson(c.educationBlocks, []) as AboutBlockEntry[],
-      experienceBlocks: parseJson(c.experienceBlocks, []) as AboutBlockEntry[],
-      volunteerBlocks: parseJson(c.volunteerBlocks, []) as AboutBlockEntry[],
-      projectBlocks: parseJson(c.projectBlocks, []) as AboutBlockEntry[],
-      schoolLogos: config.schoolLogos ? (JSON.parse(config.schoolLogos) as SchoolLogo[]) : [],
-      projectImages: config.projectImages ? (JSON.parse(config.projectImages) as ProjectImage[]) : [],
-      companyLogos: config.companyLogos ? (JSON.parse(config.companyLogos) as CompanyLogo[]) : [],
-      contactHeading: c.contactHeading ?? null,
-      contactText: c.contactText ?? null,
-      contactLinks: (parseJson(c.contactLinks ?? (config as { contactLinks?: string }).contactLinks, []) as { label: string; url: string }[]),
-      technicalSkills: (parseJson(c.technicalSkills ?? (config as { technicalSkills?: string }).technicalSkills, []) as { category: string; items: string[] }[]),
-      achievements: (parseJson(c.achievements ?? (config as { achievements?: string }).achievements, []) as { title: string; organization: string; year: string }[]),
-      customSections: (parseJson(c.customSections ?? (config as { customSections?: string }).customSections, []) as AboutCustomSection[]),
-      sectionOrder: (parseJson(c.sectionOrder, ["education", "experience", "volunteer", "projects", "skills", "achievements"]) as string[]).filter((id) => ["education", "experience", "volunteer", "projects", "skills", "achievements"].includes(id) || String(id).startsWith("custom:")),
-      sectionVisibility,
-      sectionTitles,
-    };
-  } catch (error) {
-    console.error("Error loading about config:", error);
-    return {
-      profileImage: null,
-      heroName: null,
-      heroTagline: null,
-      heroPhone: null,
-      heroEmail: null,
-      heroPortfolioLabel: null,
-      heroPortfolioUrl: null,
-      introText: null,
-      aboutMainContent: null,
-      educationBlocks: [] as AboutBlockEntry[],
-      experienceBlocks: [] as AboutBlockEntry[],
-      volunteerBlocks: [] as AboutBlockEntry[],
-      projectBlocks: [] as AboutBlockEntry[],
-      schoolLogos: [] as SchoolLogo[],
-      projectImages: [] as ProjectImage[],
-      companyLogos: [] as CompanyLogo[],
-      contactHeading: null,
-      contactText: null,
-      contactLinks: [] as { label: string; url: string }[],
-      technicalSkills: [] as { category: string; items: string[] }[],
-      achievements: [] as { title: string; organization: string; year: string }[],
-      customSections: [] as AboutCustomSection[],
-      sectionOrder: ["education", "experience", "volunteer", "projects", "skills", "achievements"],
-      sectionVisibility: {} as Record<string, boolean>,
-      sectionTitles: { ...DEFAULT_SECTION_TITLES },
-    };
-  }
-}
-
-function getSchoolLogo(schoolLogos: SchoolLogo[], schoolName: string): string | null {
-  if (!schoolLogos || schoolLogos.length === 0) return null;
-  
-  const normalizedSchoolName = schoolName.toLowerCase().trim();
-  const logo = schoolLogos.find((l) => {
-    const normalizedLogoName = l.school.toLowerCase().trim();
-    if (normalizedLogoName === normalizedSchoolName) return true;
-    if (normalizedSchoolName.includes(normalizedLogoName) || normalizedLogoName.includes(normalizedSchoolName)) return true;
-    if ((normalizedSchoolName.includes("nycu") || normalizedSchoolName.includes("yang ming")) && 
-        (normalizedLogoName.includes("nycu") || normalizedLogoName.includes("yang ming"))) return true;
-    if ((normalizedSchoolName.includes("ntut") || normalizedSchoolName.includes("taipei tech")) && 
-        (normalizedLogoName.includes("ntut") || normalizedLogoName.includes("taipei tech"))) return true;
-    return false;
-  });
-  return logo?.logo || null;
-}
-
-function getProjectImage(projectImages: ProjectImage[], projectName: string): string | null {
-  if (!projectImages || projectImages.length === 0) return null;
-  
-  const normalizedProjectName = projectName.toLowerCase().trim();
-  const image = projectImages.find((p) => {
-    const normalizedImageName = p.project.toLowerCase().trim();
-    if (normalizedImageName === normalizedProjectName) return true;
-    if (normalizedProjectName.includes(normalizedImageName) || normalizedImageName.includes(normalizedProjectName)) return true;
-    if ((normalizedProjectName.includes("ci/cd") || normalizedProjectName.includes("cicd") || normalizedProjectName.includes("zero downtime")) && 
-        (normalizedImageName.includes("ci/cd") || normalizedImageName.includes("cicd") || normalizedImageName.includes("zero downtime"))) return true;
-    if ((normalizedProjectName.includes("kubernetes") || normalizedProjectName.includes("k8s") || normalizedProjectName.includes("multi-cluster")) && 
-        (normalizedImageName.includes("kubernetes") || normalizedImageName.includes("k8s") || normalizedImageName.includes("multi-cluster"))) return true;
-    return false;
-  });
-  return image?.image || null;
-}
-
-function getCompanyLogo(companyLogos: CompanyLogo[], companyName: string): string | null {
-  if (!companyLogos || companyLogos.length === 0) return null;
-  
-  const normalizedCompanyName = companyName.toLowerCase().trim();
-  const logo = companyLogos.find((c) => {
-    const normalizedLogoName = c.company.toLowerCase().trim();
-    if (normalizedLogoName === normalizedCompanyName) return true;
-    if (normalizedCompanyName.includes(normalizedLogoName) || normalizedLogoName.includes(normalizedCompanyName)) return true;
-    if ((normalizedCompanyName.includes("nycu") || normalizedCompanyName.includes("yang ming")) && 
-        (normalizedLogoName.includes("nycu") || normalizedLogoName.includes("yang ming"))) return true;
-    if ((normalizedCompanyName.includes("makalot")) && normalizedLogoName.includes("makalot")) return true;
-    if ((normalizedCompanyName.includes("iscom")) && normalizedLogoName.includes("iscom")) return true;
-    if ((normalizedCompanyName.includes("must")) && normalizedLogoName.includes("must")) return true;
-    if ((normalizedCompanyName.includes("ntut") || normalizedCompanyName.includes("taipei tech")) && 
-        (normalizedLogoName.includes("ntut") || normalizedLogoName.includes("taipei tech"))) return true;
-    return false;
-  });
-  return logo?.logo || null;
-}
-
-function getEducationLogoFallback(
-  schoolLogos: SchoolLogo[],
-  companyLogos: CompanyLogo[],
-  entry: AboutBlockEntry
-): string | null {
-  if (entry.logoUrl?.trim()) return entry.logoUrl.trim();
-  if (entry.logoUrl === "") return null;
-
-  const org = entry.organization?.trim() || "";
-  const title = entry.title?.trim() || "";
-  const bySchool =
-    (org ? getSchoolLogo(schoolLogos, org) : null) ||
-    (title ? getSchoolLogo(schoolLogos, title) : null);
-  if (bySchool) return bySchool;
-
-  // Legacy data sometimes stores school logos in companyLogos.
-  const byCompany =
-    (org ? getCompanyLogo(companyLogos, org) : null) ||
-    (title ? getCompanyLogo(companyLogos, title) : null);
-  return byCompany;
-}
-
-function inferCountryCodeFromOrganization(name: string): string | null {
-  const normalized = name.toLowerCase();
-  if (normalized.includes("taiwan")) return "TW";
-  if (normalized.includes("malaysia") || normalized.includes("malaysian")) return "MY";
-  if (normalized.includes("nycu")) return "TW";
-  if (normalized.includes("ntut")) return "TW";
-  if (normalized.includes("taipei tech")) return "TW";
-  if (normalized.includes("must")) return "TW";
-  if (normalized.includes("minghsin")) return "TW";
-  if (normalized.includes("nthu")) return "TW";
-  if (normalized.includes("ncku")) return "TW";
-  if (normalized.includes("united states") || normalized.includes("usa")) return "US";
-  if (normalized.includes("japan")) return "JP";
-  return null;
-}
-
-function normalizeBlockMarkdown(content: string): string {
-  const raw = (content || "").trim();
-  if (!raw) return raw;
-  const hasListSyntax = /^\s*[-*+]\s+/m.test(raw) || /^\s*\d+\.\s+/m.test(raw);
-  if (hasListSyntax) return raw;
-  const lines = raw
-    .split(/\r?\n/)
-    .map((line) => line.trim())
-    .filter(Boolean);
-  if (lines.length === 0) return raw;
-  /**
-   * Wrap every visible line as a list item — including the single-line case.
-   * Previously a one-liner rendered as a plain paragraph, breaking the bulleted
-   * look in Experience / Volunteer / Custom sections when an entry had only one
-   * achievement.
-   */
-  return lines.map((line) => `- ${line}`).join("\n");
-}
-
 export default async function AboutPage({
   searchParams,
 }: {
@@ -342,7 +79,38 @@ export default async function AboutPage({
   const forceStructuredFromEditor = editorParam === "1" || editorParam === "true";
 
   const config = await getAboutConfig();
-  const { profileImage, heroName, heroTagline, heroPortfolioLabel, heroPortfolioUrl, introText, aboutMainContent, educationBlocks, experienceBlocks, volunteerBlocks, projectBlocks, schoolLogos, projectImages, companyLogos, technicalSkills, achievements, customSections, sectionOrder, sectionVisibility, sectionTitles } = config;
+  const {
+    profileImage,
+    heroName,
+    heroTagline,
+    heroPortfolioLabel,
+    heroPortfolioUrl,
+    introText,
+    aboutMainContent,
+    educationBlocks,
+    experienceBlocks,
+    volunteerBlocks,
+    projectBlocks,
+    schoolLogos,
+    projectImages,
+    companyLogos,
+    technicalSkills,
+    achievements,
+    customSections,
+    sectionOrder,
+    sectionVisibility,
+    sectionTitles,
+    companyLogoIndex,
+    normalizedBlockContent,
+  } = config;
+  // Cheap O(1) lookups for hardcoded experience entries (legacy branch). Built once
+  // at fetch time. Falls back to the original substring matcher if not pre-indexed.
+  const lookupCompanyLogo = (name: string): string | null => {
+    const key = name.toLowerCase().trim();
+    return companyLogoIndex.get(key) ?? getCompanyLogo(companyLogos, name);
+  };
+  const getBlockContent = (key: string, fallbackContent: string): string =>
+    normalizedBlockContent.get(key) ?? fallbackContent;
   const downloadCvLabel = heroPortfolioLabel?.trim() || "Download CV (PDF)";
   const rawCvHref = heroPortfolioUrl?.trim() || "";
   const cvPath =
@@ -395,55 +163,71 @@ export default async function AboutPage({
     console.log("Available project images:", projectImages);
   }
 
+  // Hardcoded fallback logo/image lookups are only consumed by the legacy
+  // branch (when no structured blocks exist). Skip the work entirely otherwise.
   let nycuLogo: string | null = null;
-  if (schoolLogos && schoolLogos.length > 0) {
-    nycuLogo = getSchoolLogo(schoolLogos, "NYCU") || 
-               getSchoolLogo(schoolLogos, "National Yang Ming Chiao Tung University") ||
-               getSchoolLogo(schoolLogos, "Yang Ming");
-    if (!nycuLogo) {
-      nycuLogo = schoolLogos[0].logo;
-    }
-  }
-  
   let ntutLogo: string | null = null;
-  if (schoolLogos && schoolLogos.length > 0) {
-    const possibleNtutLogos = schoolLogos.filter(l => {
-      const name = l.school.toLowerCase();
-      return name.includes("ntut") || name.includes("taipei tech") || name.includes("taipei university");
-    });
-    if (possibleNtutLogos.length > 0) {
-      ntutLogo = possibleNtutLogos[0].logo;
-    } else if (schoolLogos.length > 1 && schoolLogos[1].logo !== nycuLogo) {
-      ntutLogo = schoolLogos[1].logo;
-    } else if (schoolLogos.length > 0 && schoolLogos[0].logo !== nycuLogo) {
-      ntutLogo = schoolLogos[0].logo;
-    }
-  }
-  
-  // Project 1 - CI/CD Framework
   let project1Image: string | null = null;
-  if (projectImages && projectImages.length > 0) {
-    project1Image = getProjectImage(projectImages, "CI/CD Framework") ||
-                    getProjectImage(projectImages, "Zero Downtime") ||
-                    getProjectImage(projectImages, "CI/CD") ||
-                    getProjectImage(projectImages, "cicd");
-    if (!project1Image) {
-      project1Image = projectImages[0].image;
-    }
-  }
-  
   let project2Image: string | null = null;
-  if (projectImages && projectImages.length > 0) {
-    const possibleK8sImages = projectImages.filter(p => {
-      const name = p.project.toLowerCase();
-      return name.includes("kubernetes") || name.includes("k8s") || name.includes("multi-cluster") || name.includes("cluster");
-    });
-    if (possibleK8sImages.length > 0) {
-      project2Image = possibleK8sImages[0].image;
-    } else if (projectImages.length > 1 && projectImages[1].image !== project1Image) {
-      project2Image = projectImages[1].image;
-    } else if (projectImages.length > 0 && projectImages[0].image !== project1Image) {
-      project2Image = projectImages[0].image;
+  // Pre-resolved company logos for the hardcoded Work Experience block, so the
+  // .find() walk over `companyLogos` runs at most once per company per request
+  // (previously it ran twice per entry: once for the condition, once for src).
+  let legacyExperienceLogoNycu: string | null = null;
+  let legacyExperienceLogoMakalot: string | null = null;
+  let legacyExperienceLogoMust: string | null = null;
+  let legacyExperienceLogoNtut: string | null = null;
+  const legacyBranchActive =
+    !useStructuredBlocks && (!aboutMainContent || !aboutMainContent.trim());
+  if (legacyBranchActive) {
+    if (schoolLogos && schoolLogos.length > 0) {
+      nycuLogo =
+        getSchoolLogo(schoolLogos, "NYCU") ||
+        getSchoolLogo(schoolLogos, "National Yang Ming Chiao Tung University") ||
+        getSchoolLogo(schoolLogos, "Yang Ming");
+      if (!nycuLogo) {
+        nycuLogo = schoolLogos[0].logo;
+      }
+
+      const possibleNtutLogos = schoolLogos.filter((l) => {
+        const name = l.school.toLowerCase();
+        return name.includes("ntut") || name.includes("taipei tech") || name.includes("taipei university");
+      });
+      if (possibleNtutLogos.length > 0) {
+        ntutLogo = possibleNtutLogos[0].logo;
+      } else if (schoolLogos.length > 1 && schoolLogos[1].logo !== nycuLogo) {
+        ntutLogo = schoolLogos[1].logo;
+      } else if (schoolLogos[0].logo !== nycuLogo) {
+        ntutLogo = schoolLogos[0].logo;
+      }
+    }
+
+    legacyExperienceLogoNycu = lookupCompanyLogo("NYCU");
+    legacyExperienceLogoMakalot = lookupCompanyLogo("Makalot");
+    legacyExperienceLogoMust = lookupCompanyLogo("MUST");
+    legacyExperienceLogoNtut = lookupCompanyLogo("NTUT");
+
+    if (projectImages && projectImages.length > 0) {
+      // Project 1 - CI/CD Framework
+      project1Image =
+        getProjectImage(projectImages, "CI/CD Framework") ||
+        getProjectImage(projectImages, "Zero Downtime") ||
+        getProjectImage(projectImages, "CI/CD") ||
+        getProjectImage(projectImages, "cicd");
+      if (!project1Image) {
+        project1Image = projectImages[0].image;
+      }
+
+      const possibleK8sImages = projectImages.filter((p) => {
+        const name = p.project.toLowerCase();
+        return name.includes("kubernetes") || name.includes("k8s") || name.includes("multi-cluster") || name.includes("cluster");
+      });
+      if (possibleK8sImages.length > 0) {
+        project2Image = possibleK8sImages[0].image;
+      } else if (projectImages.length > 1 && projectImages[1].image !== project1Image) {
+        project2Image = projectImages[1].image;
+      } else if (projectImages[0].image !== project1Image) {
+        project2Image = projectImages[0].image;
+      }
     }
   }
 
@@ -628,7 +412,7 @@ export default async function AboutPage({
                         {entry.content && (
                           <div className="mt-0.5" data-about-edit={`educationBlocks.${i}.content`}>
                             <MarkdownBodyServer
-                              content={normalizeBlockMarkdown(entry.content)}
+                              content={getBlockContent(`educationBlocks.${i}`, entry.content)}
                               className={markdownArticleClassNameProseSm}
                             />
                           </div>
@@ -656,7 +440,7 @@ export default async function AboutPage({
                 <CardContent>
                   <div className="space-y-4">
                     {experienceBlocks.map((entry, i) => {
-                      const entryLogo = (entry.logoUrl && entry.logoUrl.trim()) ? entry.logoUrl : (entry.logoUrl === "" ? null : getCompanyLogo(companyLogos, entry.organization));
+                      const entryLogo = (entry.logoUrl && entry.logoUrl.trim()) ? entry.logoUrl : (entry.logoUrl === "" ? null : lookupCompanyLogo(entry.organization));
                       return (
                       <div
                         key={i}
@@ -701,7 +485,7 @@ export default async function AboutPage({
                         {entry.content && (
                           <div className="mt-0.5" data-about-edit={`experienceBlocks.${i}.content`}>
                             <MarkdownBodyServer
-                              content={normalizeBlockMarkdown(entry.content)}
+                              content={getBlockContent(`experienceBlocks.${i}`, entry.content)}
                               className={markdownArticleClassNameProseSm}
                             />
                           </div>
@@ -730,7 +514,7 @@ export default async function AboutPage({
                   {volunteerBlocks.length > 0 ? (
                   <div className="space-y-4">
                     {volunteerBlocks.map((entry, i) => {
-                      const entryLogo = (entry.logoUrl && entry.logoUrl.trim()) ? entry.logoUrl : (entry.logoUrl === "" ? null : getCompanyLogo(companyLogos, entry.organization));
+                      const entryLogo = (entry.logoUrl && entry.logoUrl.trim()) ? entry.logoUrl : (entry.logoUrl === "" ? null : lookupCompanyLogo(entry.organization));
                       return (
                       <div
                         key={i}
@@ -775,7 +559,7 @@ export default async function AboutPage({
                         {entry.content && (
                           <div className="mt-0.5" data-about-edit={`volunteerBlocks.${i}.content`}>
                             <MarkdownBodyServer
-                              content={normalizeBlockMarkdown(entry.content)}
+                              content={getBlockContent(`volunteerBlocks.${i}`, entry.content)}
                               className={markdownArticleClassNameProseSm}
                             />
                           </div>
@@ -860,7 +644,7 @@ export default async function AboutPage({
                               {entry.content && (
                                 <div className="mt-0.5" data-about-edit={`${blockPrefix}.${i}.content`}>
                                   <MarkdownBodyServer
-                                    content={normalizeBlockMarkdown(entry.content)}
+                                    content={getBlockContent(`${blockPrefix}.${i}`, entry.content)}
                                     className={markdownArticleClassNameProseSm}
                                   />
                                 </div>
@@ -912,7 +696,7 @@ export default async function AboutPage({
                             {entry.content && (
                               <div className="mt-0.5" data-about-edit={`projectBlocks.${i}.content`}>
                                 <MarkdownBodyServer
-                                  content={normalizeBlockMarkdown(entry.content)}
+                                  content={getBlockContent(`projectBlocks.${i}`, entry.content)}
                                   className={markdownArticleClassNameProseSm}
                                 />
                               </div>
@@ -1124,9 +908,9 @@ export default async function AboutPage({
             <div className="space-y-4">
               <div className="border-l-2 border-border pl-3">
                 <div className="flex items-start gap-2">
-                  {getCompanyLogo(companyLogos, "NYCU") && (
+                  {legacyExperienceLogoNycu && (
                     <div className="relative h-12 w-12 flex-shrink-0 mt-0.5">
-                      <Image src={getCompanyLogo(companyLogos, "NYCU") || ""} alt="NYCU Logo" fill unoptimized className="object-contain" />
+                      <Image src={legacyExperienceLogoNycu} alt="NYCU Logo" fill unoptimized className="object-contain" />
                     </div>
                   )}
                   <div className="flex-1 min-w-0">
@@ -1150,9 +934,9 @@ export default async function AboutPage({
               </div>
               <div className="border-l-2 border-border pl-3">
                 <div className="flex items-start gap-2">
-                  {getCompanyLogo(companyLogos, "Makalot") && (
+                  {legacyExperienceLogoMakalot && (
                     <div className="relative h-12 w-12 flex-shrink-0 mt-0.5">
-                      <Image src={getCompanyLogo(companyLogos, "Makalot") || ""} alt="Makalot Logo" fill unoptimized className="object-contain" />
+                      <Image src={legacyExperienceLogoMakalot} alt="Makalot Logo" fill unoptimized className="object-contain" />
                     </div>
                   )}
                   <div className="flex-1 min-w-0">
@@ -1177,9 +961,9 @@ export default async function AboutPage({
               </div>
               <div className="border-l-2 border-border pl-3">
                 <div className="flex items-start gap-2">
-                  {getCompanyLogo(companyLogos, "MUST") && (
+                  {legacyExperienceLogoMust && (
                     <div className="relative h-12 w-12 flex-shrink-0 mt-0.5">
-                      <Image src={getCompanyLogo(companyLogos, "MUST") || ""} alt="MUST Logo" fill unoptimized className="object-contain" />
+                      <Image src={legacyExperienceLogoMust} alt="MUST Logo" fill unoptimized className="object-contain" />
                     </div>
                   )}
                   <div className="flex-1 min-w-0">
@@ -1203,9 +987,9 @@ export default async function AboutPage({
               </div>
               <div className="border-l-2 border-border pl-3">
                 <div className="flex items-start gap-2">
-                  {getCompanyLogo(companyLogos, "NTUT") && (
+                  {legacyExperienceLogoNtut && (
                     <div className="relative h-12 w-12 flex-shrink-0 mt-0.5">
-                      <Image src={getCompanyLogo(companyLogos, "NTUT") || ""} alt="NTUT Logo" fill unoptimized className="object-contain" />
+                      <Image src={legacyExperienceLogoNtut} alt="NTUT Logo" fill unoptimized className="object-contain" />
                     </div>
                   )}
                   <div className="flex-1 min-w-0">

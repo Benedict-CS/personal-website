@@ -20,16 +20,6 @@ export function logInfo(message: string, meta?: Record<string, unknown>): void {
   console.log(formatMessage("info", message, meta));
 }
 
-export function logWarn(message: string, meta?: Record<string, unknown>): void {
-   
-  console.warn(formatMessage("warn", message, meta));
-}
-
-export function logError(message: string, meta?: Record<string, unknown>): void {
-   
-  console.error(formatMessage("error", message, meta));
-}
-
 /** Log HTTP request (use at start of API route or in middleware). */
 export function logRequest(
   method: string,

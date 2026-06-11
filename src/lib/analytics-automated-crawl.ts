@@ -136,15 +136,3 @@ export async function findAutomatedCrawlIps(
   return automated;
 }
 
-export async function deleteAutomatedCrawlPageViews(
-  prisma: Pick<PrismaClient, "pageView">,
-  scope?: Prisma.PageViewWhereInput
-): Promise<number> {
-  const ips = await findAutomatedCrawlIps(prisma, scope);
-  if (ips.length === 0) return 0;
-  const where: Prisma.PageViewWhereInput = scope
-    ? { AND: [scope, { ip: { in: ips } }] }
-    : { ip: { in: ips } };
-  const result = await prisma.pageView.deleteMany({ where });
-  return result.count;
-}
