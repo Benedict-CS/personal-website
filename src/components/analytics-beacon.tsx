@@ -4,16 +4,25 @@ import { usePathname } from "next/navigation";
 import { useEffect, useRef } from "react";
 import { isAnalyticsOptedOutInBrowser } from "@/lib/analytics-client-opt-out";
 
-/** Sends page view on load and duration when leaving (for analytics). */
+/** Max plausible single-page dwell, mirrored server-side. */
+const MAX_DWELL_SECONDS = 30 * 60;
+
+/** Sends page view on load and active dwell time when leaving (for analytics). */
 export function AnalyticsBeacon() {
   const pathname = usePathname();
   const sent = useRef<string | null>(null);
-  const startRef = useRef<number>(0);
+  const activeMsRef = useRef<number>(0);
+  const lastActiveAtRef = useRef<number>(0);
+  const leaveSentRef = useRef<boolean>(false);
 
   useEffect(() => {
     if (!pathname || pathname.startsWith("/dashboard") || pathname.startsWith("/api")) return;
     if (isAnalyticsOptedOutInBrowser()) return;
-    startRef.current = Date.now();
+
+    activeMsRef.current = 0;
+    lastActiveAtRef.current = typeof document !== "undefined" && document.visibilityState === "visible" ? Date.now() : 0;
+    leaveSentRef.current = false;
+
     if (sent.current !== pathname) {
       sent.current = pathname;
       fetch("/api/analytics/view", {
@@ -27,26 +36,53 @@ export function AnalyticsBeacon() {
       }).catch(() => {});
     }
 
-    const onLeave = () => {
-      const duration = Math.round((Date.now() - startRef.current) / 1000);
-      if (duration > 0 && duration < 86400) {
+    const accumulateActive = () => {
+      if (lastActiveAtRef.current > 0) {
+        activeMsRef.current += Date.now() - lastActiveAtRef.current;
+        lastActiveAtRef.current = 0;
+      }
+    };
+
+    const sendLeave = () => {
+      if (leaveSentRef.current) return;
+      accumulateActive();
+      const duration = Math.min(Math.round(activeMsRef.current / 1000), MAX_DWELL_SECONDS);
+      if (duration <= 0) return;
+      leaveSentRef.current = true;
+      try {
+        const body = JSON.stringify({ path: pathname, durationSeconds: duration });
+        if (typeof navigator !== "undefined" && typeof navigator.sendBeacon === "function") {
+          const blob = new Blob([body], { type: "application/json" });
+          navigator.sendBeacon("/api/analytics/leave", blob);
+          return;
+        }
         fetch("/api/analytics/leave", {
           method: "POST",
           headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ path: pathname, durationSeconds: duration }),
+          body,
           keepalive: true,
         }).catch(() => {});
+      } catch {
+        /* ignore */
       }
     };
 
     const onVisibility = () => {
-      if (document.visibilityState === "hidden") onLeave();
+      if (document.visibilityState === "hidden") {
+        sendLeave();
+      } else if (document.visibilityState === "visible") {
+        lastActiveAtRef.current = Date.now();
+        leaveSentRef.current = false;
+      }
     };
 
-    window.addEventListener("beforeunload", onLeave);
+    window.addEventListener("pagehide", sendLeave);
+    window.addEventListener("beforeunload", sendLeave);
     document.addEventListener("visibilitychange", onVisibility);
     return () => {
-      window.removeEventListener("beforeunload", onLeave);
+      sendLeave();
+      window.removeEventListener("pagehide", sendLeave);
+      window.removeEventListener("beforeunload", sendLeave);
       document.removeEventListener("visibilitychange", onVisibility);
     };
   }, [pathname]);

@@ -17,6 +17,7 @@ import {
 } from "@/lib/analytics-noise";
 import { isDirectTagProbePath } from "@/lib/analytics-qualified-visit";
 import { isAccessBlocked } from "@/lib/access-blocked-ips";
+import { checkRateLimitAsync } from "@/lib/rate-limit";
 import {
   isIngestBurstBlocked,
   shouldRollbackAutomatedSession,
@@ -129,6 +130,13 @@ export async function POST(request: NextRequest) {
   }
   if (isAccessBlocked(canonicalIP)) {
     return NextResponse.json({ ok: true, skipped: "access_blocked" });
+  }
+  const { ok: rateAllowed } = await checkRateLimitAsync(canonicalIP, "analytics_view");
+  if (!rateAllowed) {
+    return NextResponse.json(
+      { ok: true, skipped: "rate_limited" },
+      { headers: { "X-RateLimit-Remaining": "0", "Cache-Control": "no-store, private" } }
+    );
   }
   return withAnalyticsIngestLock(canonicalIP, async () => {
     recordAnalyticsIngestEvent(canonicalIP, viewPath);

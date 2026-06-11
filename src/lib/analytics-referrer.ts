@@ -56,9 +56,16 @@ export function getAnalyticsSiteHostnames(): string[] {
 
 /** True when the referrer points at this site (in-site navigation, not an external source). */
 export function isSameSiteReferrer(referrer: string | null | undefined): boolean {
-  const r = (referrer || "").trim().toLowerCase();
+  const r = (referrer || "").trim();
   if (!r) return false;
-  return getAnalyticsSiteHostnames().some((h) => h && r.includes(h));
+  const hosts = getAnalyticsSiteHostnames();
+  if (hosts.length === 0) return false;
+  try {
+    const host = new URL(r).hostname.toLowerCase();
+    return hosts.some((h) => h === host);
+  } catch {
+    return false;
+  }
 }
 
 /** Referrer stats: only off-site URLs (excludes benedict.winlab.tw → /blog/… self-clicks). */

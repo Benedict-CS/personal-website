@@ -101,6 +101,22 @@ export function GlobalSearch() {
     });
   }, [searchParams, pathname, router, openPanel]);
 
+  // Global Cmd/Ctrl+K shortcut to open the search panel.
+  useEffect(() => {
+    const onKey = (e: KeyboardEvent) => {
+      if ((e.metaKey || e.ctrlKey) && (e.key === "k" || e.key === "K")) {
+        const target = e.target as HTMLElement | null;
+        const tag = target?.tagName;
+        const editing = target?.isContentEditable;
+        if (editing || tag === "INPUT" || tag === "TEXTAREA" || tag === "SELECT") return;
+        e.preventDefault();
+        if (!open) openPanel();
+      }
+    };
+    window.addEventListener("keydown", onKey);
+    return () => window.removeEventListener("keydown", onKey);
+  }, [open, openPanel]);
+
   const close = useCallback(() => {
     setOpen(false);
     if (debounceRef.current) clearTimeout(debounceRef.current);
@@ -191,7 +207,8 @@ export function GlobalSearch() {
           "text-[var(--foreground)] hover:text-[var(--primary)] hover:bg-[var(--accent)]/60 text-xs sm:text-sm rounded-lg transition-colors duration-200"
         )}
         onClick={() => (open ? close() : openPanel())}
-        aria-label="Search site"
+        aria-label="Search site (Ctrl+K)"
+        title="Search (Ctrl+K)"
         aria-expanded={open}
         aria-haspopup="dialog"
         aria-controls={open ? "global-search-panel" : undefined}

@@ -1,6 +1,6 @@
 "use client";
 
-import { Suspense, useCallback, useState } from "react";
+import { Suspense, useCallback, useEffect, useState } from "react";
 import Link from "next/link";
 import Image from "next/image";
 import { usePathname } from "next/navigation";
@@ -46,6 +46,15 @@ export function Navbar({ siteConfig }: { siteConfig?: SiteConfigForRender | null
   const isEditor = pathname?.startsWith("/editor");
   const expiresAt = (session as { expiresAt?: number } | null)?.expiresAt;
   const [mobileOpen, setMobileOpen] = useState(false);
+
+  useEffect(() => {
+    if (!mobileOpen) return;
+    const onKey = (e: KeyboardEvent) => {
+      if (e.key === "Escape") setMobileOpen(false);
+    };
+    window.addEventListener("keydown", onKey);
+    return () => window.removeEventListener("keydown", onKey);
+  }, [mobileOpen]);
 
   const signOutAndGoHome = useCallback(() => {
     void signOut({ redirect: false }).then(() => {

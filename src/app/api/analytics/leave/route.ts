@@ -31,10 +31,15 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({ error: "Invalid body" }, { status: 400 });
   }
   const path = typeof body.path === "string" ? body.path : "/";
-  const duration = typeof body.durationSeconds === "number" ? Math.round(body.durationSeconds) : null;
-  if (duration === null || duration < 0) {
+  if (path.startsWith("/dashboard") || path.startsWith("/api")) {
+    return NextResponse.json({ ok: true, skipped: "internal_path" });
+  }
+  const MAX_DWELL_SECONDS = 30 * 60;
+  const raw = typeof body.durationSeconds === "number" ? Math.round(body.durationSeconds) : null;
+  if (raw === null || raw < 0) {
     return NextResponse.json({ ok: true });
   }
+  const duration = Math.min(raw, MAX_DWELL_SECONDS);
   const ipRaw = getClientIP(request);
   const ip = normalizeIP(ipRaw);
   if (!ip || ip === "unknown") {
@@ -55,9 +60,9 @@ export async function POST(request: NextRequest) {
     const row = await prisma.pageView.findFirst({
       where: { ip, path, createdAt: { gte: since } },
       orderBy: { createdAt: "desc" },
-      select: { id: true },
+      select: { id: true, durationSeconds: true },
     });
-    if (row) {
+    if (row && (row.durationSeconds == null || duration > row.durationSeconds)) {
       await prisma.pageView.update({
         where: { id: row.id },
         data: { durationSeconds: duration },

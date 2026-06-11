@@ -41,6 +41,7 @@ function validateContact(name: string, email: string, subject: string, message: 
 export default function ContactPage() {
   const [status, setStatus] = useState<"idle" | "sending" | "success" | "error">("idle");
   const [errorMessage, setErrorMessage] = useState("");
+  const [messageLength, setMessageLength] = useState(0);
   const [title, setTitle] = useState("Contact");
   const [intro, setIntro] = useState(defaultIntro);
   const [formNote, setFormNote] = useState(defaultFormNote);
@@ -153,6 +154,7 @@ export default function ContactPage() {
       }
       setStatus("success");
       form.reset();
+      setMessageLength(0);
     } catch {
       setStatus("error");
       setErrorMessage("Network error. Please try again.");
@@ -244,9 +246,19 @@ export default function ContactPage() {
                   />
                 </div>
                 <div>
-                  <label htmlFor="message" className="mb-1.5 block text-sm font-medium tracking-[-0.01em] text-[var(--foreground)]">
-                    Message
-                  </label>
+                  <div className="mb-1.5 flex items-baseline justify-between gap-2">
+                    <label htmlFor="message" className="block text-sm font-medium tracking-[-0.01em] text-[var(--foreground)]">
+                      Message
+                    </label>
+                    <span
+                      className={`text-xs tabular-nums ${
+                        messageLength > LIMITS.message * 0.9 ? "text-destructive" : "text-muted-foreground"
+                      }`}
+                      aria-live="polite"
+                    >
+                      {messageLength} / {LIMITS.message}
+                    </span>
+                  </div>
                   <Textarea
                     id="message"
                     name="message"
@@ -256,6 +268,7 @@ export default function ContactPage() {
                     placeholder="Your message..."
                     className="resize-none"
                     disabled={status === "sending"}
+                    onChange={(e) => setMessageLength(e.currentTarget.value.length)}
                   />
                 </div>
                 {(status === "success" || status === "error") && (

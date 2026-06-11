@@ -51,6 +51,11 @@ const PREFIX_OVERRIDES: Record<string, Partial<Record<RateLimitPreset, RateLimit
     balanced: { windowSeconds: 60, maxPerWindow: 6 },
     strict: { windowSeconds: 60, maxPerWindow: 3 },
   },
+  analytics_view: {
+    relaxed: { windowSeconds: 60, maxPerWindow: 60 },
+    balanced: { windowSeconds: 60, maxPerWindow: 30 },
+    strict: { windowSeconds: 60, maxPerWindow: 15 },
+  },
 };
 
 function resolvePreset(): RateLimitPreset {

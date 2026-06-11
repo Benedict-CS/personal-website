@@ -210,7 +210,7 @@ export default function AnalyticsPage() {
 
       <DashboardPageHeader
         title="Analytics"
-        description="Who visited your site and where they came from. Bots and scanner traffic are excluded; homepage-only bounces without dwell time do not count."
+        description="Who visited your site and where they came from. Bots and scanner traffic are excluded. Dwell time counts only active (visible) time, capped at 30 minutes per page."
       />
 
       {loading && <AnalyticsStatsSkeleton />}
