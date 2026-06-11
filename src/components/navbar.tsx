@@ -104,7 +104,7 @@ export function Navbar({ siteConfig }: { siteConfig?: SiteConfigForRender | null
           className="text-lg sm:text-xl font-semibold tracking-[-0.03em] text-foreground hover:text-primary transition-colors duration-200 whitespace-nowrap flex items-center gap-1.5"
         >
           {logoUrl ? (
-            <Image src={logoUrl} alt="" width={28} height={28} data-editor-site-logo className="rounded object-contain shrink-0" />
+            <Image src={logoUrl} alt="" width={28} height={28} sizes="28px" priority data-editor-site-logo className="rounded object-contain shrink-0" />
           ) : null}
           <span data-editor-site-label>{siteName}</span>
           {isDashboard ? ` · ${dashboardNavbarSectionLabel(pathname ?? "")}` : isEditor ? " · Editor" : ""}

@@ -6,6 +6,15 @@ import {
   splitReferrerRows,
 } from "@/lib/analytics-referrer";
 
+const prevSiteUrl = process.env.NEXT_PUBLIC_SITE_URL;
+beforeAll(() => {
+  process.env.NEXT_PUBLIC_SITE_URL = "https://benedict.winlab.tw";
+});
+afterAll(() => {
+  if (prevSiteUrl === undefined) delete process.env.NEXT_PUBLIC_SITE_URL;
+  else process.env.NEXT_PUBLIC_SITE_URL = prevSiteUrl;
+});
+
 describe("sanitizeReferrerForAnalytics", () => {
   it("strips sensitive query params", () => {
     expect(sanitizeReferrerForAnalytics("https://x.test/blog/preview?token=secret")).toBe(
@@ -15,14 +24,6 @@ describe("sanitizeReferrerForAnalytics", () => {
 });
 
 describe("isSameSiteReferrer", () => {
-  const prev = process.env.NEXT_PUBLIC_SITE_URL;
-  beforeAll(() => {
-    process.env.NEXT_PUBLIC_SITE_URL = "https://benedict.winlab.tw";
-  });
-  afterAll(() => {
-    process.env.NEXT_PUBLIC_SITE_URL = prev;
-  });
-
   it("detects same-site URLs", () => {
     expect(
       isSameSiteReferrer("https://benedict.winlab.tw/blog/thesis-a-cicd-framework-for-zero-downtime-deployment")

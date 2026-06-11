@@ -19,7 +19,6 @@ import {
   Mail,
   FileUser,
   LayoutList,
-  Replace,
   Archive,
   BookOpen,
   User,
@@ -29,7 +28,6 @@ import {
   Bot,
   KeyRound,
   FolderTree,
-  Package,
 } from "lucide-react";
 import {
   DASHBOARD_MODAL_PANEL_BASE,
@@ -178,14 +176,6 @@ const ACTIONS: Action[] = [
     section: "go",
   },
   {
-    id: "posts-content-replace",
-    label: "Find & replace in posts",
-    keywords: ["replace", "find", "bulk", "migration", "url", "content", "operations", "search"],
-    href: "/dashboard/posts/operations",
-    icon: Replace,
-    section: "go",
-  },
-  {
     id: "create-quick-draft",
     label: "Create quick draft post",
     keywords: ["quick", "draft", "post", "create", "instant", "new"],
@@ -240,26 +230,6 @@ const ACTIONS: Action[] = [
     href: "/dashboard/content/site",
     icon: Settings,
     section: "content",
-  },
-  {
-    id: "data-liberation-zip",
-    label: "Export data (ZIP bundle)",
-    keywords: [
-      "export",
-      "zip",
-      "download",
-      "backup",
-      "markdown",
-      "posts",
-      "data liberation",
-      "gdpr",
-      "bundle",
-      "archive",
-      "full site export",
-    ],
-    href: "/dashboard/content/site",
-    icon: Package,
-    section: "go",
   },
   {
     id: "content-contact",

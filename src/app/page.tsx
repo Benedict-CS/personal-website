@@ -11,7 +11,7 @@ import { getSiteConfigForRender } from "@/lib/site-config";
 import { HomeCustomMarkdownSection } from "@/components/home-custom-markdown-section";
 import { PublicEmptyState, PublicSection } from "@/components/public/public-layout";
 
-export const dynamic = "force-dynamic";
+export const revalidate = 60;
 
 export async function generateMetadata(): Promise<Metadata> {
   const config = await getSiteConfigForRender();

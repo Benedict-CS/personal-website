@@ -33,8 +33,6 @@ const nextConfig: NextConfig = {
     "nodemailer",
     "ioredis",
     "geoip-lite",
-    "pdf-lib",
-    "jszip",
     "sharp",
     "@aws-sdk/client-s3",
   ],

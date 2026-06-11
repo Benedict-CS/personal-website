@@ -2,6 +2,9 @@ import { NextRequest } from "next/server";
 
 const mockFindFirst = jest.fn();
 const mockCreate = jest.fn();
+const mockCount = jest.fn();
+const mockFindMany = jest.fn();
+const mockDeleteMany = jest.fn();
 const mockPostFindFirst = jest.fn();
 const mockPostUpdate = jest.fn();
 const mockIsPrivateIP = jest.fn();
@@ -14,6 +17,9 @@ jest.mock("@/lib/prisma", () => ({
     pageView: {
       findFirst: (...args: unknown[]) => mockFindFirst(...args),
       create: (...args: unknown[]) => mockCreate(...args),
+      count: (...args: unknown[]) => mockCount(...args),
+      findMany: (...args: unknown[]) => mockFindMany(...args),
+      deleteMany: (...args: unknown[]) => mockDeleteMany(...args),
     },
     post: {
       findFirst: (...args: unknown[]) => mockPostFindFirst(...args),
@@ -24,6 +30,7 @@ jest.mock("@/lib/prisma", () => ({
 
 jest.mock("@/lib/is-private-url", () => ({
   isPrivateIP: (...args: unknown[]) => mockIsPrivateIP(...args),
+  isPrivateUrl: () => false,
 }));
 
 jest.mock("@/lib/analytics-excluded-ips", () => ({
@@ -69,6 +76,9 @@ describe("POST /api/analytics/view", () => {
     mockGetRequestOrigin.mockReturnValue("https://site.test");
     mockFindFirst.mockResolvedValue(null);
     mockCreate.mockResolvedValue({ id: "pv-1" });
+    mockCount.mockResolvedValue(0);
+    mockFindMany.mockResolvedValue([]);
+    mockDeleteMany.mockResolvedValue({ count: 0 });
     mockPostFindFirst.mockResolvedValue(null);
     mockPostUpdate.mockResolvedValue({});
   });

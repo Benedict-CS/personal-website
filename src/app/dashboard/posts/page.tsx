@@ -166,9 +166,6 @@ export default async function PostsPage({ searchParams }: PostsPageProps) {
             <Link href={clearCategoryHref()}>Clear category filter</Link>
           </Button>
         ) : null}
-        <Button variant="outline" size="sm" asChild>
-          <Link href="/dashboard/posts/operations">Find &amp; replace</Link>
-        </Button>
         <Button asChild>
           <Link href="/dashboard/posts/new">Create new</Link>
         </Button>

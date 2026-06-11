@@ -12,7 +12,7 @@ import {
 import { metaDescriptionFromMarkdown } from "@/lib/meta-description";
 import { buildSocialShareCardUrl } from "@/lib/social-share-card";
 
-export const dynamic = "force-dynamic";
+export const revalidate = 300;
 
 type Props = { params: Promise<{ slug: string }> };
 

@@ -18,8 +18,6 @@ import {
   ImagePlus,
   Upload,
   Save,
-  Download,
-  FileUp,
   ChevronDown,
   ChevronUp,
   Undo2,
@@ -274,14 +272,6 @@ type SiteBlock = {
   leetcodeUsername?: string;
 };
 
-type SavedTemplate = {
-  id: string;
-  name: string;
-  theme: SiteTheme;
-  blocks: SiteBlock[];
-  createdAt: string;
-};
-
 type ReusableComponent = {
   id: string;
   name: string;
@@ -296,7 +286,6 @@ type BrandConfig = {
   accentColor: string;
 };
 
-const TEMPLATE_STORAGE_KEY = "site-builder-templates-v1";
 const COMPONENT_STORAGE_KEY = "site-builder-components-v1";
 const BUILDER_HISTORY_LIMIT = 40;
 
@@ -1824,13 +1813,11 @@ export function SiteBlockBuilder({
     blockId: string;
     field: "gallery" | "video" | "text" | "columns" | "logoCloud" | "team" | "professionalHero";
   } | null>(null);
-  const [savedTemplates, setSavedTemplates] = useState<SavedTemplate[]>([]);
   const [savedComponents, setSavedComponents] = useState<ReusableComponent[]>([]);
   const [collapsed, setCollapsed] = useState<Set<string>>(new Set());
   const [sectionSearch, setSectionSearch] = useState("");
   const [isUploading, setIsUploading] = useState(false);
   const uploadInputRef = useRef<HTMLInputElement>(null);
-  const importInputRef = useRef<HTMLInputElement>(null);
   const lastGeneratedRef = useRef<string>(value);
   const builderRootRef = useRef<HTMLDivElement>(null);
   const pastRef = useRef<BuilderHistorySnapshot[]>([]);
@@ -1968,45 +1955,6 @@ export function SiteBlockBuilder({
       bumpHistory();
     }
   }, [value, bumpHistory]);
-
-  useEffect(() => {
-    const loadTemplates = async () => {
-      try {
-        const res = await fetch("/api/builder/templates");
-        if (res.ok) {
-          const data = (await res.json()) as Array<{
-            id: string;
-            name: string;
-            theme: SiteTheme;
-            brand: Record<string, unknown>;
-            blocks: SiteBlock[];
-            createdAt: string;
-          }>;
-          setSavedTemplates(
-            data.map((t) => ({
-              id: t.id,
-              name: t.name,
-              theme: t.theme,
-              blocks: Array.isArray(t.blocks) ? t.blocks : [],
-              createdAt: t.createdAt,
-            }))
-          );
-          return;
-        }
-      } catch {
-        // fallback below
-      }
-      try {
-        const raw = localStorage.getItem(TEMPLATE_STORAGE_KEY);
-        if (!raw) return;
-        const parsedSaved = JSON.parse(raw) as SavedTemplate[];
-        if (Array.isArray(parsedSaved)) setSavedTemplates(parsedSaved);
-      } catch {
-        // ignore malformed storage
-      }
-    };
-    loadTemplates();
-  }, []);
 
   useEffect(() => {
     const loadComponents = async () => {
@@ -2256,77 +2204,6 @@ export function SiteBlockBuilder({
     setBlocks([createBlock("professionalHero"), skills, story, createBlock("faq"), createBlock("contactFormModular")]);
   };
 
-  const saveCurrentAsTemplate = async () => {
-    const name = window.prompt("Template name");
-    if (!name || !name.trim()) return;
-    try {
-      const res = await fetch("/api/builder/templates", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          name: name.trim(),
-          theme,
-          brand,
-          blocks,
-          isShared: false,
-        }),
-      });
-      if (res.ok) {
-        const created = (await res.json()) as {
-          id: string;
-          name: string;
-          theme: SiteTheme;
-          blocks: SiteBlock[];
-          createdAt: string;
-        };
-        setSavedTemplates((prev) => [
-          { id: created.id, name: created.name, theme: created.theme, blocks: created.blocks, createdAt: created.createdAt },
-          ...prev,
-        ]);
-        return;
-      }
-    } catch {
-      // fallback below
-    }
-    const fallback: SavedTemplate = {
-      id: makeId(),
-      name: name.trim(),
-      theme,
-      blocks,
-      createdAt: new Date().toISOString(),
-    };
-    const merged = [fallback, ...savedTemplates].slice(0, 20);
-    setSavedTemplates(merged);
-    localStorage.setItem(TEMPLATE_STORAGE_KEY, JSON.stringify(merged));
-  };
-
-  const applySavedTemplate = (id: string) => {
-    const t = savedTemplates.find((x) => x.id === id);
-    if (!t) return;
-    pushHistorySnapshot();
-    setTheme(t.theme);
-    setBrand({
-      brandName: "",
-      brandLogoUrl: "",
-      primaryColor: "#0f172a",
-      accentColor: "#334155",
-    });
-    setBlocks(t.blocks.map((b) => ({ ...b, id: makeId() })));
-  };
-
-  const removeSavedTemplate = async (id: string) => {
-    try {
-      await fetch(`/api/builder/templates/${id}`, { method: "DELETE" });
-    } catch {
-      // ignore and still update local state
-    }
-    setSavedTemplates((prev) => {
-      const next = prev.filter((x) => x.id !== id);
-      localStorage.setItem(TEMPLATE_STORAGE_KEY, JSON.stringify(next));
-      return next;
-    });
-  };
-
   const saveBlockAsComponent = async (block: SiteBlock) => {
     const name = window.prompt("Component name");
     if (!name || !name.trim()) return;
@@ -2386,82 +2263,6 @@ export function SiteBlockBuilder({
       else next.add(id);
       return next;
     });
-  };
-
-  const exportTemplateLibrary = () => {
-    const payload = {
-      exportedAt: new Date().toISOString(),
-      templates: savedTemplates,
-      components: savedComponents,
-    };
-    const blob = new Blob([JSON.stringify(payload, null, 2)], { type: "application/json" });
-    const url = URL.createObjectURL(blob);
-    const a = document.createElement("a");
-    a.href = url;
-    a.download = `site-builder-library-${new Date().toISOString().slice(0, 10)}.json`;
-    a.click();
-    URL.revokeObjectURL(url);
-  };
-
-  const importTemplateLibrary = async (file: File | null) => {
-    if (!file) return;
-    try {
-      const text = await file.text();
-      const parsedImport = JSON.parse(text) as {
-        templates?: SavedTemplate[];
-        components?: ReusableComponent[];
-      };
-      const importedTemplates = Array.isArray(parsedImport.templates) ? parsedImport.templates : [];
-      const importedComponents = Array.isArray(parsedImport.components) ? parsedImport.components : [];
-
-      for (const tpl of importedTemplates) {
-        try {
-          await fetch("/api/builder/templates", {
-            method: "POST",
-            headers: { "Content-Type": "application/json" },
-            body: JSON.stringify({
-              name: tpl.name,
-              theme: tpl.theme,
-              brand,
-              blocks: tpl.blocks,
-              isShared: false,
-            }),
-          });
-        } catch {
-          // Continue importing remaining items
-        }
-      }
-      for (const comp of importedComponents) {
-        try {
-          await fetch("/api/builder/components", {
-            method: "POST",
-            headers: { "Content-Type": "application/json" },
-            body: JSON.stringify({
-              name: comp.name,
-              block: comp.block,
-              isShared: false,
-            }),
-          });
-        } catch {
-          // Continue importing remaining items
-        }
-      }
-
-      const templatesRes = await fetch("/api/builder/templates");
-      if (templatesRes.ok) {
-        const serverTemplates = (await templatesRes.json()) as SavedTemplate[];
-        setSavedTemplates(serverTemplates);
-      }
-      const componentsRes = await fetch("/api/builder/components");
-      if (componentsRes.ok) {
-        const serverComponents = (await componentsRes.json()) as ReusableComponent[];
-        setSavedComponents(serverComponents);
-      }
-    } catch {
-      toast("Invalid template library file.", "error");
-    } finally {
-      if (importInputRef.current) importInputRef.current.value = "";
-    }
   };
 
   const handleUploadMedia = async (files: FileList | null) => {
@@ -2592,31 +2393,6 @@ export function SiteBlockBuilder({
             Bold
           </button>
         </div>
-        <Button type="button" variant="outline" size="sm" className="gap-1" onClick={saveCurrentAsTemplate}>
-          <Save className="h-3.5 w-3.5" />
-          Save template
-        </Button>
-        <Button type="button" variant="outline" size="sm" className="gap-1" onClick={exportTemplateLibrary}>
-          <Download className="h-3.5 w-3.5" />
-          Export library
-        </Button>
-        <Button
-          type="button"
-          variant="outline"
-          size="sm"
-          className="gap-1"
-          onClick={() => importInputRef.current?.click()}
-        >
-          <FileUp className="h-3.5 w-3.5" />
-          Import library
-        </Button>
-        <input
-          ref={importInputRef}
-          type="file"
-          accept="application/json"
-          className="hidden"
-          onChange={(e) => importTemplateLibrary(e.target.files?.[0] ?? null)}
-        />
       </div>
 
       <div className="grid gap-4 xl:grid-cols-[1.25fr_1fr]">
@@ -2714,29 +2490,6 @@ export function SiteBlockBuilder({
                   </TooltipHint>
                 </div>
               </div>
-              {savedTemplates.length > 0 && (
-                <div className="space-y-2">
-                  <p className="text-xs font-medium text-muted-foreground">Saved templates</p>
-                  {savedTemplates.map((tpl) => (
-                    <div key={tpl.id} className="flex items-center justify-between rounded border border-border bg-card px-2 py-1.5">
-                      <button
-                        type="button"
-                        className="text-sm text-foreground/90 hover:underline"
-                        onClick={() => applySavedTemplate(tpl.id)}
-                      >
-                        {tpl.name}
-                      </button>
-                      <button
-                        type="button"
-                        className="text-xs text-red-600 hover:underline"
-                        onClick={() => removeSavedTemplate(tpl.id)}
-                      >
-                        Delete
-                      </button>
-                    </div>
-                  ))}
-                </div>
-              )}
             </CardContent>
           </Card>
 

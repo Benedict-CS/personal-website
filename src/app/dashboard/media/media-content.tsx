@@ -70,17 +70,6 @@ type OptimizeSummary = {
   results?: OptimizeResult[];
 };
 
-type OptimizeHistoryItem = {
-  id: string;
-  createdAt: string;
-  optimizedCount: number;
-  failedCount: number;
-  attempted: number;
-  savedBytesTotal: number;
-  minBytes: number | null;
-  maxItems: number | null;
-};
-
 function classifyErrorCategory(error?: string): string {
   const msg = (error || "").toLowerCase();
   if (!msg) return "unknown";
@@ -173,8 +162,6 @@ export default function MediaContent() {
     estimatedSavedBytesDelta: number;
   } | null>(null);
   const [optimizeSummary, setOptimizeSummary] = useState<OptimizeSummary | null>(null);
-  const [optimizeHistory, setOptimizeHistory] = useState<OptimizeHistoryItem[]>([]);
-  const [loadingOptimizeHistory, setLoadingOptimizeHistory] = useState(false);
   const batchCancelRef = useRef(false);
   const assessmentRefreshTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const lastAssessmentSnapshotRef = useRef<{
@@ -306,35 +293,9 @@ export default function MediaContent() {
     }
   };
 
-  const loadOptimizeHistory = useCallback(async () => {
-    setLoadingOptimizeHistory(true);
-    try {
-      const response = await fetchWithRetry(
-        "/api/system/media-optimize-history",
-        {
-          method: "GET",
-          credentials: "include",
-        },
-        DASHBOARD_INTERNAL_FETCH,
-      );
-      const data = (await response.json().catch(() => ({}))) as {
-        ok?: boolean;
-        history?: OptimizeHistoryItem[];
-      };
-      if (!response.ok || !data.ok) return;
-      setOptimizeHistory(Array.isArray(data.history) ? data.history : []);
-    } finally {
-      setLoadingOptimizeHistory(false);
-    }
-  }, []);
-
   useEffect(() => {
     fetchMediaFiles();
   }, []);
-
-  useEffect(() => {
-    void loadOptimizeHistory();
-  }, [loadOptimizeHistory]);
 
   useEffect(() => {
     setDisplayLimit(MEDIA_PAGE_SIZE);
@@ -687,7 +648,6 @@ export default function MediaContent() {
       if (!dryRun) {
         await fetchMediaFiles();
         scheduleAssessmentRefresh();
-        void loadOptimizeHistory();
       }
       setDeleteStatus({
         show: true,
@@ -768,7 +728,6 @@ export default function MediaContent() {
       });
       await fetchMediaFiles();
       scheduleAssessmentRefresh();
-      void loadOptimizeHistory();
       setDeleteStatus({
         show: true,
         message: cancelled
@@ -1070,7 +1029,6 @@ export default function MediaContent() {
       });
       await fetchMediaFiles();
       scheduleAssessmentRefresh();
-      void loadOptimizeHistory();
       setDeleteStatus({
         show: true,
         message: cancelled
@@ -1703,46 +1661,6 @@ export default function MediaContent() {
                   ))}
                 </div>
               ) : null}
-            </div>
-          )}
-        </CardContent>
-      </Card>
-
-      <Card>
-        <CardContent className="space-y-3 p-4">
-          <div className="flex items-center justify-between">
-            <p className="text-sm font-medium text-foreground">Optimization run history</p>
-            <Button
-              type="button"
-              variant="outline"
-              size="sm"
-              onClick={() => void loadOptimizeHistory()}
-              disabled={loadingOptimizeHistory}
-            >
-              {loadingOptimizeHistory ? <Loader2 className="h-4 w-4 animate-spin" /> : null}
-              Refresh history
-            </Button>
-          </div>
-          {optimizeHistory.length === 0 ? (
-            <p className="text-xs text-muted-foreground">No optimization runs recorded yet.</p>
-          ) : (
-            <div className="space-y-2">
-              {optimizeHistory.slice(0, 8).map((item) => (
-                <div key={item.id} className="rounded-lg border border-border bg-muted/20 p-2 text-xs">
-                  <p className="text-foreground">
-                    {new Date(item.createdAt).toLocaleString()} · optimized {item.optimizedCount}/{item.attempted} ·
-                    failed {item.failedCount} · saved {formatFileSize(item.savedBytesTotal)}
-                  </p>
-                  <div className="mt-1 h-1.5 w-full overflow-hidden rounded bg-muted">
-                    <div
-                      className="h-full bg-primary"
-                      style={{
-                        width: `${item.attempted > 0 ? Math.min(100, Math.round((item.optimizedCount / item.attempted) * 100)) : 0}%`,
-                      }}
-                    />
-                  </div>
-                </div>
-              ))}
             </div>
           )}
         </CardContent>

@@ -510,6 +510,8 @@ export default async function AboutPage({
                       src={profileImage}
                       alt={heroName?.trim() || "Profile"}
                       fill
+                      sizes="128px"
+                      priority
                       unoptimized
                       data-about-profile-img
                       className="object-cover"

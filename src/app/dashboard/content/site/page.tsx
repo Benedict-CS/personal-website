@@ -9,7 +9,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { InsertMediaModal } from "@/components/insert-media-modal";
-import { Download, HardDrive, ImageIcon, Loader2 } from "lucide-react";
+import { HardDrive, ImageIcon, Loader2 } from "lucide-react";
 import type { SiteConfigResponse, NavItem } from "@/types/site";
 import { DEFAULT_NAV_ITEMS } from "@/lib/site-config-defaults";
 import { NavItemsEditor } from "@/components/nav-items-editor";
@@ -51,7 +51,6 @@ export default function SiteSettingsPage() {
   const [message, setMessage] = useState<{ type: "success" | "error"; text: string } | null>(null);
   const [mediaPickerFor, setMediaPickerFor] = useState<"logo" | "favicon" | "og" | null>(null);
   const [customPagesForNav, setCustomPagesForNav] = useState<{ slug: string; title: string }[]>([]);
-  const [exportingTarget, setExportingTarget] = useState<"posts" | "system" | "bundle" | null>(null);
   const [backupTriggerLoading, setBackupTriggerLoading] = useState(false);
   const [backupTriggerMessage, setBackupTriggerMessage] = useState<{ type: "success" | "error" | "info"; text: string } | null>(
     null
@@ -108,35 +107,6 @@ export default function SiteSettingsPage() {
       setMessage({ type: "error", text: e instanceof Error ? e.message : "Failed to save." });
     } finally {
       setSaving(false);
-    }
-  };
-
-  const exportData = async (target: "posts" | "system" | "bundle") => {
-    setExportingTarget(target);
-    setMessage(null);
-    try {
-      const response = await fetch(`/api/data-liberation/export?target=${target}`, { method: "GET" });
-      if (!response.ok) {
-        const data = await response.json().catch(() => ({}));
-        throw new Error(typeof data?.error === "string" ? data.error : "Export failed");
-      }
-      const blob = await response.blob();
-      const objectUrl = URL.createObjectURL(blob);
-      const link = document.createElement("a");
-      link.href = objectUrl;
-      link.download =
-        target === "posts"
-          ? `cms-posts-${new Date().toISOString().slice(0, 10)}.zip`
-          : target === "system"
-            ? `cms-system-export-${new Date().toISOString().slice(0, 10)}.json`
-            : `cms-full-bundle-${new Date().toISOString().slice(0, 10)}.zip`;
-      link.click();
-      URL.revokeObjectURL(objectUrl);
-      setMessage({ type: "success", text: `Exported ${target} data.` });
-    } catch (error) {
-      setMessage({ type: "error", text: error instanceof Error ? error.message : "Export failed." });
-    } finally {
-      setExportingTarget(null);
     }
   };
 
@@ -597,58 +567,6 @@ export default function SiteSettingsPage() {
               </p>
             ) : null}
           </div>
-        </CardContent>
-      </Card>
-
-      <Card>
-        <CardHeader>
-          <CardTitle>Data Liberation</CardTitle>
-          <p className="text-sm font-normal text-muted-foreground">
-            Export content and platform data in portable formats. Posts export as MDX files with frontmatter in a ZIP archive.
-          </p>
-        </CardHeader>
-        <CardContent className="space-y-3">
-          <div className="flex flex-wrap items-center gap-2">
-            <TooltipHint label="Downloads all published and draft posts as MDX files">
-              <Button
-                type="button"
-                variant="outline"
-                className="gap-2"
-                disabled={exportingTarget !== null}
-                onClick={() => void exportData("posts")}
-              >
-                {exportingTarget === "posts" ? <Loader2 className="h-4 w-4 animate-spin" /> : <Download className="h-4 w-4" />}
-                Export posts ZIP
-              </Button>
-            </TooltipHint>
-            <TooltipHint label="Downloads site config, audit, and analytics system data as JSON">
-              <Button
-                type="button"
-                variant="outline"
-                className="gap-2"
-                disabled={exportingTarget !== null}
-                onClick={() => void exportData("system")}
-              >
-                {exportingTarget === "system" ? <Loader2 className="h-4 w-4 animate-spin" /> : <Download className="h-4 w-4" />}
-                Export system JSON
-              </Button>
-            </TooltipHint>
-            <TooltipHint label="Downloads one complete portability bundle (content + system)">
-              <Button
-                type="button"
-                variant="outline"
-                className="gap-2"
-                disabled={exportingTarget !== null}
-                onClick={() => void exportData("bundle")}
-              >
-                {exportingTarget === "bundle" ? <Loader2 className="h-4 w-4 animate-spin" /> : <Download className="h-4 w-4" />}
-                Export full bundle ZIP
-              </Button>
-            </TooltipHint>
-          </div>
-          <p className="text-xs text-muted-foreground">
-            Full bundle includes posts as MDX and the full system JSON in one portable archive.
-          </p>
         </CardContent>
       </Card>
 

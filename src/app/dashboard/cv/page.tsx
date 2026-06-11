@@ -25,8 +25,6 @@ export default function CVPage() {
     message: string;
   }>({ type: null, message: "" });
   const [cvStatus, setCvStatus] = useState<CvStatusPayload | null>(null);
-  const [profilePdfLoading, setProfilePdfLoading] = useState(false);
-  const [profilePdfMessage, setProfilePdfMessage] = useState<{ type: "error"; text: string } | null>(null);
 
   const refreshCvStatus = useCallback(async () => {
     try {
@@ -62,34 +60,6 @@ export default function CVPage() {
       }
       setFile(selectedFile);
       setUploadStatus({ type: null, message: "" });
-    }
-  };
-
-  const exportStructuredProfilePdf = async () => {
-    setProfilePdfMessage(null);
-    setProfilePdfLoading(true);
-    try {
-      const response = await fetch("/api/cv/export-profile-pdf", { credentials: "include", cache: "no-store" });
-      if (!response.ok) {
-        const data = (await response.json().catch(() => ({}))) as { error?: string };
-        throw new Error(typeof data.error === "string" ? data.error : "Could not generate profile PDF.");
-      }
-      const blob = await response.blob();
-      const objectUrl = URL.createObjectURL(blob);
-      const link = document.createElement("a");
-      link.href = objectUrl;
-      const cd = response.headers.get("Content-Disposition");
-      const match = cd?.match(/filename="([^"]+)"/);
-      link.download = match?.[1] ?? `cv-profile-${new Date().toISOString().slice(0, 10)}.pdf`;
-      link.click();
-      URL.revokeObjectURL(objectUrl);
-    } catch (e) {
-      setProfilePdfMessage({
-        type: "error",
-        text: e instanceof Error ? e.message : "Could not generate profile PDF.",
-      });
-    } finally {
-      setProfilePdfLoading(false);
     }
   };
 
@@ -165,25 +135,7 @@ export default function CVPage() {
                 Open printable About page
               </Button>
             </Link>
-            <Button
-              type="button"
-              variant="default"
-              className="gap-2"
-              disabled={profilePdfLoading}
-              onClick={() => void exportStructuredProfilePdf()}
-            >
-              {profilePdfLoading ? <Loader2 className="h-4 w-4 animate-spin" aria-hidden /> : <Download className="h-4 w-4" aria-hidden />}
-              Export profile PDF
-            </Button>
           </div>
-          {profilePdfMessage ? (
-            <p className="text-xs text-rose-700" role="alert">
-              {profilePdfMessage.text}
-            </p>
-          ) : null}
-          <p className="text-xs text-muted-foreground">
-            Profile PDF is generated from structured About data (education, experience, projects, skills, and achievements).
-          </p>
         </CardContent>
       </Card>
 
